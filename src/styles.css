@@ -140,6 +140,12 @@ h2 {
   color: #64748b;
 }
 
+.error-text {
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .chat-panel {
   border-bottom: 0;
   border-right: 0;

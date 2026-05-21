@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { askBlockchainEngineer } from './api/blockchainEngineerChat';
 import {
   answerAsBlockchainEngineer,
   createRequirementBrief,
@@ -34,8 +35,11 @@ export function App() {
   const [brief, setBrief] = useState<RequirementBrief | undefined>();
   const [bundle, setBundle] = useState<ImplementationBundle | undefined>();
   const [isRunning, setIsRunning] = useState(false);
+  const [engineerAnswer, setEngineerAnswer] = useState(() => answerAsBlockchainEngineer(question));
+  const [botChatError, setBotChatError] = useState<string | undefined>();
+  const [isBotReplyLoading, setIsBotReplyLoading] = useState(false);
 
-  const engineerAnswer = useMemo(() => answerAsBlockchainEngineer(question, brief), [question, brief]);
+  const fallbackEngineerAnswer = useMemo(() => answerAsBlockchainEngineer(question, brief), [question, brief]);
   const generatedArtifacts = bundle?.results.flatMap((result) => result.artifacts) ?? [];
 
   function updateFact<K extends keyof FundFacts>(key: K, value: FundFacts[K]) {
@@ -57,6 +61,42 @@ export function App() {
     } finally {
       setIsRunning(false);
     }
+  }
+
+  async function askBot() {
+    if (!question.trim()) {
+      setBotChatError('Enter a question before asking the bot.');
+      return;
+    }
+
+    setIsBotReplyLoading(true);
+    setBotChatError(undefined);
+
+    const result = await askBlockchainEngineer({
+      userMessage: question,
+      projectContext: brief
+        ? {
+            fundName: brief.fundFacts.fundName,
+            tokenSymbol: brief.fundFacts.tokenSymbol,
+            jurisdiction: brief.fundFacts.jurisdiction,
+            selectedModules: brief.modules.filter((module) => module.enabled).map((module) => module.id),
+          }
+        : {
+            fundName: facts.fundName,
+            tokenSymbol: facts.tokenSymbol,
+            jurisdiction: facts.jurisdiction,
+          },
+    });
+
+    setIsBotReplyLoading(false);
+
+    if (result.ok) {
+      setEngineerAnswer(result.data.content);
+      return;
+    }
+
+    setBotChatError(result.message);
+    setEngineerAnswer(fallbackEngineerAnswer);
   }
 
   return (
@@ -179,8 +219,16 @@ export function App() {
         <h2>Blockchain Engineer Bot</h2>
         <p className="muted">Ask plain-language questions. The bot turns goals into engineering requirements.</p>
         <textarea value={question} onChange={(event) => setQuestion(event.target.value)} rows={5} />
+        <button disabled={isBotReplyLoading} onClick={askBot}>
+          {isBotReplyLoading ? 'Asking bot...' : 'Ask Blockchain Engineer'}
+        </button>
+        {botChatError && (
+          <p className="error-text" role="alert">
+            {botChatError}
+          </p>
+        )}
         <div className="assistant-response" data-testid="engineer-answer">
-          {engineerAnswer}
+          {isBotReplyLoading ? 'Waiting for Blockchain Engineer Bot...' : engineerAnswer}
         </div>
       </aside>
     </main>

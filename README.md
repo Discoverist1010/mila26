@@ -26,6 +26,12 @@ npm run dev:api
 
 The backend exposes `GET /api/health` and a mock-provider `POST /api/chat/blockchain-engineer` route on `http://127.0.0.1:5174` by default. Real LLM calls, persistence, wallet integration, and deployment behavior are intentionally not implemented yet.
 
+The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
+
+```bash
+VITE_MILA26_API_BASE_URL=http://127.0.0.1:5174 npm run dev
+```
+
 Run checks:
 
 ```bash
