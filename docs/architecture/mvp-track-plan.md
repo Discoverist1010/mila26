@@ -374,6 +374,23 @@ What not to overbuild:
 
 - No production audit, KYC/AML, mainnet, or multi-tenant workflows.
 
+## Track 4 Closure: Dashboard UX Foundation Accepted
+
+Status: accepted as the MVP UX foundation for the next technical tracks.
+
+The Track 4 dashboard shell now provides the near-term product foundation: KangLe AI / MILA26 branding, left project navigation, central funding-demo workspace, right project status/assistant panel, visible Step 1-4 journey, structured Requirement Brief presentation, local agent progress, and a deployment-gate placeholder.
+
+Track 5 in the current post-dashboard sequence should move to Requirement Brief contracts and PRD/LLM foundations on top of this shell rather than reopening the dashboard layout.
+
+Deferred UX items are placeholders and should not block the next technical track:
+
+- Real collapsible panel behavior.
+- Services/Add Services cart functionality.
+- Contextual drawers.
+- Wallet connection/status implementation.
+- Persisted projects or folders.
+- Production deployment status.
+
 ## Track 4: PRD Generation And Approval
 
 Goal: generate and approve PRD/enhanced Requirement Brief from chat.

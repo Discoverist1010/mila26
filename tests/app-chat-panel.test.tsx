@@ -31,6 +31,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByRole('heading', { name: 'Tokenized Income Fund' })).toBeVisible();
     expect(screen.getByLabelText('Project navigation')).toBeVisible();
     expect(screen.getByLabelText('Project status and assistant')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Project setup' })).toBeVisible();
+    expect(screen.getByText('Define tokenisation requirement')).toBeVisible();
     expect(screen.getByText('Local preview shown until a backend response is available.')).toBeVisible();
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Blockchain Engineer Bot question' }), {

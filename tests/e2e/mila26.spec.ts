@@ -8,6 +8,9 @@ test('guided beta journey creates requirements and runs agents', async ({ page }
   await expect(page.getByLabel('Project status and assistant')).toBeVisible();
   await expect(page.getByText(/Ethereum testnet only/i)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Locked for MVP' })).toBeVisible();
+  await expect(page.getByLabel('Funding demo journey').getByText('Step 1')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Project setup' })).toBeVisible();
+  await expect(page.getByText(/Define tokenisation requirement/i)).toBeVisible();
   await expect(page.getByTestId('engineer-answer')).toContainText('Requirement Brief');
   await expect(page.getByText(/Local preview shown until a backend response is available/i)).toBeVisible();
 
@@ -16,9 +19,28 @@ test('guided beta journey creates requirements and runs agents', async ({ page }
 
   await page.getByRole('button', { name: /Create Requirement Brief/i }).click();
   await expect(page.getByTestId('requirement-brief')).toContainText('MILA Income Fund');
+  await expect(page.getByText(/Asset \/ fund profile/i)).toBeVisible();
+  await expect(page.getByText(/Deployment boundary/i)).toBeVisible();
+  await expect(page.getByText(/Awaiting approval to generate deterministic artifacts/i)).toBeVisible();
 
   await page.getByRole('button', { name: /Approve Brief and Run Coding Bot/i }).click();
   await expect(page.getByTestId('agent-results')).toContainText('contract_worker');
+  await expect(page.getByTestId('artifact-workspace')).toContainText('Generated implementation artifacts');
   await expect(page.getByText(/Approved for beta artifact release/i)).toBeVisible();
   await expect(page.getByText(/MILA26 Evidence Pack/i)).toBeVisible();
+  await expect(page.getByText(/Review evidence and deployment-gate context/i)).toBeVisible();
+});
+
+test('dashboard shell remains usable on a narrow viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 900 });
+  await page.goto('/');
+
+  await expect(page.getByText('KangLe AI')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tokenized Income Fund' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Project setup' })).toBeVisible();
+  await expect(page.getByLabel('Project status and assistant')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Ask Blockchain Engineer/i })).toBeVisible();
+
+  const askButtonBox = await page.getByRole('button', { name: /Ask Blockchain Engineer/i }).boundingBox();
+  expect(askButtonBox?.height).toBeLessThan(80);
 });

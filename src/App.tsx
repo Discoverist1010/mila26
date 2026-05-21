@@ -44,6 +44,11 @@ export function App() {
   const generatedArtifacts = bundle?.results.flatMap((result) => result.artifacts) ?? [];
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
   const currentGate = brief ? 'Brief ready for Coding Bot' : 'Requirement brief approval';
+  const approvalGateStatus = bundle ? 'Approved' : brief ? 'Coding bot ready' : 'Draft brief';
+  const selectedModules = brief?.modules.filter((module) => module.enabled) ?? [];
+  const tokenModelSummary = selectedModules.some((module) => module.id === 'erc20-base')
+    ? 'ERC-20 fund token base selected for the current beta scaffold.'
+    : 'Token model will be confirmed in the Requirement Brief.';
   const agentStatuses = [
     { label: 'Requirement', status: brief ? 'Ready' : 'Drafting' },
     { label: 'Coding', status: bundle ? 'Complete' : brief ? 'Ready' : 'Waiting' },
@@ -170,9 +175,36 @@ export function App() {
           </article>
         </section>
 
-        <section className="panel grid-two">
+        <section className="journey-strip" aria-label="Funding demo journey">
+          <article>
+            <span>Step 1</span>
+            <strong>Define tokenisation requirement</strong>
+          </article>
+          <article>
+            <span>Step 2</span>
+            <strong>Approve engineering brief</strong>
+          </article>
+          <article>
+            <span>Step 3</span>
+            <strong>Generate implementation artifacts</strong>
+          </article>
+          <article>
+            <span>Step 4</span>
+            <strong>Review evidence and deployment gate</strong>
+          </article>
+        </section>
+
+        <section className="panel setup-card">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Step 1</p>
+              <h2>Project setup</h2>
+              <p className="muted">Define the tokenisation brief inputs for the asset-manager demo.</p>
+            </div>
+            <span className="status-pill ghost">Local deterministic form</span>
+          </div>
+          <div className="grid-two">
           <div>
-            <h2>Fund Setup</h2>
             <label>
               Fund name
               <input value={facts.fundName} onChange={(event) => updateFact('fundName', event.target.value)} />
@@ -197,9 +229,10 @@ export function App() {
             </label>
           </div>
           <div>
-            <h2>Goal</h2>
+            <h3>Tokenisation goal</h3>
             <textarea value={goal} onChange={(event) => setGoal(event.target.value)} rows={7} />
             <button onClick={createBrief}>Create Requirement Brief</button>
+          </div>
           </div>
         </section>
 
@@ -215,40 +248,107 @@ export function App() {
           </div>
         </section>
 
-        <section className="panel" id="requirement-brief">
-          <h2>Requirement Brief</h2>
+        <section className="panel brief-panel" id="requirement-brief">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Step 2</p>
+              <h2>Requirement Brief</h2>
+              <p className="muted">Structured engineering brief for review before artifact generation.</p>
+            </div>
+            <span className={`gate-badge ${brief ? 'ready' : 'draft'}`}>{approvalGateStatus}</span>
+          </div>
           {brief ? (
-            <pre className="code-block" data-testid="requirement-brief">
-              {JSON.stringify(brief, null, 2)}
-            </pre>
+            <div className="brief-layout" data-testid="requirement-brief">
+              <article className="brief-card">
+                <span>Asset / fund profile</span>
+                <strong>
+                  {brief.fundFacts.fundName} ({brief.fundFacts.tokenSymbol})
+                </strong>
+                <p>
+                  {brief.fundFacts.jurisdiction} jurisdiction for {brief.fundFacts.targetInvestors}. Initial NAV{' '}
+                  {brief.fundFacts.initialNav.toLocaleString()} and supply {brief.fundFacts.totalSupply.toLocaleString()}.
+                </p>
+              </article>
+              <article className="brief-card">
+                <span>Token model</span>
+                <strong>{tokenModelSummary}</strong>
+                <p>{selectedModules.length} servicing modules enabled for the beta artifact run.</p>
+              </article>
+              <article className="brief-card">
+                <span>Wallet whitelist / investor access</span>
+                <strong>{selectedModules.some((module) => module.id === 'whitelist') ? 'Whitelist module enabled' : 'Pending'}</strong>
+                <p>Investor access remains a reviewed requirement before any future testnet deployment path.</p>
+              </article>
+              <article className="brief-card">
+                <span>Valuation / performance cadence</span>
+                <strong>{selectedModules.some((module) => module.id === 'nav-oracle') ? 'NAV module enabled' : 'Pending'}</strong>
+                <p>Valuation inputs stay operational and evidence-backed; no production oracle is implemented.</p>
+              </article>
+              <article className="brief-card wide">
+                <span>Compliance / security assumptions</span>
+                <ul>
+                  {brief.complianceAssumptions.map((assumption) => (
+                    <li key={assumption}>{assumption}</li>
+                  ))}
+                </ul>
+              </article>
+              <article className="brief-card wide">
+                <span>Deployment boundary</span>
+                <strong>{brief.deploymentTarget}</strong>
+                <ul>
+                  {brief.securityConstraints.map((constraint) => (
+                    <li key={constraint}>{constraint}</li>
+                  ))}
+                </ul>
+              </article>
+            </div>
           ) : (
-            <p className="muted">Create a Requirement Brief before code generation.</p>
+            <div className="empty-state">
+              <strong>Draft brief</strong>
+              <p className="muted">Create a Requirement Brief before code generation.</p>
+            </div>
           )}
-          <button disabled={!brief || isRunning} onClick={runAgents}>
-            {isRunning ? 'Coding Bot running mini-bots...' : 'Approve Brief and Run Coding Bot'}
-          </button>
+          <div className="approval-gate">
+            <div>
+              <span>Approval gate</span>
+              <strong>{brief ? 'Awaiting approval to generate deterministic artifacts.' : 'Requirement brief required.'}</strong>
+            </div>
+            <button disabled={!brief || isRunning} onClick={runAgents}>
+              {isRunning ? 'Coding Bot running mini-bots...' : 'Approve Brief and Run Coding Bot'}
+            </button>
+          </div>
         </section>
 
         {bundle && (
-          <section className="panel">
-            <h2>Agent Run</h2>
-            <div className="agent-grid" data-testid="agent-results">
+          <section className="panel" data-testid="artifact-workspace">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Step 3</p>
+                <h2>Generated implementation artifacts</h2>
+                <p className="muted">Deterministic beta outputs from the approved Requirement Brief.</p>
+              </div>
+              <span className="gate-badge ready">Approved</span>
+            </div>
+            <div className="agent-grid artifact-summary-grid" data-testid="agent-results">
               {bundle.results.map((result) => (
                 <article key={result.taskId} className="agent-card">
                   <strong>{result.role}</strong>
                   <span>{result.summary}</span>
+                  <small>{result.artifacts.length} artifact(s)</small>
                 </article>
               ))}
             </div>
-            <h3>Security Review</h3>
-            <p className={bundle.securityReview.approved ? 'approved' : 'blocked'}>
-              {bundle.securityReview.approved ? 'Approved for beta artifact release' : 'Blocked'}
-            </p>
-            <ul>
-              {bundle.securityReview.findings.map((finding) => (
-                <li key={finding}>{finding}</li>
-              ))}
-            </ul>
+            <div className="review-card">
+              <h3>Security Review</h3>
+              <p className={bundle.securityReview.approved ? 'approved' : 'blocked'}>
+                {bundle.securityReview.approved ? 'Approved for beta artifact release' : 'Blocked'}
+              </p>
+              <ul>
+                {bundle.securityReview.findings.map((finding) => (
+                  <li key={finding}>{finding}</li>
+                ))}
+              </ul>
+            </div>
           </section>
         )}
 
@@ -256,8 +356,12 @@ export function App() {
           <section className="panel">
             <h2>Generated Artifacts</h2>
             {generatedArtifacts.map((artifact) => (
-              <details key={artifact.id} open={artifact.kind === 'solidity'}>
+              <details key={artifact.id} className="artifact-card" open={artifact.kind === 'solidity'}>
                 <summary>{artifact.filename}</summary>
+                <div className="artifact-meta">
+                  <span>{artifact.kind}</span>
+                  <span>Source: {artifact.sourceTaskId}</span>
+                </div>
                 <pre className="code-block">{artifact.content}</pre>
               </details>
             ))}
@@ -266,7 +370,13 @@ export function App() {
 
         {bundle && (
           <section className="panel">
-            <h2>Evidence Pack</h2>
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Step 4</p>
+                <h2>Evidence Pack</h2>
+                <p className="muted">Review evidence and deployment-gate context before any future testnet path.</p>
+              </div>
+            </div>
             <button onClick={() => downloadText('MILA26-Evidence-Pack.md', bundle.evidencePack.markdown)}>
               Download Evidence Pack
             </button>
