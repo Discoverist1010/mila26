@@ -1,8 +1,14 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { ZodError } from 'zod';
-import { answerWithBlockchainEngineerMock } from '../agents/blockchainEngineerMock';
+import { answerWithBlockchainEngineerLlm } from '../agents/blockchainEngineerLlm';
 import { BlockchainEngineerChatRequestSchema } from '../contracts/chat';
 import { fail, ok } from '../http/responses';
+import { createMila26LlmProviderFromEnv } from '../llm/providerFactory';
+import type { Mila26LlmProvider } from '../llm/types';
+
+export type BlockchainEngineerChatRouteOptions = {
+  llmProvider?: Mila26LlmProvider;
+};
 
 function validationDetails(error: ZodError): Record<string, unknown> {
   return {
@@ -13,7 +19,14 @@ function validationDetails(error: ZodError): Record<string, unknown> {
   };
 }
 
-export const blockchainEngineerChatRoutes: FastifyPluginAsync = async (app) => {
+export const blockchainEngineerChatRoutes: FastifyPluginAsync<BlockchainEngineerChatRouteOptions> = async (app, options) => {
+  const configuredProvider = options.llmProvider
+    ? {
+        ok: true as const,
+        provider: options.llmProvider,
+      }
+    : createMila26LlmProviderFromEnv();
+
   app.post('/chat/blockchain-engineer', async (request, reply) => {
     const parsed = BlockchainEngineerChatRequestSchema.safeParse(request.body);
 
@@ -23,7 +36,8 @@ export const blockchainEngineerChatRoutes: FastifyPluginAsync = async (app) => {
         .send(fail('VALIDATION_ERROR', 'Invalid Blockchain Engineering Bot chat request.', validationDetails(parsed.error)));
     }
 
-    const response = answerWithBlockchainEngineerMock(parsed.data);
+    const provider = configuredProvider.ok ? configuredProvider.provider : undefined;
+    const response = await answerWithBlockchainEngineerLlm(parsed.data, provider);
     return reply.send(ok(response));
   });
 };

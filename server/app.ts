@@ -3,6 +3,7 @@ import { fail } from './http/responses';
 import { blockchainEngineerChatRoutes } from './routes/blockchainEngineerChat';
 import { engineeringBriefRoutes } from './routes/engineeringBrief';
 import { healthRoutes } from './routes/health';
+import type { Mila26LlmProvider } from './llm/types';
 
 const defaultAllowedOrigins = ['http://127.0.0.1:5173', 'http://localhost:5173'];
 
@@ -17,7 +18,11 @@ function parseAllowedOrigins(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
-export function createApp() {
+export type CreateAppOptions = {
+  blockchainEngineerLlmProvider?: Mila26LlmProvider;
+};
+
+export function createApp(options: CreateAppOptions = {}) {
   const app = Fastify({ logger: false });
   const allowedOrigins = parseAllowedOrigins(process.env.ALLOWED_ORIGINS);
 
@@ -37,7 +42,10 @@ export function createApp() {
   });
 
   app.register(healthRoutes, { prefix: '/api' });
-  app.register(blockchainEngineerChatRoutes, { prefix: '/api' });
+  app.register(blockchainEngineerChatRoutes, {
+    prefix: '/api',
+    llmProvider: options.blockchainEngineerLlmProvider,
+  });
   app.register(engineeringBriefRoutes, { prefix: '/api' });
 
   app.setNotFoundHandler(async (_request, reply) => {
