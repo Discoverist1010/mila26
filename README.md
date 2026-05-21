@@ -24,7 +24,7 @@ Run the local API skeleton in a second terminal:
 npm run dev:api
 ```
 
-The backend exposes `GET /api/health`, a mock-provider `POST /api/chat/blockchain-engineer` route, and deterministic `POST /api/prd/engineering-brief` route on `http://127.0.0.1:5174` by default. Real LLM calls, persistence, wallet integration, and deployment behavior are intentionally not implemented yet.
+The backend exposes `GET /api/health`, a mock-provider `POST /api/chat/blockchain-engineer` route, and deterministic `POST /api/prd/engineering-brief` route on `http://127.0.0.1:5174` by default. Persistence, wallet integration, and deployment behavior are intentionally not implemented yet.
 
 The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
 
@@ -32,7 +32,7 @@ The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it f
 VITE_MILA26_API_BASE_URL=http://127.0.0.1:5174 npm run dev
 ```
 
-Backend-only LLM configuration is prepared for future real-provider work behind a deterministic mock boundary:
+Backend-only LLM configuration defaults to deterministic mock mode:
 
 ```bash
 MILA26_LLM_PROVIDER=mock
@@ -41,7 +41,17 @@ MILA26_LLM_TIMEOUT_MS=30000
 MILA26_LLM_MAX_OUTPUT_TOKENS=2000
 ```
 
-Do not use `VITE_` variables for LLM provider config or secrets. `OPENAI_API_KEY` is reserved for a later backend-only real-provider track and is not required by the current mock boundary.
+OpenAI mode is backend-only and opt-in:
+
+```bash
+MILA26_LLM_PROVIDER=openai
+MILA26_LLM_MODEL=gpt-5-mini # example only; choose a model enabled for your account
+OPENAI_API_KEY=...
+```
+
+`MILA26_LLM_MODEL` is required when `MILA26_LLM_PROVIDER=openai`. MILA26 does not hardcode an OpenAI runtime default; choose a model available to the backend operator's OpenAI account before starting the API.
+
+Do not use `VITE_` variables for LLM provider config or secrets. Existing product routes remain deterministic until a later route-integration track explicitly wires them to the provider boundary.
 
 Run checks:
 

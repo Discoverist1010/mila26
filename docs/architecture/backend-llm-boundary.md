@@ -2,23 +2,23 @@
 
 ## Purpose
 
-Track 6A adds the backend-only LLM adapter boundary for MILA26.
+Track 6A adds the backend-only LLM adapter boundary for MILA26. Track 6B adds the first real backend-only OpenAI provider behind that boundary.
 
-This is infrastructure only. It introduces typed request/response interfaces, backend environment parsing, a provider factory, and a deterministic mock provider so Track 6B can add the first real provider behind the same interface.
+This is infrastructure only. It introduces typed request/response interfaces, backend environment parsing, a provider factory, a deterministic mock provider, and an opt-in OpenAI provider.
 
-Track 6A does not make real LLM calls, does not install an OpenAI SDK, does not require API keys, and does not expose provider config or secrets to the frontend.
+Default mock mode does not make real LLM calls and does not require API keys. OpenAI mode requires `OPENAI_API_KEY` on the backend only. Provider config and secrets are not exposed to the frontend.
 
 ## Environment Variables
 
 Backend LLM configuration uses these exact names:
 
-| Variable | Track 6A default | Track 6A behavior |
+| Variable | Default | Behavior |
 |---|---:|---|
-| `MILA26_LLM_PROVIDER` | `mock` | Only `mock` is accepted. `openai` is reserved for Track 6B and returns a safe unsupported-provider error in Track 6A. |
-| `MILA26_LLM_MODEL` | `mila26-mock-model` | Model label used by the mock provider. Do not hard-code a real model in Track 6A. |
+| `MILA26_LLM_PROVIDER` | `mock` | `mock` is deterministic/default. `openai` enables backend-only OpenAI provider construction. |
+| `MILA26_LLM_MODEL` | `mila26-mock-model` for mock; required for OpenAI | Model label used by the selected provider. OpenAI mode has no runtime default; set an operator-selected model explicitly, for example `gpt-5-mini` if the account supports it. |
 | `MILA26_LLM_TIMEOUT_MS` | `30000` | Parsed as a positive integer; invalid values fall back to the default. |
 | `MILA26_LLM_MAX_OUTPUT_TOKENS` | `2000` | Parsed as a positive integer; invalid values fall back to the default. |
-| `OPENAI_API_KEY` | none | Reserved for future Track 6B backend-only OpenAI integration. Not required or read by Track 6A. |
+| `OPENAI_API_KEY` | none | Required only when `MILA26_LLM_PROVIDER=openai`; not required for mock mode. |
 
 Do not create `VITE_` LLM variables. Vite environment variables are public to the browser bundle and must not be used for backend LLM secrets.
 
@@ -27,6 +27,7 @@ Do not create `VITE_` LLM variables. Vite environment variables are public to th
 - `server/llm/types.ts`: typed `Mila26Llm*` provider, config, request, response, usage, and safe config-error contracts.
 - `server/llm/config.ts`: backend-only config parser for the `MILA26_LLM_*` variables.
 - `server/llm/mockProvider.ts`: deterministic provider used for local tests and fallback.
+- `server/llm/openaiProvider.ts`: backend-only OpenAI provider wrapper.
 - `server/llm/providerFactory.ts`: provider construction boundary.
 
 ## Request Shape
@@ -50,8 +51,8 @@ The provider returns:
 ```ts
 {
   content: 'plain text provider output',
-  provider: 'mock',
-  model: 'mila26-mock-model',
+  provider: 'mock' | 'openai',
+  model: 'mila26-mock-model' | 'operator-configured OpenAI model',
   usage?: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
   metadata?: { purpose: 'engineering_brief_generation', mock: true }
 }
@@ -59,29 +60,30 @@ The provider returns:
 
 The boundary does not return secrets or raw provider configuration to frontend API responses.
 
-## Track 6A Behavior
+## Track 6A / 6B Behavior
 
 - Default provider is deterministic `mock`.
 - The mock provider never calls external services and never needs API keys.
 - Same request produces the same mock response content.
-- Unsupported providers, including `openai`, are rejected safely in Track 6A.
+- `openai` is opt-in and requires `OPENAI_API_KEY`.
+- `openai` requires `MILA26_LLM_MODEL`; model choice is operator-configured and example model names are not runtime defaults.
+- Automated tests mock the OpenAI client and do not make live OpenAI calls.
 - Existing chat and Engineering Brief routes remain behaviorally unchanged.
 
-## Track 6B Path
+## Track 6C Path
 
-Track 6B can add a real backend-only provider implementation behind the same `Mila26LlmProvider` interface.
+Track 6C can wire one selected product route to `Mila26LlmProvider` behind config.
 
-The real provider should:
+Route integration should:
 
 - read `OPENAI_API_KEY` only on the backend
 - map raw provider output into existing MILA26 response contracts
 - retain the deterministic mock provider for tests and local fallback
 - avoid exposing secrets, provider config, or raw stack traces to the frontend
+- preserve deterministic product-route behavior unless explicitly configured otherwise
 
 ## Out Of Scope
 
-- real LLM calls
-- OpenAI SDK installation
 - API keys in frontend code
 - `VITE_` LLM environment variables
 - route behavior changes

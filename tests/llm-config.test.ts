@@ -57,22 +57,96 @@ describe('MILA26 LLM config', () => {
     }
   });
 
-  it('handles unsupported providers safely without requiring OpenAI secrets', () => {
+  it('accepts explicit OpenAI config only when OPENAI_API_KEY is present', () => {
     const parsed = parseMila26LlmConfig({
       MILA26_LLM_PROVIDER: 'openai',
-      MILA26_LLM_MODEL: 'future-real-model',
-      OPENAI_API_KEY: 'not-read-in-track-6a',
+      MILA26_LLM_MODEL: 'gpt-track-6b-test',
+      MILA26_LLM_TIMEOUT_MS: '25000',
+      MILA26_LLM_MAX_OUTPUT_TOKENS: '1500',
+      OPENAI_API_KEY: 'sk-test-secret',
+    });
+
+    expect(parsed).toEqual({
+      ok: true,
+      config: {
+        provider: 'openai',
+        model: 'gpt-track-6b-test',
+        timeoutMs: 25000,
+        maxOutputTokens: 1500,
+      },
+    });
+    expect(JSON.stringify(parsed)).not.toContain('sk-test-secret');
+  });
+
+  it('rejects OpenAI config without explicit MILA26_LLM_MODEL', () => {
+    const parsed = parseMila26LlmConfig({
+      MILA26_LLM_PROVIDER: 'openai',
+      OPENAI_API_KEY: 'sk-test-secret',
     });
 
     expect(parsed).toEqual({
       ok: false,
       error: {
-        code: 'UNSUPPORTED_LLM_PROVIDER',
-        message: 'Unsupported MILA26 LLM provider for Track 6A.',
+        code: 'MISSING_MILA26_LLM_MODEL',
+        message: 'MILA26_LLM_MODEL is required when MILA26_LLM_PROVIDER=openai.',
         details: {
           provider: 'openai',
-          allowedProvider: 'mock',
-          futureProvider: 'openai',
+        },
+      },
+    });
+    expect(JSON.stringify(parsed)).not.toContain('sk-test-secret');
+  });
+
+  it('rejects OpenAI config with blank MILA26_LLM_MODEL', () => {
+    const parsed = parseMila26LlmConfig({
+      MILA26_LLM_PROVIDER: 'openai',
+      MILA26_LLM_MODEL: '   ',
+      OPENAI_API_KEY: 'sk-test-secret',
+    });
+
+    expect(parsed).toEqual({
+      ok: false,
+      error: {
+        code: 'MISSING_MILA26_LLM_MODEL',
+        message: 'MILA26_LLM_MODEL is required when MILA26_LLM_PROVIDER=openai.',
+        details: {
+          provider: 'openai',
+        },
+      },
+    });
+    expect(JSON.stringify(parsed)).not.toContain('sk-test-secret');
+  });
+
+  it('rejects OpenAI config without OPENAI_API_KEY', () => {
+    const parsed = parseMila26LlmConfig({
+      MILA26_LLM_PROVIDER: 'openai',
+    });
+
+    expect(parsed).toEqual({
+      ok: false,
+      error: {
+        code: 'MISSING_OPENAI_API_KEY',
+        message: 'OPENAI_API_KEY is required when MILA26_LLM_PROVIDER=openai.',
+        details: {
+          provider: 'openai',
+        },
+      },
+    });
+  });
+
+  it('handles unknown providers safely', () => {
+    const parsed = parseMila26LlmConfig({
+      MILA26_LLM_PROVIDER: 'unsupported',
+    });
+
+    expect(parsed).toEqual({
+      ok: false,
+      error: {
+        code: 'UNSUPPORTED_PROVIDER',
+        message: 'Unsupported MILA26 LLM provider.',
+        details: {
+          provider: 'unsupported',
+          allowedProviders: 'mock,openai',
         },
       },
     });

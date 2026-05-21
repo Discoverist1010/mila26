@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseMila26LlmConfig } from '../server/llm/config';
 import { createMila26LlmProvider, createMila26LlmProviderFromEnv } from '../server/llm/providerFactory';
+import type { Mila26OpenAiResponsesClient } from '../server/llm/openaiProvider';
 import type { Mila26LlmRequest } from '../server/llm/types';
 
 const mockRequest: Mila26LlmRequest = {
@@ -73,21 +74,78 @@ describe('MILA26 LLM provider factory', () => {
     expect(first.usage?.totalTokens).toBeGreaterThan(0);
   });
 
-  it('handles unsupported openai mode safely without network calls', () => {
+  it('returns the OpenAI provider for valid openai config without making a network call', () => {
     const result = createMila26LlmProviderFromEnv({
       MILA26_LLM_PROVIDER: 'openai',
-      OPENAI_API_KEY: 'not-used',
+      MILA26_LLM_MODEL: 'gpt-track-6b-test',
+      OPENAI_API_KEY: 'sk-test-secret',
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.provider.provider).toBe('openai');
+      expect(result.provider.model).toBe('gpt-track-6b-test');
+    }
+  });
+
+  it('returns a safe error for openai mode without explicit MILA26_LLM_MODEL', () => {
+    const result = createMila26LlmProviderFromEnv({
+      MILA26_LLM_PROVIDER: 'openai',
+      OPENAI_API_KEY: 'sk-test-secret',
     });
 
     expect(result).toEqual({
       ok: false,
       error: {
-        code: 'UNSUPPORTED_LLM_PROVIDER',
-        message: 'Unsupported MILA26 LLM provider for Track 6A.',
+        code: 'MISSING_MILA26_LLM_MODEL',
+        message: 'MILA26_LLM_MODEL is required when MILA26_LLM_PROVIDER=openai.',
         details: {
           provider: 'openai',
-          allowedProvider: 'mock',
-          futureProvider: 'openai',
+        },
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain('sk-test-secret');
+  });
+
+  it('can construct an OpenAI provider with an injected client', () => {
+    const parsed = parseMila26LlmConfig({
+      MILA26_LLM_PROVIDER: 'openai',
+      MILA26_LLM_MODEL: 'gpt-track-6b-test',
+      OPENAI_API_KEY: 'sk-test-secret',
+    });
+    const fakeClient: Mila26OpenAiResponsesClient = {
+      responses: {
+        async create() {
+          return { output_text: 'not called by construction' };
+        },
+      },
+    };
+
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) {
+      throw new Error('Expected OpenAI config to parse.');
+    }
+
+    const provider = createMila26LlmProvider(parsed.config, {
+      openAiClient: fakeClient,
+    });
+
+    expect(provider.provider).toBe('openai');
+    expect(provider.model).toBe('gpt-track-6b-test');
+  });
+
+  it('returns a safe error for openai mode without OPENAI_API_KEY', () => {
+    const result = createMila26LlmProviderFromEnv({
+      MILA26_LLM_PROVIDER: 'openai',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: 'MISSING_OPENAI_API_KEY',
+        message: 'OPENAI_API_KEY is required when MILA26_LLM_PROVIDER=openai.',
+        details: {
+          provider: 'openai',
         },
       },
     });

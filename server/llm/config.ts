@@ -23,16 +23,41 @@ function parseProvider(value: string | undefined): Mila26KnownLlmProviderName | 
 export function parseMila26LlmConfig(env: EnvSource = process.env): Mila26LlmConfigResult {
   const provider = parseProvider(env.MILA26_LLM_PROVIDER);
 
-  if (provider !== 'mock') {
+  if (provider !== 'mock' && provider !== 'openai') {
     return {
       ok: false,
       error: {
-        code: 'UNSUPPORTED_LLM_PROVIDER',
-        message: 'Unsupported MILA26 LLM provider for Track 6A.',
+        code: 'UNSUPPORTED_PROVIDER',
+        message: 'Unsupported MILA26 LLM provider.',
         details: {
           provider,
-          allowedProvider: 'mock',
-          futureProvider: 'openai',
+          allowedProviders: 'mock,openai',
+        },
+      },
+    };
+  }
+
+  if (provider === 'openai' && !env.OPENAI_API_KEY?.trim()) {
+    return {
+      ok: false,
+      error: {
+        code: 'MISSING_OPENAI_API_KEY',
+        message: 'OPENAI_API_KEY is required when MILA26_LLM_PROVIDER=openai.',
+        details: {
+          provider,
+        },
+      },
+    };
+  }
+
+  if (provider === 'openai' && !env.MILA26_LLM_MODEL?.trim()) {
+    return {
+      ok: false,
+      error: {
+        code: 'MISSING_MILA26_LLM_MODEL',
+        message: 'MILA26_LLM_MODEL is required when MILA26_LLM_PROVIDER=openai.',
+        details: {
+          provider,
         },
       },
     };

@@ -4,7 +4,7 @@
 
 The LLM provider adapter isolates backend agents from direct provider SDKs. It keeps secrets backend-only, allows mock providers in tests, and supports future provider swapping without changing frontend contracts.
 
-Track 6A implements the backend-only deterministic mock boundary. Do not add SDK dependencies, real provider calls, or provider routing until the relevant implementation track.
+Track 6A implements the backend-only deterministic mock boundary. Track 6B adds an opt-in backend-only OpenAI provider behind the same interface. Existing product routes remain deterministic until a later route-integration track explicitly wires them to the provider.
 
 ## Initial Interface
 
@@ -48,10 +48,11 @@ Implemented fields:
 - No secrets in logs.
 - Provider output must be mapped into the chat response contract.
 - Mock provider is required for tests.
-- Real provider integration comes later.
+- OpenAI provider integration is opt-in via backend env config.
 - Provider-specific fields must not leak into stable frontend route contracts unless deliberately mapped.
 - Environment variables must use `MILA26_LLM_PROVIDER`, `MILA26_LLM_MODEL`, `MILA26_LLM_TIMEOUT_MS`, and `MILA26_LLM_MAX_OUTPUT_TOKENS`.
-- `OPENAI_API_KEY` is reserved for a future backend-only Track 6B provider and is not required by Track 6A.
+- `OPENAI_API_KEY` is required only when `MILA26_LLM_PROVIDER=openai`.
+- `MILA26_LLM_MODEL` is required when `MILA26_LLM_PROVIDER=openai`; OpenAI model choice is operator-configured and examples are not runtime defaults.
 - Do not introduce `VITE_` LLM variables.
 
 ## Latency Rules
@@ -64,9 +65,9 @@ Implemented fields:
 
 ## What Not To Implement Yet
 
-- No SDK dependency.
 - No provider routing.
 - No vector memory.
 - No tool calling.
 - No multi-agent orchestration.
 - No persistence requirement.
+- No product-route replacement until Track 6C explicitly scopes it.

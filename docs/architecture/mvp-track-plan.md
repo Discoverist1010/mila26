@@ -433,7 +433,7 @@ Implemented deliverables:
 - Typed LLM request, response, usage, provider, and config contracts under `server/llm/`.
 - Backend-only config parser using exact `MILA26_LLM_*` variables.
 - Deterministic mock provider and provider factory.
-- Safe unsupported-provider handling for `openai` until Track 6B.
+- Safe provider validation before any real-provider route integration.
 - Documentation in `docs/architecture/backend-llm-boundary.md`.
 
 Acceptance criteria:
@@ -446,8 +446,32 @@ Acceptance criteria:
 
 What remains deferred:
 
-- OpenAI SDK or real provider implementation.
-- Backend-only `OPENAI_API_KEY` usage.
+- Replacing deterministic route generators with real LLM-backed generation.
+
+## Track 6B: Real Backend-only OpenAI Provider
+
+Status: implemented.
+
+Track 6B adds an opt-in backend-only OpenAI provider behind the existing `Mila26LlmProvider` interface while keeping deterministic mock mode as the default.
+
+Implemented deliverables:
+
+- Official `openai` dependency.
+- `server/llm/openaiProvider.ts` wrapper.
+- `MILA26_LLM_PROVIDER=openai` support.
+- `OPENAI_API_KEY` required only for OpenAI mode.
+- Mocked OpenAI provider tests with no live provider calls.
+
+Acceptance criteria:
+
+- `MILA26_LLM_PROVIDER=mock` remains the default.
+- Existing chat and Engineering Brief product routes remain deterministic.
+- No `VITE_` LLM variables are introduced.
+- `OPENAI_API_KEY` is backend-only and not returned in config or responses.
+
+What remains deferred:
+
+- Track 6C route integration.
 - Replacing deterministic route generators with real LLM-backed generation.
 
 ## Track 4: PRD Generation And Approval

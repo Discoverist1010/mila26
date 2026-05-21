@@ -1,5 +1,5 @@
-export type Mila26LlmProviderName = 'mock';
-export type Mila26KnownLlmProviderName = Mila26LlmProviderName | 'openai';
+export type Mila26LlmProviderName = 'mock' | 'openai';
+export type Mila26KnownLlmProviderName = Mila26LlmProviderName;
 
 export type Mila26LlmPurpose = 'blockchain_engineer_chat' | 'engineering_brief_generation';
 
@@ -43,7 +43,10 @@ export type Mila26LlmProvider = {
   complete(request: Mila26LlmRequest): Promise<Mila26LlmResponse>;
 };
 
-export type Mila26LlmConfigErrorCode = 'UNSUPPORTED_LLM_PROVIDER';
+export type Mila26LlmConfigErrorCode =
+  | 'UNSUPPORTED_PROVIDER'
+  | 'MISSING_OPENAI_API_KEY'
+  | 'MISSING_MILA26_LLM_MODEL';
 
 export type Mila26LlmConfigError = {
   code: Mila26LlmConfigErrorCode;
