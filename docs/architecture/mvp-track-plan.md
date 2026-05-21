@@ -422,6 +422,34 @@ What remains deferred:
 - wallet integration
 - blockchain deployment
 
+## Track 6A: Backend-only LLM Adapter Boundary
+
+Status: implemented.
+
+Track 6A adds backend-only LLM infrastructure for future real-provider work without changing current route behavior.
+
+Implemented deliverables:
+
+- Typed LLM request, response, usage, provider, and config contracts under `server/llm/`.
+- Backend-only config parser using exact `MILA26_LLM_*` variables.
+- Deterministic mock provider and provider factory.
+- Safe unsupported-provider handling for `openai` until Track 6B.
+- Documentation in `docs/architecture/backend-llm-boundary.md`.
+
+Acceptance criteria:
+
+- Default provider is `mock`.
+- No real LLM calls are made.
+- `OPENAI_API_KEY` is not required in Track 6A.
+- No `VITE_` LLM variables are introduced.
+- Existing chat and Engineering Brief routes remain behaviorally unchanged.
+
+What remains deferred:
+
+- OpenAI SDK or real provider implementation.
+- Backend-only `OPENAI_API_KEY` usage.
+- Replacing deterministic route generators with real LLM-backed generation.
+
 ## Track 4: PRD Generation And Approval
 
 Goal: generate and approve PRD/enhanced Requirement Brief from chat.

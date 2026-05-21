@@ -32,6 +32,17 @@ The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it f
 VITE_MILA26_API_BASE_URL=http://127.0.0.1:5174 npm run dev
 ```
 
+Backend-only LLM configuration is prepared for future real-provider work behind a deterministic mock boundary:
+
+```bash
+MILA26_LLM_PROVIDER=mock
+MILA26_LLM_MODEL=mila26-mock-model
+MILA26_LLM_TIMEOUT_MS=30000
+MILA26_LLM_MAX_OUTPUT_TOKENS=2000
+```
+
+Do not use `VITE_` variables for LLM provider config or secrets. `OPENAI_API_KEY` is reserved for a later backend-only real-provider track and is not required by the current mock boundary.
+
 Run checks:
 
 ```bash
@@ -57,6 +68,7 @@ npm run test:e2e
 - Frontend chat integration plan: [`docs/architecture/frontend-chat-integration.md`](docs/architecture/frontend-chat-integration.md)
 - Frontend UX architecture: [`docs/architecture/frontend-ux-architecture.md`](docs/architecture/frontend-ux-architecture.md)
 - Frontend component plan: [`docs/architecture/frontend-component-plan.md`](docs/architecture/frontend-component-plan.md)
+- Backend LLM boundary: [`docs/architecture/backend-llm-boundary.md`](docs/architecture/backend-llm-boundary.md)
 - MVP stack decisions: [`docs/architecture/mvp-stack-decisions.md`](docs/architecture/mvp-stack-decisions.md)
 - Wallet-signed deployment: [`docs/architecture/wallet-signed-deployment.md`](docs/architecture/wallet-signed-deployment.md)
 - Agent orchestration MVP: [`docs/architecture/agent-orchestration-mvp.md`](docs/architecture/agent-orchestration-mvp.md)
