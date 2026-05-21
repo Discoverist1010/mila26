@@ -24,7 +24,7 @@ Run the local API skeleton in a second terminal:
 npm run dev:api
 ```
 
-The backend exposes `GET /api/health`, a mock-provider `POST /api/chat/blockchain-engineer` route, and deterministic `POST /api/prd/engineering-brief` route on `http://127.0.0.1:5174` by default. Persistence, wallet integration, and deployment behavior are intentionally not implemented yet.
+The backend exposes `GET /api/health`, `POST /api/chat/blockchain-engineer`, and deterministic `POST /api/prd/engineering-brief` route on `http://127.0.0.1:5174` by default. Persistence, wallet integration, and deployment behavior are intentionally not implemented yet.
 
 The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
 
@@ -51,7 +51,7 @@ OPENAI_API_KEY=...
 
 `MILA26_LLM_MODEL` is required when `MILA26_LLM_PROVIDER=openai`. MILA26 does not hardcode an OpenAI runtime default; choose a model available to the backend operator's OpenAI account before starting the API.
 
-Do not use `VITE_` variables for LLM provider config or secrets. Existing product routes remain deterministic until a later route-integration track explicitly wires them to the provider boundary.
+Do not use `VITE_` variables for LLM provider config or secrets. Track 6C wires the Blockchain Engineering Bot route to the backend-only LLM boundary when a real provider is configured. Mock mode remains deterministic by default, and provider errors fall back to deterministic mock behavior.
 
 Run checks:
 
