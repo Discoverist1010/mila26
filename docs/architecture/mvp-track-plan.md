@@ -391,6 +391,37 @@ Deferred UX items are placeholders and should not block the next technical track
 - Persisted projects or folders.
 - Production deployment status.
 
+## Track 5A: Requirement Brief Contract Boundary
+
+Status: implemented.
+
+Track 5A added a stable typed Requirement Brief contract boundary and adapter so later PRD, backend-only LLM, Solidity generation, QA/security, evidence, deployment gate, and wallet-signed testnet tracks can consume one source-of-truth input object.
+
+Reference:
+
+- `docs/contracts/requirement-brief-contract.md`
+
+## Track 5B: Deterministic PRD / Engineering Brief Route
+
+Status: implemented.
+
+Track 5B adds `POST /api/prd/engineering-brief`, a deterministic/mock backend route that consumes the Track 5A Requirement Brief contract and returns a structured Engineering Brief response.
+
+This route establishes the API shape, validation boundary, response contract, and safe error behavior for the later backend-only LLM adapter track.
+
+Reference:
+
+- `docs/contracts/engineering-brief-contract.md`
+
+What remains deferred:
+
+- real LLM provider integration
+- frontend PRD UI integration
+- autonomous orchestration
+- Solidity compilation
+- wallet integration
+- blockchain deployment
+
 ## Track 4: PRD Generation And Approval
 
 Goal: generate and approve PRD/enhanced Requirement Brief from chat.

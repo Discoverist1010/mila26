@@ -32,6 +32,10 @@ Track 5A adds a stable typed Requirement Brief contract boundary for future PRD,
 
 - [`requirement-brief-contract.md`](requirement-brief-contract.md): source-of-truth Requirement Brief contract and adapter rules.
 
+Track 5B adds a deterministic backend Engineering Brief contract and route:
+
+- [`engineering-brief-contract.md`](engineering-brief-contract.md): `POST /api/prd/engineering-brief` request/response contract, validation boundaries, and deterministic/mock status.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:
@@ -46,6 +50,8 @@ Track 5A adds a stable typed Requirement Brief contract boundary for future PRD,
 - Blockchain Engineering Bot chat request/response/error fixtures and route behavior.
 
 `tests/requirement-brief-contract.test.ts` validates the Track 5A Requirement Brief contract adapter and fixed MVP boundaries.
+
+`tests/engineering-brief-contract.test.ts` and `tests/api-prd-engineering-brief.test.ts` validate the Track 5B Engineering Brief contract, deterministic generator, route envelope, and safe validation failures.
 
 ## Known Schema Gaps
 

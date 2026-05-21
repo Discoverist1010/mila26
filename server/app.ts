@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import { fail } from './http/responses';
 import { blockchainEngineerChatRoutes } from './routes/blockchainEngineerChat';
+import { engineeringBriefRoutes } from './routes/engineeringBrief';
 import { healthRoutes } from './routes/health';
 
 const defaultAllowedOrigins = ['http://127.0.0.1:5173', 'http://localhost:5173'];
@@ -26,7 +27,7 @@ export function createApp() {
     if (origin && allowedOrigins.includes(origin)) {
       reply.header('Access-Control-Allow-Origin', origin);
       reply.header('Vary', 'Origin');
-      reply.header('Access-Control-Allow-Methods', 'GET,OPTIONS');
+      reply.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
       reply.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
     }
 
@@ -37,6 +38,7 @@ export function createApp() {
 
   app.register(healthRoutes, { prefix: '/api' });
   app.register(blockchainEngineerChatRoutes, { prefix: '/api' });
+  app.register(engineeringBriefRoutes, { prefix: '/api' });
 
   app.setNotFoundHandler(async (_request, reply) => {
     return reply.code(404).send(fail('NOT_FOUND', 'Route not found.'));
