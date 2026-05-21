@@ -4,40 +4,43 @@
 
 The LLM provider adapter isolates backend agents from direct provider SDKs. It keeps secrets backend-only, allows mock providers in tests, and supports future provider swapping without changing frontend contracts.
 
-The adapter is planned only. Do not add SDK dependencies, real provider calls, or provider routing until the relevant implementation track.
+Track 6A implements the backend-only deterministic mock boundary. Do not add SDK dependencies, real provider calls, or provider routing until the relevant implementation track.
 
 ## Initial Interface
 
-Documented methods:
+Implemented Track 6A method:
 
-- `generateText(input)`.
-- `generateStructured(input, schemaName)`.
-- `streamText(input)` later, not in the first implementation.
+- `complete(request)`.
 
-Track 3B should use a mock or deterministic provider that implements the same shape.
+Streaming or structured helper methods remain later-track options only if they are justified by a concrete route.
 
-## `LLMProviderInput`
+## `Mila26LlmProvider`
 
-Likely fields:
+Implemented fields:
 
-- `systemInstruction`.
-- `userMessage`.
-- `conversationHistory`.
-- `projectContext`.
+- `provider`.
+- `model`.
+- `complete(request)`.
+
+## `Mila26LlmRequest`
+
+Implemented fields:
+
+- `purpose`.
+- `messages`.
 - `temperature` optional.
-- `maxTokens` optional.
-- `responseFormat` optional.
+- `maxOutputTokens` optional.
+- `metadata` optional and safe only.
 
-## `LLMProviderOutput`
+## `Mila26LlmResponse`
 
-Likely fields:
+Implemented fields:
 
-- `text`.
+- `content`.
+- `provider`.
 - `model`.
 - `usage` optional.
-- `latencyMs` optional.
-- `providerTraceId` optional and safe only.
-- `finishReason` optional.
+- `metadata` optional and safe only.
 
 ## Provider Rules
 
@@ -47,6 +50,9 @@ Likely fields:
 - Mock provider is required for tests.
 - Real provider integration comes later.
 - Provider-specific fields must not leak into stable frontend route contracts unless deliberately mapped.
+- Environment variables must use `MILA26_LLM_PROVIDER`, `MILA26_LLM_MODEL`, `MILA26_LLM_TIMEOUT_MS`, and `MILA26_LLM_MAX_OUTPUT_TOKENS`.
+- `OPENAI_API_KEY` is reserved for a future backend-only Track 6B provider and is not required by Track 6A.
+- Do not introduce `VITE_` LLM variables.
 
 ## Latency Rules
 
