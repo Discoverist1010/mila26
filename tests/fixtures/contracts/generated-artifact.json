@@ -1,0 +1,7 @@
+{
+  "id": "artifact-brief-golden-solidity",
+  "kind": "solidity",
+  "filename": "contracts/MILAIncomeFundFundToken.sol",
+  "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.24;\n\ncontract MILAIncomeFundFundToken {\n    string public name = \"MILA Income Fund\";\n    string public symbol = \"MILA\";\n}\n",
+  "sourceTaskId": "task-contracts"
+}

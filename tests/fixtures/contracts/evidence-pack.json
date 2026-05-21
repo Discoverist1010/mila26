@@ -1,0 +1,5 @@
+{
+  "id": "evidence-brief-golden",
+  "generatedAt": "2026-05-18T00:00:00.000Z",
+  "markdown": "# MILA26 Evidence Pack\n\nGenerated at: 2026-05-18T00:00:00.000Z\n\n## Requirement Summary\n\n- Fund: MILA Income Fund (MILA)\n- Jurisdiction: Singapore\n- Target investors: Accredited investors\n- Deployment target: simulation-only\n- Requirement brief id: brief-golden\n\n## Module Rationale\n\n- Fund Token Base: Required base token for tokenized fund units.\n\n## Security Constraints\n\n- No hardcoded secrets or credentials.\n\n## Generated Artifact Inventory\n\n| File | Kind | Source task |\n| --- | --- | --- |\n| contracts/MILAIncomeFundFundToken.sol | solidity | task-contracts |\n\n## Security Review\n\n- Approved: Yes\n- No hardcoded secrets, seed phrase handling, unsafe HTML rendering, or real deploy enablement detected.\n\n## Work Evidence\n\n- contract_worker: Generated a deterministic Solidity beta scaffold from the RequirementBrief.\n\n## Notes\n\nThis pack evidences engineering preparation work only. It does not certify legal, regulatory, tax, or investment compliance.\n"
+}

@@ -1,0 +1,7 @@
+{
+  "approved": true,
+  "findings": [
+    "No hardcoded secrets, seed phrase handling, unsafe HTML rendering, or real deploy enablement detected."
+  ],
+  "blockedArtifacts": []
+}

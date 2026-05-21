@@ -18,12 +18,45 @@ npm install
 npm run dev
 ```
 
+Run the local API skeleton in a second terminal:
+
+```bash
+npm run dev:api
+```
+
+The backend exposes `GET /api/health` and a mock-provider `POST /api/chat/blockchain-engineer` route on `http://127.0.0.1:5174` by default. Real LLM calls, persistence, wallet integration, and deployment behavior are intentionally not implemented yet.
+
 Run checks:
 
 ```bash
 npm run check
 npm run test:e2e
 ```
+
+## Architecture and Rewrite Guidance
+
+- MVP user journey: [`docs/product/mvp-user-journey.md`](docs/product/mvp-user-journey.md)
+- MVP scope: [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)
+- UI/UX vision: [`docs/product/ui-ux-vision.md`](docs/product/ui-ux-vision.md)
+- MVP screen flow: [`docs/product/mvp-screen-flow.md`](docs/product/mvp-screen-flow.md)
+- Current context pack: [`docs/context-pack/`](docs/context-pack/)
+- Contract reference: [`docs/contracts/README.md`](docs/contracts/README.md)
+- MVP API contract index: [`docs/contracts/mvp-api-contracts.md`](docs/contracts/mvp-api-contracts.md)
+- Engineering principles: [`docs/architecture/engineering-principles.md`](docs/architecture/engineering-principles.md)
+- Architecture guardrails: [`docs/architecture/architecture-guardrails.md`](docs/architecture/architecture-guardrails.md)
+- Backend/API boundary: [`docs/architecture/backend-api-boundary.md`](docs/architecture/backend-api-boundary.md)
+- API response conventions: [`docs/architecture/api-response-conventions.md`](docs/architecture/api-response-conventions.md)
+- Blockchain Engineer chat MVP: [`docs/architecture/blockchain-engineer-chat-mvp.md`](docs/architecture/blockchain-engineer-chat-mvp.md)
+- Frontend chat integration plan: [`docs/architecture/frontend-chat-integration.md`](docs/architecture/frontend-chat-integration.md)
+- Frontend UX architecture: [`docs/architecture/frontend-ux-architecture.md`](docs/architecture/frontend-ux-architecture.md)
+- Frontend component plan: [`docs/architecture/frontend-component-plan.md`](docs/architecture/frontend-component-plan.md)
+- MVP stack decisions: [`docs/architecture/mvp-stack-decisions.md`](docs/architecture/mvp-stack-decisions.md)
+- Wallet-signed deployment: [`docs/architecture/wallet-signed-deployment.md`](docs/architecture/wallet-signed-deployment.md)
+- Agent orchestration MVP: [`docs/architecture/agent-orchestration-mvp.md`](docs/architecture/agent-orchestration-mvp.md)
+- MVP memory design: [`docs/architecture/memory-design-mvp.md`](docs/architecture/memory-design-mvp.md)
+- MVP track plan: [`docs/architecture/mvp-track-plan.md`](docs/architecture/mvp-track-plan.md)
+- Rewrite strategy: [`docs/architecture/rewrite-strategy.md`](docs/architecture/rewrite-strategy.md)
+- Future stack considerations: [`docs/architecture/future-stack-considerations.md`](docs/architecture/future-stack-considerations.md)
 
 ## Security Defaults
 

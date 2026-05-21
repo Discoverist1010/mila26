@@ -1,0 +1,56 @@
+{
+  "id": "brief-golden",
+  "createdAt": "2026-05-18T00:00:00.000Z",
+  "fundFacts": {
+    "fundName": "MILA Income Fund",
+    "tokenSymbol": "MILA",
+    "jurisdiction": "Singapore",
+    "targetInvestors": "Accredited investors",
+    "totalSupply": 1000000,
+    "initialNav": 1000000
+  },
+  "modules": [
+    {
+      "id": "erc20-base",
+      "enabled": true,
+      "rationale": "Required base token for tokenized fund units."
+    },
+    {
+      "id": "whitelist",
+      "enabled": true,
+      "rationale": "Limits transfers and subscriptions to approved investors."
+    },
+    {
+      "id": "blacklist",
+      "enabled": true,
+      "rationale": "Adds sanctions and restricted-address controls."
+    },
+    {
+      "id": "nav-oracle",
+      "enabled": true,
+      "rationale": "Supports pricing discipline through NAV updates."
+    },
+    {
+      "id": "investor-registry",
+      "enabled": true,
+      "rationale": "Creates an operational registry for approved investors."
+    }
+  ],
+  "complianceAssumptions": [
+    "Engineering outputs are audit-preparation materials, not legal compliance certification.",
+    "A qualified legal and regulatory advisor must review the product before launch.",
+    "User goal captured: Launch a tokenized income fund."
+  ],
+  "deploymentTarget": "simulation-only",
+  "securityConstraints": [
+    "No hardcoded secrets or credentials.",
+    "No private keys, seed phrases, or API keys in chat or storage.",
+    "All user and model output must be rendered as escaped text.",
+    "Generated artifacts must trace back to an approved RequirementBrief.",
+    "Real deployment remains disabled unless environment-enabled."
+  ],
+  "unresolvedQuestions": [
+    "Confirm exact investor eligibility process.",
+    "Confirm target chain and custody provider before any live deployment."
+  ]
+}

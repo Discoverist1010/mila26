@@ -1,0 +1,34 @@
+{
+  "messageId": "chat-fixture-001",
+  "agentId": "blockchain-engineer",
+  "content": "For a tokenized portfolio with many investors holding proportional exposure, ERC-20 is usually the simpler fit. ERC-721 is better when each token represents a unique asset or investor position. The PRD should also capture the 20-wallet whitelist, allocation validation, valuation/performance update requirements, and testnet-only wallet-signed deployment gate.",
+  "suggestedRequirementUpdates": [
+    {
+      "field": "selectedProtocol",
+      "proposedValue": "ERC-20 preferred unless unique investor positions are required",
+      "rationale": "The MVP describes proportional portfolio exposure and distribution to up to 20 wallets.",
+      "confidence": 0.82
+    },
+    {
+      "field": "walletWhitelistRequirement",
+      "proposedValue": "up to 20 whitelisted investor wallet addresses",
+      "rationale": "The current MVP scale is one asset manager and up to 20 investor wallets.",
+      "confidence": 0.9
+    }
+  ],
+  "openQuestions": [
+    "Should investors hold fungible shares or unique token positions?",
+    "What valuation file fields will be uploaded daily?"
+  ],
+  "protocolComparison": {
+    "erc20": "Best for fungible portfolio shares, percentage allocations, mint/distribute flows, and familiar token-holder balances.",
+    "erc721": "Best for unique positions, individually identified assets, or non-fungible claims where each token has distinct meaning.",
+    "recommendation": "Start from ERC-20 for the MVP unless the asset manager needs each investor position to be unique."
+  },
+  "riskNotes": [
+    "This is product-engineering guidance, not legal, investment, or formal audit advice.",
+    "Generated Solidity remains demo/testnet scaffold until compiled, tested, QA-reviewed, and security-reviewed."
+  ],
+  "nextRecommendedAction": "Confirm fungible versus unique-token behavior before PRD approval.",
+  "createdAt": "2026-05-20T00:02:00.000Z"
+}

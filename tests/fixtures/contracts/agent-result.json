@@ -1,0 +1,21 @@
+{
+  "taskId": "task-contracts",
+  "role": "contract_worker",
+  "summary": "Generated a deterministic Solidity beta scaffold from the RequirementBrief.",
+  "artifacts": [
+    {
+      "id": "artifact-brief-golden-solidity",
+      "kind": "solidity",
+      "filename": "contracts/MILAIncomeFundFundToken.sol",
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.24;\n\ncontract MILAIncomeFundFundToken {\n    string public name = \"MILA Income Fund\";\n    string public symbol = \"MILA\";\n}\n",
+      "sourceTaskId": "task-contracts"
+    }
+  ],
+  "risks": [
+    "Requires external Solidity audit before production deployment."
+  ],
+  "tests": [
+    "Validate generated artifact schema",
+    "Inspect transfer guard behavior"
+  ]
+}

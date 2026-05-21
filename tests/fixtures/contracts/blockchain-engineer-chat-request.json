@@ -1,0 +1,29 @@
+{
+  "projectId": "project-tokenized-portfolio-demo",
+  "runId": "run-chat-discovery-001",
+  "userMessage": "We want to tokenize a portfolio. Should we use ERC-20 or ERC-721 if we have 20 whitelisted investor wallets and need daily valuation/performance updates?",
+  "conversationHistory": [
+    {
+      "messageId": "msg-user-001",
+      "role": "user",
+      "content": "I am an asset manager preparing a tokenized portfolio demo.",
+      "createdAt": "2026-05-20T00:00:00.000Z",
+      "projectId": "project-tokenized-portfolio-demo"
+    },
+    {
+      "messageId": "msg-assistant-001",
+      "role": "assistant",
+      "content": "We should clarify protocol choice, wallet whitelist, valuation updates, and testnet deployment gates before PRD generation.",
+      "createdAt": "2026-05-20T00:01:00.000Z",
+      "agentId": "blockchain-engineer",
+      "projectId": "project-tokenized-portfolio-demo"
+    }
+  ],
+  "projectContext": {
+    "tokenizationObjective": "Tokenize a portfolio for a local funding-demo MVP",
+    "investorWalletCount": 20,
+    "targetNetwork": "ethereum-testnet",
+    "deploymentModel": "user-wallet-signing"
+  },
+  "requestedFocus": "protocol_choice"
+}

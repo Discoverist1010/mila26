@@ -1,0 +1,106 @@
+{
+  "brief": {
+    "id": "brief-golden",
+    "createdAt": "2026-05-18T00:00:00.000Z",
+    "fundFacts": {
+      "fundName": "MILA Income Fund",
+      "tokenSymbol": "MILA",
+      "jurisdiction": "Singapore",
+      "targetInvestors": "Accredited investors",
+      "totalSupply": 1000000,
+      "initialNav": 1000000
+    },
+    "modules": [
+      {
+        "id": "erc20-base",
+        "enabled": true,
+        "rationale": "Required base token for tokenized fund units."
+      },
+      {
+        "id": "whitelist",
+        "enabled": true,
+        "rationale": "Limits transfers and subscriptions to approved investors."
+      },
+      {
+        "id": "blacklist",
+        "enabled": true,
+        "rationale": "Adds sanctions and restricted-address controls."
+      },
+      {
+        "id": "nav-oracle",
+        "enabled": true,
+        "rationale": "Supports pricing discipline through NAV updates."
+      },
+      {
+        "id": "investor-registry",
+        "enabled": true,
+        "rationale": "Creates an operational registry for approved investors."
+      }
+    ],
+    "complianceAssumptions": [
+      "Engineering outputs are audit-preparation materials, not legal compliance certification.",
+      "A qualified legal and regulatory advisor must review the product before launch.",
+      "User goal captured: Launch a tokenized income fund."
+    ],
+    "deploymentTarget": "simulation-only",
+    "securityConstraints": [
+      "No hardcoded secrets or credentials.",
+      "No private keys, seed phrases, or API keys in chat or storage.",
+      "All user and model output must be rendered as escaped text.",
+      "Generated artifacts must trace back to an approved RequirementBrief.",
+      "Real deployment remains disabled unless environment-enabled."
+    ],
+    "unresolvedQuestions": [
+      "Confirm exact investor eligibility process.",
+      "Confirm target chain and custody provider before any live deployment."
+    ]
+  },
+  "tasks": [
+    {
+      "id": "task-contracts",
+      "role": "contract_worker",
+      "title": "Generate Solidity beta scaffold",
+      "scope": "Create audit-preparation Solidity artifacts from the approved RequirementBrief with 5 enabled modules.",
+      "acceptanceCriteria": [
+        "Uses selected modules only",
+        "Includes no secrets",
+        "Marks output as beta/audit-preparation code"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "taskId": "task-contracts",
+      "role": "contract_worker",
+      "summary": "Generated a deterministic Solidity beta scaffold from the RequirementBrief.",
+      "artifacts": [
+        {
+          "id": "artifact-brief-golden-solidity",
+          "kind": "solidity",
+          "filename": "contracts/MILAIncomeFundFundToken.sol",
+          "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.24;\n\ncontract MILAIncomeFundFundToken {\n    string public name = \"MILA Income Fund\";\n    string public symbol = \"MILA\";\n}\n",
+          "sourceTaskId": "task-contracts"
+        }
+      ],
+      "risks": [
+        "Requires external Solidity audit before production deployment."
+      ],
+      "tests": [
+        "Validate generated artifact schema",
+        "Inspect transfer guard behavior"
+      ]
+    }
+  ],
+  "securityReview": {
+    "approved": true,
+    "findings": [
+      "No hardcoded secrets, seed phrase handling, unsafe HTML rendering, or real deploy enablement detected."
+    ],
+    "blockedArtifacts": []
+  },
+  "evidencePack": {
+    "id": "evidence-brief-golden",
+    "generatedAt": "2026-05-18T00:00:00.000Z",
+    "markdown": "# MILA26 Evidence Pack\n\nGenerated at: 2026-05-18T00:00:00.000Z\n\n## Requirement Summary\n\n- Fund: MILA Income Fund (MILA)\n\n## Module Rationale\n\n- Fund Token Base: Required base token for tokenized fund units.\n\n## Security Constraints\n\n- No hardcoded secrets or credentials.\n\n## Generated Artifact Inventory\n\n| File | Kind | Source task |\n| --- | --- | --- |\n| contracts/MILAIncomeFundFundToken.sol | solidity | task-contracts |\n\n## Security Review\n\n- Approved: Yes\n\n## Work Evidence\n\n- contract_worker: Generated a deterministic Solidity beta scaffold from the RequirementBrief.\n\n## Notes\n\nThis pack evidences engineering preparation work only.\n"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "task-contracts",
+  "role": "contract_worker",
+  "title": "Generate Solidity beta scaffold",
+  "scope": "Create audit-preparation Solidity artifacts from the approved RequirementBrief with 5 enabled modules.",
+  "acceptanceCriteria": [
+    "Uses selected modules only",
+    "Includes no secrets",
+    "Marks output as beta/audit-preparation code"
+  ]
+}
