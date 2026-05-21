@@ -7,6 +7,7 @@ import {
   type ImplementationBundle,
 } from './agents/agentRuntime';
 import { moduleCatalog } from './domain/moduleCatalog';
+import { toRequirementBriefContract } from './domain/requirementBrief';
 import type { FundFacts, RequirementBrief } from './domain/schemas';
 
 const starterFacts: FundFacts = {
@@ -41,14 +42,17 @@ export function App() {
   const [isBotReplyLoading, setIsBotReplyLoading] = useState(false);
 
   const fallbackEngineerAnswer = useMemo(() => answerAsBlockchainEngineer(question, brief), [question, brief]);
+  const requirementBriefContract = useMemo(
+    () => (brief ? toRequirementBriefContract(brief, bundle ? 'approved' : 'ready_for_approval') : undefined),
+    [brief, bundle],
+  );
   const generatedArtifacts = bundle?.results.flatMap((result) => result.artifacts) ?? [];
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
   const currentGate = brief ? 'Brief ready for Coding Bot' : 'Requirement brief approval';
   const approvalGateStatus = bundle ? 'Approved' : brief ? 'Coding bot ready' : 'Draft brief';
   const selectedModules = brief?.modules.filter((module) => module.enabled) ?? [];
-  const tokenModelSummary = selectedModules.some((module) => module.id === 'erc20-base')
-    ? 'ERC-20 fund token base selected for the current beta scaffold.'
-    : 'Token model will be confirmed in the Requirement Brief.';
+  const tokenModelSummary =
+    requirementBriefContract?.tokenModel.assumption ?? 'Token model will be confirmed in the Requirement Brief.';
   const agentStatuses = [
     { label: 'Requirement', status: brief ? 'Ready' : 'Drafting' },
     { label: 'Coding', status: bundle ? 'Complete' : brief ? 'Ready' : 'Waiting' },
@@ -257,32 +261,34 @@ export function App() {
             </div>
             <span className={`gate-badge ${brief ? 'ready' : 'draft'}`}>{approvalGateStatus}</span>
           </div>
-          {brief ? (
+          {brief && requirementBriefContract ? (
             <div className="brief-layout" data-testid="requirement-brief">
               <article className="brief-card">
                 <span>Asset / fund profile</span>
                 <strong>
-                  {brief.fundFacts.fundName} ({brief.fundFacts.tokenSymbol})
+                  {requirementBriefContract.assetProfile.fundName} ({requirementBriefContract.assetProfile.tokenSymbol})
                 </strong>
                 <p>
-                  {brief.fundFacts.jurisdiction} jurisdiction for {brief.fundFacts.targetInvestors}. Initial NAV{' '}
-                  {brief.fundFacts.initialNav.toLocaleString()} and supply {brief.fundFacts.totalSupply.toLocaleString()}.
+                  {requirementBriefContract.assetProfile.jurisdiction} jurisdiction for{' '}
+                  {requirementBriefContract.assetProfile.targetInvestors}. Initial NAV{' '}
+                  {requirementBriefContract.assetProfile.initialNav.toLocaleString()} and supply{' '}
+                  {requirementBriefContract.assetProfile.totalSupply.toLocaleString()}.
                 </p>
               </article>
               <article className="brief-card">
                 <span>Token model</span>
-                <strong>{tokenModelSummary}</strong>
-                <p>{selectedModules.length} servicing modules enabled for the beta artifact run.</p>
+                <strong>{requirementBriefContract.tokenModel.standardPreference}</strong>
+                <p>{tokenModelSummary}</p>
               </article>
               <article className="brief-card">
                 <span>Wallet whitelist / investor access</span>
-                <strong>{selectedModules.some((module) => module.id === 'whitelist') ? 'Whitelist module enabled' : 'Pending'}</strong>
-                <p>Investor access remains a reviewed requirement before any future testnet deployment path.</p>
+                <strong>{requirementBriefContract.investorAccess.walletWhitelistRequired ? 'Whitelist module enabled' : 'Pending'}</strong>
+                <p>{requirementBriefContract.investorAccess.assumptions[0]}</p>
               </article>
               <article className="brief-card">
                 <span>Valuation / performance cadence</span>
                 <strong>{selectedModules.some((module) => module.id === 'nav-oracle') ? 'NAV module enabled' : 'Pending'}</strong>
-                <p>Valuation inputs stay operational and evidence-backed; no production oracle is implemented.</p>
+                <p>{requirementBriefContract.valuationPolicy.cadence}</p>
               </article>
               <article className="brief-card wide">
                 <span>Compliance / security assumptions</span>
@@ -294,7 +300,11 @@ export function App() {
               </article>
               <article className="brief-card wide">
                 <span>Deployment boundary</span>
-                <strong>{brief.deploymentTarget}</strong>
+                <strong>{requirementBriefContract.deploymentBoundary.currentTarget}</strong>
+                <p>
+                  {requirementBriefContract.networkBoundary}; {requirementBriefContract.deploymentBoundary.signing};{' '}
+                  {requirementBriefContract.backendCustodyBoundary}.
+                </p>
                 <ul>
                   {brief.securityConstraints.map((constraint) => (
                     <li key={constraint}>{constraint}</li>

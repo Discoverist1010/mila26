@@ -26,6 +26,12 @@ Fixtures live in `tests/fixtures/contracts/`:
 - `blockchain-engineer-chat-response.json`: successful backend chat response shape.
 - `blockchain-engineer-chat-validation-error.json`: safe validation error envelope for blank `userMessage`.
 
+## Stable Requirement Brief Boundary
+
+Track 5A adds a stable typed Requirement Brief contract boundary for future PRD, backend-only LLM, Solidity generation, QA/security, evidence, deployment gate, and wallet-signed testnet deployment tracks:
+
+- [`requirement-brief-contract.md`](requirement-brief-contract.md): source-of-truth Requirement Brief contract and adapter rules.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:
@@ -38,6 +44,8 @@ Fixtures live in `tests/fixtures/contracts/`:
 - Evidence Pack structure through stable headings and key content, not long exact prose.
 - Security Review behavior for unsafe generated content.
 - Blockchain Engineering Bot chat request/response/error fixtures and route behavior.
+
+`tests/requirement-brief-contract.test.ts` validates the Track 5A Requirement Brief contract adapter and fixed MVP boundaries.
 
 ## Known Schema Gaps
 
