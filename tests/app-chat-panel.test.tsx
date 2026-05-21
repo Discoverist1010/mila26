@@ -27,6 +27,10 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     render(<App />);
 
+    expect(screen.getByText('KangLe AI')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Tokenized Income Fund' })).toBeVisible();
+    expect(screen.getByLabelText('Project navigation')).toBeVisible();
+    expect(screen.getByLabelText('Project status and assistant')).toBeVisible();
     expect(screen.getByText('Local preview shown until a backend response is available.')).toBeVisible();
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Blockchain Engineer Bot question' }), {

@@ -42,6 +42,16 @@ export function App() {
 
   const fallbackEngineerAnswer = useMemo(() => answerAsBlockchainEngineer(question, brief), [question, brief]);
   const generatedArtifacts = bundle?.results.flatMap((result) => result.artifacts) ?? [];
+  const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
+  const currentGate = brief ? 'Brief ready for Coding Bot' : 'Requirement brief approval';
+  const agentStatuses = [
+    { label: 'Requirement', status: brief ? 'Ready' : 'Drafting' },
+    { label: 'Coding', status: bundle ? 'Complete' : brief ? 'Ready' : 'Waiting' },
+    { label: 'QA', status: bundle ? 'Checked' : 'Waiting' },
+    { label: 'Security', status: bundle ? 'Reviewed' : 'Gate locked' },
+    { label: 'Evidence', status: bundle ? 'Available' : 'Waiting' },
+    { label: 'Deploy Gate', status: 'Disabled' },
+  ];
 
   function updateFact<K extends keyof FundFacts>(key: K, value: FundFacts[K]) {
     setFacts((current) => ({ ...current, [key]: value }));
@@ -104,15 +114,61 @@ export function App() {
   }
 
   return (
-    <main className="app-shell">
-      <section className="workspace">
-        <header className="topbar">
+    <main className="dashboard-shell">
+      <aside className="project-rail" aria-label="Project navigation">
+        <div className="brand-block">
+          <span className="brand-mark">KA</span>
           <div>
-            <p className="eyebrow">MILA26 beta</p>
-            <h1>CTO team for tokenized fund launches</h1>
+            <strong>KangLe AI</strong>
+            <span>MILA26</span>
           </div>
-          <div className="status-pill">Real deploy disabled</div>
+        </div>
+        <nav className="project-nav" aria-label="MILA26 project folders">
+          <a aria-current="page" href="#workspace">
+            Tokenized Income Fund
+          </a>
+          <a href="#requirement-brief">Requirement Brief</a>
+          <a href="#agent-status">Agents</a>
+          <a href="#deployment-gate">Deployment Gate</a>
+        </nav>
+        <div className="rail-note">
+          <span>Local MVP</span>
+          <strong>Testnet only</strong>
+        </div>
+      </aside>
+
+      <section className="workspace" id="workspace">
+        <header className="project-header">
+          <div>
+            <p className="eyebrow">MILA26 beta workspace</p>
+            <h1>Tokenized Income Fund</h1>
+            <p className="header-copy">AI + blockchain project cockpit for asset-manager tokenisation prep.</p>
+          </div>
+          <div className="header-actions" aria-label="Project status">
+            <span className="status-pill">Ethereum testnet only</span>
+            <span className="status-pill warning">Real deploy disabled</span>
+            <span className="status-pill ghost">Services placeholder</span>
+          </div>
         </header>
+
+        <section className="metric-strip" aria-label="Current project summary">
+          <article>
+            <span>Protocol</span>
+            <strong>ERC-20 / ERC-721 planning</strong>
+          </article>
+          <article>
+            <span>Network</span>
+            <strong>Testnet only</strong>
+          </article>
+          <article>
+            <span>Current gate</span>
+            <strong>{currentGate}</strong>
+          </article>
+          <article>
+            <span>Selected modules</span>
+            <strong>{enabledModuleCount}</strong>
+          </article>
+        </section>
 
         <section className="panel grid-two">
           <div>
@@ -159,7 +215,7 @@ export function App() {
           </div>
         </section>
 
-        <section className="panel">
+        <section className="panel" id="requirement-brief">
           <h2>Requirement Brief</h2>
           {brief ? (
             <pre className="code-block" data-testid="requirement-brief">
@@ -219,33 +275,58 @@ export function App() {
         )}
       </section>
 
-      <aside className="chat-panel">
-        <h2>Blockchain Engineer Bot</h2>
-        <p className="muted">Ask plain-language questions. The bot turns goals into engineering requirements.</p>
-        <textarea
-          aria-label="Blockchain Engineer Bot question"
-          value={question}
-          onChange={(event) => setQuestion(event.target.value)}
-          rows={5}
-        />
-        <button disabled={isBotReplyLoading} onClick={askBot}>
-          {isBotReplyLoading ? 'Asking bot...' : 'Ask Blockchain Engineer'}
-        </button>
-        {botChatError && (
-          <p className="error-text" role="alert">
-            {botChatError}
+      <aside className="right-panel" aria-label="Project status and assistant">
+        <section className="status-panel" id="agent-status">
+          <div className="panel-heading">
+            <p className="eyebrow">Project status</p>
+            <h2>Agent progress</h2>
+          </div>
+          <div className="agent-status-list">
+            {agentStatuses.map((agent) => (
+              <div key={agent.label} className="agent-status-row">
+                <span>{agent.label}</span>
+                <strong>{agent.status}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="status-panel" id="deployment-gate">
+          <div className="panel-heading">
+            <p className="eyebrow">Deployment gate</p>
+            <h2>Locked for MVP</h2>
+          </div>
+          <p className="muted">User wallet signing comes later. Backend private keys and mainnet deployment are out of scope.</p>
+        </section>
+
+        <section className="chat-panel">
+          <h2>Blockchain Engineer Bot</h2>
+          <p className="muted">Ask plain-language questions. The bot turns goals into engineering requirements.</p>
+          <textarea
+            aria-label="Blockchain Engineer Bot question"
+            value={question}
+            onChange={(event) => setQuestion(event.target.value)}
+            rows={5}
+          />
+          <button disabled={isBotReplyLoading} onClick={askBot}>
+            {isBotReplyLoading ? 'Asking bot...' : 'Ask Blockchain Engineer'}
+          </button>
+          {botChatError && (
+            <p className="error-text" role="alert">
+              {botChatError}
+            </p>
+          )}
+          <p className="chat-status">
+            {isBotReplyLoading
+              ? 'Calling backend mock route.'
+              : engineerAnswerSource === 'backend'
+                ? 'Backend mock response.'
+                : 'Local preview shown until a backend response is available.'}
           </p>
-        )}
-        <p className="chat-status">
-          {isBotReplyLoading
-            ? 'Calling backend mock route.'
-            : engineerAnswerSource === 'backend'
-              ? 'Backend mock response.'
-              : 'Local preview shown until a backend response is available.'}
-        </p>
-        <div className="assistant-response" data-testid="engineer-answer">
-          {isBotReplyLoading ? 'Waiting for Blockchain Engineer Bot...' : engineerAnswer}
-        </div>
+          <div className="assistant-response" data-testid="engineer-answer">
+            {isBotReplyLoading ? 'Waiting for Blockchain Engineer Bot...' : engineerAnswer}
+          </div>
+        </section>
       </aside>
     </main>
   );

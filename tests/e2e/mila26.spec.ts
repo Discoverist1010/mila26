@@ -2,7 +2,12 @@ import { expect, test } from '@playwright/test';
 
 test('guided beta journey creates requirements and runs agents', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /CTO team/i })).toBeVisible();
+  await expect(page.getByText('KangLe AI')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tokenized Income Fund' })).toBeVisible();
+  await expect(page.getByLabel('Project navigation')).toBeVisible();
+  await expect(page.getByLabel('Project status and assistant')).toBeVisible();
+  await expect(page.getByText(/Ethereum testnet only/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Locked for MVP' })).toBeVisible();
   await expect(page.getByTestId('engineer-answer')).toContainText('Requirement Brief');
   await expect(page.getByText(/Local preview shown until a backend response is available/i)).toBeVisible();
 
