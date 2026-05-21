@@ -2,6 +2,10 @@
 
 This document describes the frontend architecture implied by the MVP UX vision. It does not implement the redesign.
 
+Approved near-term UX direction reference: `docs/assets/ux/mila26_dashboard_v2.png`.
+
+The mockup is the canonical visual/product direction for the near-term dashboard shell. It should guide layout hierarchy, density, tone, and component sequencing, but it is not a pixel-perfect implementation mandate.
+
 ## Frontend Responsibilities
 
 - Layout shell and responsive behavior.
@@ -9,6 +13,8 @@ This document describes the frontend architecture implied by the MVP UX vision. 
 - Current project context display.
 - Requirement cards and sub-action drawers.
 - Project status panels and next-action display.
+- Collapsible left and right panels.
+- Top protocol/network/wallet/service-cart status area.
 - Wallet connection later.
 - API client calls.
 - Safe loading, empty, blocked, and error states.
@@ -73,6 +79,7 @@ Keep the initial migration incremental. Do not move `App.tsx` wholesale before t
 - Collapsed rails should preserve key icons.
 - Main workspace expands when panels collapse.
 - User preference can be remembered later, but is not required immediately.
+- The near-term shell should follow the approved mockup direction without forcing pixel-perfect measurements.
 
 ## Sub-action Drawer Pattern
 

@@ -32,6 +32,10 @@ It helps an asset manager move from a plain-language tokenisation intent into st
 
 MILA26 should become a professional AI + blockchain project workspace for asset managers. The target experience is an enhanced ChatGPT-style workspace with visible project context, workflow gates, agent progress, evidence, and later wallet/deployment controls.
 
+Approved UX mockup: `docs/assets/ux/mila26_dashboard_v2.png`.
+
+This mockup is the canonical near-term UX direction reference, not a pixel-perfect implementation mandate.
+
 Do not redesign the UI during the immediate next step. First prove the existing chat panel can call the backend mock route safely.
 
 ## Immediate Next Step

@@ -4,6 +4,14 @@
 
 MILA26 should become a professional AI + blockchain project workspace for asset managers preparing tokenized portfolio products.
 
+Approved near-term UX direction reference:
+
+```text
+docs/assets/ux/mila26_dashboard_v2.png
+```
+
+This mockup is the canonical near-term direction for layout, tone, and product surface planning. It is not a pixel-perfect implementation mandate.
+
 The interface should feel familiar like an enhanced ChatGPT-style workspace, but it should not become a plain chat clone. MILA26 needs visible project state, workflow gates, agent progress, wallet/deployment controls, evidence packs, and project folders.
 
 Visual identity:
@@ -11,6 +19,7 @@ Visual identity:
 - Professional dark navy, silver-blue, and institutional trust aesthetic.
 - Clean, high-trust, slightly futuristic tone.
 - Prominent KangLe AI / MILA26 branding.
+- Prominent current project name.
 - Asset-manager-friendly language and structure.
 - Avoid crypto-casino aesthetics, meme-token visuals, neon clutter, or speculative trading energy.
 

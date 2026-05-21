@@ -206,10 +206,12 @@ Expected deliverables:
 - `docs/product/mvp-screen-flow.md`.
 - `docs/architecture/frontend-ux-architecture.md`.
 - `docs/architecture/frontend-component-plan.md`.
+- Approved UX mockup reference: `docs/assets/ux/mila26_dashboard_v2.png`.
 
 Acceptance criteria:
 
 - Professional AI + blockchain workspace vision is documented.
+- Approved mockup is registered as directional, not pixel-perfect.
 - MVP screen flow is documented.
 - Frontend architecture and component roadmap are documented.
 - No frontend implementation or refactor is done.
@@ -254,6 +256,8 @@ What not to overbuild:
 ## UX Track C: App Shell Layout
 
 Goal: introduce the enhanced ChatGPT-style app shell with collapsible panels and prominent project header.
+
+Reference: `docs/assets/ux/mila26_dashboard_v2.png` as directional guidance, not a pixel-perfect implementation mandate.
 
 Expected deliverables:
 

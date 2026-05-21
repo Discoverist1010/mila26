@@ -1,9 +1,13 @@
 # MVP Screen Flow
 
+Approved near-term UX direction reference: `docs/assets/ux/mila26_dashboard_v2.png`.
+
+The mockup is a directional reference for the enhanced ChatGPT-style project workspace, not a pixel-perfect implementation mandate.
+
 ## 1. Project Home / New Tokenisation Project
 
 - User goal: create or reopen an asset-manager project.
-- Primary UI components: left sidebar project folders, new project button, top project bar.
+- Primary UI components: left sidebar project folders, new project button, top project bar, prominent current project name.
 - Backend/API dependency: later `/api/projects`.
 - Data contracts involved: `FundFacts`, future project summary contract.
 - MVP status: next.
@@ -12,7 +16,7 @@
 ## 2. Blockchain Engineering Bot Chat
 
 - User goal: discuss tokenizing a portfolio and clarify requirements.
-- Primary UI components: `ChatWorkspace`, `ChatMessageList`, `ChatInput`, loading/error states.
+- Primary UI components: central `ChatWorkspace`, `ChatMessageList`, `ChatInput`, loading/error states, adjacent project/status context.
 - Backend/API dependency: `POST /api/chat/blockchain-engineer`.
 - Data contracts involved: `ChatMessage`, `BlockchainEngineerChatRequest`, `BlockchainEngineerChatResponse`.
 - MVP status: backend current, frontend integration next.
@@ -57,7 +61,7 @@
 ## 7. Deployment Gate
 
 - User goal: understand whether testnet deployment is ready.
-- Primary UI components: `DeploymentGateCard`, blocking reasons, evidence readiness.
+- Primary UI components: right-side `DeploymentGateCard`, blocking reasons, evidence readiness.
 - Backend/API dependency: later `/api/deployment`.
 - Data contracts involved: `DeploymentGateReadiness`, `SolidityArtifactMetadata`, `SecurityBenchmarkStatus`, `EvidencePack`.
 - MVP status: later.

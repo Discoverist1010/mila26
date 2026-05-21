@@ -2,6 +2,10 @@
 
 This is a practical roadmap for future UI implementation. It does not require immediate refactoring.
 
+Approved near-term UX direction reference: `docs/assets/ux/mila26_dashboard_v2.png`.
+
+Use the mockup as the canonical direction for component hierarchy and visual tone. It is not a pixel-perfect implementation mandate.
+
 ## 1. App Shell Components
 
 Components:
@@ -14,7 +18,7 @@ Components:
 
 Purpose: establish the enhanced ChatGPT-style workspace with project folders, current project context, visible status, and collapsible side panels.
 
-Likely data needed: current project name, route/view state, protocol, network, wallet status, active services, panel collapsed state.
+Likely data needed: current project name, route/view state, protocol, network, wallet status, active services/cart status, panel collapsed state.
 
 Backend/API dependency: project summary later; none required for initial static shell.
 
@@ -34,7 +38,7 @@ Components:
 
 Purpose: connect the user to the Blockchain Engineering Bot and render safe conversation turns.
 
-Likely data needed: chat messages, pending state, validation errors, current project/run IDs, request focus.
+Likely data needed: chat messages, pending state, validation errors, current project/run IDs, request focus, nearby requirement/action-card summaries.
 
 Backend/API dependency: `POST /api/chat/blockchain-engineer`; `ChatMessage`, `BlockchainEngineerChatRequest`, `BlockchainEngineerChatResponse`.
 
