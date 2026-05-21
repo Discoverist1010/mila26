@@ -4,6 +4,10 @@ test('guided beta journey creates requirements and runs agents', async ({ page }
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /CTO team/i })).toBeVisible();
   await expect(page.getByTestId('engineer-answer')).toContainText('Requirement Brief');
+  await expect(page.getByText(/Local preview shown until a backend response is available/i)).toBeVisible();
+
+  const askButtonBox = await page.getByRole('button', { name: /Ask Blockchain Engineer/i }).boundingBox();
+  expect(askButtonBox?.height).toBeLessThan(80);
 
   await page.getByRole('button', { name: /Create Requirement Brief/i }).click();
   await expect(page.getByTestId('requirement-brief')).toContainText('MILA Income Fund');

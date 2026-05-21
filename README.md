@@ -44,6 +44,7 @@ npm run test:e2e
 - MVP user journey: [`docs/product/mvp-user-journey.md`](docs/product/mvp-user-journey.md)
 - MVP scope: [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)
 - UI/UX vision: [`docs/product/ui-ux-vision.md`](docs/product/ui-ux-vision.md)
+- Approved UX mockup: [`docs/assets/ux/mila26_dashboard_v2.png`](docs/assets/ux/mila26_dashboard_v2.png) (directional reference, not a pixel-perfect implementation mandate)
 - MVP screen flow: [`docs/product/mvp-screen-flow.md`](docs/product/mvp-screen-flow.md)
 - Current context pack: [`docs/context-pack/`](docs/context-pack/)
 - Contract reference: [`docs/contracts/README.md`](docs/contracts/README.md)

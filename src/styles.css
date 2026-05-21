@@ -146,17 +146,35 @@ h2 {
   font-weight: 700;
 }
 
+.chat-status {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 0;
+}
+
 .chat-panel {
   border-bottom: 0;
   border-right: 0;
   border-top: 0;
   border-radius: 0;
+  align-content: start;
   display: grid;
   gap: 14px;
-  grid-template-rows: auto auto auto 1fr;
+  grid-auto-rows: max-content;
   min-height: 100vh;
   position: sticky;
   top: 0;
+}
+
+.chat-panel button {
+  align-self: start;
+  justify-self: start;
+}
+
+.chat-panel .assistant-response {
+  min-height: 140px;
+  overflow: auto;
 }
 
 .code-block {

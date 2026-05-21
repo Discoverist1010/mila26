@@ -36,6 +36,7 @@ export function App() {
   const [bundle, setBundle] = useState<ImplementationBundle | undefined>();
   const [isRunning, setIsRunning] = useState(false);
   const [engineerAnswer, setEngineerAnswer] = useState(() => answerAsBlockchainEngineer(question));
+  const [engineerAnswerSource, setEngineerAnswerSource] = useState<'local' | 'backend'>('local');
   const [botChatError, setBotChatError] = useState<string | undefined>();
   const [isBotReplyLoading, setIsBotReplyLoading] = useState(false);
 
@@ -66,6 +67,7 @@ export function App() {
   async function askBot() {
     if (!question.trim()) {
       setBotChatError('Enter a question before asking the bot.');
+      setEngineerAnswerSource('local');
       return;
     }
 
@@ -92,11 +94,13 @@ export function App() {
 
     if (result.ok) {
       setEngineerAnswer(result.data.content);
+      setEngineerAnswerSource('backend');
       return;
     }
 
     setBotChatError(result.message);
     setEngineerAnswer(fallbackEngineerAnswer);
+    setEngineerAnswerSource('local');
   }
 
   return (
@@ -218,7 +222,12 @@ export function App() {
       <aside className="chat-panel">
         <h2>Blockchain Engineer Bot</h2>
         <p className="muted">Ask plain-language questions. The bot turns goals into engineering requirements.</p>
-        <textarea value={question} onChange={(event) => setQuestion(event.target.value)} rows={5} />
+        <textarea
+          aria-label="Blockchain Engineer Bot question"
+          value={question}
+          onChange={(event) => setQuestion(event.target.value)}
+          rows={5}
+        />
         <button disabled={isBotReplyLoading} onClick={askBot}>
           {isBotReplyLoading ? 'Asking bot...' : 'Ask Blockchain Engineer'}
         </button>
@@ -227,6 +236,13 @@ export function App() {
             {botChatError}
           </p>
         )}
+        <p className="chat-status">
+          {isBotReplyLoading
+            ? 'Calling backend mock route.'
+            : engineerAnswerSource === 'backend'
+              ? 'Backend mock response.'
+              : 'Local preview shown until a backend response is available.'}
+        </p>
         <div className="assistant-response" data-testid="engineer-answer">
           {isBotReplyLoading ? 'Waiting for Blockchain Engineer Bot...' : engineerAnswer}
         </div>
