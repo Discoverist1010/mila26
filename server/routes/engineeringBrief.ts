@@ -1,8 +1,14 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { ZodError } from 'zod';
-import { generateEngineeringBriefMock } from '../agents/engineeringBriefMock';
+import { generateEngineeringBriefWithLlm } from '../agents/engineeringBriefLlm';
 import { EngineeringBriefRequestSchema } from '../contracts/engineeringBrief';
 import { fail, ok } from '../http/responses';
+import { createMila26LlmProviderFromEnv } from '../llm/providerFactory';
+import type { Mila26LlmProvider } from '../llm/types';
+
+export type EngineeringBriefRouteOptions = {
+  llmProvider?: Mila26LlmProvider;
+};
 
 function validationDetails(error: ZodError): Record<string, unknown> {
   return {
@@ -13,7 +19,7 @@ function validationDetails(error: ZodError): Record<string, unknown> {
   };
 }
 
-export const engineeringBriefRoutes: FastifyPluginAsync = async (app) => {
+export const engineeringBriefRoutes: FastifyPluginAsync<EngineeringBriefRouteOptions> = async (app, options) => {
   app.post('/prd/engineering-brief', async (request, reply) => {
     if (!request.body) {
       return reply.code(400).send(fail('VALIDATION_ERROR', 'Engineering Brief request body is required.'));
@@ -27,7 +33,11 @@ export const engineeringBriefRoutes: FastifyPluginAsync = async (app) => {
         .send(fail('VALIDATION_ERROR', 'Invalid Engineering Brief generation request.', validationDetails(parsed.error)));
     }
 
-    const engineeringBrief = generateEngineeringBriefMock(parsed.data.requirementBrief);
+    const configuredProvider = options.llmProvider
+      ? { ok: true as const, provider: options.llmProvider }
+      : createMila26LlmProviderFromEnv();
+    const provider = configuredProvider.ok ? configuredProvider.provider : undefined;
+    const engineeringBrief = await generateEngineeringBriefWithLlm(parsed.data.requirementBrief, provider);
     return reply.send(ok(engineeringBrief));
   });
 };
