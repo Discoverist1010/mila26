@@ -14,6 +14,8 @@ export type Mila26LlmUsage = {
   totalTokens: number;
 };
 
+export type Mila26LlmReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
+
 export type Mila26LlmConfig = {
   provider: Mila26LlmProviderName;
   model: string;
@@ -26,6 +28,7 @@ export type Mila26LlmRequest = {
   messages: Mila26LlmMessage[];
   temperature?: number;
   maxOutputTokens?: number;
+  reasoningEffort?: Mila26LlmReasoningEffort;
   metadata?: Record<string, string | number | boolean>;
 };
 

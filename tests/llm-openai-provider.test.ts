@@ -6,7 +6,7 @@ import type { Mila26LlmConfig, Mila26LlmRequest } from '../server/llm/types';
 
 const config: Mila26LlmConfig = {
   provider: 'openai',
-  model: 'gpt-track-6b-test',
+  model: 'gpt-5-mini',
   timeoutMs: 12345,
   maxOutputTokens: 777,
 };
@@ -25,6 +25,7 @@ const request: Mila26LlmRequest = {
   ],
   temperature: 0.2,
   maxOutputTokens: 321,
+  reasoningEffort: 'minimal',
   metadata: {
     source: 'unit-test',
   },
@@ -57,7 +58,7 @@ describe('OpenAI MILA26 LLM provider', () => {
     expect(response).toEqual({
       content: 'User wallet signs Ethereum testnet deployment; backend holds no private keys.',
       provider: 'openai',
-      model: 'gpt-track-6b-test',
+      model: 'gpt-5-mini',
       usage: {
         inputTokens: 10,
         outputTokens: 12,
@@ -91,7 +92,7 @@ describe('OpenAI MILA26 LLM provider', () => {
     expect(calls).toEqual([
       {
         body: {
-          model: 'gpt-track-6b-test',
+          model: 'gpt-5-mini',
           input: [
             {
               role: 'user',
@@ -101,6 +102,9 @@ describe('OpenAI MILA26 LLM provider', () => {
           instructions: 'Keep MILA26 backend-only LLM boundaries intact.',
           max_output_tokens: 321,
           temperature: 0.2,
+          reasoning: {
+            effort: 'minimal',
+          },
           metadata: {
             source: 'unit-test',
           },
@@ -134,6 +138,30 @@ describe('OpenAI MILA26 LLM provider', () => {
     });
 
     expect(calls[0].body.max_output_tokens).toBe(777);
+  });
+
+  it('omits reasoning settings for models that do not support reasoning options', async () => {
+    const calls: Array<{ body: { reasoning?: unknown } }> = [];
+    const fakeClient: Mila26OpenAiResponsesClient = {
+      responses: {
+        async create(body) {
+          calls.push({ body });
+          return { output_text: 'ok' };
+        },
+      },
+    };
+    const provider = createOpenAiMila26LlmProvider({
+      config: {
+        ...config,
+        model: 'gpt-4o-mini',
+      },
+      apiKey: 'sk-secret-not-returned',
+      client: fakeClient,
+    });
+
+    await provider.complete(request);
+
+    expect(calls[0].body.reasoning).toBeUndefined();
   });
 
   it('maps mocked SDK failure into a safe error without secrets', async () => {

@@ -1,4 +1,8 @@
-import { createApp } from './app';
+import { loadBackendEnv } from './env';
+
+loadBackendEnv();
+
+const { createApp } = await import('./app');
 
 const host = process.env.MILA26_API_HOST || '127.0.0.1';
 const port = Number(process.env.MILA26_API_PORT || 5174);

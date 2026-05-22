@@ -11,7 +11,7 @@ function createJsonResponse(body: unknown, init: ResponseInit = {}): Response {
 }
 
 describe('App Blockchain Engineer Bot panel', () => {
-  it('shows local preview before asking and then renders a backend mock answer', async () => {
+  it('shows local preview before asking and then renders a backend answer', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       createJsonResponse({
         ok: true,
@@ -44,7 +44,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Waiting for Blockchain Engineer Bot...');
 
     await waitFor(() => {
-      expect(screen.getByText('Backend mock response.')).toBeVisible();
+      expect(screen.getByText('Backend response.')).toBeVisible();
     });
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Backend mock says ERC-20');
   });

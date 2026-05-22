@@ -136,6 +136,9 @@ describe('blockchain engineer chat api', () => {
           role: 'user',
           content: 'Can we deploy this tokenized fund?',
         });
+        expect(request.temperature).toBeUndefined();
+        expect(request.maxOutputTokens).toBe(500);
+        expect(request.reasoningEffort).toBe('minimal');
 
         return {
           content:

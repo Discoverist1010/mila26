@@ -440,7 +440,7 @@ export function App() {
             {isBotReplyLoading
               ? 'Calling backend mock route.'
               : engineerAnswerSource === 'backend'
-                ? 'Backend mock response.'
+                ? 'Backend response.'
                 : 'Local preview shown until a backend response is available.'}
           </p>
           <div className="assistant-response" data-testid="engineer-answer">

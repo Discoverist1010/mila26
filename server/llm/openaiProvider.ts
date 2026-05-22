@@ -1,5 +1,11 @@
 import OpenAI from 'openai';
-import type { Mila26LlmConfig, Mila26LlmProvider, Mila26LlmRequest, Mila26LlmResponse } from './types';
+import type {
+  Mila26LlmConfig,
+  Mila26LlmProvider,
+  Mila26LlmReasoningEffort,
+  Mila26LlmRequest,
+  Mila26LlmResponse,
+} from './types';
 
 type OpenAiResponseCreateBody = {
   model: string;
@@ -10,6 +16,9 @@ type OpenAiResponseCreateBody = {
   instructions?: string;
   max_output_tokens: number;
   temperature?: number;
+  reasoning?: {
+    effort: Mila26LlmReasoningEffort;
+  };
   metadata?: Record<string, string>;
 };
 
@@ -99,6 +108,11 @@ function usageFromResponse(response: Awaited<ReturnType<Mila26OpenAiResponsesCli
   };
 }
 
+function supportsReasoningOptions(model: string): boolean {
+  const normalized = model.trim().toLowerCase();
+  return normalized.startsWith('gpt-5') || normalized.startsWith('o');
+}
+
 export function createOpenAiMila26LlmProvider({
   config,
   apiKey,
@@ -126,6 +140,9 @@ export function createOpenAiMila26LlmProvider({
             instructions: toInstructions(request),
             max_output_tokens: request.maxOutputTokens ?? config.maxOutputTokens,
             ...(typeof request.temperature === 'number' ? { temperature: request.temperature } : {}),
+            ...(request.reasoningEffort && supportsReasoningOptions(config.model)
+              ? { reasoning: { effort: request.reasoningEffort } }
+              : {}),
             metadata: toSafeMetadata(request.metadata),
           },
           {

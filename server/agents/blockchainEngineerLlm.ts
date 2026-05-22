@@ -83,7 +83,8 @@ export async function answerWithBlockchainEngineerLlm(
     const llmResponse = await provider.complete({
       purpose: 'blockchain_engineer_chat',
       messages: toLlmMessages(request),
-      temperature: 0.2,
+      maxOutputTokens: 500,
+      reasoningEffort: 'minimal',
       metadata: {
         route: 'blockchain-engineer-chat',
         projectIdPresent: Boolean(request.projectId),
