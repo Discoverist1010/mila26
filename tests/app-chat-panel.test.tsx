@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
+import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
 
 function createJsonResponse(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -9,6 +10,62 @@ function createJsonResponse(body: unknown, init: ResponseInit = {}): Response {
     ...init,
   });
 }
+
+const engineeringBrief: EngineeringBrief = {
+  id: 'engineering-brief-1',
+  generatedAtIso: '2026-05-22T00:00:00.000Z',
+  sourceRequirementBriefId: 'brief-1',
+  title: 'MILA Income Fund Engineering Brief',
+  summary: 'Deterministic Engineering Brief summary.',
+  projectContext: {
+    projectName: 'MILA Income Fund',
+    fundName: 'MILA Income Fund',
+    tokenSymbol: 'MILA',
+    jurisdiction: 'Singapore',
+    targetInvestors: 'Accredited investors',
+  },
+  functionalRequirements: ['Capture tokenized fund requirements.', 'Confirm wallet whitelist requirements.'],
+  nonFunctionalRequirements: ['Keep backend secrets out of frontend code.'],
+  tokenDesign: {
+    standardPreference: 'ERC-20',
+    assumptions: ['Fungible portfolio shares are the MVP default.'],
+    servicingModules: ['Fund Token Base'],
+  },
+  walletAndAccessModel: {
+    whitelistRequired: true,
+    assumptions: ['Investor wallets are whitelisted before distribution.'],
+  },
+  valuationAndPerformanceUpdates: {
+    cadence: 'daily',
+    assumptions: ['Valuations are uploaded off-chain.'],
+  },
+  complianceAndSecurityAssumptions: ['Engineering output is not legal advice.'],
+  deploymentBoundary: {
+    network: 'ethereum-testnet-only',
+    noMainnetInMvp: true,
+    signing: 'user-wallet-signs',
+    backendCustody: 'backend-holds-no-private-keys',
+    currentTarget: 'simulation-only',
+    status: 'Deployment remains disabled for MVP.',
+  },
+  implementationPlan: ['Generate deterministic implementation artifacts after approval.'],
+  testingAndQaPlan: ['Run contract and API tests before demo readiness.'],
+  evidencePackPlan: ['Record source Requirement Brief and Engineering Brief IDs.'],
+  openQuestions: [],
+  risksAndControls: [
+    {
+      risk: 'Generated brief is mistaken for legal advice.',
+      control: 'Mark output as engineering planning only.',
+    },
+  ],
+  acceptanceCriteria: ['Engineering Brief preserves no mainnet deployment in MVP.'],
+  metadata: {
+    generator: 'deterministic-track-5b',
+    mode: 'mock',
+    llmUsed: false,
+    productionAdvice: false,
+  },
+};
 
 describe('App Blockchain Engineer Bot panel', () => {
   it('shows local preview before asking and then renders a backend answer', async () => {
@@ -80,5 +137,77 @@ describe('App Blockchain Engineer Bot panel', () => {
       );
     });
     expect(screen.getByText('Local preview shown until a backend response is available.')).toBeVisible();
+  });
+
+  it('generates and renders an Engineering Brief artifact from the Requirement Brief', async () => {
+    let resolveEngineeringBrief: (value: Response) => void = () => undefined;
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveEngineeringBrief = resolve;
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Requirement Brief' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Engineering Brief' }));
+
+    expect(screen.getByRole('button', { name: 'Generating Engineering Brief...' })).toBeDisabled();
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:5174/api/prd/engineering-brief', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: expect.stringContaining('"approvalStatus":"approved"'),
+    });
+
+    resolveEngineeringBrief(
+      createJsonResponse({
+        ok: true,
+        data: engineeringBrief,
+      }),
+    );
+
+    let artifact: HTMLElement | undefined;
+    await waitFor(() => {
+      artifact = screen.getByTestId('engineering-brief-artifact');
+      expect(artifact).toBeVisible();
+    });
+    expect(screen.getByRole('heading', { name: 'Engineering Brief Artifact' })).toBeVisible();
+    const artifactScope = within(artifact as HTMLElement);
+    expect(artifactScope.getByText('Project context')).toBeVisible();
+    expect(artifactScope.getByText('Functional requirements')).toBeVisible();
+    expect(artifactScope.getByText('Wallet / access model')).toBeVisible();
+    expect(artifactScope.getByText('Deployment boundary')).toBeVisible();
+    expect(artifactScope.getByText('QA / evidence plan')).toBeVisible();
+    expect(artifactScope.getByText('Risks / controls')).toBeVisible();
+    expect(artifactScope.getByText('Acceptance criteria')).toBeVisible();
+    expect(artifactScope.getByText('Capture tokenized fund requirements.')).toBeVisible();
+  });
+
+  it('shows a safe Engineering Brief error state when the backend rejects the request', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse(
+        {
+          ok: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid Engineering Brief generation request.',
+          },
+        },
+        { status: 400 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Requirement Brief' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Engineering Brief' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Invalid Engineering Brief generation request.');
+    });
+    expect(screen.queryByTestId('engineering-brief-artifact')).not.toBeInTheDocument();
   });
 });

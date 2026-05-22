@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('guided beta journey creates requirements and runs agents', async ({ page }) => {
+test('guided beta journey creates requirements and exposes Engineering Brief action', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText('KangLe AI')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Tokenized Income Fund' })).toBeVisible();
@@ -21,14 +21,8 @@ test('guided beta journey creates requirements and runs agents', async ({ page }
   await expect(page.getByTestId('requirement-brief')).toContainText('MILA Income Fund');
   await expect(page.getByText(/Asset \/ fund profile/i)).toBeVisible();
   await expect(page.getByText(/Deployment boundary/i)).toBeVisible();
-  await expect(page.getByText(/Awaiting approval to generate deterministic artifacts/i)).toBeVisible();
-
-  await page.getByRole('button', { name: /Approve Brief and Run Coding Bot/i }).click();
-  await expect(page.getByTestId('agent-results')).toContainText('contract_worker');
-  await expect(page.getByTestId('artifact-workspace')).toContainText('Generated implementation artifacts');
-  await expect(page.getByText(/Approved for beta artifact release/i)).toBeVisible();
-  await expect(page.getByText(/MILA26 Evidence Pack/i)).toBeVisible();
-  await expect(page.getByText(/Review evidence and deployment-gate context/i)).toBeVisible();
+  await expect(page.getByText(/Ready to generate the Engineering Brief artifact/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: /Generate Engineering Brief/i })).toBeVisible();
 });
 
 test('dashboard shell remains usable on a narrow viewport', async ({ page }) => {

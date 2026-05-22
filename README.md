@@ -26,6 +26,8 @@ npm run dev:api
 
 The backend exposes `GET /api/health`, `POST /api/chat/blockchain-engineer`, and deterministic `POST /api/prd/engineering-brief` route on `http://127.0.0.1:5174` by default. Persistence, wallet integration, and deployment behavior are intentionally not implemented yet.
 
+Track 6D adds a frontend action that generates a readable Engineering Brief artifact from the current Requirement Brief using the existing deterministic backend PRD route. This route is not LLM-assisted.
+
 The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
 
 ```bash

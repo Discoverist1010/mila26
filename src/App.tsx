@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { askBlockchainEngineer } from './api/blockchainEngineerChat';
+import { generateEngineeringBrief } from './api/engineeringBrief';
 import {
   answerAsBlockchainEngineer,
   createRequirementBrief,
@@ -8,6 +9,7 @@ import {
 } from './agents/agentRuntime';
 import { moduleCatalog } from './domain/moduleCatalog';
 import { toRequirementBriefContract } from './domain/requirementBrief';
+import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
 import type { FundFacts, RequirementBrief } from './domain/schemas';
 
 const starterFacts: FundFacts = {
@@ -34,6 +36,9 @@ export function App() {
   const [goal, setGoal] = useState('We want to launch a tokenized income product for approved investors.');
   const [question, setQuestion] = useState('What should we be careful about before generating code?');
   const [brief, setBrief] = useState<RequirementBrief | undefined>();
+  const [engineeringBrief, setEngineeringBrief] = useState<EngineeringBrief | undefined>();
+  const [engineeringBriefError, setEngineeringBriefError] = useState<string | undefined>();
+  const [isEngineeringBriefLoading, setIsEngineeringBriefLoading] = useState(false);
   const [bundle, setBundle] = useState<ImplementationBundle | undefined>();
   const [isRunning, setIsRunning] = useState(false);
   const [engineerAnswer, setEngineerAnswer] = useState(() => answerAsBlockchainEngineer(question));
@@ -48,8 +53,12 @@ export function App() {
   );
   const generatedArtifacts = bundle?.results.flatMap((result) => result.artifacts) ?? [];
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
-  const currentGate = brief ? 'Brief ready for Coding Bot' : 'Requirement brief approval';
-  const approvalGateStatus = bundle ? 'Approved' : brief ? 'Coding bot ready' : 'Draft brief';
+  const currentGate = engineeringBrief
+    ? 'Engineering Brief generated'
+    : brief
+      ? 'Engineering Brief generation'
+      : 'Requirement brief approval';
+  const approvalGateStatus = bundle ? 'Approved' : engineeringBrief ? 'Engineering brief ready' : brief ? 'Brief ready' : 'Draft brief';
   const selectedModules = brief?.modules.filter((module) => module.enabled) ?? [];
   const tokenModelSummary =
     requirementBriefContract?.tokenModel.assumption ?? 'Token model will be confirmed in the Requirement Brief.';
@@ -69,7 +78,29 @@ export function App() {
   function createBrief() {
     const nextBrief = createRequirementBrief(facts, goal);
     setBrief(nextBrief);
+    setEngineeringBrief(undefined);
+    setEngineeringBriefError(undefined);
     setBundle(undefined);
+  }
+
+  async function createEngineeringBrief() {
+    if (!brief) return;
+
+    setIsEngineeringBriefLoading(true);
+    setEngineeringBriefError(undefined);
+
+    const result = await generateEngineeringBrief({
+      requirementBrief: toRequirementBriefContract(brief, 'approved'),
+    });
+
+    setIsEngineeringBriefLoading(false);
+
+    if (result.ok) {
+      setEngineeringBrief(result.data);
+      return;
+    }
+
+    setEngineeringBriefError(result.message);
   }
 
   async function runAgents() {
@@ -186,7 +217,7 @@ export function App() {
           </article>
           <article>
             <span>Step 2</span>
-            <strong>Approve engineering brief</strong>
+            <strong>Generate engineering brief</strong>
           </article>
           <article>
             <span>Step 3</span>
@@ -321,13 +352,96 @@ export function App() {
           <div className="approval-gate">
             <div>
               <span>Approval gate</span>
-              <strong>{brief ? 'Awaiting approval to generate deterministic artifacts.' : 'Requirement brief required.'}</strong>
+              <strong>{brief ? 'Ready to generate the Engineering Brief artifact.' : 'Requirement brief required.'}</strong>
             </div>
-            <button disabled={!brief || isRunning} onClick={runAgents}>
-              {isRunning ? 'Coding Bot running mini-bots...' : 'Approve Brief and Run Coding Bot'}
+            <button disabled={!brief || isEngineeringBriefLoading} onClick={createEngineeringBrief}>
+              {isEngineeringBriefLoading ? 'Generating Engineering Brief...' : 'Generate Engineering Brief'}
             </button>
           </div>
+          {engineeringBriefError && (
+            <p className="error-text" role="alert">
+              {engineeringBriefError}
+            </p>
+          )}
         </section>
+
+        {engineeringBrief && (
+          <section className="panel engineering-brief-panel" data-testid="engineering-brief-artifact">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Step 3</p>
+                <h2>Engineering Brief Artifact</h2>
+                <p className="muted">Deterministic backend artifact generated from the approved Requirement Brief.</p>
+              </div>
+              <span className="gate-badge ready">Generated</span>
+            </div>
+            <div className="engineering-brief-grid">
+              <article className="brief-card">
+                <span>Project context</span>
+                <strong>{engineeringBrief.projectContext.projectName}</strong>
+                <p>
+                  {engineeringBrief.projectContext.fundName} ({engineeringBrief.projectContext.tokenSymbol}) for{' '}
+                  {engineeringBrief.projectContext.targetInvestors} in {engineeringBrief.projectContext.jurisdiction}.
+                </p>
+              </article>
+              <article className="brief-card">
+                <span>Token design</span>
+                <strong>{engineeringBrief.tokenDesign.standardPreference}</strong>
+                <p>{engineeringBrief.tokenDesign.assumptions[0]}</p>
+              </article>
+              <article className="brief-card">
+                <span>Wallet / access model</span>
+                <strong>{engineeringBrief.walletAndAccessModel.whitelistRequired ? 'Whitelist required' : 'Whitelist not required'}</strong>
+                <p>{engineeringBrief.walletAndAccessModel.assumptions[0]}</p>
+              </article>
+              <article className="brief-card">
+                <span>Deployment boundary</span>
+                <strong>{engineeringBrief.deploymentBoundary.network}</strong>
+                <p>{engineeringBrief.deploymentBoundary.status}</p>
+              </article>
+              <article className="brief-card wide">
+                <span>Functional requirements</span>
+                <ul>
+                  {engineeringBrief.functionalRequirements.slice(0, 4).map((requirement) => (
+                    <li key={requirement}>{requirement}</li>
+                  ))}
+                </ul>
+              </article>
+              <article className="brief-card wide">
+                <span>QA / evidence plan</span>
+                <ul>
+                  {[...engineeringBrief.testingAndQaPlan.slice(0, 2), ...engineeringBrief.evidencePackPlan.slice(0, 2)].map(
+                    (item) => (
+                      <li key={item}>{item}</li>
+                    ),
+                  )}
+                </ul>
+              </article>
+              <article className="brief-card">
+                <span>Risks / controls</span>
+                <strong>{engineeringBrief.risksAndControls[0].risk}</strong>
+                <p>{engineeringBrief.risksAndControls[0].control}</p>
+              </article>
+              <article className="brief-card">
+                <span>Acceptance criteria</span>
+                <ul>
+                  {engineeringBrief.acceptanceCriteria.slice(0, 3).map((criterion) => (
+                    <li key={criterion}>{criterion}</li>
+                  ))}
+                </ul>
+              </article>
+            </div>
+            <div className="approval-gate">
+              <div>
+                <span>Next step</span>
+                <strong>Run deterministic implementation artifacts from the approved brief.</strong>
+              </div>
+              <button disabled={isRunning} onClick={runAgents}>
+                {isRunning ? 'Coding Bot running mini-bots...' : 'Approve Brief and Run Coding Bot'}
+              </button>
+            </div>
+          </section>
+        )}
 
         {bundle && (
           <section className="panel" data-testid="artifact-workspace">
