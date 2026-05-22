@@ -1,7 +1,9 @@
 /* @vitest-environment node */
-import { describe, expect, it } from 'vitest';
-import { createApp } from '../server/app';
+import { describe, expect, it, vi } from 'vitest';
+import { generateEngineeringBriefMock } from '../server/agents/engineeringBriefMock';
+import { createApp, type CreateAppOptions } from '../server/app';
 import { EngineeringBriefSchema } from '../server/contracts/engineeringBrief';
+import type { Mila26LlmProvider } from '../server/llm/types';
 import { createRequirementBrief } from '../src/agents/agentRuntime';
 import { toRequirementBriefContract } from '../src/domain/requirementBrief';
 import { FundFactsSchema } from '../src/domain/schemas';
@@ -14,8 +16,8 @@ function createDemoRequirementBriefContract() {
   return toRequirementBriefContract(brief, 'approved');
 }
 
-async function postEngineeringBrief(payload?: Record<string, unknown>) {
-  const app = createApp();
+async function postEngineeringBrief(payload?: Record<string, unknown>, options?: CreateAppOptions) {
+  const app = createApp(options);
   const response =
     payload === undefined
       ? await app.inject({
@@ -29,6 +31,31 @@ async function postEngineeringBrief(payload?: Record<string, unknown>) {
         });
   await app.close();
   return response;
+}
+
+function createFakeLlmProvider(content: string): Mila26LlmProvider {
+  return {
+    provider: 'openai',
+    model: 'test-model-do-not-leak',
+    complete: vi.fn(async () => ({
+      content,
+      provider: 'openai' as const,
+      model: 'test-model-do-not-leak',
+      metadata: {
+        rawProviderMetadata: 'must-not-leak',
+      },
+    })),
+  };
+}
+
+function createThrowingFakeLlmProvider(): Mila26LlmProvider {
+  return {
+    provider: 'openai',
+    model: 'test-model-do-not-leak',
+    complete: vi.fn(async () => {
+      throw new Error('OPENAI_API_KEY=sk-test-secret stack trace test-model-do-not-leak');
+    }),
+  };
 }
 
 describe('PRD Engineering Brief API', () => {
@@ -45,6 +72,123 @@ describe('PRD Engineering Brief API', () => {
     expect(body.data.implementationPlan.length).toBeGreaterThan(0);
     expect(body.data.testingAndQaPlan.length).toBeGreaterThan(0);
     expect(body.data.evidencePackPlan.length).toBeGreaterThan(0);
+  });
+
+  it('uses an injected non-mock LLM provider and maps safe content into the existing contract', async () => {
+    const requirementBrief = createDemoRequirementBriefContract();
+    const llmProvider = createFakeLlmProvider(
+      JSON.stringify({
+        summary: 'LLM refined Engineering Brief summary grounded in the approved Requirement Brief.',
+        functionalRequirements: [
+          'LLM functional requirement keeps approved investor onboarding reviewable before token operations.',
+        ],
+        nonFunctionalRequirements: ['LLM non-functional requirement keeps backend-only intelligence isolated.'],
+        implementationPlan: ['LLM implementation step prepares schema-safe artifacts before any testnet gate.'],
+        testingAndQaPlan: ['LLM QA step validates schema, route behavior, and MVP deployment boundaries.'],
+        evidencePackPlan: ['LLM evidence step records source brief ID, assumptions, risks, and QA checks.'],
+        risksAndControls: [
+          {
+            risk: 'LLM risk: generated content could imply execution happened.',
+            control: 'LLM control: keep execution, signing, deployment, minting, and uploads explicitly out of scope.',
+          },
+        ],
+        acceptanceCriteria: ['LLM acceptance criterion preserves testnet-only and user-wallet-signs boundaries.'],
+      }),
+    );
+
+    const response = await postEngineeringBrief(
+      { requirementBrief },
+      { engineeringBriefLlmProvider: llmProvider },
+    );
+    const body = response.json();
+    const engineeringBrief = EngineeringBriefSchema.parse(body.data);
+
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(engineeringBrief.summary).toContain('LLM refined Engineering Brief summary');
+    expect(engineeringBrief.functionalRequirements).toContain(
+      'LLM functional requirement keeps approved investor onboarding reviewable before token operations.',
+    );
+    expect(engineeringBrief.deploymentBoundary.network).toBe('ethereum-testnet-only');
+    expect(engineeringBrief.deploymentBoundary.signing).toBe('user-wallet-signs');
+    expect(engineeringBrief.deploymentBoundary.backendCustody).toBe('backend-holds-no-private-keys');
+    expect(engineeringBrief.metadata).toEqual({
+      generator: 'deterministic-track-5b',
+      mode: 'mock',
+      llmUsed: false,
+      productionAdvice: false,
+    });
+    expect(JSON.stringify(body)).not.toMatch(/test-model-do-not-leak|rawProviderMetadata|OPENAI_API_KEY|sk-test/i);
+    expect(llmProvider.complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        purpose: 'engineering_brief_generation',
+        maxOutputTokens: 1100,
+        reasoningEffort: 'minimal',
+      }),
+    );
+  });
+
+  it('falls back to the deterministic Engineering Brief when the provider throws', async () => {
+    const requirementBrief = createDemoRequirementBriefContract();
+    const response = await postEngineeringBrief(
+      { requirementBrief },
+      { engineeringBriefLlmProvider: createThrowingFakeLlmProvider() },
+    );
+    const body = response.json();
+
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data).toEqual(generateEngineeringBriefMock(requirementBrief));
+    expect(JSON.stringify(body)).not.toMatch(/OPENAI_API_KEY|sk-test-secret|stack trace|test-model-do-not-leak/i);
+  });
+
+  it('falls back to the deterministic Engineering Brief for invalid LLM JSON', async () => {
+    const requirementBrief = createDemoRequirementBriefContract();
+    const response = await postEngineeringBrief(
+      { requirementBrief },
+      { engineeringBriefLlmProvider: createFakeLlmProvider('not json') },
+    );
+    const body = response.json();
+
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data).toEqual(generateEngineeringBriefMock(requirementBrief));
+  });
+
+  it('falls back to the deterministic Engineering Brief for empty LLM output', async () => {
+    const requirementBrief = createDemoRequirementBriefContract();
+    const response = await postEngineeringBrief(
+      { requirementBrief },
+      { engineeringBriefLlmProvider: createFakeLlmProvider('   ') },
+    );
+    const body = response.json();
+
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data).toEqual(generateEngineeringBriefMock(requirementBrief));
+  });
+
+  it('falls back safely when provider output includes secret-like or internal text', async () => {
+    const requirementBrief = createDemoRequirementBriefContract();
+    const response = await postEngineeringBrief(
+      { requirementBrief },
+      {
+        engineeringBriefLlmProvider: createFakeLlmProvider(
+          JSON.stringify({
+            summary:
+              'Unsafe OPENAI_API_KEY=sk-test-secret MILA26_LLM_MODEL=test-model-do-not-leak stack trace raw provider',
+          }),
+        ),
+      },
+    );
+    const body = response.json();
+
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data).toEqual(generateEngineeringBriefMock(requirementBrief));
+    expect(JSON.stringify(body)).not.toMatch(
+      /OPENAI_API_KEY|MILA26_LLM_MODEL|sk-test-secret|stack trace|raw provider|test-model-do-not-leak/i,
+    );
   });
 
   it('preserves MVP deployment and custody boundaries in the response', async () => {

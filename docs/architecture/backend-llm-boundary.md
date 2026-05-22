@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Track 6A adds the backend-only LLM adapter boundary for MILA26. Track 6B adds the first real backend-only OpenAI provider behind that boundary. Track 6C wires the Blockchain Engineering Bot route to this boundary behind backend config.
+Track 6A adds the backend-only LLM adapter boundary for MILA26. Track 6B adds the first real backend-only OpenAI provider behind that boundary. Track 6C wires the Blockchain Engineering Bot route to this boundary behind backend config. Track 6E makes Engineering Brief generation optionally LLM-assisted behind the same backend-only boundary.
 
-The boundary introduces typed request/response interfaces, backend environment parsing, a provider factory, a deterministic mock provider, an opt-in OpenAI provider, and a narrow route adapter for `POST /api/chat/blockchain-engineer`.
+The boundary introduces typed request/response interfaces, backend environment parsing, a provider factory, a deterministic mock provider, an opt-in OpenAI provider, and narrow route adapters for `POST /api/chat/blockchain-engineer` and `POST /api/prd/engineering-brief`.
 
 Default mock mode does not make real LLM calls and does not require API keys. OpenAI mode requires `OPENAI_API_KEY` on the backend only. Provider config and secrets are not exposed to the frontend.
 
@@ -30,6 +30,7 @@ Do not create `VITE_` LLM variables. Vite environment variables are public to th
 - `server/llm/openaiProvider.ts`: backend-only OpenAI provider wrapper.
 - `server/llm/providerFactory.ts`: provider construction boundary.
 - `server/agents/blockchainEngineerLlm.ts`: route adapter that calls non-mock providers and falls back to deterministic chat behavior.
+- `server/agents/engineeringBriefLlm.ts`: route adapter that maps safe provider output into the existing Engineering Brief contract and falls back to deterministic generation.
 
 ## Request Shape
 
@@ -69,7 +70,7 @@ The boundary does not return secrets or raw provider configuration to frontend A
 - `openai` is opt-in and requires `OPENAI_API_KEY`.
 - `openai` requires `MILA26_LLM_MODEL`; model choice is operator-configured and example model names are not runtime defaults.
 - Automated tests mock the OpenAI client and do not make live OpenAI calls.
-- Engineering Brief routes remain behaviorally unchanged.
+- `POST /api/prd/engineering-brief` remains deterministic in mock/default mode and may use a real provider only when configured.
 - `POST /api/chat/blockchain-engineer` remains deterministic in mock/default mode and may use a real provider only when configured.
 
 ## Track 6C Path
@@ -84,12 +85,24 @@ Route integration should:
 - avoid exposing secrets, provider config, or raw stack traces to the frontend
 - preserve deterministic product-route behavior unless explicitly configured otherwise
 
+## Track 6E Path
+
+Track 6E wires `POST /api/prd/engineering-brief` to `Mila26LlmProvider` behind config.
+
+Route integration should:
+
+- keep the existing Engineering Brief API contract stable
+- use deterministic generation as the default and fallback
+- map provider output through a small internal overlay before validating the final Engineering Brief schema
+- preserve Ethereum testnet-only, user-wallet-signs, backend-holds-no-private-keys, and no-mainnet MVP boundaries
+- avoid exposing secrets, provider config, model names, raw provider output, or stack traces to the frontend
+
 ## Out Of Scope
 
 - API keys in frontend code
 - `VITE_` LLM environment variables
 - route contract changes
-- PRD generation changes
+- frontend PRD generation changes
 - orchestration
 - wallet integration
 - blockchain deployment

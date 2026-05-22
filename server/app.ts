@@ -20,6 +20,7 @@ function parseAllowedOrigins(value: string | undefined): string[] {
 
 export type CreateAppOptions = {
   blockchainEngineerLlmProvider?: Mila26LlmProvider;
+  engineeringBriefLlmProvider?: Mila26LlmProvider;
 };
 
 export function createApp(options: CreateAppOptions = {}) {
@@ -46,7 +47,10 @@ export function createApp(options: CreateAppOptions = {}) {
     prefix: '/api',
     llmProvider: options.blockchainEngineerLlmProvider,
   });
-  app.register(engineeringBriefRoutes, { prefix: '/api' });
+  app.register(engineeringBriefRoutes, {
+    prefix: '/api',
+    llmProvider: options.engineeringBriefLlmProvider,
+  });
 
   app.setNotFoundHandler(async (_request, reply) => {
     return reply.code(404).send(fail('NOT_FOUND', 'Route not found.'));

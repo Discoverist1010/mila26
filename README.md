@@ -24,9 +24,9 @@ Run the local API skeleton in a second terminal:
 npm run dev:api
 ```
 
-The backend exposes `GET /api/health`, `POST /api/chat/blockchain-engineer`, and deterministic `POST /api/prd/engineering-brief` route on `http://127.0.0.1:5174` by default. Persistence, wallet integration, and deployment behavior are intentionally not implemented yet.
+The backend exposes `GET /api/health`, `POST /api/chat/blockchain-engineer`, and `POST /api/prd/engineering-brief` on `http://127.0.0.1:5174` by default. Persistence, wallet integration, and deployment behavior are intentionally not implemented yet.
 
-Track 6D adds a frontend action that generates a readable Engineering Brief artifact from the current Requirement Brief using the existing deterministic backend PRD route. This route is not LLM-assisted.
+Track 6D adds a frontend action that generates a readable Engineering Brief artifact from the current Requirement Brief. Track 6E can make the backend PRD route LLM-assisted when a real backend provider is configured; deterministic generation remains the default and fallback.
 
 The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
 
@@ -53,7 +53,7 @@ OPENAI_API_KEY=...
 
 `MILA26_LLM_MODEL` is required when `MILA26_LLM_PROVIDER=openai`. MILA26 does not hardcode an OpenAI runtime default; choose a model available to the backend operator's OpenAI account before starting the API.
 
-Do not use `VITE_` variables for LLM provider config or secrets. Track 6C wires the Blockchain Engineering Bot route to the backend-only LLM boundary when a real provider is configured. Mock mode remains deterministic by default, and provider errors fall back to deterministic mock behavior.
+Do not use `VITE_` variables for LLM provider config or secrets. Track 6C wires the Blockchain Engineering Bot route to the backend-only LLM boundary, and Track 6E wires the Engineering Brief route to the same backend-only boundary. Mock mode remains deterministic by default, and provider errors fall back to deterministic behavior.
 
 Run checks:
 
