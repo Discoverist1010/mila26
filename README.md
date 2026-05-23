@@ -30,6 +30,8 @@ Track 6D adds a frontend action that generates a readable Engineering Brief arti
 
 Track 6F implements the approved `mila26-cockpit2` frontend UX foundation: a guided cockpit with project context, top stage progress, central Goal Copilot and Requirement Brief workbench, passive status rail, and a scroll-down Smart Contract Control Panel preview. The control panel is preview-only; mint, distribute, burn, pause, custom events, wallet, deployment, and blockchain actions do not execute.
 
+Track 6F.1 refines `mila26-cockpit2` so the Engineering Bot is the single workflow decision orchestrator. The right rail is passive and stage-specific, the Brief Preview is collapsible and artifact-focused, and both side rails can be hidden while future actions are prepared through local frontend action IDs only.
+
 The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
 
 ```bash

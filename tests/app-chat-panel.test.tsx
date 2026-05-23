@@ -88,7 +88,10 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByRole('heading', { name: 'MILA Income Fund / Tokenized Income Fund' })).toBeVisible();
     expect(screen.getByLabelText('Project navigation')).toBeVisible();
     expect(screen.getByLabelText('Project status')).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Goal Copilot and Requirement Brief draft preview' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Engineering Bot decision workspace' })).toBeVisible();
+    expect(screen.getByLabelText('Engineering Bot workspace')).toBeVisible();
+    expect(screen.getByText('Chief Engineering Officer')).toBeVisible();
+    expect(screen.getByText('Master Orchestrator')).toBeVisible();
     expect(screen.getByText('mila26-cockpit2')).toBeVisible();
     expect(screen.getByLabelText('Top stage progress')).toBeVisible();
     expect(screen.getByText('Setup / Explore')).toBeVisible();
@@ -96,8 +99,12 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Current-stage activities')).toBeVisible();
     expect(screen.getByText('Goal intake')).toBeVisible();
     expect(screen.getByText('Project Closure Ledger')).toBeVisible();
-    expect(screen.getByText('Help / Ask Chief Engineering Bot')).toBeVisible();
+    expect(screen.getByText('Need help? Ask the Engineering Bot')).toBeVisible();
     expect(screen.getByText('Local preview shown until a backend response is available.')).toBeVisible();
+    expect(screen.getByLabelText('Engineering Bot recommendation')).toBeVisible();
+    expect(screen.getByText('I am ready to create the Requirement Brief.')).toBeVisible();
+    expect(screen.getAllByRole('button', { name: 'Create Requirement Brief' })).toHaveLength(1);
+    expect(screen.queryByText('Next Recommended Action')).not.toBeInTheDocument();
     expect(screen.getByTestId('smart-contract-control')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Smart Contract Control Panel' })).toBeVisible();
     expect(screen.getByText('NAV Updated')).toBeVisible();
@@ -107,7 +114,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Blockchain Engineer Bot question' }), {
       target: { value: 'Should we use ERC-20 or ERC-721?' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Ask Blockchain Engineer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ask a question' }));
 
     expect(screen.getByRole('button', { name: 'Asking bot...' })).toBeDisabled();
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Waiting for Blockchain Engineer Bot...');
@@ -127,7 +134,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Blockchain Engineer Bot question' }), {
       target: { value: '   ' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Ask Blockchain Engineer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ask a question' }));
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a question before asking the bot.');
@@ -141,7 +148,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Blockchain Engineer Bot question' }), {
       target: { value: 'How should deployment work?' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Ask Blockchain Engineer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ask a question' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(
@@ -164,6 +171,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Create Requirement Brief' }));
+    expect(screen.getAllByRole('button', { name: 'Generate Engineering Brief' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Generate Engineering Brief' }));
 
     expect(screen.getByRole('button', { name: 'Generating Engineering Brief...' })).toBeDisabled();
@@ -221,5 +229,40 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('Invalid Engineering Brief generation request.');
     });
     expect(screen.queryByTestId('engineering-brief-artifact')).not.toBeInTheDocument();
+  });
+
+  it('supports passive side rails and an expandable artifact-focused Brief Preview', () => {
+    render(<App />);
+
+    const rightRail = screen.getByLabelText('Project status');
+    expect(within(rightRail).queryByText('Next Recommended Action')).not.toBeInTheDocument();
+    expect(within(rightRail).queryByRole('button', { name: 'Create Requirement Brief' })).not.toBeInTheDocument();
+    expect(within(rightRail).getByText('Step 1 To-Do Checklist')).toBeVisible();
+    expect(within(rightRail).getByText('Step 1 Artifacts')).toBeVisible();
+    expect(within(rightRail).getByText('Safe-by-Design Summary')).toBeVisible();
+
+    const briefPreview = screen.getByLabelText('Brief Preview');
+    expect(within(briefPreview).getByText('Business objective')).toBeVisible();
+    expect(within(briefPreview).getByText('Token model')).toBeVisible();
+    expect(within(briefPreview).getByText('Investor access')).toBeVisible();
+    expect(within(briefPreview).queryByText('Key workflows')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand Brief Preview' }));
+    expect(within(briefPreview).getByText('Key workflows')).toBeVisible();
+    expect(within(briefPreview).getByText('Deployment boundary')).toBeVisible();
+    expect(within(briefPreview).getByText('Open items')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse Brief Preview' }));
+    expect(within(briefPreview).queryByText('Key workflows')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide left rail' }));
+    expect(screen.queryByLabelText('Project navigation')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show left rail' }));
+    expect(screen.getByLabelText('Project navigation')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide right rail' }));
+    expect(screen.queryByLabelText('Project status')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show right rail' }));
+    expect(screen.getByLabelText('Project status')).toBeVisible();
   });
 });
