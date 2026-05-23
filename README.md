@@ -28,6 +28,8 @@ The backend exposes `GET /api/health`, `POST /api/chat/blockchain-engineer`, and
 
 Track 6D adds a frontend action that generates a readable Engineering Brief artifact from the current Requirement Brief. Track 6E can make the backend PRD route LLM-assisted when a real backend provider is configured; deterministic generation remains the default and fallback.
 
+Track 6F implements the approved `mila26-cockpit2` frontend UX foundation: a guided cockpit with project context, top stage progress, central Goal Copilot and Requirement Brief workbench, passive status rail, and a scroll-down Smart Contract Control Panel preview. The control panel is preview-only; mint, distribute, burn, pause, custom events, wallet, deployment, and blockchain actions do not execute.
+
 The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
 
 ```bash

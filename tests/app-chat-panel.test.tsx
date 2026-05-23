@@ -85,12 +85,24 @@ describe('App Blockchain Engineer Bot panel', () => {
     render(<App />);
 
     expect(screen.getByText('KangLe AI')).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Tokenized Income Fund' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'MILA Income Fund / Tokenized Income Fund' })).toBeVisible();
     expect(screen.getByLabelText('Project navigation')).toBeVisible();
-    expect(screen.getByLabelText('Project status and assistant')).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Project setup' })).toBeVisible();
-    expect(screen.getByText('Define tokenisation requirement')).toBeVisible();
+    expect(screen.getByLabelText('Project status')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Goal Copilot and Requirement Brief draft preview' })).toBeVisible();
+    expect(screen.getByText('mila26-cockpit2')).toBeVisible();
+    expect(screen.getByLabelText('Top stage progress')).toBeVisible();
+    expect(screen.getByText('Setup / Explore')).toBeVisible();
+    expect(screen.getAllByText('Smart Contract Control').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Current-stage activities')).toBeVisible();
+    expect(screen.getByText('Goal intake')).toBeVisible();
+    expect(screen.getByText('Project Closure Ledger')).toBeVisible();
+    expect(screen.getByText('Help / Ask Chief Engineering Bot')).toBeVisible();
     expect(screen.getByText('Local preview shown until a backend response is available.')).toBeVisible();
+    expect(screen.getByTestId('smart-contract-control')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Smart Contract Control Panel' })).toBeVisible();
+    expect(screen.getByText('NAV Updated')).toBeVisible();
+    expect(screen.getByText('Distribution Recorded')).toBeVisible();
+    expect(screen.getAllByRole('button', { name: 'Trigger Event' }).length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Blockchain Engineer Bot question' }), {
       target: { value: 'Should we use ERC-20 or ERC-721?' },
