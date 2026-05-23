@@ -53,6 +53,18 @@ const recentContractEvents = [
   'Deployment remains disabled for MVP',
 ];
 
+const uiActions = {
+  createRequirementBrief: 'create_requirement_brief',
+  generateEngineeringBrief: 'generate_engineering_brief',
+  reviewAssumptions: 'review_assumptions',
+  askQuestion: 'ask_question',
+  openBrief: 'open_brief',
+  toggleBriefPanel: 'toggle_brief_panel',
+  toggleLeftRail: 'toggle_left_rail',
+  toggleRightRail: 'toggle_right_rail',
+  scrollToScp: 'scroll_to_scp',
+} as const;
+
 function downloadText(filename: string, content: string) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -64,7 +76,7 @@ function downloadText(filename: string, content: string) {
 }
 
 export function App() {
-  const [facts, setFacts] = useState<FundFacts>(starterFacts);
+  const [facts] = useState<FundFacts>(starterFacts);
   const [goal, setGoal] = useState('We want to launch a tokenized income product for approved investors.');
   const [question, setQuestion] = useState('What should we be careful about before generating code?');
   const [brief, setBrief] = useState<RequirementBrief | undefined>();
@@ -77,6 +89,9 @@ export function App() {
   const [engineerAnswerSource, setEngineerAnswerSource] = useState<'local' | 'backend'>('local');
   const [botChatError, setBotChatError] = useState<string | undefined>();
   const [isBotReplyLoading, setIsBotReplyLoading] = useState(false);
+  const [isLeftRailOpen, setIsLeftRailOpen] = useState(true);
+  const [isRightRailOpen, setIsRightRailOpen] = useState(true);
+  const [isBriefPreviewExpanded, setIsBriefPreviewExpanded] = useState(false);
 
   const fallbackEngineerAnswer = useMemo(() => answerAsBlockchainEngineer(question, brief), [question, brief]);
   const requirementBriefContract = useMemo(
@@ -94,18 +109,46 @@ export function App() {
   const selectedModules = brief?.modules.filter((module) => module.enabled) ?? [];
   const tokenModelSummary =
     requirementBriefContract?.tokenModel.assumption ?? 'Token model will be confirmed in the Requirement Brief.';
-  const agentStatuses = [
-    { label: 'Requirement', status: brief ? 'Ready' : 'Drafting' },
-    { label: 'Coding', status: bundle ? 'Complete' : brief ? 'Ready' : 'Waiting' },
-    { label: 'QA', status: bundle ? 'Checked' : 'Waiting' },
-    { label: 'Security', status: bundle ? 'Reviewed' : 'Gate locked' },
-    { label: 'Evidence', status: bundle ? 'Available' : 'Waiting' },
-    { label: 'Deploy Gate', status: 'Disabled' },
+  const stepTodos = [
+    { label: 'Capture business objective', done: true },
+    { label: 'Confirm token model assumptions', done: Boolean(brief) },
+    { label: 'Review investor access constraints', done: Boolean(brief) },
+    { label: 'Generate Engineering Brief', done: Boolean(engineeringBrief) },
   ];
-
-  function updateFact<K extends keyof FundFacts>(key: K, value: FundFacts[K]) {
-    setFacts((current) => ({ ...current, [key]: value }));
-  }
+  const activeStepArtifacts = [
+    brief ? 'Requirement Brief draft' : 'Requirement Brief draft pending',
+    engineeringBrief ? 'Engineering Brief artifact' : 'Engineering Brief pending',
+    'Decision notes local only',
+  ];
+  const botRecommendation = !brief
+    ? {
+        title: 'I am ready to create the Requirement Brief.',
+        body:
+          'I will convert this conversation into a structured Requirement Brief covering goals, assumptions, constraints, workflows, and safety boundaries.',
+        primaryLabel: 'Create Requirement Brief',
+        primaryActionId: uiActions.createRequirementBrief,
+        primaryDisabled: false,
+        onPrimary: createBrief,
+      }
+    : !engineeringBrief
+      ? {
+          title: 'The Requirement Brief is ready for the next artifact.',
+          body:
+            'I recommend generating the Engineering Brief so the project has a structured build plan before any implementation work.',
+          primaryLabel: isEngineeringBriefLoading ? 'Generating Engineering Brief...' : 'Generate Engineering Brief',
+          primaryActionId: uiActions.generateEngineeringBrief,
+          primaryDisabled: isEngineeringBriefLoading,
+          onPrimary: createEngineeringBrief,
+        }
+      : {
+          title: 'The Engineering Brief is generated.',
+          body:
+            'The next implementation step can stay gated until the brief is reviewed. No deployment or wallet action is triggered here.',
+          primaryLabel: isRunning ? 'Coding Bot running mini-bots...' : 'Approve Brief and Run Coding Bot',
+          primaryActionId: 'run_coding_bot',
+          primaryDisabled: isRunning,
+          onPrimary: runAgents,
+        };
 
   function createBrief() {
     const nextBrief = createRequirementBrief(facts, goal);
@@ -187,8 +230,31 @@ export function App() {
 
   return (
     <main className="cockpit-page">
-      <section className="cockpit-shell" aria-label="mila26-cockpit2 workspace">
-        <aside className="left-rail" aria-label="Project navigation">
+      <section
+        className={`cockpit-shell ${isLeftRailOpen ? '' : 'left-collapsed'} ${isRightRailOpen ? '' : 'right-collapsed'}`}
+        aria-label="mila26-cockpit2 workspace"
+      >
+        <button
+          className="rail-toggle left-toggle"
+          data-action-id={uiActions.toggleLeftRail}
+          onClick={() => setIsLeftRailOpen((current) => !current)}
+          aria-expanded={isLeftRailOpen}
+          aria-controls="left-rail"
+        >
+          {isLeftRailOpen ? 'Hide left rail' : 'Show left rail'}
+        </button>
+        <button
+          className="rail-toggle right-toggle"
+          data-action-id={uiActions.toggleRightRail}
+          onClick={() => setIsRightRailOpen((current) => !current)}
+          aria-expanded={isRightRailOpen}
+          aria-controls="right-rail"
+        >
+          {isRightRailOpen ? 'Hide right rail' : 'Show right rail'}
+        </button>
+
+        {isLeftRailOpen && (
+        <aside className="left-rail" id="left-rail" aria-label="Project navigation">
           <div className="brand-block">
             <img src="/assets/brand/kangle-ai-logo.png" alt="" />
             <div>
@@ -227,9 +293,10 @@ export function App() {
           </section>
 
           <a className="rail-help" href="#goal-copilot">
-            Help / Ask Chief Engineering Bot
+            Need help? Ask the Engineering Bot
           </a>
         </aside>
+        )}
 
         <section className="workspace" id="workspace">
           <header className="cockpit-header">
@@ -258,18 +325,59 @@ export function App() {
             <div className="workbench-heading">
               <div>
                 <p className="eyebrow">Step 1 active</p>
-                <h2>Goal Copilot and Requirement Brief draft preview</h2>
+                <h2>Engineering Bot decision workspace</h2>
               </div>
               <span className={`gate-badge ${brief ? 'ready' : 'draft'}`}>{approvalGateStatus}</span>
             </div>
 
             <div className="workbench-grid">
-              <section className="copilot-column" aria-label="Goal Copilot">
-                <h3>Goal Copilot</h3>
-                <p className="muted">Capture the business intent, then ask the Engineering Bot to sharpen constraints.</p>
+              <section className="bot-workspace" aria-label="Engineering Bot workspace">
+                <div className="bot-title-row">
+                  <div>
+                    <p className="eyebrow">Chief Engineering Officer</p>
+                    <h3>Engineering Bot</h3>
+                  </div>
+                  <span>Master Orchestrator</span>
+                </div>
+                <div className="bot-understanding">
+                  <span>What I understand</span>
+                  <p>
+                    You are preparing {facts.fundName} as a tokenized income product for {facts.targetInvestors}.
+                    I will keep the work bounded to Ethereum testnet planning, user-wallet signing, and no backend private-key custody.
+                  </p>
+                </div>
+                <div className="assistant-response" data-testid="engineer-answer">
+                  {isBotReplyLoading ? 'Waiting for Blockchain Engineer Bot...' : engineerAnswer}
+                </div>
+                <section className="recommendation-card" aria-label="Engineering Bot recommendation">
+                  <div>
+                    <p className="eyebrow">Recommendation</p>
+                    <h3>{botRecommendation.title}</h3>
+                    <p>{botRecommendation.body}</p>
+                  </div>
+                  <div className="recommendation-actions">
+                    <button
+                      data-action-id={botRecommendation.primaryActionId}
+                      disabled={botRecommendation.primaryDisabled}
+                      onClick={botRecommendation.onPrimary}
+                    >
+                      {botRecommendation.primaryLabel}
+                    </button>
+                    <button
+                      className="secondary-button"
+                      data-action-id={uiActions.reviewAssumptions}
+                      onClick={() => setIsBriefPreviewExpanded(true)}
+                    >
+                      Review assumptions
+                    </button>
+                    <button className="secondary-button" data-action-id={uiActions.askQuestion} onClick={askBot} disabled={isBotReplyLoading}>
+                      {isBotReplyLoading ? 'Asking bot...' : 'Ask a question'}
+                    </button>
+                  </div>
+                </section>
                 <label>
                   Tokenisation goal
-                  <textarea value={goal} onChange={(event) => setGoal(event.target.value)} rows={4} />
+                  <textarea value={goal} onChange={(event) => setGoal(event.target.value)} rows={5} />
                 </label>
                 <label>
                   Blockchain Engineer Bot question
@@ -277,14 +385,9 @@ export function App() {
                     aria-label="Blockchain Engineer Bot question"
                     value={question}
                     onChange={(event) => setQuestion(event.target.value)}
-                    rows={4}
+                    rows={5}
                   />
                 </label>
-                <div className="action-row">
-                  <button disabled={isBotReplyLoading} onClick={askBot}>
-                    {isBotReplyLoading ? 'Asking bot...' : 'Ask Blockchain Engineer'}
-                  </button>
-                </div>
                 {botChatError && (
                   <p className="error-text" role="alert">
                     {botChatError}
@@ -297,61 +400,51 @@ export function App() {
                       ? 'Backend response.'
                       : 'Local preview shown until a backend response is available.'}
                 </p>
-                <div className="assistant-response" data-testid="engineer-answer">
-                  {isBotReplyLoading ? 'Waiting for Blockchain Engineer Bot...' : engineerAnswer}
-                </div>
               </section>
 
-              <section className="brief-column" id="requirement-brief" aria-label="Requirement Brief draft preview">
+              <section
+                className={`brief-column ${isBriefPreviewExpanded ? 'expanded' : 'compact'}`}
+                id="requirement-brief"
+                aria-label="Brief Preview"
+              >
                 <div className="brief-column-header">
                   <div>
-                    <h3>Requirement Brief draft preview</h3>
-                    <p className="muted">Generated from the copilot conversation and current project inputs.</p>
+                    <p className="eyebrow">Attached artifact</p>
+                    <h3>Brief Preview</h3>
+                    <p className="muted">Decision-ready summary generated from the Engineering Bot workspace.</p>
                   </div>
-                  <button onClick={createBrief}>Create Requirement Brief</button>
-                </div>
-
-                <div className="fact-grid">
-                  <label>
-                    Fund name
-                    <input value={facts.fundName} onChange={(event) => updateFact('fundName', event.target.value)} />
-                  </label>
-                  <label>
-                    Token symbol
-                    <input
-                      value={facts.tokenSymbol}
-                      onChange={(event) => updateFact('tokenSymbol', event.target.value.toUpperCase())}
-                    />
-                  </label>
-                  <label>
-                    Jurisdiction
-                    <input value={facts.jurisdiction} onChange={(event) => updateFact('jurisdiction', event.target.value)} />
-                  </label>
-                  <label>
-                    Target investors
-                    <input
-                      value={facts.targetInvestors}
-                      onChange={(event) => updateFact('targetInvestors', event.target.value)}
-                    />
-                  </label>
+                  <button
+                    className="secondary-button"
+                    data-action-id={uiActions.toggleBriefPanel}
+                    onClick={() => setIsBriefPreviewExpanded((current) => !current)}
+                  >
+                    {isBriefPreviewExpanded ? 'Collapse Brief Preview' : 'Expand Brief Preview'}
+                  </button>
                 </div>
 
                 {brief && requirementBriefContract ? (
                   <div className="brief-preview" data-testid="requirement-brief">
                     <div>
-                      <span>Asset / fund profile</span>
-                      <strong>
-                        {requirementBriefContract.assetProfile.fundName} ({requirementBriefContract.assetProfile.tokenSymbol})
-                      </strong>
-                      <p>
-                        {requirementBriefContract.assetProfile.jurisdiction} jurisdiction for{' '}
-                        {requirementBriefContract.assetProfile.targetInvestors}.
-                      </p>
+                      <span>Business objective</span>
+                      <strong>{goal}</strong>
+                      <p>{facts.fundName} remains bounded to a local MVP planning workflow.</p>
                     </div>
                     <div>
                       <span>Token model</span>
                       <strong>{requirementBriefContract.tokenModel.standardPreference}</strong>
                       <p>{tokenModelSummary}</p>
+                    </div>
+                    <div>
+                      <span>Investor access</span>
+                      <strong>
+                        {requirementBriefContract.investorAccess.walletWhitelistRequired ? 'Wallet whitelist required' : 'Access model pending'}
+                      </strong>
+                      <p>{requirementBriefContract.investorAccess.assumptions[0]}</p>
+                    </div>
+                    <div>
+                      <span>Key workflows</span>
+                      <strong>{selectedModules.length || enabledModuleCount} programmable modules</strong>
+                      <p>{selectedModules[0]?.rationale ?? moduleCatalog[0].plainEnglish}</p>
                     </div>
                     <div>
                       <span>Deployment boundary</span>
@@ -362,27 +455,57 @@ export function App() {
                       </p>
                     </div>
                     <div>
-                      <span>Selected modules</span>
-                      <strong>{selectedModules.length || enabledModuleCount} active</strong>
-                      <p>{selectedModules[0]?.rationale ?? moduleCatalog[0].plainEnglish}</p>
+                      <span>Open items</span>
+                      <strong>{brief.unresolvedQuestions.length || 1} item(s)</strong>
+                      <p>{brief.unresolvedQuestions[0] ?? 'Confirm assumptions before moving to implementation planning.'}</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="empty-state">
-                    <strong>Draft brief not created yet</strong>
-                    <p className="muted">Use the single primary action above to create the Requirement Brief preview.</p>
+                  <div className="brief-preview compact-preview" data-testid="requirement-brief">
+                    <div>
+                      <span>Business objective</span>
+                      <strong>{goal}</strong>
+                      <p>This will become the core Requirement Brief objective.</p>
+                    </div>
+                    <div>
+                      <span>Token model</span>
+                      <strong>ERC-20 / ERC-721 under review</strong>
+                      <p>Protocol choice remains reviewable until the Requirement Brief is created.</p>
+                    </div>
+                    <div>
+                      <span>Investor access</span>
+                      <strong>Approved investors</strong>
+                      <p>Wallet whitelist assumptions will be captured in the brief.</p>
+                    </div>
+                    {isBriefPreviewExpanded && (
+                      <>
+                        <div>
+                          <span>Key workflows</span>
+                          <strong>Goal intake, assumptions, constraints</strong>
+                          <p>Programmable servicing modules will be selected after requirement review.</p>
+                        </div>
+                        <div>
+                          <span>Deployment boundary</span>
+                          <strong>Ethereum testnet only</strong>
+                          <p>User wallet signs; backend holds no private keys; no mainnet in MVP.</p>
+                        </div>
+                        <div>
+                          <span>Open items</span>
+                          <strong>Requirement Brief pending</strong>
+                          <p>Create the brief from the central Engineering Bot recommendation.</p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
-                <div className="approval-gate" id="engineering-brief">
-                  <div>
-                    <span>Next artifact</span>
-                    <strong>{brief ? 'Ready to generate the Engineering Brief artifact.' : 'Create the Requirement Brief first.'}</strong>
-                  </div>
-                  <button disabled={!brief || isEngineeringBriefLoading} onClick={createEngineeringBrief}>
-                    {isEngineeringBriefLoading ? 'Generating Engineering Brief...' : 'Generate Engineering Brief'}
-                  </button>
-                </div>
+                <button
+                  className="view-link-button"
+                  data-action-id={uiActions.openBrief}
+                  onClick={() => setIsBriefPreviewExpanded(true)}
+                >
+                  Open full brief
+                </button>
                 {engineeringBriefError && (
                   <p className="error-text" role="alert">
                     {engineeringBriefError}
@@ -513,7 +636,8 @@ export function App() {
           )}
         </section>
 
-        <aside className="right-rail" aria-label="Project status">
+        {isRightRailOpen && (
+        <aside className="right-rail" id="right-rail" aria-label="Project status">
           <section className="status-panel">
             <p className="eyebrow">Stage Progress</p>
             <h2>{currentGate}</h2>
@@ -524,39 +648,44 @@ export function App() {
           </section>
 
           <section className="status-panel">
-            <p className="eyebrow">Current Focus</p>
+            <p className="eyebrow">About this step</p>
             <h2>Business intent to Requirement Brief</h2>
-            <p className="muted">ERC-20 / ERC-721 discussion is allowed. Protocol choice remains reviewable.</p>
-          </section>
-
-          <section className="status-panel" id="agent-status">
-            <p className="eyebrow">Activity Log</p>
-            <div className="agent-status-list">
-              {agentStatuses.map((agent) => (
-                <div key={agent.label} className="agent-status-row">
-                  <span>{agent.label}</span>
-                  <strong>{agent.status}</strong>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="status-panel">
-            <p className="eyebrow">Next Recommended Action</p>
-            <h2>{brief ? 'Generate Engineering Brief' : 'Create Requirement Brief'}</h2>
             <p className="muted">
-              {brief
-                ? 'Review the draft, then create the Engineering Brief artifact from the existing backend route.'
-                : 'Confirm project facts and create the Requirement Brief preview.'}
+              Step 1 turns the asset-manager goal into a reviewable brief. Decisions stay with the Engineering Bot in
+              the central workspace.
             </p>
           </section>
 
+          <section className="status-panel">
+            <p className="eyebrow">Step 1 To-Do Checklist</p>
+            <ul className="check-list">
+              {stepTodos.map((todo) => (
+                <li key={todo.label} className={todo.done ? 'done' : ''}>
+                  <span>{todo.done ? 'Done' : 'Open'}</span>
+                  {todo.label}
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="status-panel">
+            <p className="eyebrow">Step 1 Artifacts</p>
+            <ul className="artifact-list">
+              {activeStepArtifacts.map((artifact) => (
+                <li key={artifact}>{artifact}</li>
+              ))}
+            </ul>
+            <p className="microcopy">{brief || engineeringBrief ? 'View generated artifacts in the center workspace.' : 'Artifacts appear after the Engineering Bot creates them.'}</p>
+          </section>
+
           <section className="status-panel" id="deployment-gate">
-            <p className="eyebrow">Deployment Gate / Safe by design</p>
+            <p className="eyebrow">Safe-by-Design Summary</p>
             <h2>Locked for MVP</h2>
             <p className="muted">User wallet signing comes later. Backend private keys and mainnet deployment are out of scope.</p>
+            <p className="open-count">{stepTodos.filter((todo) => !todo.done).length} open item(s)</p>
           </section>
         </aside>
+        )}
       </section>
 
       <section className="smart-contract-panel" id="smart-contract-control" data-testid="smart-contract-control">
