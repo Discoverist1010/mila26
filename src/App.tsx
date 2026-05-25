@@ -21,6 +21,8 @@ const starterFacts: FundFacts = {
   initialNav: 1_000_000,
 };
 
+const initialBotQuestion = 'What should we be careful about before generating code?';
+
 const cockpitStages = [
   { step: '1', label: 'Setup / Explore', state: 'Active' },
   { step: '2', label: 'Requirement Brief', state: 'Draft' },
@@ -77,15 +79,15 @@ function downloadText(filename: string, content: string) {
 
 export function App() {
   const [facts] = useState<FundFacts>(starterFacts);
-  const [goal, setGoal] = useState('We want to launch a tokenized income product for approved investors.');
-  const [question, setQuestion] = useState('What should we be careful about before generating code?');
+  const [goal] = useState('We want to launch a tokenized income product for approved investors.');
+  const [question, setQuestion] = useState('');
   const [brief, setBrief] = useState<RequirementBrief | undefined>();
   const [engineeringBrief, setEngineeringBrief] = useState<EngineeringBrief | undefined>();
   const [engineeringBriefError, setEngineeringBriefError] = useState<string | undefined>();
   const [isEngineeringBriefLoading, setIsEngineeringBriefLoading] = useState(false);
   const [bundle, setBundle] = useState<ImplementationBundle | undefined>();
   const [isRunning, setIsRunning] = useState(false);
-  const [engineerAnswer, setEngineerAnswer] = useState(() => answerAsBlockchainEngineer(question));
+  const [engineerAnswer, setEngineerAnswer] = useState(() => answerAsBlockchainEngineer(initialBotQuestion));
   const [engineerAnswerSource, setEngineerAnswerSource] = useState<'local' | 'backend'>('local');
   const [botChatError, setBotChatError] = useState<string | undefined>();
   const [isBotReplyLoading, setIsBotReplyLoading] = useState(false);
@@ -93,7 +95,7 @@ export function App() {
   const [isRightRailOpen, setIsRightRailOpen] = useState(true);
   const [isBriefPreviewExpanded, setIsBriefPreviewExpanded] = useState(false);
 
-  const fallbackEngineerAnswer = useMemo(() => answerAsBlockchainEngineer(question, brief), [question, brief]);
+  const fallbackEngineerAnswer = useMemo(() => answerAsBlockchainEngineer(question || initialBotQuestion, brief), [question, brief]);
   const requirementBriefContract = useMemo(
     () => (brief ? toRequirementBriefContract(brief, bundle ? 'approved' : 'ready_for_approval') : undefined),
     [brief, bundle],
@@ -122,28 +124,19 @@ export function App() {
   ];
   const botRecommendation = !brief
     ? {
-        title: 'I am ready to create the Requirement Brief.',
-        body:
-          'I will convert this conversation into a structured Requirement Brief covering goals, assumptions, constraints, workflows, and safety boundaries.',
-        primaryLabel: 'Create Requirement Brief',
+        primaryLabel: 'Create Requirement Doc',
         primaryActionId: uiActions.createRequirementBrief,
         primaryDisabled: false,
         onPrimary: createBrief,
       }
     : !engineeringBrief
       ? {
-          title: 'The Requirement Brief is ready for the next artifact.',
-          body:
-            'I recommend generating the Engineering Brief so the project has a structured build plan before any implementation work.',
           primaryLabel: isEngineeringBriefLoading ? 'Generating Engineering Brief...' : 'Generate Engineering Brief',
           primaryActionId: uiActions.generateEngineeringBrief,
           primaryDisabled: isEngineeringBriefLoading,
           onPrimary: createEngineeringBrief,
         }
       : {
-          title: 'The Engineering Brief is generated.',
-          body:
-            'The next implementation step can stay gated until the brief is reviewed. No deployment or wallet action is triggered here.',
           primaryLabel: isRunning ? 'Coding Bot running mini-bots...' : 'Approve Brief and Run Coding Bot',
           primaryActionId: 'run_coding_bot',
           primaryDisabled: isRunning,
@@ -339,24 +332,36 @@ export function App() {
                   </div>
                   <span>Master Orchestrator</span>
                 </div>
-                <div className="bot-understanding">
-                  <span>What I understand</span>
-                  <p>
-                    You are preparing {facts.fundName} as a tokenized income product for {facts.targetInvestors}.
-                    I will keep the work bounded to Ethereum testnet planning, user-wallet signing, and no backend private-key custody.
-                  </p>
-                </div>
-                <div className="assistant-response" data-testid="engineer-answer">
-                  {isBotReplyLoading ? 'Waiting for Blockchain Engineer Bot...' : engineerAnswer}
-                </div>
-                <section className="recommendation-card" aria-label="Engineering Bot recommendation">
-                  <div>
-                    <p className="eyebrow">Recommendation</p>
-                    <h3>{botRecommendation.title}</h3>
-                    <p>{botRecommendation.body}</p>
+                <div className="bot-conversation" aria-label="Engineering Bot conversation">
+                  <div className="bot-reply">
+                    <span>Engineering Bot reply</span>
+                    <div className="assistant-response" data-testid="engineer-answer">
+                      {isBotReplyLoading ? 'Waiting for Blockchain Engineer Bot...' : engineerAnswer}
+                    </div>
                   </div>
-                  <div className="recommendation-actions">
+                </div>
+                <label className="chat-composer">
+                  <span className="composer-title">Engineering Bot MILA</span>
+                  <textarea
+                    aria-label="Engineering Bot MILA"
+                    placeholder="Engineering Bot MILA"
+                    value={question}
+                    onChange={(event) => setQuestion(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault();
+                        void askBot();
+                      }
+                    }}
+                    rows={5}
+                  />
+                  <span>Press Enter to send, Shift+Enter for a new line.</span>
+                  <div className="composer-actions" aria-label="Engineering Bot actions">
+                    <button className="send-button" data-action-id={uiActions.askQuestion} onClick={askBot} disabled={isBotReplyLoading}>
+                      {isBotReplyLoading ? 'Sending...' : 'Send'}
+                    </button>
                     <button
+                      className="workflow-button"
                       data-action-id={botRecommendation.primaryActionId}
                       disabled={botRecommendation.primaryDisabled}
                       onClick={botRecommendation.onPrimary}
@@ -364,29 +369,13 @@ export function App() {
                       {botRecommendation.primaryLabel}
                     </button>
                     <button
-                      className="secondary-button"
+                      className="workflow-button"
                       data-action-id={uiActions.reviewAssumptions}
                       onClick={() => setIsBriefPreviewExpanded(true)}
                     >
                       Review assumptions
                     </button>
-                    <button className="secondary-button" data-action-id={uiActions.askQuestion} onClick={askBot} disabled={isBotReplyLoading}>
-                      {isBotReplyLoading ? 'Asking bot...' : 'Ask a question'}
-                    </button>
                   </div>
-                </section>
-                <label>
-                  Tokenisation goal
-                  <textarea value={goal} onChange={(event) => setGoal(event.target.value)} rows={5} />
-                </label>
-                <label>
-                  Blockchain Engineer Bot question
-                  <textarea
-                    aria-label="Blockchain Engineer Bot question"
-                    value={question}
-                    onChange={(event) => setQuestion(event.target.value)}
-                    rows={5}
-                  />
                 </label>
                 {botChatError && (
                   <p className="error-text" role="alert">
@@ -492,7 +481,7 @@ export function App() {
                         <div>
                           <span>Open items</span>
                           <strong>Requirement Brief pending</strong>
-                          <p>Create the brief from the central Engineering Bot recommendation.</p>
+                          <p>Create the brief from the central Engineering Bot action.</p>
                         </div>
                       </>
                     )}

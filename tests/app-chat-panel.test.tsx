@@ -101,9 +101,17 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('Project Closure Ledger')).toBeVisible();
     expect(screen.getByText('Need help? Ask the Engineering Bot')).toBeVisible();
     expect(screen.getByText('Local preview shown until a backend response is available.')).toBeVisible();
-    expect(screen.getByLabelText('Engineering Bot recommendation')).toBeVisible();
-    expect(screen.getByText('I am ready to create the Requirement Brief.')).toBeVisible();
-    expect(screen.getAllByRole('button', { name: 'Create Requirement Brief' })).toHaveLength(1);
+    expect(screen.getByLabelText('Engineering Bot actions')).toBeVisible();
+    expect(screen.queryByText('Recommendation')).not.toBeInTheDocument();
+    expect(screen.queryByText('I am ready to create the Requirement Brief.')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Create Requirement Doc' })).toHaveLength(1);
+    expect(screen.queryByText('What I understand')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tokenisation goal')).not.toBeInTheDocument();
+    expect(screen.getByText('Engineering Bot reply')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'Engineering Bot MILA' })).toBeVisible();
+    expect(screen.getByText('Press Enter to send, Shift+Enter for a new line.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Ask a question' })).not.toBeInTheDocument();
     expect(screen.queryByText('Next Recommended Action')).not.toBeInTheDocument();
     expect(screen.getByTestId('smart-contract-control')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Smart Contract Control Panel' })).toBeVisible();
@@ -111,12 +119,13 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('Distribution Recorded')).toBeVisible();
     expect(screen.getAllByRole('button', { name: 'Trigger Event' }).length).toBeGreaterThan(0);
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'Blockchain Engineer Bot question' }), {
+    const botComposer = screen.getByRole('textbox', { name: 'Engineering Bot MILA' });
+    fireEvent.change(botComposer, {
       target: { value: 'Should we use ERC-20 or ERC-721?' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Ask a question' }));
+    fireEvent.keyDown(botComposer, { key: 'Enter', code: 'Enter' });
 
-    expect(screen.getByRole('button', { name: 'Asking bot...' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Sending...' })).toBeDisabled();
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Waiting for Blockchain Engineer Bot...');
 
     await waitFor(() => {
@@ -131,10 +140,10 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     render(<App />);
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'Blockchain Engineer Bot question' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Engineering Bot MILA' }), {
       target: { value: '   ' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Ask a question' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a question before asking the bot.');
@@ -145,10 +154,10 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     render(<App />);
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'Blockchain Engineer Bot question' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Engineering Bot MILA' }), {
       target: { value: 'How should deployment work?' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Ask a question' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(
@@ -170,7 +179,7 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create Requirement Brief' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Requirement Doc' }));
     expect(screen.getAllByRole('button', { name: 'Generate Engineering Brief' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Generate Engineering Brief' }));
 
@@ -222,7 +231,7 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create Requirement Brief' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Requirement Doc' }));
     fireEvent.click(screen.getByRole('button', { name: 'Generate Engineering Brief' }));
 
     await waitFor(() => {
@@ -236,7 +245,7 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     const rightRail = screen.getByLabelText('Project status');
     expect(within(rightRail).queryByText('Next Recommended Action')).not.toBeInTheDocument();
-    expect(within(rightRail).queryByRole('button', { name: 'Create Requirement Brief' })).not.toBeInTheDocument();
+    expect(within(rightRail).queryByRole('button', { name: 'Create Requirement Doc' })).not.toBeInTheDocument();
     expect(within(rightRail).getByText('Step 1 To-Do Checklist')).toBeVisible();
     expect(within(rightRail).getByText('Step 1 Artifacts')).toBeVisible();
     expect(within(rightRail).getByText('Safe-by-Design Summary')).toBeVisible();
