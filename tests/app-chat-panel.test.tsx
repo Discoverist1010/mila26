@@ -76,6 +76,22 @@ describe('App Blockchain Engineer Bot panel', () => {
           messageId: 'chat-1',
           agentId: 'blockchain-engineer',
           content: 'Backend mock says ERC-20 is suitable for fungible portfolio shares.',
+          protocolComparison: {
+            erc20: 'Fungible portfolio shares with broad wallet support.',
+            erc721: 'Unique investor positions with token-specific metadata.',
+            recommendation: 'Use ERC-20 unless the Requirement Brief requires unique positions.',
+          },
+          suggestedRequirementUpdates: [
+            {
+              field: 'token.standardPreference',
+              proposedValue: 'ERC-20',
+              rationale: 'The stated income fund goal looks fungible for the MVP.',
+              confidence: 0.84,
+            },
+          ],
+          openQuestions: ['Should every approved investor hold identical share units?'],
+          riskNotes: ['Backend must not hold private keys.'],
+          nextRecommendedAction: 'Confirm ERC-20 versus ERC-721 before approving the Requirement Brief.',
           createdAt: '2026-05-21T00:00:00.000Z',
         },
       }),
@@ -137,6 +153,17 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(screen.getByText('Backend response.')).toBeVisible();
     });
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Backend mock says ERC-20');
+    expect(screen.getByText('Protocol comparison')).toBeVisible();
+    expect(screen.getByText('ERC-20: Fungible portfolio shares with broad wallet support.')).toBeVisible();
+    expect(screen.getByText('ERC-721: Unique investor positions with token-specific metadata.')).toBeVisible();
+    expect(screen.getByText('Suggested requirement updates')).toBeVisible();
+    expect(screen.getByText('token.standardPreference: ERC-20. The stated income fund goal looks fungible for the MVP.')).toBeVisible();
+    expect(screen.getByText('Open questions')).toBeVisible();
+    expect(screen.getByText('Should every approved investor hold identical share units?')).toBeVisible();
+    expect(screen.getByText('Risk notes')).toBeVisible();
+    expect(screen.getByText('Backend must not hold private keys.')).toBeVisible();
+    expect(screen.getByText('Recommended next action')).toBeVisible();
+    expect(screen.getByText('Confirm ERC-20 versus ERC-721 before approving the Requirement Brief.')).toBeVisible();
   });
 
   it('blocks blank input before calling fetch', async () => {

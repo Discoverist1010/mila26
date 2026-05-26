@@ -448,11 +448,47 @@ h3 {
   border-radius: 8px;
   background: #f1fbf9;
   color: #163f3b;
-  font-weight: 720;
   line-height: 1.36;
   min-height: 210px;
   overflow: auto;
   padding: 14px;
+}
+
+.engineer-response-view {
+  display: grid;
+  gap: 14px;
+}
+
+.engineer-response-view > p {
+  font-weight: 720;
+  margin: 0;
+}
+
+.engineer-response-section {
+  border-top: 1px solid #cfe1df;
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+.engineer-response-section h4 {
+  color: #4c6076;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.engineer-response-section ul {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.engineer-response-section li {
+  font-size: 14px;
+  font-weight: 650;
 }
 
 .chat-composer {

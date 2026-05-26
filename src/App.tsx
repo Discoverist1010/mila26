@@ -7,10 +7,12 @@ import {
   runCodingBotOrchestration,
   type ImplementationBundle,
 } from './agents/agentRuntime';
+import { toBlockchainEngineerResponseViewModel } from './domain/blockchainEngineerResponseViewModel';
 import { moduleCatalog } from './domain/moduleCatalog';
 import { createDemoProjectClosureLedger } from './domain/projectClosureLedger';
 import { toProjectClosureReadModel } from './domain/projectClosureReadModel';
 import { toRequirementBriefContract } from './domain/requirementBrief';
+import type { BlockchainEngineerChatResponse } from '../server/contracts/chat';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
 import type { FundFacts, RequirementBrief } from './domain/schemas';
 
@@ -79,6 +81,15 @@ function downloadText(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
+function createLocalEngineerResponse(content: string): BlockchainEngineerChatResponse {
+  return {
+    messageId: 'local-preview',
+    agentId: 'blockchain-engineer',
+    content,
+    createdAt: new Date(0).toISOString(),
+  };
+}
+
 export function App() {
   const [facts] = useState<FundFacts>(starterFacts);
   const [goal] = useState('We want to launch a tokenized income product for approved investors.');
@@ -89,7 +100,9 @@ export function App() {
   const [isEngineeringBriefLoading, setIsEngineeringBriefLoading] = useState(false);
   const [bundle, setBundle] = useState<ImplementationBundle | undefined>();
   const [isRunning, setIsRunning] = useState(false);
-  const [engineerAnswer, setEngineerAnswer] = useState(() => answerAsBlockchainEngineer(initialBotQuestion));
+  const [engineerResponse, setEngineerResponse] = useState(() =>
+    createLocalEngineerResponse(answerAsBlockchainEngineer(initialBotQuestion)),
+  );
   const [engineerAnswerSource, setEngineerAnswerSource] = useState<'local' | 'backend'>('local');
   const [botChatError, setBotChatError] = useState<string | undefined>();
   const [isBotReplyLoading, setIsBotReplyLoading] = useState(false);
@@ -98,6 +111,10 @@ export function App() {
   const [isBriefPreviewExpanded, setIsBriefPreviewExpanded] = useState(false);
 
   const fallbackEngineerAnswer = useMemo(() => answerAsBlockchainEngineer(question || initialBotQuestion, brief), [question, brief]);
+  const engineerResponseViewModel = useMemo(
+    () => toBlockchainEngineerResponseViewModel(engineerResponse),
+    [engineerResponse],
+  );
   const requirementBriefContract = useMemo(
     () => (brief ? toRequirementBriefContract(brief, bundle ? 'approved' : 'ready_for_approval') : undefined),
     [brief, bundle],
@@ -218,13 +235,13 @@ export function App() {
     setIsBotReplyLoading(false);
 
     if (result.ok) {
-      setEngineerAnswer(result.data.content);
+      setEngineerResponse(result.data);
       setEngineerAnswerSource('backend');
       return;
     }
 
     setBotChatError(result.message);
-    setEngineerAnswer(fallbackEngineerAnswer);
+    setEngineerResponse(createLocalEngineerResponse(fallbackEngineerAnswer));
     setEngineerAnswerSource('local');
   }
 
@@ -344,7 +361,23 @@ export function App() {
                   <div className="bot-reply">
                     <span>Engineering Bot reply</span>
                     <div className="assistant-response" data-testid="engineer-answer">
-                      {isBotReplyLoading ? 'Waiting for Blockchain Engineer Bot...' : engineerAnswer}
+                      {isBotReplyLoading ? (
+                        'Waiting for Blockchain Engineer Bot...'
+                      ) : (
+                        <div className="engineer-response-view">
+                          <p>{engineerResponseViewModel.summary}</p>
+                          {engineerResponseViewModel.sections.map((section) => (
+                            <section className="engineer-response-section" key={section.kind}>
+                              <h4>{section.title}</h4>
+                              <ul>
+                                {section.items.map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ul>
+                            </section>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
