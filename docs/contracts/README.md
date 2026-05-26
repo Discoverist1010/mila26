@@ -36,6 +36,10 @@ Track 5B adds a deterministic backend Engineering Brief contract and route:
 
 - [`engineering-brief-contract.md`](engineering-brief-contract.md): `POST /api/prd/engineering-brief` request/response contract, validation boundaries, and deterministic/mock status.
 
+Track 7A adds a typed Project Closure Ledger / Open Items contract foundation:
+
+- [`project-closure-ledger-contract.md`](project-closure-ledger-contract.md): closure checks, open items, evidence references, fixed MVP deployment boundaries, and derived readiness summary.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:
