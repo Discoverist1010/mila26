@@ -99,6 +99,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Current-stage activities')).toBeVisible();
     expect(screen.getByText('Goal intake')).toBeVisible();
     expect(screen.getByText('Project Closure Ledger')).toBeVisible();
+    expect(screen.getAllByText('Requirement Brief pending').length).toBeGreaterThan(0);
+    expect(screen.getByText('1 unresolved open item(s)')).toBeVisible();
+    expect(screen.getByText('0 blocking item(s)')).toBeVisible();
     expect(screen.getByText('Need help? Ask the Engineering Bot')).toBeVisible();
     expect(screen.getByText('Local preview shown until a backend response is available.')).toBeVisible();
     expect(screen.getByLabelText('Engineering Bot actions')).toBeVisible();
@@ -118,6 +121,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('NAV Updated')).toBeVisible();
     expect(screen.getByText('Distribution Recorded')).toBeVisible();
     expect(screen.getAllByRole('button', { name: 'Trigger Event' }).length).toBeGreaterThan(0);
+    expect(screen.getByText('Closure readiness')).toBeVisible();
+    expect(screen.getByText('Closure readiness pending')).toBeVisible();
 
     const botComposer = screen.getByRole('textbox', { name: 'Engineering Bot MILA' });
     fireEvent.change(botComposer, {
@@ -212,6 +217,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(artifactScope.getByText('Risks / controls')).toBeVisible();
     expect(artifactScope.getByText('Acceptance criteria')).toBeVisible();
     expect(artifactScope.getByText('Capture tokenized fund requirements.')).toBeVisible();
+    expect(screen.getAllByText('Ready for artifact specification').length).toBeGreaterThan(0);
+    expect(screen.getByText('Closure ready for artifact specification')).toBeVisible();
+    expect(screen.getByText('Closure: Ready')).toBeVisible();
   });
 
   it('shows a safe Engineering Brief error state when the backend rejects the request', async () => {
@@ -247,6 +255,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(within(rightRail).queryByText('Next Recommended Action')).not.toBeInTheDocument();
     expect(within(rightRail).queryByRole('button', { name: 'Create Requirement Doc' })).not.toBeInTheDocument();
     expect(within(rightRail).getByText('Step 1 To-Do Checklist')).toBeVisible();
+    expect(within(rightRail).getByText('Create Requirement Brief')).toBeVisible();
+    expect(within(rightRail).getByText('Review closure readiness')).toBeVisible();
     expect(within(rightRail).getByText('Step 1 Artifacts')).toBeVisible();
     expect(within(rightRail).getByText('Safe-by-Design Summary')).toBeVisible();
 
@@ -260,6 +270,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(within(briefPreview).getByText('Key workflows')).toBeVisible();
     expect(within(briefPreview).getByText('Deployment boundary')).toBeVisible();
     expect(within(briefPreview).getByText('Open items')).toBeVisible();
+    expect(within(briefPreview).getAllByText('Requirement Brief pending').length).toBeGreaterThan(0);
+    expect(within(briefPreview).getByText('Create the brief before closure checks can be reviewed.')).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Collapse Brief Preview' }));
     expect(within(briefPreview).queryByText('Key workflows')).not.toBeInTheDocument();

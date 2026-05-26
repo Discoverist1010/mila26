@@ -8,6 +8,8 @@ import {
   type ImplementationBundle,
 } from './agents/agentRuntime';
 import { moduleCatalog } from './domain/moduleCatalog';
+import { createDemoProjectClosureLedger } from './domain/projectClosureLedger';
+import { toProjectClosureReadModel } from './domain/projectClosureReadModel';
 import { toRequirementBriefContract } from './domain/requirementBrief';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
 import type { FundFacts, RequirementBrief } from './domain/schemas';
@@ -100,6 +102,16 @@ export function App() {
     () => (brief ? toRequirementBriefContract(brief, bundle ? 'approved' : 'ready_for_approval') : undefined),
     [brief, bundle],
   );
+  const projectClosureLedger = useMemo(() => createDemoProjectClosureLedger(), []);
+  const projectClosureReadModel = useMemo(
+    () =>
+      toProjectClosureReadModel({
+        ledger: projectClosureLedger,
+        hasRequirementBrief: Boolean(brief),
+        hasEngineeringBrief: Boolean(engineeringBrief),
+      }),
+    [projectClosureLedger, brief, engineeringBrief],
+  );
   const generatedArtifacts = bundle?.results.flatMap((result) => result.artifacts) ?? [];
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
   const currentGate = engineeringBrief
@@ -111,15 +123,10 @@ export function App() {
   const selectedModules = brief?.modules.filter((module) => module.enabled) ?? [];
   const tokenModelSummary =
     requirementBriefContract?.tokenModel.assumption ?? 'Token model will be confirmed in the Requirement Brief.';
-  const stepTodos = [
-    { label: 'Capture business objective', done: true },
-    { label: 'Confirm token model assumptions', done: Boolean(brief) },
-    { label: 'Review investor access constraints', done: Boolean(brief) },
-    { label: 'Generate Engineering Brief', done: Boolean(engineeringBrief) },
-  ];
   const activeStepArtifacts = [
     brief ? 'Requirement Brief draft' : 'Requirement Brief draft pending',
     engineeringBrief ? 'Engineering Brief artifact' : 'Engineering Brief pending',
+    `Closure readiness: ${projectClosureReadModel.readinessLabel}`,
     'Decision notes local only',
   ];
   const botRecommendation = !brief
@@ -277,10 +284,11 @@ export function App() {
 
           <section className="rail-section">
             <p className="eyebrow">Project Closure Ledger</p>
-            <h2>Open Items</h2>
+            <h2>{projectClosureReadModel.readinessLabel}</h2>
             <ul className="rail-list">
-              <li>{brief ? 'Requirement Brief drafted' : 'Requirement Brief pending'}</li>
-              <li>{engineeringBrief ? 'Engineering Brief generated' : 'Engineering Brief pending'}</li>
+              <li>{projectClosureReadModel.openItemCount} unresolved open item(s)</li>
+              <li>{projectClosureReadModel.blockingOpenItemCount} blocking item(s)</li>
+              <li>{projectClosureReadModel.deferredItemCount} deferred item(s)</li>
               <li>Wallet-signed deployment gate locked</li>
             </ul>
           </section>
@@ -445,8 +453,8 @@ export function App() {
                     </div>
                     <div>
                       <span>Open items</span>
-                      <strong>{brief.unresolvedQuestions.length || 1} item(s)</strong>
-                      <p>{brief.unresolvedQuestions[0] ?? 'Confirm assumptions before moving to implementation planning.'}</p>
+                      <strong>{projectClosureReadModel.briefPreviewOpenItemSummary.label}</strong>
+                      <p>{projectClosureReadModel.briefPreviewOpenItemSummary.detail}</p>
                     </div>
                   </div>
                 ) : (
@@ -480,8 +488,8 @@ export function App() {
                         </div>
                         <div>
                           <span>Open items</span>
-                          <strong>Requirement Brief pending</strong>
-                          <p>Create the brief from the central Engineering Bot action.</p>
+                          <strong>{projectClosureReadModel.briefPreviewOpenItemSummary.label}</strong>
+                          <p>{projectClosureReadModel.briefPreviewOpenItemSummary.detail}</p>
                         </div>
                       </>
                     )}
@@ -648,9 +656,9 @@ export function App() {
           <section className="status-panel">
             <p className="eyebrow">Step 1 To-Do Checklist</p>
             <ul className="check-list">
-              {stepTodos.map((todo) => (
-                <li key={todo.label} className={todo.done ? 'done' : ''}>
-                  <span>{todo.done ? 'Done' : 'Open'}</span>
+              {projectClosureReadModel.rightRailChecklistItems.map((todo) => (
+                <li key={todo.label} className={todo.status === 'done' ? 'done' : ''}>
+                  <span>{todo.status === 'done' ? 'Done' : todo.status}</span>
                   {todo.label}
                 </li>
               ))}
@@ -669,9 +677,11 @@ export function App() {
 
           <section className="status-panel" id="deployment-gate">
             <p className="eyebrow">Safe-by-Design Summary</p>
-            <h2>Locked for MVP</h2>
-            <p className="muted">User wallet signing comes later. Backend private keys and mainnet deployment are out of scope.</p>
-            <p className="open-count">{stepTodos.filter((todo) => !todo.done).length} open item(s)</p>
+            <h2>{projectClosureReadModel.readinessLabel}</h2>
+            <p className="muted">{projectClosureReadModel.readinessDescription}</p>
+            <p className="open-count">
+              {projectClosureReadModel.openItemCount} unresolved / {projectClosureReadModel.deferredItemCount} deferred item(s)
+            </p>
           </section>
         </aside>
         )}
@@ -714,6 +724,10 @@ export function App() {
           <article>
             <span>Wallet Connection</span>
             <strong>Not connected in MVP</strong>
+          </article>
+          <article>
+            <span>Closure readiness</span>
+            <strong>{projectClosureReadModel.scpReadinessPreview.label}</strong>
           </article>
         </div>
 
@@ -765,10 +779,12 @@ export function App() {
           <section className="contract-section">
             <h3>Contract Health</h3>
             <div className="health-list">
+              {projectClosureReadModel.scpReadinessPreview.healthItems.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
               <span>Compilation: Later stage</span>
-              <span>Audit evidence: Later stage</span>
-              <span>Mainnet: Disabled</span>
             </div>
+            <p className="microcopy">{projectClosureReadModel.scpReadinessPreview.detail}</p>
           </section>
         </div>
       </section>
