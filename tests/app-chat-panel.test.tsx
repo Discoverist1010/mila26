@@ -124,6 +124,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByText('Recommendation')).not.toBeInTheDocument();
     expect(screen.queryByText('I am ready to create the Requirement Brief.')).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Create Requirement Doc' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Create Requirement Doc' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Review assumptions' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Approve Brief and Run Coding Bot' })).not.toBeInTheDocument();
     expect(screen.queryByText('What I understand')).not.toBeInTheDocument();
     expect(screen.queryByText('Tokenisation goal')).not.toBeInTheDocument();
     expect(screen.getByText('Engineering Bot reply')).toBeVisible();
@@ -213,6 +216,7 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Create Requirement Doc' }));
     expect(screen.getAllByRole('button', { name: 'Generate Engineering Brief' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Generate Engineering Brief' })).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'Generate Engineering Brief' }));
 
     expect(screen.getByRole('button', { name: 'Generating Engineering Brief...' })).toBeDisabled();
@@ -247,6 +251,10 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getAllByText('Ready for artifact specification').length).toBeGreaterThan(0);
     expect(screen.getByText('Closure ready for artifact specification')).toBeVisible();
     expect(screen.getByText('Closure: Ready')).toBeVisible();
+    const nextAction = screen.getByRole('button', { name: 'Prepare Smart Contract Spec' });
+    expect(nextAction).toBeDisabled();
+    expect(screen.getByText('Track 9A will wire this action after the Smart Contract Artifact Spec contract and route are added.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Approve Brief and Run Coding Bot' })).not.toBeInTheDocument();
   });
 
   it('shows a safe Engineering Brief error state when the backend rejects the request', async () => {
@@ -281,6 +289,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     const rightRail = screen.getByLabelText('Project status');
     expect(within(rightRail).queryByText('Next Recommended Action')).not.toBeInTheDocument();
     expect(within(rightRail).queryByRole('button', { name: 'Create Requirement Doc' })).not.toBeInTheDocument();
+    expect(within(rightRail).queryByRole('button', { name: 'Prepare Smart Contract Spec' })).not.toBeInTheDocument();
+    expect(within(rightRail).queryByRole('button', { name: 'Approve Brief and Run Coding Bot' })).not.toBeInTheDocument();
     expect(within(rightRail).getByText('Step 1 To-Do Checklist')).toBeVisible();
     expect(within(rightRail).getByText('Create Requirement Brief')).toBeVisible();
     expect(within(rightRail).getByText('Review closure readiness')).toBeVisible();

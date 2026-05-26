@@ -526,7 +526,8 @@ h3 {
 }
 
 .chat-status,
-.error-text {
+.error-text,
+.action-disabled-reason {
   font-size: 12px;
   font-weight: 760;
   margin-bottom: 0;
@@ -534,6 +535,10 @@ h3 {
 
 .chat-status {
   color: #617086;
+}
+
+.action-disabled-reason {
+  color: #7a5b24;
 }
 
 .error-text {

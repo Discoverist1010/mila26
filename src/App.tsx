@@ -4,13 +4,13 @@ import { generateEngineeringBrief } from './api/engineeringBrief';
 import {
   answerAsBlockchainEngineer,
   createRequirementBrief,
-  runCodingBotOrchestration,
-  type ImplementationBundle,
 } from './agents/agentRuntime';
+import { toCockpitActionViewModel } from './domain/cockpitActionRegistry';
 import { toBlockchainEngineerResponseViewModel } from './domain/blockchainEngineerResponseViewModel';
 import { moduleCatalog } from './domain/moduleCatalog';
 import { createDemoProjectClosureLedger } from './domain/projectClosureLedger';
 import { toProjectClosureReadModel } from './domain/projectClosureReadModel';
+import { toProjectLifecycleReadModel, type Mila26UiActionId } from './domain/projectLifecycleReadModel';
 import { toRequirementBriefContract } from './domain/requirementBrief';
 import type { BlockchainEngineerChatResponse } from '../server/contracts/chat';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
@@ -71,16 +71,6 @@ const uiActions = {
   scrollToScp: 'scroll_to_scp',
 } as const;
 
-function downloadText(filename: string, content: string) {
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
 function createLocalEngineerResponse(content: string): BlockchainEngineerChatResponse {
   return {
     messageId: 'local-preview',
@@ -98,8 +88,6 @@ export function App() {
   const [engineeringBrief, setEngineeringBrief] = useState<EngineeringBrief | undefined>();
   const [engineeringBriefError, setEngineeringBriefError] = useState<string | undefined>();
   const [isEngineeringBriefLoading, setIsEngineeringBriefLoading] = useState(false);
-  const [bundle, setBundle] = useState<ImplementationBundle | undefined>();
-  const [isRunning, setIsRunning] = useState(false);
   const [engineerResponse, setEngineerResponse] = useState(() =>
     createLocalEngineerResponse(answerAsBlockchainEngineer(initialBotQuestion)),
   );
@@ -116,8 +104,8 @@ export function App() {
     [engineerResponse],
   );
   const requirementBriefContract = useMemo(
-    () => (brief ? toRequirementBriefContract(brief, bundle ? 'approved' : 'ready_for_approval') : undefined),
-    [brief, bundle],
+    () => (brief ? toRequirementBriefContract(brief, 'ready_for_approval') : undefined),
+    [brief],
   );
   const projectClosureLedger = useMemo(() => createDemoProjectClosureLedger(), []);
   const projectClosureReadModel = useMemo(
@@ -129,14 +117,26 @@ export function App() {
       }),
     [projectClosureLedger, brief, engineeringBrief],
   );
-  const generatedArtifacts = bundle?.results.flatMap((result) => result.artifacts) ?? [];
+  const projectLifecycleReadModel = useMemo(
+    () =>
+      toProjectLifecycleReadModel({
+        hasRequirementBrief: Boolean(brief),
+        hasEngineeringBrief: Boolean(engineeringBrief),
+        closureReadiness: projectClosureReadModel,
+      }),
+    [brief, engineeringBrief, projectClosureReadModel],
+  );
+  const cockpitActionViewModel = useMemo(
+    () => toCockpitActionViewModel(projectLifecycleReadModel),
+    [projectLifecycleReadModel],
+  );
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
   const currentGate = engineeringBrief
     ? 'Engineering Brief generated'
     : brief
       ? 'Engineering Brief generation'
       : 'Requirement brief approval';
-  const approvalGateStatus = bundle ? 'Approved' : engineeringBrief ? 'Engineering brief ready' : brief ? 'Brief ready' : 'Draft brief';
+  const approvalGateStatus = engineeringBrief ? 'Engineering brief ready' : brief ? 'Brief ready' : 'Draft brief';
   const selectedModules = brief?.modules.filter((module) => module.enabled) ?? [];
   const tokenModelSummary =
     requirementBriefContract?.tokenModel.assumption ?? 'Token model will be confirmed in the Requirement Brief.';
@@ -146,33 +146,14 @@ export function App() {
     `Closure readiness: ${projectClosureReadModel.readinessLabel}`,
     'Decision notes local only',
   ];
-  const botRecommendation = !brief
-    ? {
-        primaryLabel: 'Create Requirement Doc',
-        primaryActionId: uiActions.createRequirementBrief,
-        primaryDisabled: false,
-        onPrimary: createBrief,
-      }
-    : !engineeringBrief
-      ? {
-          primaryLabel: isEngineeringBriefLoading ? 'Generating Engineering Brief...' : 'Generate Engineering Brief',
-          primaryActionId: uiActions.generateEngineeringBrief,
-          primaryDisabled: isEngineeringBriefLoading,
-          onPrimary: createEngineeringBrief,
-        }
-      : {
-          primaryLabel: isRunning ? 'Coding Bot running mini-bots...' : 'Approve Brief and Run Coding Bot',
-          primaryActionId: 'run_coding_bot',
-          primaryDisabled: isRunning,
-          onPrimary: runAgents,
-        };
+  const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
+  const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
 
   function createBrief() {
     const nextBrief = createRequirementBrief(facts, goal);
     setBrief(nextBrief);
     setEngineeringBrief(undefined);
     setEngineeringBriefError(undefined);
-    setBundle(undefined);
   }
 
   async function createEngineeringBrief() {
@@ -193,17 +174,6 @@ export function App() {
     }
 
     setEngineeringBriefError(result.message);
-  }
-
-  async function runAgents() {
-    if (!brief) return;
-    setIsRunning(true);
-    try {
-      const nextBundle = await runCodingBotOrchestration(brief);
-      setBundle(nextBundle);
-    } finally {
-      setIsRunning(false);
-    }
   }
 
   async function askBot() {
@@ -243,6 +213,33 @@ export function App() {
     setBotChatError(result.message);
     setEngineerResponse(createLocalEngineerResponse(fallbackEngineerAnswer));
     setEngineerAnswerSource('local');
+  }
+
+  function runCockpitAction(actionId: Mila26UiActionId) {
+    switch (actionId) {
+      case 'create_requirement_brief':
+        createBrief();
+        return;
+      case 'generate_engineering_brief':
+        void createEngineeringBrief();
+        return;
+      case 'review_assumptions':
+      case 'open_brief':
+      case 'toggle_brief_panel':
+        setIsBriefPreviewExpanded(true);
+        return;
+      case 'ask_question':
+        void askBot();
+        return;
+      default:
+        return;
+    }
+  }
+
+  function cockpitActionLabel(actionId: Mila26UiActionId, fallbackLabel: string) {
+    if (actionId === 'generate_engineering_brief' && isEngineeringBriefLoading) return 'Generating Engineering Brief...';
+    if (actionId === 'ask_question' && isBotReplyLoading) return 'Sending...';
+    return fallbackLabel;
   }
 
   return (
@@ -403,21 +400,30 @@ export function App() {
                     </button>
                     <button
                       className="workflow-button"
-                      data-action-id={botRecommendation.primaryActionId}
-                      disabled={botRecommendation.primaryDisabled}
-                      onClick={botRecommendation.onPrimary}
+                      data-action-id={primaryWorkflowAction.id}
+                      disabled={!primaryWorkflowAction.enabled || isEngineeringBriefLoading}
+                      onClick={() => runCockpitAction(primaryWorkflowAction.id)}
+                      title={primaryWorkflowAction.disabledReason}
                     >
-                      {botRecommendation.primaryLabel}
+                      {cockpitActionLabel(primaryWorkflowAction.id, primaryWorkflowAction.label)}
                     </button>
-                    <button
-                      className="workflow-button"
-                      data-action-id={uiActions.reviewAssumptions}
-                      onClick={() => setIsBriefPreviewExpanded(true)}
-                    >
-                      Review assumptions
-                    </button>
+                    {secondaryWorkflowActions.map((action) => (
+                      <button
+                        className="workflow-button"
+                        data-action-id={action.id}
+                        disabled={!action.enabled}
+                        key={action.id}
+                        onClick={() => runCockpitAction(action.id)}
+                        title={action.disabledReason}
+                      >
+                        {action.label}
+                      </button>
+                    ))}
                   </div>
                 </label>
+                {!primaryWorkflowAction.enabled && primaryWorkflowAction.disabledReason && (
+                  <p className="action-disabled-reason">{primaryWorkflowAction.disabledReason}</p>
+                )}
                 {botChatError && (
                   <p className="error-text" role="alert">
                     {botChatError}
@@ -621,49 +627,9 @@ export function App() {
                   </ul>
                 </article>
               </div>
-              <div className="approval-gate">
-                <div>
-                  <span>Later stage</span>
-                  <strong>Run deterministic implementation artifacts from the approved brief.</strong>
-                </div>
-                <button disabled={isRunning} onClick={runAgents}>
-                  {isRunning ? 'Coding Bot running mini-bots...' : 'Approve Brief and Run Coding Bot'}
-                </button>
-              </div>
             </section>
           )}
 
-          {bundle && (
-            <section className="artifact-panel" data-testid="artifact-workspace">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Step 4</p>
-                  <h2>Evidence Pack</h2>
-                  <p className="muted">Review evidence before any future testnet path.</p>
-                </div>
-              </div>
-              <button onClick={() => downloadText('MILA26-Evidence-Pack.md', bundle.evidencePack.markdown)}>
-                Download Evidence Pack
-              </button>
-              <pre className="code-block">{bundle.evidencePack.markdown}</pre>
-            </section>
-          )}
-
-          {generatedArtifacts.length > 0 && (
-            <section className="artifact-panel">
-              <h2>Generated Artifacts</h2>
-              {generatedArtifacts.map((artifact) => (
-                <details key={artifact.id} className="artifact-card" open={artifact.kind === 'solidity'}>
-                  <summary>{artifact.filename}</summary>
-                  <div className="artifact-meta">
-                    <span>{artifact.kind}</span>
-                    <span>Source: {artifact.sourceTaskId}</span>
-                  </div>
-                  <pre className="code-block">{artifact.content}</pre>
-                </details>
-              ))}
-            </section>
-          )}
         </section>
 
         {isRightRailOpen && (
