@@ -3,6 +3,7 @@ import { fail } from './http/responses';
 import { blockchainEngineerChatRoutes } from './routes/blockchainEngineerChat';
 import { engineeringBriefRoutes } from './routes/engineeringBrief';
 import { healthRoutes } from './routes/health';
+import { smartContractArtifactRoutes } from './routes/smartContractArtifact';
 import { smartContractArtifactSpecRoutes } from './routes/smartContractArtifactSpec';
 import type { Mila26LlmProvider } from './llm/types';
 
@@ -53,6 +54,7 @@ export function createApp(options: CreateAppOptions = {}) {
     llmProvider: options.engineeringBriefLlmProvider,
   });
   app.register(smartContractArtifactSpecRoutes, { prefix: '/api' });
+  app.register(smartContractArtifactRoutes, { prefix: '/api' });
 
   app.setNotFoundHandler(async (_request, reply) => {
     return reply.code(404).send(fail('NOT_FOUND', 'Route not found.'));

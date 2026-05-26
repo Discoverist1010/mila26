@@ -24,13 +24,15 @@ Run the local API skeleton in a second terminal:
 npm run dev:api
 ```
 
-The backend exposes `GET /api/health`, `POST /api/chat/blockchain-engineer`, and `POST /api/prd/engineering-brief` on `http://127.0.0.1:5174` by default. Persistence, wallet integration, and deployment behavior are intentionally not implemented yet.
+The backend exposes `GET /api/health`, `POST /api/chat/blockchain-engineer`, `POST /api/prd/engineering-brief`, `POST /api/smart-contract/artifact-spec`, and `POST /api/smart-contract/artifact` on `http://127.0.0.1:5174` by default. Persistence, wallet integration, and deployment behavior are intentionally not implemented yet.
 
 Track 6D adds a frontend action that generates a readable Engineering Brief artifact from the current Requirement Brief. Track 6E can make the backend PRD route LLM-assisted when a real backend provider is configured; deterministic generation remains the default and fallback.
 
 Track 6F implements the approved `mila26-cockpit2` frontend UX foundation: a guided cockpit with project context, top stage progress, central Goal Copilot and Requirement Brief workbench, passive status rail, and a scroll-down Smart Contract Control Panel preview. The control panel is preview-only; mint, distribute, burn, pause, custom events, wallet, deployment, and blockchain actions do not execute.
 
 Track 6F.1 refines `mila26-cockpit2` so the Engineering Bot is the single workflow decision orchestrator. The right rail is passive and stage-specific, the Brief Preview is collapsible and artifact-focused, and both side rails can be hidden while future actions are prepared through local frontend action IDs only.
+
+Track 9B adds deterministic Smart Contract Artifact preview, spec-consistency check result, and evidence-lite linkage from the Track 9A spec. It remains preview-only: no Solidity compilation, OpenZeppelin install, wallet signing, deployment, fake contract address, transaction hash, or audit claim.
 
 The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
 

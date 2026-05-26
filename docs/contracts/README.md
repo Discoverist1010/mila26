@@ -48,6 +48,10 @@ Track 9A adds a deterministic Smart Contract Artifact Spec contract and route:
 
 - [`smart-contract-artifact-spec-contract.md`](smart-contract-artifact-spec-contract.md): ERC-20-compatible restricted token profile, event-to-evidence mapping, OpenZeppelin assumptions, and MVP safety boundaries before any Solidity artifact work.
 
+Track 9B adds deterministic artifact/check/evidence-lite linkage:
+
+- [`smart-contract-artifact-contract.md`](smart-contract-artifact-contract.md): preview-only contract artifact package, spec-consistency check result, and evidence-lite references without compile, deployment, wallet signing, or audit claims.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:
