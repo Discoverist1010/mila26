@@ -40,6 +40,10 @@ Track 7A adds a typed Project Closure Ledger / Open Items contract foundation:
 
 - [`project-closure-ledger-contract.md`](project-closure-ledger-contract.md): closure checks, open items, evidence references, fixed MVP deployment boundaries, and derived readiness summary.
 
+Track 8A adds a thin Project Lifecycle Read Model for cockpit coordination:
+
+- [`project-lifecycle-read-model-contract.md`](project-lifecycle-read-model-contract.md): derived stage, readiness, action availability, and fixed MVP safety boundaries without creating a monolithic lifecycle context.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:
