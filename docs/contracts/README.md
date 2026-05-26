@@ -44,6 +44,10 @@ Track 8A adds a thin Project Lifecycle Read Model for cockpit coordination:
 
 - [`project-lifecycle-read-model-contract.md`](project-lifecycle-read-model-contract.md): derived stage, readiness, action availability, and fixed MVP safety boundaries without creating a monolithic lifecycle context.
 
+Track 9A adds a deterministic Smart Contract Artifact Spec contract and route:
+
+- [`smart-contract-artifact-spec-contract.md`](smart-contract-artifact-spec-contract.md): ERC-20-compatible restricted token profile, event-to-evidence mapping, OpenZeppelin assumptions, and MVP safety boundaries before any Solidity artifact work.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:
