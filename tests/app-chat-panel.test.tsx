@@ -140,8 +140,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('NAV Updated')).toBeVisible();
     expect(screen.getByText('Distribution Recorded')).toBeVisible();
     expect(screen.getAllByRole('button', { name: 'Trigger Event' }).length).toBeGreaterThan(0);
-    expect(screen.getByText('Closure readiness')).toBeVisible();
-    expect(screen.getByText('Closure readiness pending')).toBeVisible();
+    expect(screen.getByText('SCP readiness')).toBeVisible();
+    expect(screen.getAllByText('Preview only').length).toBeGreaterThan(0);
 
     const botComposer = screen.getByRole('textbox', { name: 'Engineering Bot MILA' });
     fireEvent.change(botComposer, {
@@ -249,8 +249,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(artifactScope.getByText('Acceptance criteria')).toBeVisible();
     expect(artifactScope.getByText('Capture tokenized fund requirements.')).toBeVisible();
     expect(screen.getAllByText('Ready for artifact specification').length).toBeGreaterThan(0);
-    expect(screen.getByText('Closure ready for artifact specification')).toBeVisible();
-    expect(screen.getByText('Closure: Ready')).toBeVisible();
+    expect(screen.getAllByText('Ready for Smart Contract Spec').length).toBeGreaterThan(0);
+    expect(screen.getByText('Lifecycle: Ready for artifact specification')).toBeVisible();
     const nextAction = screen.getByRole('button', { name: 'Prepare Smart Contract Spec' });
     expect(nextAction).toBeDisabled();
     expect(screen.getByText('Track 9A will wire this action after the Smart Contract Artifact Spec contract and route are added.')).toBeVisible();

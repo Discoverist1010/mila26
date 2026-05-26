@@ -8,7 +8,7 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByLabel('Project status')).toBeVisible();
   await expect(page.getByLabel('Project safety badges').getByText(/Ethereum testnet only/i)).toBeVisible();
   await expect(page.getByLabel('Project status').getByRole('heading', { name: 'Requirement Brief pending' })).toBeVisible();
-  await expect(page.getByText('Closure readiness pending')).toBeVisible();
+  await expect(page.getByTestId('smart-contract-control').getByText('SCP readiness', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Top stage progress').getByText('Setup / Explore')).toBeVisible();
   await expect(page.getByLabel('Current-stage activities').getByText('Goal intake')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Engineering Bot decision workspace' })).toBeVisible();
@@ -39,7 +39,8 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
 
   await expect(page.getByTestId('smart-contract-control')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Smart Contract Control Panel' })).toBeVisible();
-  await expect(page.getByTestId('smart-contract-control').getByText('Closure readiness', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('smart-contract-control').getByText('SCP readiness', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('smart-contract-control').getByText('Preview only').first()).toBeVisible();
   await expect(page.getByText('NAV Updated')).toBeVisible();
   await expect(page.getByText('Distribution Recorded')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Trigger Event' }).first()).toBeVisible();

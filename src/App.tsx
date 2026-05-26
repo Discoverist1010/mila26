@@ -12,6 +12,7 @@ import { createDemoProjectClosureLedger } from './domain/projectClosureLedger';
 import { toProjectClosureReadModel } from './domain/projectClosureReadModel';
 import { toProjectLifecycleReadModel, type Mila26UiActionId } from './domain/projectLifecycleReadModel';
 import { toRequirementBriefContract } from './domain/requirementBrief';
+import { toSmartContractControlPanelViewModel } from './domain/smartContractControlPanelViewModel';
 import type { BlockchainEngineerChatResponse } from '../server/contracts/chat';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
 import type { FundFacts, RequirementBrief } from './domain/schemas';
@@ -43,20 +44,6 @@ const currentStageActivities = [
   'Constraints',
   'Notes & decisions',
   'Artifacts',
-];
-
-const customContractFeatures = [
-  { name: 'NAV Updated', initiation: 'Not user initiated', action: 'View only' },
-  { name: 'Distribution Recorded', initiation: 'User initiated', action: 'Trigger Event' },
-  { name: 'Redemption Requested', initiation: 'User initiated', action: 'Trigger Event' },
-  { name: 'Investor Added', initiation: 'User initiated', action: 'Trigger Event' },
-  { name: 'Investor Removed', initiation: 'User initiated', action: 'Trigger Event' },
-];
-
-const recentContractEvents = [
-  'No wallet-signed testnet events yet',
-  'Engineering Brief required before contract feature finalization',
-  'Deployment remains disabled for MVP',
 ];
 
 const uiActions = {
@@ -128,6 +115,10 @@ export function App() {
   );
   const cockpitActionViewModel = useMemo(
     () => toCockpitActionViewModel(projectLifecycleReadModel),
+    [projectLifecycleReadModel],
+  );
+  const smartContractControlPanel = useMemo(
+    () => toSmartContractControlPanelViewModel(projectLifecycleReadModel),
     [projectLifecycleReadModel],
   );
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
@@ -696,37 +687,39 @@ export function App() {
               your contract as you progress through the earlier stages.
             </p>
           </div>
-          <span className="gate-badge draft">Preview only</span>
+          <span className={`gate-badge ${smartContractControlPanel.status === 'ready_for_spec' ? 'ready' : 'draft'}`}>
+            {smartContractControlPanel.statusLabel}
+          </span>
         </div>
 
         <div className="contract-overview">
           <article>
             <span>Contract status</span>
-            <strong>Not deployed</strong>
+            <strong>{smartContractControlPanel.overview.contractStatus}</strong>
           </article>
           <article>
             <span>Contract address</span>
-            <strong>0x... pending testnet deployment</strong>
+            <strong>{smartContractControlPanel.overview.contractAddress}</strong>
           </article>
           <article>
             <span>Network</span>
-            <strong>Ethereum testnet only</strong>
+            <strong>{smartContractControlPanel.overview.network}</strong>
           </article>
           <article>
             <span>Deployed by</span>
-            <strong>User Wallet</strong>
+            <strong>{smartContractControlPanel.overview.deployedBy}</strong>
           </article>
           <article>
             <span>Contract type</span>
-            <strong>ERC-20 + custom</strong>
+            <strong>{smartContractControlPanel.overview.contractType}</strong>
           </article>
           <article>
             <span>Wallet Connection</span>
-            <strong>Not connected in MVP</strong>
+            <strong>{smartContractControlPanel.overview.walletConnection}</strong>
           </article>
           <article>
-            <span>Closure readiness</span>
-            <strong>{projectClosureReadModel.scpReadinessPreview.label}</strong>
+            <span>SCP readiness</span>
+            <strong>{smartContractControlPanel.overview.readiness}</strong>
           </article>
         </div>
 
@@ -734,9 +727,9 @@ export function App() {
           <section className="contract-section">
             <h3>Core actions</h3>
             <div className="control-actions">
-              {['Mint', 'Distribute', 'Burn', 'Pause/Unpause'].map((action) => (
-                <button key={action} disabled>
-                  {action}
+              {smartContractControlPanel.coreActions.map((action) => (
+                <button key={action.label} disabled={!action.enabled} title={action.disabledReason}>
+                  {action.label}
                 </button>
               ))}
             </div>
@@ -753,12 +746,14 @@ export function App() {
                 </tr>
               </thead>
               <tbody>
-                {customContractFeatures.map((feature) => (
+                {smartContractControlPanel.customFeatures.map((feature) => (
                   <tr key={feature.name}>
                     <td>{feature.name}</td>
                     <td>{feature.initiation}</td>
                     <td>
-                      <button disabled>{feature.action}</button>
+                      <button disabled={!feature.enabled} title={feature.disabledReason}>
+                        {feature.actionLabel}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -769,7 +764,7 @@ export function App() {
           <section className="contract-section">
             <h3>Recent Events</h3>
             <ul className="plain-list">
-              {recentContractEvents.map((event) => (
+              {smartContractControlPanel.recentEvents.map((event) => (
                 <li key={event}>{event}</li>
               ))}
             </ul>
@@ -778,12 +773,13 @@ export function App() {
           <section className="contract-section">
             <h3>Contract Health</h3>
             <div className="health-list">
-              {projectClosureReadModel.scpReadinessPreview.healthItems.map((item) => (
-                <span key={item}>{item}</span>
+              {smartContractControlPanel.healthItems.map((item) => (
+                <span key={item.label}>
+                  {item.label}: {item.value}
+                </span>
               ))}
-              <span>Compilation: Later stage</span>
             </div>
-            <p className="microcopy">{projectClosureReadModel.scpReadinessPreview.detail}</p>
+            <p className="microcopy">{smartContractControlPanel.statusDetail}</p>
           </section>
         </div>
       </section>
