@@ -7,6 +7,8 @@
     "dev": "vite --host 127.0.0.1 --port 5173",
     "dev:api": "tsx watch server/index.ts",
     "build": "tsc -b && vite build",
+    "contracts:build": "hardhat build",
+    "test:contracts": "node --import tsx/esm --test test/Mila26RestrictedFundToken.ts",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "lint": "eslint .",
     "test": "vitest run",
@@ -25,6 +27,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@nomicfoundation/hardhat-network-helpers": "^3.0.9",
+    "@nomicfoundation/hardhat-viem": "^3.0.8",
+    "@openzeppelin/contracts": "^5.6.1",
     "@playwright/test": "^1.52.0",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.1.0",
@@ -35,9 +40,11 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "hardhat": "^3.6.0",
     "jsdom": "^25.0.0",
     "tsx": "^4.22.3",
     "typescript-eslint": "^8.59.3",
+    "viem": "^2.51.2",
     "vitest": "^3.0.0"
   }
 }

@@ -34,6 +34,8 @@ Track 6F.1 refines `mila26-cockpit2` so the Engineering Bot is the single workfl
 
 Track 9B adds deterministic Smart Contract Artifact preview, spec-consistency check result, and evidence-lite linkage from the Track 9A spec. It remains preview-only: no Solidity compilation, OpenZeppelin install, wallet signing, deployment, fake contract address, transaction hash, or audit claim.
 
+Track 10A adds a local-only Hardhat compile/test foundation for one restricted ERC-20-compatible fixture. Use `npm run contracts:build` and `npm run test:contracts` for contract compile/tests. These commands do not deploy, sign wallets, configure mainnet, create contract addresses, create transaction hashes, or produce audit claims.
+
 The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
 
 ```bash

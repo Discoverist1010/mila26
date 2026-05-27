@@ -2,9 +2,11 @@
 
 Track 9B.2 decides the compile/test tooling direction before MILA26 installs dependencies, adds Solidity files, or claims compiler/test output.
 
+Track 10A adopted the recommendation in this ADR as a local-only Hardhat compile/test foundation. See [`hardhat-compile-test-foundation.md`](hardhat-compile-test-foundation.md).
+
 ## Decision
 
-MILA26 should continue to defer toolchain installation in Track 9B.2, but adopt **Hardhat as the recommended first implementation path** for the next compile/test foundation track.
+MILA26 continued to defer toolchain installation in Track 9B.2, but adopted **Hardhat as the recommended first implementation path** for the next compile/test foundation track.
 
 Foundry remains the preferred later candidate for deeper Solidity-native testing, fuzzing, gas reporting, and advanced security workflows after the TypeScript-first MVP path proves useful.
 
@@ -18,7 +20,7 @@ MILA26 is currently a TypeScript, Vite, Fastify, Vitest, and Playwright repo. Tr
 - Evidence-Lite linkage
 - SCP readiness/status
 
-No compile/test toolchain is installed. No Solidity files, OpenZeppelin imports, Hardhat config, Foundry config, wallet signing, deployment scripts, mainnet support, contract addresses, transaction hashes, or audit claims exist in the repo.
+At the Track 9B.2 checkpoint, no compile/test toolchain was installed. Track 10A may add local-only Hardhat/OpenZeppelin fixture support, but must still avoid Foundry config, wallet signing, deployment scripts, mainnet support, contract addresses, transaction hashes, and audit claims.
 
 ## Documentation Inputs
 

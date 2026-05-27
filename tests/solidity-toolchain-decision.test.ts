@@ -4,14 +4,17 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const repoRoot = process.cwd();
-const excludedDirectories = new Set(['.git', 'dist', 'node_modules']);
+const excludedDirectories = new Set(['.git', 'artifacts', 'cache', 'dist', 'node_modules']);
 const forbiddenDirectDependencies = [
   '@foundry-rs/foundry',
   '@nomicfoundation/hardhat-toolbox',
-  '@openzeppelin/contracts',
+  '@nomicfoundation/hardhat-toolbox-viem',
+  '@nomicfoundation/hardhat-ignition',
+  '@nomicfoundation/hardhat-ignition-viem',
+  '@nomicfoundation/hardhat-keystore',
+  '@nomicfoundation/hardhat-verify',
   'forge',
   'foundry',
-  'hardhat',
   'solc',
 ];
 
@@ -35,8 +38,8 @@ function walkRepo(relativeDirectory = ''): string[] {
   });
 }
 
-describe('Solidity toolchain decision guardrails', () => {
-  it('does not install direct smart-contract tooling dependencies in Track 9B.2', () => {
+describe('Solidity toolchain guardrails', () => {
+  it('keeps Track 10A dependencies narrow and avoids deployment-oriented tooling', () => {
     const packageJson = JSON.parse(readText('package.json')) as {
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
@@ -54,33 +57,50 @@ describe('Solidity toolchain decision guardrails', () => {
     for (const packageName of forbiddenDirectDependencies) {
       expect(directDependencies).not.toHaveProperty(packageName);
     }
+
+    expect(directDependencies).toHaveProperty('hardhat');
+    expect(directDependencies).toHaveProperty('@nomicfoundation/hardhat-viem');
+    expect(directDependencies).toHaveProperty('@openzeppelin/contracts');
   });
 
-  it('does not add Solidity or compile-tool config files in Track 9B.2', () => {
+  it('adds only local compile/test Solidity files without deployment scaffolding', () => {
     const repoFiles = walkRepo();
 
-    expect(repoFiles.filter((file) => file.endsWith('.sol'))).toEqual([]);
-    expect(repoFiles.some((file) => /^hardhat\.config\./.test(file))).toBe(false);
+    expect(repoFiles.filter((file) => file.endsWith('.sol'))).toEqual(['contracts/Mila26RestrictedFundToken.sol']);
+    expect(repoFiles.filter((file) => /^hardhat\.config\./.test(file))).toEqual(['hardhat.config.ts']);
     expect(repoFiles).not.toContain('foundry.toml');
     expect(repoFiles).not.toContain('remappings.txt');
+    expect(repoFiles.some((file) => /^scripts\/deploy/i.test(file))).toBe(false);
+    expect(repoFiles.some((file) => /^ignition\//i.test(file))).toBe(false);
   });
 
-  it('documents the docs-only decision and future artifact/check/evidence/SCP/deployment-gate mapping', () => {
+  it('keeps Hardhat config local-only with no mainnet, private-key, mnemonic, or RPC config', () => {
+    const config = readText('hardhat.config.ts');
+
+    expect(config).not.toMatch(/mainnet|sepolia|rpc|url|privateKey|accounts|mnemonic|configVariable/i);
+    expect(config).toMatch(/hardhatViem/);
+    expect(config).toMatch(/hardhatNetworkHelpers/);
+  });
+
+  it('documents the Track 10A adoption and future artifact/check/evidence/SCP/deployment-gate mapping', () => {
     const adrPath = 'docs/architecture/solidity-toolchain-decision.md';
+    const foundationPath = 'docs/architecture/hardhat-compile-test-foundation.md';
     expect(existsSync(join(repoRoot, adrPath))).toBe(true);
+    expect(existsSync(join(repoRoot, foundationPath))).toBe(true);
 
     const adr = readText(adrPath);
+    const foundation = readText(foundationPath);
 
     expect(adr).toMatch(/Hardhat as the recommended first implementation path/i);
-    expect(adr).toMatch(/does not approve running either workflow yet/i);
-    expect(adr).toMatch(/No compile\/test toolchain is installed/i);
-    expect(adr).toMatch(/SmartContractArtifactPackage|artifactPackage\.sourceModel\.compilerToolchainStatus/);
-    expect(adr).toMatch(/SmartContractArtifactCheckResult|checkResult\.checkMode/);
-    expect(adr).toMatch(/Evidence-Lite/i);
-    expect(adr).toMatch(/SCP readiness\/status/i);
-    expect(adr).toMatch(/Deployment Gate/i);
-    expect(adr).toMatch(/wallet signing/i);
-    expect(adr).toMatch(/mainnet support/i);
-    expect(adr).toMatch(/fake contract addresses or transaction hashes/i);
+    expect(foundation).toMatch(/contracts:build/);
+    expect(foundation).toMatch(/test:contracts/);
+    expect(foundation).toMatch(/artifactPackage\.sourceModel\.compilerToolchainStatus/);
+    expect(foundation).toMatch(/checkResult\.checkMode/);
+    expect(foundation).toMatch(/Evidence-Lite/i);
+    expect(foundation).toMatch(/SCP readiness\/status/i);
+    expect(foundation).toMatch(/Deployment Gate/i);
+    expect(foundation).toMatch(/wallet signing/i);
+    expect(foundation).toMatch(/mainnet/i);
+    expect(foundation).toMatch(/contract address|transaction hash/i);
   });
 });

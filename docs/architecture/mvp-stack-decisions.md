@@ -63,7 +63,7 @@ Revisit if:
 
 ## Smart-Contract Tooling
 
-Decision: Track 9B.2 keeps Solidity compile/test tooling uninstalled, but recommends Hardhat as the first future implementation path for a minimal compile/test foundation. Foundry remains a later candidate for Solidity-native tests, fuzzing, gas reporting, and deeper security workflows.
+Decision: Track 9B.2 kept Solidity compile/test tooling uninstalled and recommended Hardhat as the first implementation path. Track 10A adds the minimal local-only Hardhat compile/test foundation. Foundry remains a later candidate for Solidity-native tests, fuzzing, gas reporting, and deeper security workflows.
 
 Near-term direction:
 
@@ -71,8 +71,9 @@ Near-term direction:
 - Default to simple non-upgradeable contracts for MVP unless upgradeability is explicitly required.
 - Do not install or pin OpenZeppelin package versions yet; that belongs to a later approved Solidity tooling implementation track.
 - Use `viem` or equivalent TypeScript Ethereum tooling later for wallet/testnet interactions.
-- Add Solidity compiler/tooling later only after a dedicated implementation track is approved.
+- Keep Solidity compiler/tooling local-only until a deployment gate track is explicitly approved.
 - Use [`solidity-toolchain-decision.md`](solidity-toolchain-decision.md) as the Track 9B.2 ADR for Hardhat / Foundry / defer reasoning.
+- Use [`hardhat-compile-test-foundation.md`](hardhat-compile-test-foundation.md) as the Track 10A local compile/test foundation note.
 - Consider static analysis later, such as Slither or Mythril; decision deferred.
 
 Reasoning:

@@ -56,6 +56,10 @@ Track 9B.2 adds the compile/test toolchain decision:
 
 - [`../architecture/solidity-toolchain-decision.md`](../architecture/solidity-toolchain-decision.md): docs-only ADR recommending Hardhat as the first future compile/test path while keeping toolchain installation, Solidity files, OpenZeppelin imports, wallet signing, deployment, and mainnet out of scope.
 
+Track 10A adds the local Hardhat compile/test foundation:
+
+- [`../architecture/hardhat-compile-test-foundation.md`](../architecture/hardhat-compile-test-foundation.md): local-only Hardhat/OpenZeppelin fixture, contract test command, guardrails, and future output mapping without deployment, wallet signing, mainnet, fake addresses, transaction hashes, or audit claims.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:
