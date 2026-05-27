@@ -1,6 +1,12 @@
 import type { ProjectLifecycleReadModel } from './projectLifecycleReadModel';
 
-export type SmartContractControlPanelStatus = 'preview' | 'blocked' | 'ready_for_spec' | 'ready_for_checks' | 'ready_for_gate';
+export type SmartContractControlPanelStatus =
+  | 'preview'
+  | 'blocked'
+  | 'ready_for_spec'
+  | 'artifact_preview_ready'
+  | 'ready_for_checks'
+  | 'ready_for_gate';
 export type SmartContractControlPanelActionKind = 'core' | 'custom_event' | 'view';
 
 export type SmartContractControlPanelAction = {
@@ -41,6 +47,13 @@ export type SmartContractControlPanelViewModel = {
   customFeatures: SmartContractControlPanelFeature[];
   recentEvents: string[];
   healthItems: SmartContractControlPanelHealthItem[];
+};
+
+export type SmartContractControlPanelGeneratedState = {
+  specStatus?: 'draft' | 'ready' | 'blocked';
+  artifactStatus?: 'generated' | 'blocked';
+  checkStatus?: 'passed' | 'failed' | 'blocked';
+  evidenceStatus?: 'ready' | 'blocked';
 };
 
 const disabledExecutionReason = 'Preview only. No wallet signing or blockchain transaction is wired in this MVP stage.';
@@ -85,7 +98,20 @@ const customFeatures: SmartContractControlPanelFeature[] = [
   },
 ];
 
-function statusForLifecycle(lifecycleReadModel: ProjectLifecycleReadModel): SmartContractControlPanelStatus {
+function hasGeneratedArtifactPreview(generatedState?: SmartContractControlPanelGeneratedState): boolean {
+  return Boolean(
+    generatedState?.specStatus === 'ready' &&
+      generatedState.artifactStatus === 'generated' &&
+      generatedState.checkStatus === 'passed' &&
+      generatedState.evidenceStatus === 'ready',
+  );
+}
+
+function statusForLifecycle(
+  lifecycleReadModel: ProjectLifecycleReadModel,
+  generatedState?: SmartContractControlPanelGeneratedState,
+): SmartContractControlPanelStatus {
+  if (hasGeneratedArtifactPreview(generatedState)) return 'artifact_preview_ready';
   if (lifecycleReadModel.readinessStatus === 'blocked') return 'blocked';
   if (lifecycleReadModel.readinessStatus === 'ready_for_artifact_spec') return 'ready_for_spec';
   if (lifecycleReadModel.readinessStatus === 'ready_for_checks') return 'ready_for_checks';
@@ -129,6 +155,19 @@ function healthStatusFor(status: SmartContractControlPanelStatus): SmartContract
     ];
   }
 
+  if (status === 'artifact_preview_ready') {
+    return [
+      { label: 'Smart Contract Spec', value: 'Generated', status: 'ready' },
+      { label: 'Artifact preview', value: 'Generated, not compiled', status: 'ready' },
+      { label: 'Check result', value: 'Spec-consistency result available', status: 'ready' },
+      { label: 'Evidence-lite', value: 'Available for later evidence pack wiring', status: 'ready' },
+      { label: 'Compiler/toolchain', value: 'Not configured', status: 'disabled' },
+      { label: 'Deployment', value: 'Not executed', status: 'disabled' },
+      { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
+      { label: 'Audit', value: 'Not audited', status: 'disabled' },
+    ];
+  }
+
   if (status === 'ready_for_gate') {
     return [
       { label: 'Lifecycle', value: 'Evidence/check path ready for gate review', status: 'ready' },
@@ -156,6 +195,8 @@ function statusLabel(status: SmartContractControlPanelStatus) {
       return 'Ready for Smart Contract Spec';
     case 'ready_for_checks':
       return 'Ready for deterministic checks';
+    case 'artifact_preview_ready':
+      return 'Artifact preview generated';
     case 'ready_for_gate':
       return 'Ready for deployment gate review';
     case 'preview':
@@ -176,6 +217,10 @@ function statusDetail(status: SmartContractControlPanelStatus, lifecycleReadMode
     return 'SCP can show check readiness once Track 9B adds deterministic artifact and check outputs.';
   }
 
+  if (status === 'artifact_preview_ready') {
+    return 'Smart Contract Spec, artifact preview, spec-consistency check result, and evidence-lite are available. This is not compiled, deployed, audited, signed, or connected to a wallet.';
+  }
+
   if (status === 'ready_for_gate') {
     return 'SCP remains non-executing until a later wallet-signed testnet deployment track.';
   }
@@ -185,16 +230,17 @@ function statusDetail(status: SmartContractControlPanelStatus, lifecycleReadMode
 
 export function toSmartContractControlPanelViewModel(
   lifecycleReadModel: ProjectLifecycleReadModel,
+  generatedState?: SmartContractControlPanelGeneratedState,
 ): SmartContractControlPanelViewModel {
-  const status = statusForLifecycle(lifecycleReadModel);
+  const status = statusForLifecycle(lifecycleReadModel, generatedState);
 
   return {
     status,
     statusLabel: statusLabel(status),
     statusDetail: statusDetail(status, lifecycleReadModel),
     overview: {
-      contractStatus: 'Not deployed',
-      contractAddress: '0x... pending testnet deployment',
+      contractStatus: status === 'artifact_preview_ready' ? 'Artifact preview generated - not deployed' : 'Not deployed',
+      contractAddress: 'No contract address - not deployed',
       network: 'Ethereum testnet only',
       deployedBy: 'User Wallet',
       contractType: 'ERC-20 + custom',
@@ -210,6 +256,9 @@ export function toSmartContractControlPanelViewModel(
     customFeatures,
     recentEvents: [
       'No wallet-signed testnet events yet',
+      ...(status === 'artifact_preview_ready'
+        ? ['Smart Contract Spec generated', 'Artifact preview generated', 'Evidence-lite available']
+        : []),
       lifecycleReadModel.readinessLabel,
       'Deployment remains disabled for MVP',
     ],

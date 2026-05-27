@@ -527,6 +527,7 @@ h3 {
 
 .chat-status,
 .error-text,
+.success-text,
 .action-disabled-reason {
   font-size: 12px;
   font-weight: 760;
@@ -543,6 +544,10 @@ h3 {
 
 .error-text {
   color: #b42318;
+}
+
+.success-text {
+  color: #0f766e;
 }
 
 .artifact-grid,

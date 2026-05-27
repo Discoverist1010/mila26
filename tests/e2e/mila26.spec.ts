@@ -1,6 +1,114 @@
 import { expect, test } from '@playwright/test';
 
 test('guided beta journey creates requirements and exposes Engineering Brief action', async ({ page }) => {
+  const engineeringBrief = {
+    id: 'engineering-brief-e2e',
+    generatedAtIso: '2026-05-22T00:00:00.000Z',
+    sourceRequirementBriefId: 'brief-e2e',
+    title: 'MILA Income Fund Engineering Brief',
+    summary: 'Deterministic Engineering Brief summary.',
+    projectContext: {
+      projectName: 'MILA Income Fund',
+      fundName: 'MILA Income Fund',
+      tokenSymbol: 'MILA',
+      jurisdiction: 'Singapore',
+      targetInvestors: 'Accredited investors',
+    },
+    functionalRequirements: ['Capture tokenized fund requirements.', 'Confirm wallet whitelist requirements.'],
+    nonFunctionalRequirements: ['Keep backend secrets out of frontend code.'],
+    tokenDesign: {
+      standardPreference: 'ERC-20',
+      assumptions: ['Fungible portfolio shares are the MVP default.'],
+      servicingModules: ['Fund Token Base'],
+    },
+    walletAndAccessModel: {
+      whitelistRequired: true,
+      assumptions: ['Investor wallets are whitelisted before distribution.'],
+    },
+    valuationAndPerformanceUpdates: {
+      cadence: 'daily',
+      assumptions: ['Valuations are uploaded off-chain.'],
+    },
+    complianceAndSecurityAssumptions: ['Engineering output is not legal advice.'],
+    deploymentBoundary: {
+      network: 'ethereum-testnet-only',
+      noMainnetInMvp: true,
+      signing: 'user-wallet-signs',
+      backendCustody: 'backend-holds-no-private-keys',
+      currentTarget: 'simulation-only',
+      status: 'Deployment remains disabled for MVP.',
+    },
+    implementationPlan: ['Generate deterministic implementation artifacts after approval.'],
+    testingAndQaPlan: ['Run contract and API tests before demo readiness.'],
+    evidencePackPlan: ['Record source Requirement Brief and Engineering Brief IDs.'],
+    openQuestions: [],
+    risksAndControls: [
+      {
+        risk: 'Generated brief is mistaken for legal advice.',
+        control: 'Mark output as engineering planning only.',
+      },
+    ],
+    acceptanceCriteria: ['Engineering Brief preserves no mainnet deployment in MVP.'],
+    metadata: {
+      generator: 'deterministic-track-5b',
+      mode: 'mock',
+      llmUsed: false,
+      productionAdvice: false,
+    },
+  };
+  const smartContractArtifactSpec = {
+    specId: 'smart-contract-artifact-spec-e2e',
+    projectId: 'brief-e2e',
+    projectName: 'MILA Income Fund',
+    status: 'ready',
+  };
+
+  await page.route('http://127.0.0.1:5174/api/prd/engineering-brief', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, data: engineeringBrief }),
+    });
+  });
+  await page.route('http://127.0.0.1:5174/api/smart-contract/artifact-spec', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, data: smartContractArtifactSpec }),
+    });
+  });
+  await page.route('http://127.0.0.1:5174/api/smart-contract/artifact', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        data: {
+          artifactPackage: {
+            artifactId: 'contract-artifact-smart-contract-artifact-spec-e2e',
+            specId: smartContractArtifactSpec.specId,
+            projectId: 'brief-e2e',
+            projectName: 'MILA Income Fund',
+            status: 'generated',
+          },
+          checkResult: {
+            checkId: 'contract-check-smart-contract-artifact-spec-e2e',
+            artifactId: 'contract-artifact-smart-contract-artifact-spec-e2e',
+            specId: smartContractArtifactSpec.specId,
+            status: 'passed',
+          },
+          evidenceLite: {
+            evidenceId: 'evidence-lite-smart-contract-artifact-spec-e2e',
+            artifactId: 'contract-artifact-smart-contract-artifact-spec-e2e',
+            specId: smartContractArtifactSpec.specId,
+            checkId: 'contract-check-smart-contract-artifact-spec-e2e',
+            status: 'ready',
+          },
+        },
+      }),
+    });
+  });
+
   await page.goto('/');
   await expect(page.getByText('KangLe AI')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'MILA Income Fund / Tokenized Income Fund' })).toBeVisible();
@@ -57,6 +165,17 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByTestId('requirement-brief')).toContainText('Investor access');
   await expect(page.getByText(/Deployment boundary/i)).toBeVisible();
   await expect(page.getByRole('button', { name: /Generate Engineering Brief/i })).toBeVisible();
+  await page.getByRole('button', { name: /Generate Engineering Brief/i }).click();
+  await expect(page.getByRole('button', { name: 'Prepare Smart Contract Spec' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Prepare Smart Contract Spec' }).click();
+  const scp = page.getByTestId('smart-contract-control');
+  await expect(scp.getByText('Artifact preview generated').first()).toBeVisible();
+  await expect(scp.getByText('Smart Contract Spec: Generated')).toBeVisible();
+  await expect(scp.getByText('Compiler/toolchain: Not configured')).toBeVisible();
+  await expect(scp.getByText('Deployment: Not executed')).toBeVisible();
+  await expect(scp.getByText('Wallet signing: Not started')).toBeVisible();
+  await expect(scp.getByText('No contract address - not deployed')).toBeVisible();
+  await expect(page.getByText(/txHash/i)).toHaveCount(0);
 });
 
 test('dashboard shell remains usable on a narrow viewport', async ({ page }) => {

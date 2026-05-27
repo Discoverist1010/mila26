@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { askBlockchainEngineer } from './api/blockchainEngineerChat';
 import { generateEngineeringBrief } from './api/engineeringBrief';
+import { generateSmartContractArtifact } from './api/smartContractArtifact';
+import { generateSmartContractArtifactSpec } from './api/smartContractArtifactSpec';
 import {
   answerAsBlockchainEngineer,
   createRequirementBrief,
@@ -15,6 +17,12 @@ import { toRequirementBriefContract } from './domain/requirementBrief';
 import { toSmartContractControlPanelViewModel } from './domain/smartContractControlPanelViewModel';
 import type { BlockchainEngineerChatResponse } from '../server/contracts/chat';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
+import type {
+  SmartContractArtifactCheckResult,
+  SmartContractArtifactPackage,
+  SmartContractEvidenceLite,
+} from '../server/contracts/smartContractArtifact';
+import type { SmartContractArtifactSpec } from '../server/contracts/smartContractArtifactSpec';
 import type { FundFacts, RequirementBrief } from './domain/schemas';
 
 const starterFacts: FundFacts = {
@@ -75,6 +83,12 @@ export function App() {
   const [engineeringBrief, setEngineeringBrief] = useState<EngineeringBrief | undefined>();
   const [engineeringBriefError, setEngineeringBriefError] = useState<string | undefined>();
   const [isEngineeringBriefLoading, setIsEngineeringBriefLoading] = useState(false);
+  const [smartContractArtifactSpec, setSmartContractArtifactSpec] = useState<SmartContractArtifactSpec | undefined>();
+  const [smartContractArtifactPackage, setSmartContractArtifactPackage] = useState<SmartContractArtifactPackage | undefined>();
+  const [smartContractCheckResult, setSmartContractCheckResult] = useState<SmartContractArtifactCheckResult | undefined>();
+  const [smartContractEvidenceLite, setSmartContractEvidenceLite] = useState<SmartContractEvidenceLite | undefined>();
+  const [smartContractGenerationStatus, setSmartContractGenerationStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [smartContractGenerationError, setSmartContractGenerationError] = useState<string | undefined>();
   const [engineerResponse, setEngineerResponse] = useState(() =>
     createLocalEngineerResponse(answerAsBlockchainEngineer(initialBotQuestion)),
   );
@@ -110,16 +124,29 @@ export function App() {
         hasRequirementBrief: Boolean(brief),
         hasEngineeringBrief: Boolean(engineeringBrief),
         closureReadiness: projectClosureReadModel,
+        artifactSpecStatus: smartContractArtifactSpec ? smartContractArtifactSpec.status : 'not_started',
       }),
-    [brief, engineeringBrief, projectClosureReadModel],
+    [brief, engineeringBrief, projectClosureReadModel, smartContractArtifactSpec],
   );
   const cockpitActionViewModel = useMemo(
     () => toCockpitActionViewModel(projectLifecycleReadModel),
     [projectLifecycleReadModel],
   );
   const smartContractControlPanel = useMemo(
-    () => toSmartContractControlPanelViewModel(projectLifecycleReadModel),
-    [projectLifecycleReadModel],
+    () =>
+      toSmartContractControlPanelViewModel(projectLifecycleReadModel, {
+        specStatus: smartContractArtifactSpec?.status,
+        artifactStatus: smartContractArtifactPackage?.status,
+        checkStatus: smartContractCheckResult?.status,
+        evidenceStatus: smartContractEvidenceLite?.status,
+      }),
+    [
+      projectLifecycleReadModel,
+      smartContractArtifactSpec,
+      smartContractArtifactPackage,
+      smartContractCheckResult,
+      smartContractEvidenceLite,
+    ],
   );
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
   const currentGate = engineeringBrief
@@ -136,6 +163,8 @@ export function App() {
     engineeringBrief ? 'Engineering Brief artifact' : 'Engineering Brief pending',
     `Closure readiness: ${projectClosureReadModel.readinessLabel}`,
     'Decision notes local only',
+    smartContractArtifactSpec ? 'Smart Contract Artifact Spec generated' : 'Smart Contract Artifact Spec pending',
+    smartContractArtifactPackage ? 'Contract Artifact Preview generated' : 'Contract Artifact Preview pending',
   ];
   const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
   const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
@@ -145,6 +174,7 @@ export function App() {
     setBrief(nextBrief);
     setEngineeringBrief(undefined);
     setEngineeringBriefError(undefined);
+    resetSmartContractGeneration();
   }
 
   async function createEngineeringBrief() {
@@ -152,6 +182,7 @@ export function App() {
 
     setIsEngineeringBriefLoading(true);
     setEngineeringBriefError(undefined);
+    resetSmartContractGeneration();
 
     const result = await generateEngineeringBrief({
       requirementBrief: toRequirementBriefContract(brief, 'approved'),
@@ -161,6 +192,7 @@ export function App() {
 
     if (result.ok) {
       setEngineeringBrief(result.data);
+      resetSmartContractGeneration();
       return;
     }
 
@@ -206,6 +238,58 @@ export function App() {
     setEngineerAnswerSource('local');
   }
 
+  function resetSmartContractGeneration() {
+    setSmartContractArtifactSpec(undefined);
+    setSmartContractArtifactPackage(undefined);
+    setSmartContractCheckResult(undefined);
+    setSmartContractEvidenceLite(undefined);
+    setSmartContractGenerationStatus('idle');
+    setSmartContractGenerationError(undefined);
+  }
+
+  async function prepareSmartContractSpec() {
+    if (!engineeringBrief) return;
+
+    setSmartContractGenerationStatus('loading');
+    setSmartContractGenerationError(undefined);
+
+    const specResult = await generateSmartContractArtifactSpec({
+      requirementBrief: requirementBriefContract,
+      engineeringBrief,
+      closureReadiness: {
+        status: projectClosureReadModel.status,
+        readinessLabel: projectClosureReadModel.readinessLabel,
+        blockedReasons: projectClosureReadModel.blockedReasons,
+        closureLedgerId: projectClosureLedger.id,
+        openItemCount: projectClosureReadModel.openItemCount,
+        blockingOpenItemCount: projectClosureReadModel.blockingOpenItemCount,
+        blockedCheckCount: projectClosureReadModel.blockedCheckCount,
+      },
+    });
+
+    if (!specResult.ok) {
+      setSmartContractGenerationStatus('error');
+      setSmartContractGenerationError(specResult.message);
+      return;
+    }
+
+    const artifactResult = await generateSmartContractArtifact({
+      smartContractArtifactSpec: specResult.data,
+    });
+
+    if (!artifactResult.ok) {
+      setSmartContractGenerationStatus('error');
+      setSmartContractGenerationError(artifactResult.message);
+      return;
+    }
+
+    setSmartContractArtifactSpec(specResult.data);
+    setSmartContractArtifactPackage(artifactResult.data.artifactPackage);
+    setSmartContractCheckResult(artifactResult.data.checkResult);
+    setSmartContractEvidenceLite(artifactResult.data.evidenceLite);
+    setSmartContractGenerationStatus('ready');
+  }
+
   function runCockpitAction(actionId: Mila26UiActionId) {
     switch (actionId) {
       case 'create_requirement_brief':
@@ -213,6 +297,9 @@ export function App() {
         return;
       case 'generate_engineering_brief':
         void createEngineeringBrief();
+        return;
+      case 'prepare_smart_contract_spec':
+        void prepareSmartContractSpec();
         return;
       case 'review_assumptions':
       case 'open_brief':
@@ -229,6 +316,9 @@ export function App() {
 
   function cockpitActionLabel(actionId: Mila26UiActionId, fallbackLabel: string) {
     if (actionId === 'generate_engineering_brief' && isEngineeringBriefLoading) return 'Generating Engineering Brief...';
+    if (actionId === 'prepare_smart_contract_spec' && smartContractGenerationStatus === 'loading') {
+      return 'Preparing Smart Contract Spec...';
+    }
     if (actionId === 'ask_question' && isBotReplyLoading) return 'Sending...';
     return fallbackLabel;
   }
@@ -392,7 +482,11 @@ export function App() {
                     <button
                       className="workflow-button"
                       data-action-id={primaryWorkflowAction.id}
-                      disabled={!primaryWorkflowAction.enabled || isEngineeringBriefLoading}
+                      disabled={
+                        !primaryWorkflowAction.enabled ||
+                        isEngineeringBriefLoading ||
+                        smartContractGenerationStatus === 'loading'
+                      }
                       onClick={() => runCockpitAction(primaryWorkflowAction.id)}
                       title={primaryWorkflowAction.disabledReason}
                     >
@@ -414,6 +508,16 @@ export function App() {
                 </label>
                 {!primaryWorkflowAction.enabled && primaryWorkflowAction.disabledReason && (
                   <p className="action-disabled-reason">{primaryWorkflowAction.disabledReason}</p>
+                )}
+                {smartContractGenerationStatus === 'ready' && (
+                  <p className="success-text">
+                    Smart Contract Spec, Artifact Preview, Check Result, and Evidence-Lite are ready in the SCP preview.
+                  </p>
+                )}
+                {smartContractGenerationStatus === 'error' && smartContractGenerationError && (
+                  <p className="error-text" role="alert">
+                    {smartContractGenerationError}
+                  </p>
                 )}
                 {botChatError && (
                   <p className="error-text" role="alert">

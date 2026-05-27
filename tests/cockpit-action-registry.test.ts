@@ -80,7 +80,7 @@ describe('Cockpit action registry', () => {
     });
   });
 
-  it('returns disabled Prepare Smart Contract Spec when closure is ready', () => {
+  it('returns enabled Prepare Smart Contract Spec when closure is ready', () => {
     const lifecycleReadModel = toProjectLifecycleReadModel({
       hasRequirementBrief: true,
       hasEngineeringBrief: true,
@@ -91,10 +91,9 @@ describe('Cockpit action registry', () => {
     expect(viewModel.primaryEngineeringBotAction).toMatchObject({
       id: 'prepare_smart_contract_spec',
       label: 'Prepare Smart Contract Spec',
-      enabled: false,
-      kind: 'placeholder',
+      enabled: true,
+      kind: 'workflow',
     });
-    expect(viewModel.primaryEngineeringBotAction.disabledReason).toMatch(/Track 9A/);
   });
 
   it('keeps future check, evidence, and deployment actions as disabled placeholders', () => {
@@ -111,7 +110,7 @@ describe('Cockpit action registry', () => {
       label: 'Run Checks',
       enabled: false,
     });
-    expect(readyForChecks.primaryEngineeringBotAction.disabledReason).toMatch(/Track 9B/);
+    expect(readyForChecks.primaryEngineeringBotAction.disabledReason).toMatch(/Compiler\/toolchain checks remain deferred/);
 
     const readyForEvidence = toCockpitActionViewModel(
       toProjectLifecycleReadModel({

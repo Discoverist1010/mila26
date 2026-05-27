@@ -28,6 +28,7 @@ describe('Smart Contract Control Panel view model', () => {
     expect(viewModel.status).toBe('preview');
     expect(viewModel.statusLabel).toBe('Preview only');
     expect(viewModel.overview.contractStatus).toBe('Not deployed');
+    expect(viewModel.overview.contractAddress).toBe('No contract address - not deployed');
     expect(viewModel.overview.network).toBe('Ethereum testnet only');
     expect(viewModel.overview.deployedBy).toBe('User Wallet');
     expect(viewModel.healthItems).toContainEqual({
@@ -106,6 +107,39 @@ describe('Smart Contract Control Panel view model', () => {
     expect(readyForGate.status).toBe('ready_for_gate');
     expect(readyForGate.statusLabel).toBe('Ready for deployment gate review');
     expect(readyForGate.statusDetail).toMatch(/non-executing/i);
+  });
+
+  it('reflects generated spec, artifact preview, check result, and evidence-lite without execution claims', () => {
+    const lifecycleReadModel = toProjectLifecycleReadModel({
+      hasRequirementBrief: true,
+      hasEngineeringBrief: true,
+      closureReadiness: closureReadiness(),
+      artifactSpecStatus: 'ready',
+    });
+    const viewModel = toSmartContractControlPanelViewModel(lifecycleReadModel, {
+      specStatus: 'ready',
+      artifactStatus: 'generated',
+      checkStatus: 'passed',
+      evidenceStatus: 'ready',
+    });
+
+    expect(viewModel.status).toBe('artifact_preview_ready');
+    expect(viewModel.statusLabel).toBe('Artifact preview generated');
+    expect(viewModel.overview.contractStatus).toBe('Artifact preview generated - not deployed');
+    expect(viewModel.overview.contractAddress).toBe('No contract address - not deployed');
+    expect(viewModel.healthItems).toEqual(
+      expect.arrayContaining([
+        { label: 'Smart Contract Spec', value: 'Generated', status: 'ready' },
+        { label: 'Artifact preview', value: 'Generated, not compiled', status: 'ready' },
+        { label: 'Check result', value: 'Spec-consistency result available', status: 'ready' },
+        { label: 'Evidence-lite', value: 'Available for later evidence pack wiring', status: 'ready' },
+        { label: 'Compiler/toolchain', value: 'Not configured', status: 'disabled' },
+        { label: 'Deployment', value: 'Not executed', status: 'disabled' },
+        { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
+        { label: 'Audit', value: 'Not audited', status: 'disabled' },
+      ]),
+    );
+    expect(viewModel.statusDetail).toMatch(/not compiled, deployed, audited, signed/i);
   });
 
   it('keeps all SCP actions disabled until later wallet and transaction tracks', () => {

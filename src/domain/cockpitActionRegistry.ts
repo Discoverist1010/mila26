@@ -101,7 +101,7 @@ const actionCopy: Record<
     label: 'Prepare Smart Contract Spec',
     description: 'Create the typed bridge from Engineering Brief to smart contract artifact planning.',
     placement: 'engineering_bot',
-    kind: 'placeholder',
+    kind: 'workflow',
     variant: 'primary',
   },
   run_contract_checks: {
@@ -131,8 +131,8 @@ const panelToggleActionIds: Mila26UiActionId[] = ['toggle_brief_panel', 'toggle_
 const secondaryEngineeringBotActionIds: Mila26UiActionId[] = ['review_assumptions'];
 const allCockpitActionIds = Object.keys(actionCopy) as Mila26UiActionId[];
 const unwiredPlaceholderReasons: Partial<Record<Mila26UiActionId, string>> = {
-  prepare_smart_contract_spec: 'Track 9A will wire this action after the Smart Contract Artifact Spec contract and route are added.',
-  run_contract_checks: 'Track 9B will wire deterministic contract checks after the artifact spec exists.',
+  run_contract_checks:
+    'Deterministic spec-consistency preview is available. Compiler/toolchain checks remain deferred to a later track.',
   prepare_evidence_pack: 'Evidence preparation will be wired after contract check results exist.',
   review_deployment_gate: 'Deployment gate review remains a later, testnet-only wallet-signed step.',
 };

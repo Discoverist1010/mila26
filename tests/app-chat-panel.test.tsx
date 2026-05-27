@@ -252,9 +252,146 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getAllByText('Ready for Smart Contract Spec').length).toBeGreaterThan(0);
     expect(screen.getByText('Lifecycle: Ready for artifact specification')).toBeVisible();
     const nextAction = screen.getByRole('button', { name: 'Prepare Smart Contract Spec' });
-    expect(nextAction).toBeDisabled();
-    expect(screen.getByText('Track 9A will wire this action after the Smart Contract Artifact Spec contract and route are added.')).toBeVisible();
+    expect(nextAction).toBeEnabled();
     expect(screen.queryByRole('button', { name: 'Approve Brief and Run Coding Bot' })).not.toBeInTheDocument();
+  });
+
+  it('prepares a Smart Contract Spec and artifact preview through the central workflow action', async () => {
+    let resolveArtifactSpec: (value: Response) => void = () => undefined;
+    const smartContractArtifactSpec = {
+      specId: 'smart-contract-artifact-spec-engineering-brief-1',
+      projectId: 'brief-1',
+      projectName: 'MILA Income Fund',
+      status: 'ready',
+    };
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/prd/engineering-brief')) {
+        return Promise.resolve(createJsonResponse({ ok: true, data: engineeringBrief }));
+      }
+
+      if (url.endsWith('/api/smart-contract/artifact-spec')) {
+        expect(init?.body).toEqual(expect.stringContaining('"engineeringBrief"'));
+        return new Promise<Response>((resolve) => {
+          resolveArtifactSpec = resolve;
+        });
+      }
+
+      if (url.endsWith('/api/smart-contract/artifact')) {
+        expect(init?.body).toEqual(expect.stringContaining('"smartContractArtifactSpec"'));
+        expect(init?.body).toEqual(expect.stringContaining('"smart-contract-artifact-spec-engineering-brief-1"'));
+        return Promise.resolve(
+          createJsonResponse({
+            ok: true,
+            data: {
+              artifactPackage: {
+                artifactId: 'contract-artifact-smart-contract-artifact-spec-engineering-brief-1',
+                specId: smartContractArtifactSpec.specId,
+                projectId: 'brief-1',
+                projectName: 'MILA Income Fund',
+                status: 'generated',
+              },
+              checkResult: {
+                checkId: 'contract-check-smart-contract-artifact-spec-engineering-brief-1',
+                artifactId: 'contract-artifact-smart-contract-artifact-spec-engineering-brief-1',
+                specId: smartContractArtifactSpec.specId,
+                status: 'passed',
+              },
+              evidenceLite: {
+                evidenceId: 'evidence-lite-smart-contract-artifact-spec-engineering-brief-1',
+                artifactId: 'contract-artifact-smart-contract-artifact-spec-engineering-brief-1',
+                specId: smartContractArtifactSpec.specId,
+                checkId: 'contract-check-smart-contract-artifact-spec-engineering-brief-1',
+                status: 'ready',
+              },
+            },
+          }),
+        );
+      }
+
+      return Promise.resolve(createJsonResponse({ ok: false, error: { code: 'UNEXPECTED', message: 'Unexpected route.' } }, { status: 400 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Requirement Doc' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Engineering Brief' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Prepare Smart Contract Spec' })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Prepare Smart Contract Spec' }));
+    expect(screen.getByRole('button', { name: 'Preparing Smart Contract Spec...' })).toBeDisabled();
+
+    resolveArtifactSpec(createJsonResponse({ ok: true, data: smartContractArtifactSpec }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Smart Contract Spec, Artifact Preview, Check Result, and Evidence-Lite are ready in the SCP preview.'),
+      ).toBeVisible();
+    });
+
+    expect(screen.getByRole('button', { name: 'Run Checks' })).toBeDisabled();
+    expect(screen.getByText(/Compiler\/toolchain checks remain deferred/)).toBeVisible();
+    expect(screen.getAllByText('Artifact preview generated').length).toBeGreaterThan(0);
+    expect(screen.getByText('Smart Contract Spec: Generated')).toBeVisible();
+    expect(screen.getByText('Artifact preview: Generated, not compiled')).toBeVisible();
+    expect(screen.getByText('Check result: Spec-consistency result available')).toBeVisible();
+    expect(screen.getByText('Evidence-lite: Available for later evidence pack wiring')).toBeVisible();
+    expect(screen.getByText('Compiler/toolchain: Not configured')).toBeVisible();
+    expect(screen.getByText('Deployment: Not executed')).toBeVisible();
+    expect(screen.getByText('Wallet signing: Not started')).toBeVisible();
+    expect(screen.getByText('Audit: Not audited')).toBeVisible();
+    expect(screen.getByText('No contract address - not deployed')).toBeVisible();
+    expect(screen.queryByText(/0x[a-fA-F0-9]{6,}/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/txHash/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a safe Smart Contract Spec error without claiming generated readiness', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url.endsWith('/api/prd/engineering-brief')) {
+        return Promise.resolve(createJsonResponse({ ok: true, data: engineeringBrief }));
+      }
+
+      if (url.endsWith('/api/smart-contract/artifact-spec')) {
+        return Promise.resolve(
+          createJsonResponse(
+            {
+              ok: false,
+              error: {
+                code: 'CLOSURE_NOT_READY',
+                message: 'Closure readiness must be ready before Smart Contract Artifact Spec generation.',
+              },
+            },
+            { status: 409 },
+          ),
+        );
+      }
+
+      return Promise.resolve(createJsonResponse({ ok: false, error: { code: 'UNEXPECTED', message: 'Unexpected route.' } }, { status: 400 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Requirement Doc' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Engineering Brief' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Prepare Smart Contract Spec' })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Prepare Smart Contract Spec' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Closure readiness must be ready before Smart Contract Artifact Spec generation.',
+      );
+    });
+
+    expect(screen.queryByText('Smart Contract Spec, Artifact Preview, Check Result, and Evidence-Lite are ready in the SCP preview.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Artifact preview generated')).not.toBeInTheDocument();
   });
 
   it('shows a safe Engineering Brief error state when the backend rejects the request', async () => {
