@@ -121,6 +121,15 @@ describe('Smart Contract Control Panel view model', () => {
       artifactStatus: 'generated',
       checkStatus: 'passed',
       evidenceStatus: 'ready',
+      customEvents: [
+        'WalletWhitelisted',
+        'AllocationMinted',
+        'ValuationUpdated',
+        'DistributionRecorded',
+        'TransferRestrictionUpdated',
+        'ContractPaused',
+        'ContractUnpaused',
+      ],
     });
 
     expect(viewModel.status).toBe('artifact_preview_ready');
@@ -140,6 +149,42 @@ describe('Smart Contract Control Panel view model', () => {
       ]),
     );
     expect(viewModel.statusDetail).toMatch(/not compiled, deployed, audited, signed/i);
+    expect(viewModel.boundaryItems).toEqual(
+      expect.arrayContaining([
+        { label: 'Ethereum testnet', value: 'Only', status: 'ready' },
+        { label: 'Mainnet', value: 'Disabled', status: 'disabled' },
+        { label: 'Backend private keys', value: 'None held', status: 'disabled' },
+        { label: 'Future deployment signer', value: 'User wallet', status: 'pending' },
+        { label: 'Contract deployment', value: 'Not executed', status: 'disabled' },
+        { label: 'Transaction hash', value: 'None exists', status: 'disabled' },
+        { label: 'Audit', value: 'Not performed', status: 'disabled' },
+      ]),
+    );
+    expect(viewModel.customFeatures).toEqual(
+      expect.arrayContaining([
+        {
+          name: 'ValuationUpdated',
+          initiation: 'Not user initiated',
+          actionLabel: 'View only',
+          enabled: false,
+          disabledReason: 'Preview only. No wallet signing or blockchain transaction is wired in this MVP stage.',
+        },
+        {
+          name: 'ContractPaused',
+          initiation: 'User initiated',
+          actionLabel: 'Trigger Event',
+          enabled: false,
+          disabledReason: 'Preview only. No wallet signing or blockchain transaction is wired in this MVP stage.',
+        },
+        {
+          name: 'ContractUnpaused',
+          initiation: 'User initiated',
+          actionLabel: 'Trigger Event',
+          enabled: false,
+          disabledReason: 'Preview only. No wallet signing or blockchain transaction is wired in this MVP stage.',
+        },
+      ]),
+    );
   });
 
   it('keeps all SCP actions disabled until later wallet and transaction tracks', () => {

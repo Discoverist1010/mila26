@@ -107,10 +107,10 @@ describe('Cockpit action registry', () => {
     );
     expect(readyForChecks.primaryEngineeringBotAction).toMatchObject({
       id: 'run_contract_checks',
-      label: 'Run Checks',
+      label: 'Toolchain Decision Pending',
       enabled: false,
     });
-    expect(readyForChecks.primaryEngineeringBotAction.disabledReason).toMatch(/Compiler\/toolchain checks remain deferred/);
+    expect(readyForChecks.primaryEngineeringBotAction.disabledReason).toMatch(/compile\/test toolchain decision/i);
 
     const readyForEvidence = toCockpitActionViewModel(
       toProjectLifecycleReadModel({

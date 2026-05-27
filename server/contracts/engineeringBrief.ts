@@ -111,8 +111,8 @@ export const EngineeringBriefSchema = z.object({
   acceptanceCriteria: z.array(z.string().min(1)).min(1),
   metadata: z.object({
     generator: z.literal('deterministic-track-5b'),
-    mode: z.literal('mock'),
-    llmUsed: z.literal(false),
+    mode: z.enum(['mock', 'llm_assisted']),
+    llmUsed: z.boolean(),
     productionAdvice: z.literal(false),
   }),
 });

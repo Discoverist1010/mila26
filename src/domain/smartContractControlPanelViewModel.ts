@@ -47,6 +47,7 @@ export type SmartContractControlPanelViewModel = {
   customFeatures: SmartContractControlPanelFeature[];
   recentEvents: string[];
   healthItems: SmartContractControlPanelHealthItem[];
+  boundaryItems: SmartContractControlPanelHealthItem[];
 };
 
 export type SmartContractControlPanelGeneratedState = {
@@ -54,6 +55,7 @@ export type SmartContractControlPanelGeneratedState = {
   artifactStatus?: 'generated' | 'blocked';
   checkStatus?: 'passed' | 'failed' | 'blocked';
   evidenceStatus?: 'ready' | 'blocked';
+  customEvents?: string[];
 };
 
 const disabledExecutionReason = 'Preview only. No wallet signing or blockchain transaction is wired in this MVP stage.';
@@ -97,6 +99,31 @@ const customFeatures: SmartContractControlPanelFeature[] = [
     disabledReason: disabledExecutionReason,
   },
 ];
+
+const userInitiatedCustomEvents = new Set([
+  'AllocationMinted',
+  'ContractPaused',
+  'ContractUnpaused',
+  'DistributionRecorded',
+  'TransferRestrictionUpdated',
+  'WalletWhitelisted',
+]);
+
+function toGeneratedCustomFeatures(customEvents?: string[]): SmartContractControlPanelFeature[] {
+  if (!customEvents?.length) return customFeatures;
+
+  return customEvents.map((eventName) => {
+    const isUserInitiated = userInitiatedCustomEvents.has(eventName);
+
+    return {
+      name: eventName,
+      initiation: isUserInitiated ? 'User initiated' : 'Not user initiated',
+      actionLabel: isUserInitiated ? 'Trigger Event' : 'View only',
+      enabled: false,
+      disabledReason: disabledExecutionReason,
+    };
+  });
+}
 
 function hasGeneratedArtifactPreview(generatedState?: SmartContractControlPanelGeneratedState): boolean {
   return Boolean(
@@ -228,6 +255,18 @@ function statusDetail(status: SmartContractControlPanelStatus, lifecycleReadMode
   return 'Smart Contract Control stays preview-only while requirements and engineering artifacts are prepared.';
 }
 
+function boundaryItems(): SmartContractControlPanelHealthItem[] {
+  return [
+    { label: 'Ethereum testnet', value: 'Only', status: 'ready' },
+    { label: 'Mainnet', value: 'Disabled', status: 'disabled' },
+    { label: 'Backend private keys', value: 'None held', status: 'disabled' },
+    { label: 'Future deployment signer', value: 'User wallet', status: 'pending' },
+    { label: 'Contract deployment', value: 'Not executed', status: 'disabled' },
+    { label: 'Transaction hash', value: 'None exists', status: 'disabled' },
+    { label: 'Audit', value: 'Not performed', status: 'disabled' },
+  ];
+}
+
 export function toSmartContractControlPanelViewModel(
   lifecycleReadModel: ProjectLifecycleReadModel,
   generatedState?: SmartContractControlPanelGeneratedState,
@@ -253,7 +292,7 @@ export function toSmartContractControlPanelViewModel(
       enabled: false,
       disabledReason: disabledExecutionReason,
     })),
-    customFeatures,
+    customFeatures: toGeneratedCustomFeatures(generatedState?.customEvents),
     recentEvents: [
       'No wallet-signed testnet events yet',
       ...(status === 'artifact_preview_ready'
@@ -263,5 +302,6 @@ export function toSmartContractControlPanelViewModel(
       'Deployment remains disabled for MVP',
     ],
     healthItems: healthStatusFor(status),
+    boundaryItems: boundaryItems(),
   };
 }

@@ -105,8 +105,8 @@ const actionCopy: Record<
     variant: 'primary',
   },
   run_contract_checks: {
-    label: 'Run Checks',
-    description: 'Run deterministic contract checks after a Smart Contract Artifact Spec exists.',
+    label: 'Toolchain Decision Pending',
+    description: 'Decide the future compile/test toolchain before real contract checks are wired.',
     placement: 'engineering_bot',
     kind: 'placeholder',
     variant: 'primary',
@@ -132,7 +132,7 @@ const secondaryEngineeringBotActionIds: Mila26UiActionId[] = ['review_assumption
 const allCockpitActionIds = Object.keys(actionCopy) as Mila26UiActionId[];
 const unwiredPlaceholderReasons: Partial<Record<Mila26UiActionId, string>> = {
   run_contract_checks:
-    'Deterministic spec-consistency preview is available. Compiler/toolchain checks remain deferred to a later track.',
+    'Deterministic spec-consistency preview is available. A compile/test toolchain decision is required before real contract checks are wired.',
   prepare_evidence_pack: 'Evidence preparation will be wired after contract check results exist.',
   review_deployment_gate: 'Deployment gate review remains a later, testnet-only wallet-signed step.',
 };

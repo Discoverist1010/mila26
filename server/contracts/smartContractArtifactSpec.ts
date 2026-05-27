@@ -15,7 +15,7 @@ export const SmartContractArtifactSpecRequestSchema = z.object({
   requirementBrief: EngineeringBriefRequirementBriefSchema.optional(),
   engineeringBrief: EngineeringBriefSchema,
   closureReadiness: SmartContractArtifactSpecClosureReadinessSchema,
-});
+}).strict();
 
 export const TokenStandardProfileSchema = z.object({
   baseStandardCompatibility: z.literal('erc20'),

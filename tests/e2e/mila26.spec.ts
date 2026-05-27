@@ -61,6 +61,20 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
     projectId: 'brief-e2e',
     projectName: 'MILA Income Fund',
     status: 'ready',
+    tokenStandardProfile: {
+      mila26RestrictionProfile: 'restricted_erc20',
+    },
+    eventModel: {
+      customEvents: [
+        'WalletWhitelisted',
+        'AllocationMinted',
+        'ValuationUpdated',
+        'DistributionRecorded',
+        'TransferRestrictionUpdated',
+        'ContractPaused',
+        'ContractUnpaused',
+      ],
+    },
   };
 
   await page.route('http://127.0.0.1:5174/api/prd/engineering-brief', async (route) => {
@@ -90,12 +104,17 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
             projectId: 'brief-e2e',
             projectName: 'MILA Income Fund',
             status: 'generated',
+            sourceModel: {
+              sourceFiles: [{ path: 'contracts/MILARestrictedIncomeFundToken.preview.sol' }],
+            },
           },
           checkResult: {
             checkId: 'contract-check-smart-contract-artifact-spec-e2e',
             artifactId: 'contract-artifact-smart-contract-artifact-spec-e2e',
             specId: smartContractArtifactSpec.specId,
             status: 'passed',
+            summary:
+              'Deterministic spec-consistency/static-preview checking only. Not a production security audit, compiler result, deployment approval, wallet-signing proof, or legal/compliance opinion.',
           },
           evidenceLite: {
             evidenceId: 'evidence-lite-smart-contract-artifact-spec-e2e',
@@ -103,6 +122,8 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
             specId: smartContractArtifactSpec.specId,
             checkId: 'contract-check-smart-contract-artifact-spec-e2e',
             status: 'ready',
+            evidenceItems: [{ id: 'evidence-spec-profile' }],
+            eventEvidenceRefs: [{ eventName: 'ValuationUpdated' }],
           },
         },
       }),
@@ -168,12 +189,29 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await page.getByRole('button', { name: /Generate Engineering Brief/i }).click();
   await expect(page.getByRole('button', { name: 'Prepare Smart Contract Spec' })).toBeEnabled();
   await page.getByRole('button', { name: 'Prepare Smart Contract Spec' }).click();
+  await expect(page.getByLabel('Generated smart contract artifacts')).toBeVisible();
+  await expect(page.getByText('Smart contract preparation review')).toBeVisible();
+  await expect(page.getByText('restricted_erc20 / ERC-20-compatible profile.')).toBeVisible();
+  await expect(page.getByText('Preview only').first()).toBeVisible();
+  await expect(page.getByText('Spec-consistency passed')).toBeVisible();
+  await expect(page.getByText('Draft evidence linked')).toBeVisible();
+  await expect(page.getByText('Not compiled, not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.')).toBeVisible();
+  await expect(page.getByTestId('engineer-answer')).toContainText('Smart contract preparation is complete for demo review');
+  await expect(page.getByText('Backend artifacts generated.')).toBeVisible();
   const scp = page.getByTestId('smart-contract-control');
   await expect(scp.getByText('Artifact preview generated').first()).toBeVisible();
   await expect(scp.getByText('Smart Contract Spec: Generated')).toBeVisible();
   await expect(scp.getByText('Compiler/toolchain: Not configured')).toBeVisible();
-  await expect(scp.getByText('Deployment: Not executed')).toBeVisible();
+  await expect(scp.getByText('Deployment: Not executed', { exact: true })).toBeVisible();
   await expect(scp.getByText('Wallet signing: Not started')).toBeVisible();
+  await expect(scp.getByText('Audit: Not audited')).toBeVisible();
+  await expect(scp.getByText('Ethereum testnet: Only')).toBeVisible();
+  await expect(scp.getByText('Mainnet: Disabled')).toBeVisible();
+  await expect(scp.getByText('Backend private keys: None held')).toBeVisible();
+  await expect(scp.getByText('Transaction hash: None exists')).toBeVisible();
+  await expect(scp.getByText('ValuationUpdated')).toBeVisible();
+  await expect(scp.getByText('ContractPaused')).toBeVisible();
+  await expect(scp.getByText('ContractUnpaused')).toBeVisible();
   await expect(scp.getByText('No contract address - not deployed')).toBeVisible();
   await expect(page.getByText(/txHash/i)).toHaveCount(0);
 });

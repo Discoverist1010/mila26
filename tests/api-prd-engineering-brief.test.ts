@@ -114,8 +114,8 @@ describe('PRD Engineering Brief API', () => {
     expect(engineeringBrief.deploymentBoundary.backendCustody).toBe('backend-holds-no-private-keys');
     expect(engineeringBrief.metadata).toEqual({
       generator: 'deterministic-track-5b',
-      mode: 'mock',
-      llmUsed: false,
+      mode: 'llm_assisted',
+      llmUsed: true,
       productionAdvice: false,
     });
     expect(JSON.stringify(body)).not.toMatch(/test-model-do-not-leak|rawProviderMetadata|OPENAI_API_KEY|sk-test/i);

@@ -66,11 +66,38 @@ const uiActions = {
   scrollToScp: 'scroll_to_scp',
 } as const;
 
+type GeneratedArtifactCard = {
+  label: string;
+  status: string;
+  detail: string;
+  source: string;
+};
+
 function createLocalEngineerResponse(content: string): BlockchainEngineerChatResponse {
   return {
     messageId: 'local-preview',
     agentId: 'blockchain-engineer',
     content,
+    createdAt: new Date(0).toISOString(),
+  };
+}
+
+function createSmartContractPreparationResponse(): BlockchainEngineerChatResponse {
+  return {
+    messageId: 'local-smart-contract-preparation',
+    agentId: 'blockchain-engineer',
+    content:
+      'Smart contract preparation is complete for demo review: I generated the Smart Contract Spec, deterministic Artifact Preview, spec-consistency Check Result, and Evidence-Lite linkage.',
+    openQuestions: ['Confirm the compile/test toolchain decision before any Solidity compilation track begins.'],
+    riskNotes: [
+      'Not compiled.',
+      'Not deployed.',
+      'Not audited.',
+      'Not signed.',
+      'No wallet is connected.',
+      'No contract address or transaction hash exists.',
+    ],
+    nextRecommendedAction: 'Compile/Test Toolchain Decision remains pending and should not imply deployment readiness.',
     createdAt: new Date(0).toISOString(),
   };
 }
@@ -92,7 +119,9 @@ export function App() {
   const [engineerResponse, setEngineerResponse] = useState(() =>
     createLocalEngineerResponse(answerAsBlockchainEngineer(initialBotQuestion)),
   );
-  const [engineerAnswerSource, setEngineerAnswerSource] = useState<'local' | 'backend'>('local');
+  const [engineerAnswerSource, setEngineerAnswerSource] = useState<'local' | 'backend' | 'generated_artifacts'>(
+    'local',
+  );
   const [botChatError, setBotChatError] = useState<string | undefined>();
   const [isBotReplyLoading, setIsBotReplyLoading] = useState(false);
   const [isLeftRailOpen, setIsLeftRailOpen] = useState(true);
@@ -106,6 +135,10 @@ export function App() {
   );
   const requirementBriefContract = useMemo(
     () => (brief ? toRequirementBriefContract(brief, 'ready_for_approval') : undefined),
+    [brief],
+  );
+  const approvedRequirementBriefContract = useMemo(
+    () => (brief ? toRequirementBriefContract(brief, 'approved') : undefined),
     [brief],
   );
   const projectClosureLedger = useMemo(() => createDemoProjectClosureLedger(), []);
@@ -139,6 +172,7 @@ export function App() {
         artifactStatus: smartContractArtifactPackage?.status,
         checkStatus: smartContractCheckResult?.status,
         evidenceStatus: smartContractEvidenceLite?.status,
+        customEvents: smartContractArtifactSpec?.eventModel?.customEvents,
       }),
     [
       projectLifecycleReadModel,
@@ -168,6 +202,50 @@ export function App() {
   ];
   const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
   const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
+  const generatedArtifactCards = useMemo<GeneratedArtifactCard[]>(
+    () =>
+      smartContractGenerationStatus === 'ready'
+        ? [
+            {
+              label: 'Smart Contract Spec',
+              status: 'Generated',
+              detail: `${smartContractArtifactSpec?.tokenStandardProfile?.mila26RestrictionProfile ?? 'restricted_erc20'} / ERC-20-compatible profile.`,
+              source: 'Track 9A route',
+            },
+            {
+              label: 'Artifact Preview',
+              status: 'Preview only',
+              detail: `${smartContractArtifactPackage?.sourceModel?.sourceFiles.length ?? 0} deterministic preview file(s). Not compiled, not deployed, not audited.`,
+              source: 'Track 9B route',
+            },
+            {
+              label: 'Check Result',
+              status: smartContractCheckResult?.status === 'passed' ? 'Spec-consistency passed' : 'Available',
+              detail: smartContractCheckResult?.summary ?? 'Spec-consistency result available. Compiler/toolchain not configured.',
+              source: 'Deterministic static preview',
+            },
+            {
+              label: 'Evidence-Lite',
+              status: smartContractEvidenceLite?.status === 'ready' ? 'Draft evidence linked' : 'Available',
+              detail: `${smartContractEvidenceLite?.evidenceItems?.length ?? 0} evidence item(s), ${smartContractEvidenceLite?.eventEvidenceRefs?.length ?? 0} event mapping(s).`,
+              source: 'Evidence-lite linkage',
+            },
+            {
+              label: 'Compiler / Deployment / Signing',
+              status: 'Not configured',
+              detail: 'Not compiled, not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.',
+              source: 'Safety boundary',
+            },
+          ]
+        : [],
+    [
+      smartContractArtifactPackage,
+      smartContractArtifactSpec,
+      smartContractCheckResult,
+      smartContractEvidenceLite,
+      smartContractGenerationStatus,
+    ],
+  );
 
   function createBrief() {
     const nextBrief = createRequirementBrief(facts, goal);
@@ -254,7 +332,7 @@ export function App() {
     setSmartContractGenerationError(undefined);
 
     const specResult = await generateSmartContractArtifactSpec({
-      requirementBrief: requirementBriefContract,
+      requirementBrief: approvedRequirementBriefContract,
       engineeringBrief,
       closureReadiness: {
         status: projectClosureReadModel.status,
@@ -288,6 +366,8 @@ export function App() {
     setSmartContractCheckResult(artifactResult.data.checkResult);
     setSmartContractEvidenceLite(artifactResult.data.evidenceLite);
     setSmartContractGenerationStatus('ready');
+    setEngineerResponse(createSmartContractPreparationResponse());
+    setEngineerAnswerSource('generated_artifacts');
   }
 
   function runCockpitAction(actionId: Mila26UiActionId) {
@@ -510,9 +590,25 @@ export function App() {
                   <p className="action-disabled-reason">{primaryWorkflowAction.disabledReason}</p>
                 )}
                 {smartContractGenerationStatus === 'ready' && (
-                  <p className="success-text">
-                    Smart Contract Spec, Artifact Preview, Check Result, and Evidence-Lite are ready in the SCP preview.
-                  </p>
+                  <div className="generated-artifacts" aria-label="Generated smart contract artifacts">
+                    <div className="generated-artifacts-heading">
+                      <div>
+                        <p className="eyebrow">Generated artifacts</p>
+                        <h3>Smart contract preparation review</h3>
+                      </div>
+                      <span className="gate-badge ready">Demo-ready preview</span>
+                    </div>
+                    <div className="generated-artifact-grid">
+                      {generatedArtifactCards.map((card) => (
+                        <article key={card.label}>
+                          <span>{card.label}</span>
+                          <strong>{card.status}</strong>
+                          <p>{card.detail}</p>
+                          <small>{card.source}</small>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
                 )}
                 {smartContractGenerationStatus === 'error' && smartContractGenerationError && (
                   <p className="error-text" role="alert">
@@ -529,7 +625,9 @@ export function App() {
                     ? 'Calling backend route.'
                     : engineerAnswerSource === 'backend'
                       ? 'Backend response.'
-                      : 'Local preview shown until a backend response is available.'}
+                      : engineerAnswerSource === 'generated_artifacts'
+                        ? 'Backend artifacts generated.'
+                        : 'Local preview shown until a backend response is available.'}
                 </p>
               </section>
 
@@ -884,6 +982,20 @@ export function App() {
               ))}
             </div>
             <p className="microcopy">{smartContractControlPanel.statusDetail}</p>
+          </section>
+
+          <section className="contract-section">
+            <h3>Safety Boundaries</h3>
+            <div className="health-list">
+              {smartContractControlPanel.boundaryItems.map((item) => (
+                <span key={item.label}>
+                  {item.label}: {item.value}
+                </span>
+              ))}
+            </div>
+            <p className="microcopy">
+              No contract has been compiled, deployed, audited, signed, or connected to a wallet in this MVP stage.
+            </p>
           </section>
         </div>
       </section>

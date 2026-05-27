@@ -92,7 +92,11 @@ function applyOverlay(base: EngineeringBrief, overlay: LlmEngineeringBriefOverla
     openQuestions: overlay.openQuestions ?? base.openQuestions,
     risksAndControls: overlay.risksAndControls ?? base.risksAndControls,
     acceptanceCriteria: [...overlay.acceptanceCriteria, ...base.acceptanceCriteria],
-    metadata: base.metadata,
+    metadata: {
+      ...base.metadata,
+      mode: 'llm_assisted',
+      llmUsed: true,
+    },
   };
 
   return EngineeringBriefSchema.parse(candidate);

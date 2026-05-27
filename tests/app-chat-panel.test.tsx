@@ -263,6 +263,17 @@ describe('App Blockchain Engineer Bot panel', () => {
       projectId: 'brief-1',
       projectName: 'MILA Income Fund',
       status: 'ready',
+      eventModel: {
+        customEvents: [
+          'WalletWhitelisted',
+          'AllocationMinted',
+          'ValuationUpdated',
+          'DistributionRecorded',
+          'TransferRestrictionUpdated',
+          'ContractPaused',
+          'ContractUnpaused',
+        ],
+      },
     };
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {
       if (url.endsWith('/api/prd/engineering-brief')) {
@@ -271,6 +282,7 @@ describe('App Blockchain Engineer Bot panel', () => {
 
       if (url.endsWith('/api/smart-contract/artifact-spec')) {
         expect(init?.body).toEqual(expect.stringContaining('"engineeringBrief"'));
+        expect(init?.body).toEqual(expect.stringContaining('"approvalStatus":"approved"'));
         return new Promise<Response>((resolve) => {
           resolveArtifactSpec = resolve;
         });
@@ -282,27 +294,34 @@ describe('App Blockchain Engineer Bot panel', () => {
         return Promise.resolve(
           createJsonResponse({
             ok: true,
-            data: {
-              artifactPackage: {
-                artifactId: 'contract-artifact-smart-contract-artifact-spec-engineering-brief-1',
-                specId: smartContractArtifactSpec.specId,
-                projectId: 'brief-1',
-                projectName: 'MILA Income Fund',
-                status: 'generated',
-              },
+      data: {
+        artifactPackage: {
+          artifactId: 'contract-artifact-smart-contract-artifact-spec-engineering-brief-1',
+          specId: smartContractArtifactSpec.specId,
+          projectId: 'brief-1',
+          projectName: 'MILA Income Fund',
+          status: 'generated',
+          sourceModel: {
+            sourceFiles: [{ path: 'contracts/MILARestrictedIncomeFundToken.preview.sol' }],
+          },
+        },
               checkResult: {
                 checkId: 'contract-check-smart-contract-artifact-spec-engineering-brief-1',
                 artifactId: 'contract-artifact-smart-contract-artifact-spec-engineering-brief-1',
-                specId: smartContractArtifactSpec.specId,
-                status: 'passed',
-              },
+          specId: smartContractArtifactSpec.specId,
+          status: 'passed',
+          summary:
+            'Deterministic spec-consistency/static-preview checking only. Not a production security audit, compiler result, deployment approval, wallet-signing proof, or legal/compliance opinion.',
+        },
               evidenceLite: {
                 evidenceId: 'evidence-lite-smart-contract-artifact-spec-engineering-brief-1',
                 artifactId: 'contract-artifact-smart-contract-artifact-spec-engineering-brief-1',
                 specId: smartContractArtifactSpec.specId,
-                checkId: 'contract-check-smart-contract-artifact-spec-engineering-brief-1',
-                status: 'ready',
-              },
+          checkId: 'contract-check-smart-contract-artifact-spec-engineering-brief-1',
+          status: 'ready',
+          evidenceItems: [{ id: 'evidence-spec-profile' }],
+          eventEvidenceRefs: [{ eventName: 'ValuationUpdated' }],
+        },
             },
           }),
         );
@@ -328,12 +347,29 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Smart Contract Spec, Artifact Preview, Check Result, and Evidence-Lite are ready in the SCP preview.'),
+        screen.getByLabelText('Generated smart contract artifacts'),
       ).toBeVisible();
     });
 
-    expect(screen.getByRole('button', { name: 'Run Checks' })).toBeDisabled();
-    expect(screen.getByText(/Compiler\/toolchain checks remain deferred/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Toolchain Decision Pending' })).toBeDisabled();
+    expect(screen.getByText(/compile\/test toolchain decision is required/i)).toBeVisible();
+    expect(screen.getByText('Backend artifacts generated.')).toBeVisible();
+    expect(screen.getByText('Smart contract preparation review')).toBeVisible();
+    expect(screen.getByText('Demo-ready preview')).toBeVisible();
+    expect(screen.getByText('Smart Contract Spec')).toBeVisible();
+    expect(screen.getByText('restricted_erc20 / ERC-20-compatible profile.')).toBeVisible();
+    expect(screen.getByText('Artifact Preview')).toBeVisible();
+    expect(screen.getByText('Preview only')).toBeVisible();
+    expect(screen.getByText('1 deterministic preview file(s). Not compiled, not deployed, not audited.')).toBeVisible();
+    expect(screen.getByText('Check Result')).toBeVisible();
+    expect(screen.getByText('Spec-consistency passed')).toBeVisible();
+    expect(screen.getByText('Evidence-Lite')).toBeVisible();
+    expect(screen.getByText('Draft evidence linked')).toBeVisible();
+    expect(screen.getByText('Compiler / Deployment / Signing')).toBeVisible();
+    expect(screen.getByText('Not compiled, not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.')).toBeVisible();
+    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Smart contract preparation is complete for demo review');
+    expect(screen.getByText('Recommended next action')).toBeVisible();
+    expect(screen.getByText('Compile/Test Toolchain Decision remains pending and should not imply deployment readiness.')).toBeVisible();
     expect(screen.getAllByText('Artifact preview generated').length).toBeGreaterThan(0);
     expect(screen.getByText('Smart Contract Spec: Generated')).toBeVisible();
     expect(screen.getByText('Artifact preview: Generated, not compiled')).toBeVisible();
@@ -343,6 +379,14 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('Deployment: Not executed')).toBeVisible();
     expect(screen.getByText('Wallet signing: Not started')).toBeVisible();
     expect(screen.getByText('Audit: Not audited')).toBeVisible();
+    expect(screen.getByText('Ethereum testnet: Only')).toBeVisible();
+    expect(screen.getByText('Mainnet: Disabled')).toBeVisible();
+    expect(screen.getByText('Backend private keys: None held')).toBeVisible();
+    expect(screen.getByText('Future deployment signer: User wallet')).toBeVisible();
+    expect(screen.getByText('Transaction hash: None exists')).toBeVisible();
+    expect(screen.getByText('ValuationUpdated')).toBeVisible();
+    expect(screen.getByText('ContractPaused')).toBeVisible();
+    expect(screen.getByText('ContractUnpaused')).toBeVisible();
     expect(screen.getByText('No contract address - not deployed')).toBeVisible();
     expect(screen.queryByText(/0x[a-fA-F0-9]{6,}/)).not.toBeInTheDocument();
     expect(screen.queryByText(/txHash/i)).not.toBeInTheDocument();

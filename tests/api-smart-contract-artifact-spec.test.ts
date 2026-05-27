@@ -166,6 +166,22 @@ describe('Smart Contract Artifact Spec API', () => {
     expect(JSON.stringify(body)).not.toMatch(/stack trace|OPENAI_API_KEY|sk-/i);
   });
 
+  it('rejects unknown or deployment-like top-level request fields', async () => {
+    const response = await postArtifactSpec({
+      ...createValidPayload(),
+      privateKey: 'sk-should-not-be-accepted',
+      contractAddress: '0x123456',
+      txHash: '0xabcdef',
+      deployed: true,
+    });
+    const body = response.json();
+
+    expect(response.statusCode).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(JSON.stringify(body)).not.toMatch(/sk-should-not-be-accepted|0x123456|0xabcdef|stack trace|OPENAI_API_KEY/i);
+  });
+
   it('does not expose provider, model, API key, secret, or stack text in success responses', async () => {
     const response = await postArtifactSpec(createValidPayload());
     const body = response.json();
