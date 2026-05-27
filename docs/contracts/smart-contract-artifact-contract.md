@@ -30,4 +30,4 @@ The source preview is explicitly labelled:
 
 `Deterministic preview only - not compiled, not deployed, not audited.`
 
-OpenZeppelin remains a spec/implementation assumption only. Exact package versions and compile/test tooling remain deferred to a later track.
+OpenZeppelin remains a spec/implementation assumption only. Track 9B.2 recommends Hardhat as the first future compile/test implementation path, but does not install tooling, add Solidity files, add OpenZeppelin imports, or change the preview-only artifact/check/evidence contract.

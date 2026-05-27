@@ -52,6 +52,10 @@ Track 9B adds deterministic artifact/check/evidence-lite linkage:
 
 - [`smart-contract-artifact-contract.md`](smart-contract-artifact-contract.md): preview-only contract artifact package, spec-consistency check result, and evidence-lite references without compile, deployment, wallet signing, or audit claims.
 
+Track 9B.2 adds the compile/test toolchain decision:
+
+- [`../architecture/solidity-toolchain-decision.md`](../architecture/solidity-toolchain-decision.md): docs-only ADR recommending Hardhat as the first future compile/test path while keeping toolchain installation, Solidity files, OpenZeppelin imports, wallet signing, deployment, and mainnet out of scope.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:
