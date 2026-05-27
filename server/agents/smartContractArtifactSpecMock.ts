@@ -187,7 +187,7 @@ function generateParsedSmartContractArtifactSpec(
       compatibilityNotes: [
         'restricted_erc20 is a MILA26 implementation profile, not a separate formal ERC standard.',
         'Future Solidity must remain ERC-20-compatible while enforcing wallet whitelist and transfer restrictions.',
-        'Exact Solidity signatures and imports are deferred to Track 9B.',
+        'Exact Solidity signatures, imports, and package versions remain deferred to a later compile/toolchain track.',
       ],
     },
     contractModel: {

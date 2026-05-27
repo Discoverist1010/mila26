@@ -551,6 +551,7 @@ h3 {
 }
 
 .artifact-grid,
+.generated-artifact-grid,
 .contract-overview {
   display: grid;
   gap: 12px;
@@ -583,6 +584,7 @@ h3 {
 
 .brief-preview div,
 .artifact-grid article,
+.generated-artifact-grid article,
 .contract-overview article,
 .contract-section,
 .module-card,
@@ -596,6 +598,7 @@ h3 {
 .brief-preview span,
 .artifact-grid span,
 .contract-overview span,
+.generated-artifact-grid span,
 .artifact-meta span {
   color: #68798c;
   display: block;
@@ -608,6 +611,7 @@ h3 {
 
 .brief-preview strong,
 .artifact-grid strong,
+.generated-artifact-grid strong,
 .contract-overview strong,
 .approval-gate strong {
   color: #172033;
@@ -615,9 +619,34 @@ h3 {
 
 .brief-preview p,
 .artifact-grid p,
-.artifact-grid ul {
+.artifact-grid ul,
+.generated-artifact-grid p {
   color: #526274;
   margin-bottom: 0;
+}
+
+.generated-artifacts {
+  border: 1px solid #cfe1df;
+  border-radius: 8px;
+  background: #f8fffd;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.generated-artifacts-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.generated-artifact-grid small {
+  color: #68798c;
+  display: block;
+  font-size: 12px;
+  font-weight: 760;
+  margin-top: 8px;
 }
 
 .artifact-grid ul {
@@ -866,6 +895,7 @@ summary {
   .fact-grid,
   .brief-preview,
   .artifact-grid,
+  .generated-artifact-grid,
   .module-grid,
   .contract-overview,
   .control-actions {
