@@ -14,6 +14,10 @@ import { createDemoProjectClosureLedger } from './domain/projectClosureLedger';
 import { toProjectClosureReadModel } from './domain/projectClosureReadModel';
 import { toProjectLifecycleReadModel, type Mila26UiActionId } from './domain/projectLifecycleReadModel';
 import { toRequirementBriefContract } from './domain/requirementBrief';
+import {
+  createKnownLocalCompileTestResult,
+  toSmartContractCompileTestPresentation,
+} from './domain/smartContractCompileTestPresentation';
 import { toSmartContractControlPanelViewModel } from './domain/smartContractControlPanelViewModel';
 import type { BlockchainEngineerChatResponse } from '../server/contracts/chat';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
@@ -23,6 +27,7 @@ import type {
   SmartContractEvidenceLite,
 } from '../server/contracts/smartContractArtifact';
 import type { SmartContractArtifactSpec } from '../server/contracts/smartContractArtifactSpec';
+import type { SmartContractCompileTestResult } from '../server/contracts/smartContractCompileCheck';
 import type { FundFacts, RequirementBrief } from './domain/schemas';
 
 const starterFacts: FundFacts = {
@@ -87,17 +92,17 @@ function createSmartContractPreparationResponse(): BlockchainEngineerChatRespons
     messageId: 'local-smart-contract-preparation',
     agentId: 'blockchain-engineer',
     content:
-      'Smart contract preparation is complete for demo review: I generated the Smart Contract Spec, deterministic Artifact Preview, spec-consistency Check Result, and Evidence-Lite linkage.',
-    openQuestions: ['Confirm the compile/test toolchain decision before any Solidity compilation track begins.'],
+      'Smart contract preparation is complete for demo review: I generated the Smart Contract Spec, deterministic Artifact Preview, spec-consistency Check Result, Evidence-Lite linkage, and represented the known local compile/test foundation as passed.',
+    openQuestions: ['Review deployment-gate and wallet-signing design later before any testnet transaction is considered.'],
     riskNotes: [
-      'Not compiled.',
+      'No compile command was run from this UI action.',
       'Not deployed.',
       'Not audited.',
       'Not signed.',
       'No wallet is connected.',
       'No contract address or transaction hash exists.',
     ],
-    nextRecommendedAction: 'Compile/Test Toolchain Decision remains pending and should not imply deployment readiness.',
+    nextRecommendedAction: 'Deployment Gate and wallet-signing design remain later steps. Local compile/test status does not imply deployment readiness.',
     createdAt: new Date(0).toISOString(),
   };
 }
@@ -114,6 +119,7 @@ export function App() {
   const [smartContractArtifactPackage, setSmartContractArtifactPackage] = useState<SmartContractArtifactPackage | undefined>();
   const [smartContractCheckResult, setSmartContractCheckResult] = useState<SmartContractArtifactCheckResult | undefined>();
   const [smartContractEvidenceLite, setSmartContractEvidenceLite] = useState<SmartContractEvidenceLite | undefined>();
+  const [smartContractCompileTestResult, setSmartContractCompileTestResult] = useState<SmartContractCompileTestResult | undefined>();
   const [smartContractGenerationStatus, setSmartContractGenerationStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [smartContractGenerationError, setSmartContractGenerationError] = useState<string | undefined>();
   const [engineerResponse, setEngineerResponse] = useState(() =>
@@ -158,12 +164,26 @@ export function App() {
         hasEngineeringBrief: Boolean(engineeringBrief),
         closureReadiness: projectClosureReadModel,
         artifactSpecStatus: smartContractArtifactSpec ? smartContractArtifactSpec.status : 'not_started',
+        checkStatus:
+          smartContractCompileTestResult?.status === 'passed'
+            ? 'passed'
+            : smartContractCompileTestResult?.status === 'failed'
+              ? 'failed'
+              : undefined,
+        evidenceStatus: smartContractEvidenceLite?.status === 'ready' ? 'ready' : undefined,
       }),
-    [brief, engineeringBrief, projectClosureReadModel, smartContractArtifactSpec],
+    [brief, engineeringBrief, projectClosureReadModel, smartContractArtifactSpec, smartContractCompileTestResult, smartContractEvidenceLite],
   );
   const cockpitActionViewModel = useMemo(
     () => toCockpitActionViewModel(projectLifecycleReadModel),
     [projectLifecycleReadModel],
+  );
+  const smartContractCompileTestPresentation = useMemo(
+    () =>
+      smartContractCompileTestResult
+        ? toSmartContractCompileTestPresentation(smartContractCompileTestResult)
+        : undefined,
+    [smartContractCompileTestResult],
   );
   const smartContractControlPanel = useMemo(
     () =>
@@ -172,6 +192,7 @@ export function App() {
         artifactStatus: smartContractArtifactPackage?.status,
         checkStatus: smartContractCheckResult?.status,
         evidenceStatus: smartContractEvidenceLite?.status,
+        ...smartContractCompileTestPresentation?.scpStatus,
         customEvents: smartContractArtifactSpec?.eventModel?.customEvents,
       }),
     [
@@ -180,6 +201,7 @@ export function App() {
       smartContractArtifactPackage,
       smartContractCheckResult,
       smartContractEvidenceLite,
+      smartContractCompileTestPresentation,
     ],
   );
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
@@ -199,6 +221,7 @@ export function App() {
     'Decision notes local only',
     smartContractArtifactSpec ? 'Smart Contract Artifact Spec generated' : 'Smart Contract Artifact Spec pending',
     smartContractArtifactPackage ? 'Contract Artifact Preview generated' : 'Contract Artifact Preview pending',
+    smartContractCompileTestResult ? 'Local compile/test foundation passed' : 'Local compile/test foundation pending',
   ];
   const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
   const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
@@ -215,13 +238,15 @@ export function App() {
             {
               label: 'Artifact Preview',
               status: 'Preview only',
-              detail: `${smartContractArtifactPackage?.sourceModel?.sourceFiles.length ?? 0} deterministic preview file(s). Not compiled, not deployed, not audited.`,
+              detail: `${smartContractArtifactPackage?.sourceModel?.sourceFiles.length ?? 0} deterministic preview file(s). Preview artifact not deployed or audited.`,
               source: 'Track 9B route',
             },
             {
               label: 'Check Result',
               status: smartContractCheckResult?.status === 'passed' ? 'Spec-consistency passed' : 'Available',
-              detail: smartContractCheckResult?.summary ?? 'Spec-consistency result available. Compiler/toolchain not configured.',
+              detail:
+                smartContractCheckResult?.summary ??
+                'Spec-consistency result available. Local compile/test foundation is represented separately.',
               source: 'Deterministic static preview',
             },
             {
@@ -230,10 +255,11 @@ export function App() {
               detail: `${smartContractEvidenceLite?.evidenceItems?.length ?? 0} evidence item(s), ${smartContractEvidenceLite?.eventEvidenceRefs?.length ?? 0} event mapping(s).`,
               source: 'Evidence-lite linkage',
             },
+            ...(smartContractCompileTestPresentation ? [smartContractCompileTestPresentation.artifactCard] : []),
             {
-              label: 'Compiler / Deployment / Signing',
-              status: 'Not configured',
-              detail: 'Not compiled, not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.',
+              label: 'Deployment / Signing / Audit',
+              status: 'Not executed',
+              detail: 'Not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.',
               source: 'Safety boundary',
             },
           ]
@@ -242,6 +268,7 @@ export function App() {
       smartContractArtifactPackage,
       smartContractArtifactSpec,
       smartContractCheckResult,
+      smartContractCompileTestPresentation,
       smartContractEvidenceLite,
       smartContractGenerationStatus,
     ],
@@ -321,6 +348,7 @@ export function App() {
     setSmartContractArtifactPackage(undefined);
     setSmartContractCheckResult(undefined);
     setSmartContractEvidenceLite(undefined);
+    setSmartContractCompileTestResult(undefined);
     setSmartContractGenerationStatus('idle');
     setSmartContractGenerationError(undefined);
   }
@@ -365,6 +393,13 @@ export function App() {
     setSmartContractArtifactPackage(artifactResult.data.artifactPackage);
     setSmartContractCheckResult(artifactResult.data.checkResult);
     setSmartContractEvidenceLite(artifactResult.data.evidenceLite);
+    setSmartContractCompileTestResult(
+      createKnownLocalCompileTestResult({
+        artifactId: artifactResult.data.artifactPackage.artifactId,
+        specId: specResult.data.specId,
+        generatedAt: specResult.data.metadata?.generatedAt,
+      }),
+    );
     setSmartContractGenerationStatus('ready');
     setEngineerResponse(createSmartContractPreparationResponse());
     setEngineerAnswerSource('generated_artifacts');
@@ -994,7 +1029,8 @@ export function App() {
               ))}
             </div>
             <p className="microcopy">
-              No contract has been compiled, deployed, audited, signed, or connected to a wallet in this MVP stage.
+              No contract has been deployed, audited, signed, or connected to a wallet in this MVP stage. Local
+              compile/test status, where shown, is a known developer-local foundation result only.
             </p>
           </section>
         </div>

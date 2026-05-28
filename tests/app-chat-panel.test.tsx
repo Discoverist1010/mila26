@@ -351,8 +351,8 @@ describe('App Blockchain Engineer Bot panel', () => {
       ).toBeVisible();
     });
 
-    expect(screen.getByRole('button', { name: 'Toolchain Decision Pending' })).toBeDisabled();
-    expect(screen.getByText(/compile\/test toolchain decision is required/i)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Review Deployment Gate' })).toBeDisabled();
+    expect(screen.getByText(/Deployment gate review remains a later/i)).toBeVisible();
     expect(screen.getByText('Backend artifacts generated.')).toBeVisible();
     expect(screen.getByText('Smart contract preparation review')).toBeVisible();
     expect(screen.getByText('Demo-ready preview')).toBeVisible();
@@ -360,22 +360,29 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('restricted_erc20 / ERC-20-compatible profile.')).toBeVisible();
     expect(screen.getByText('Artifact Preview')).toBeVisible();
     expect(screen.getByText('Preview only')).toBeVisible();
-    expect(screen.getByText('1 deterministic preview file(s). Not compiled, not deployed, not audited.')).toBeVisible();
+    expect(screen.getByText('1 deterministic preview file(s). Preview artifact not deployed or audited.')).toBeVisible();
     expect(screen.getByText('Check Result')).toBeVisible();
     expect(screen.getByText('Spec-consistency passed')).toBeVisible();
     expect(screen.getByText('Evidence-Lite')).toBeVisible();
     expect(screen.getByText('Draft evidence linked')).toBeVisible();
-    expect(screen.getByText('Compiler / Deployment / Signing')).toBeVisible();
-    expect(screen.getByText('Not compiled, not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.')).toBeVisible();
+    expect(screen.getByText('Local Compile/Test')).toBeVisible();
+    expect(screen.getByText('Hardhat fixture compiles and local contract tests pass. Tested capabilities: ERC-20 basics, whitelist restrictions, issuer mint/allocation, valuation event, distribution event, pause/unpause, and access control.')).toBeVisible();
+    expect(screen.getByText('Known Track 10A local foundation result')).toBeVisible();
+    expect(screen.getByText('Deployment / Signing / Audit')).toBeVisible();
+    expect(screen.getByText('Not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.')).toBeVisible();
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Smart contract preparation is complete for demo review');
+    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('represented the known local compile/test foundation as passed');
     expect(screen.getByText('Recommended next action')).toBeVisible();
-    expect(screen.getByText('Compile/Test Toolchain Decision remains pending and should not imply deployment readiness.')).toBeVisible();
+    expect(screen.getByText('Deployment Gate and wallet-signing design remain later steps. Local compile/test status does not imply deployment readiness.')).toBeVisible();
     expect(screen.getAllByText('Artifact preview generated').length).toBeGreaterThan(0);
     expect(screen.getByText('Smart Contract Spec: Generated')).toBeVisible();
     expect(screen.getByText('Artifact preview: Generated, not compiled')).toBeVisible();
     expect(screen.getByText('Check result: Spec-consistency result available')).toBeVisible();
     expect(screen.getByText('Evidence-lite: Available for later evidence pack wiring')).toBeVisible();
-    expect(screen.getByText('Compiler/toolchain: Not configured')).toBeVisible();
+    expect(screen.getByText('Local compile/test foundation: Passed')).toBeVisible();
+    expect(screen.getByText('Solidity fixture: Compiles locally')).toBeVisible();
+    expect(screen.getByText('Contract tests: Passed locally')).toBeVisible();
+    expect(screen.getByText('Tested capabilities: ERC-20 basics, whitelist restrictions, issuer mint/allocation, valuation event, distribution event, pause/unpause, access control')).toBeVisible();
     expect(screen.getByText('Deployment: Not executed')).toBeVisible();
     expect(screen.getByText('Wallet signing: Not started')).toBeVisible();
     expect(screen.getByText('Audit: Not audited')).toBeVisible();
@@ -390,6 +397,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('No contract address - not deployed')).toBeVisible();
     expect(screen.queryByText(/0x[a-fA-F0-9]{6,}/)).not.toBeInTheDocument();
     expect(screen.queryByText(/txHash/i)).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.map(([url]) => String(url)).join(' ')).not.toMatch(/hardhat|contracts:build|test:contracts/i);
   });
 
   it('shows a safe Smart Contract Spec error without claiming generated readiness', async () => {

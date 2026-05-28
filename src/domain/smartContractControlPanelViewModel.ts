@@ -166,6 +166,11 @@ function compileTestHealthItems(
       { label: generatedState.localCompileTestLabel ?? 'Local compile/test foundation', value: 'Passed', status: 'ready' },
       { label: 'Solidity fixture', value: 'Compiles locally', status: 'ready' },
       { label: 'Contract tests', value: 'Passed locally', status: 'ready' },
+      {
+        label: 'Tested capabilities',
+        value: 'ERC-20 basics, whitelist restrictions, issuer mint/allocation, valuation event, distribution event, pause/unpause, access control',
+        status: 'ready',
+      },
     ];
   }
 

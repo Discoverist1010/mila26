@@ -211,6 +211,11 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'Local compile/test foundation', value: 'Passed', status: 'ready' },
         { label: 'Solidity fixture', value: 'Compiles locally', status: 'ready' },
         { label: 'Contract tests', value: 'Passed locally', status: 'ready' },
+        {
+          label: 'Tested capabilities',
+          value: 'ERC-20 basics, whitelist restrictions, issuer mint/allocation, valuation event, distribution event, pause/unpause, access control',
+          status: 'ready',
+        },
         { label: 'Deployment', value: 'Not executed', status: 'disabled' },
         { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
         { label: 'Audit', value: 'Not audited', status: 'disabled' },

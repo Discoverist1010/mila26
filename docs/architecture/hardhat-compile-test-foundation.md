@@ -103,6 +103,18 @@ It preserves the distinction between:
 
 Passing local compile/test results still do not mean deployed, wallet signed, audited, verified, production ready, legally approved, or mainnet enabled.
 
+## Track 10C Cockpit/SCP Surfacing
+
+Track 10C surfaces the known local Track 10A compile/test baseline in the cockpit and SCP after Smart Contract Spec and Artifact Preview generation succeeds.
+
+This is display-only integration:
+
+- no frontend or backend Hardhat command execution
+- no "Run Hardhat" button
+- no deployment, wallet signing, private keys, mainnet, contract address, transaction hash, or audit claim
+
+The cockpit can show `Local Compile/Test - Passed` and the SCP can show local compile/test readiness rows, but the result remains a developer-local foundation result rather than a runtime action triggered by the user.
+
 ## Revisit Items
 
 Before moving beyond Track 10A, decide:
