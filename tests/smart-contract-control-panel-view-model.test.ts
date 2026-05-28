@@ -187,6 +187,45 @@ describe('Smart Contract Control Panel view model', () => {
     );
   });
 
+  it('reflects local compile/test status as lightweight SCP readiness without execution claims', () => {
+    const lifecycleReadModel = toProjectLifecycleReadModel({
+      hasRequirementBrief: true,
+      hasEngineeringBrief: true,
+      closureReadiness: closureReadiness(),
+      artifactSpecStatus: 'ready',
+    });
+    const viewModel = toSmartContractControlPanelViewModel(lifecycleReadModel, {
+      specStatus: 'ready',
+      artifactStatus: 'generated',
+      checkStatus: 'passed',
+      evidenceStatus: 'ready',
+      localCompileTestStatus: 'passed',
+      localCompileTestLabel: 'Local compile/test foundation',
+      localCompileTestDetail:
+        'Passed locally. This is not deployed, wallet signed, audited, connected to a wallet, or represented by a contract address or transaction hash.',
+    });
+
+    expect(viewModel.status).toBe('artifact_preview_ready');
+    expect(viewModel.healthItems).toEqual(
+      expect.arrayContaining([
+        { label: 'Local compile/test foundation', value: 'Passed', status: 'ready' },
+        { label: 'Solidity fixture', value: 'Compiles locally', status: 'ready' },
+        { label: 'Contract tests', value: 'Passed locally', status: 'ready' },
+        { label: 'Deployment', value: 'Not executed', status: 'disabled' },
+        { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
+        { label: 'Audit', value: 'Not audited', status: 'disabled' },
+      ]),
+    );
+    expect(viewModel.statusDetail).toMatch(/local compile\/test representation/i);
+    expect(viewModel.overview.contractAddress).toBe('No contract address - not deployed');
+    expect(viewModel.boundaryItems).toEqual(
+      expect.arrayContaining([
+        { label: 'Transaction hash', value: 'None exists', status: 'disabled' },
+        { label: 'Audit', value: 'Not performed', status: 'disabled' },
+      ]),
+    );
+  });
+
   it('keeps all SCP actions disabled until later wallet and transaction tracks', () => {
     const viewModel = toSmartContractControlPanelViewModel(
       toProjectLifecycleReadModel({

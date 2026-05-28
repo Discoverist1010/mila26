@@ -30,4 +30,10 @@ The source preview is explicitly labelled:
 
 `Deterministic preview only - not compiled, not deployed, not audited.`
 
-Track 10A adds local-only Hardhat/OpenZeppelin compile/test fixture support. The 9B artifact route remains preview-only until a later track deliberately maps real compiler/test outputs into `SmartContractArtifactCheckResult`, Evidence-Lite, SCP readiness, and Deployment Gate status.
+Track 10A adds local-only Hardhat/OpenZeppelin compile/test fixture support. The 9B artifact route remains preview-only.
+
+Track 10B adds a companion compile/test result adapter:
+
+- [`smart-contract-compile-check-contract.md`](smart-contract-compile-check-contract.md)
+
+The adapter can map the local Hardhat compile/test baseline into `SmartContractArtifactCheckResult.checks`-compatible rows, Evidence-Lite item candidates, safety evidence refs, and lightweight SCP status fields. It does not replace the Track 9B spec-consistency result, run Hardhat from the backend, deploy contracts, sign wallets, create addresses or transaction hashes, or make audit/readiness claims.

@@ -55,6 +55,9 @@ export type SmartContractControlPanelGeneratedState = {
   artifactStatus?: 'generated' | 'blocked';
   checkStatus?: 'passed' | 'failed' | 'blocked';
   evidenceStatus?: 'ready' | 'blocked';
+  localCompileTestStatus?: 'passed' | 'failed' | 'blocked' | 'not_run';
+  localCompileTestLabel?: string;
+  localCompileTestDetail?: string;
   customEvents?: string[];
 };
 
@@ -151,7 +154,54 @@ function statusForLifecycle(
   return 'preview';
 }
 
-function healthStatusFor(status: SmartContractControlPanelStatus): SmartContractControlPanelHealthItem[] {
+function compileTestHealthItems(
+  generatedState?: SmartContractControlPanelGeneratedState,
+): SmartContractControlPanelHealthItem[] {
+  if (!generatedState?.localCompileTestStatus) {
+    return [{ label: 'Compiler/toolchain', value: 'Not configured', status: 'disabled' }];
+  }
+
+  if (generatedState.localCompileTestStatus === 'passed') {
+    return [
+      { label: generatedState.localCompileTestLabel ?? 'Local compile/test foundation', value: 'Passed', status: 'ready' },
+      { label: 'Solidity fixture', value: 'Compiles locally', status: 'ready' },
+      { label: 'Contract tests', value: 'Passed locally', status: 'ready' },
+    ];
+  }
+
+  if (generatedState.localCompileTestStatus === 'failed') {
+    return [
+      {
+        label: generatedState.localCompileTestLabel ?? 'Local compile/test foundation',
+        value: 'Failed locally',
+        status: 'blocked',
+      },
+    ];
+  }
+
+  if (generatedState.localCompileTestStatus === 'blocked') {
+    return [
+      {
+        label: generatedState.localCompileTestLabel ?? 'Local compile/test foundation',
+        value: 'Blocked',
+        status: 'blocked',
+      },
+    ];
+  }
+
+  return [
+    {
+      label: generatedState.localCompileTestLabel ?? 'Local compile/test foundation',
+      value: 'Not run',
+      status: 'pending',
+    },
+  ];
+}
+
+function healthStatusFor(
+  status: SmartContractControlPanelStatus,
+  generatedState?: SmartContractControlPanelGeneratedState,
+): SmartContractControlPanelHealthItem[] {
   if (status === 'blocked') {
     return [
       { label: 'Lifecycle', value: 'Blocked before contract specification', status: 'blocked' },
@@ -188,7 +238,7 @@ function healthStatusFor(status: SmartContractControlPanelStatus): SmartContract
       { label: 'Artifact preview', value: 'Generated, not compiled', status: 'ready' },
       { label: 'Check result', value: 'Spec-consistency result available', status: 'ready' },
       { label: 'Evidence-lite', value: 'Available for later evidence pack wiring', status: 'ready' },
-      { label: 'Compiler/toolchain', value: 'Not configured', status: 'disabled' },
+      ...compileTestHealthItems(generatedState),
       { label: 'Deployment', value: 'Not executed', status: 'disabled' },
       { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
       { label: 'Audit', value: 'Not audited', status: 'disabled' },
@@ -231,7 +281,11 @@ function statusLabel(status: SmartContractControlPanelStatus) {
   }
 }
 
-function statusDetail(status: SmartContractControlPanelStatus, lifecycleReadModel: ProjectLifecycleReadModel) {
+function statusDetail(
+  status: SmartContractControlPanelStatus,
+  lifecycleReadModel: ProjectLifecycleReadModel,
+  generatedState?: SmartContractControlPanelGeneratedState,
+) {
   if (status === 'blocked') {
     return lifecycleReadModel.blockedReasons[0] ?? 'Resolve blocked lifecycle items before contract planning.';
   }
@@ -245,6 +299,10 @@ function statusDetail(status: SmartContractControlPanelStatus, lifecycleReadMode
   }
 
   if (status === 'artifact_preview_ready') {
+    if (generatedState?.localCompileTestStatus === 'passed') {
+      return 'Smart Contract Spec, artifact preview, spec-consistency check result, evidence-lite, and local compile/test representation are available. This is not deployed, audited, signed, or connected to a wallet.';
+    }
+
     return 'Smart Contract Spec, artifact preview, spec-consistency check result, and evidence-lite are available. This is not compiled, deployed, audited, signed, or connected to a wallet.';
   }
 
@@ -276,7 +334,7 @@ export function toSmartContractControlPanelViewModel(
   return {
     status,
     statusLabel: statusLabel(status),
-    statusDetail: statusDetail(status, lifecycleReadModel),
+    statusDetail: statusDetail(status, lifecycleReadModel, generatedState),
     overview: {
       contractStatus: status === 'artifact_preview_ready' ? 'Artifact preview generated - not deployed' : 'Not deployed',
       contractAddress: 'No contract address - not deployed',
@@ -301,7 +359,7 @@ export function toSmartContractControlPanelViewModel(
       lifecycleReadModel.readinessLabel,
       'Deployment remains disabled for MVP',
     ],
-    healthItems: healthStatusFor(status),
+    healthItems: healthStatusFor(status, generatedState),
     boundaryItems: boundaryItems(),
   };
 }

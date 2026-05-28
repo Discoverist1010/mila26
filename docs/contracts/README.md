@@ -60,6 +60,10 @@ Track 10A adds the local Hardhat compile/test foundation:
 
 - [`../architecture/hardhat-compile-test-foundation.md`](../architecture/hardhat-compile-test-foundation.md): local-only Hardhat/OpenZeppelin fixture, contract test command, guardrails, and future output mapping without deployment, wallet signing, mainnet, fake addresses, transaction hashes, or audit claims.
 
+Track 10B adds the compile/test result adapter:
+
+- [`smart-contract-compile-check-contract.md`](smart-contract-compile-check-contract.md): typed representation of the local Hardhat compile/test result plus pure mapping into existing check, evidence-lite, and SCP readiness terminology without backend command execution.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:

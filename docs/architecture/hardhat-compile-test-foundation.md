@@ -82,6 +82,27 @@ Later tracks can map real compile/test results into the existing MILA26 artifact
 - SCP readiness/status: show compiled/tested only when real outputs are captured; continue showing not deployed, not audited, not signed, no wallet connected, no address, and no transaction hash.
 - Deployment Gate: consume compile/test/evidence readiness later, but compile/test success must never imply deployment approval.
 
+## Track 10B Adapter
+
+Track 10B adds `SmartContractCompileTestResult` as a typed representation of the local Track 10A compile/test baseline.
+
+The adapter represents operator-run local command outcomes; it does not run Hardhat from a backend route, job runner, queue, command bus, or user request.
+
+The adapter maps local compile/test status into:
+
+- `SmartContractArtifactCheckResult.checks`-compatible rows
+- `SmartContractEvidenceLite.evidenceItems` candidates
+- `SmartContractEvidenceLite.safetyEvidenceRefs` entries
+- lightweight SCP status fields
+
+It preserves the distinction between:
+
+- Track 9B spec-consistency/static-preview checking
+- Track 10A local Hardhat compile/test execution
+- Track 10B typed representation/mapping of that local result
+
+Passing local compile/test results still do not mean deployed, wallet signed, audited, verified, production ready, legally approved, or mainnet enabled.
+
 ## Revisit Items
 
 Before moving beyond Track 10A, decide:
