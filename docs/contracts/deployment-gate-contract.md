@@ -1,49 +1,81 @@
-# Deployment Gate Readiness Contract
+# Deployment Gate Contract
+
+Track 11A adds a pure deployment-gate read model for deciding whether MILA26 has enough planning, artifact, check, evidence, and local compile/test readiness to review a future deployment gate.
+
+It does not prepare, sign, submit, or track blockchain transactions.
 
 ## Purpose
 
-The deployment gate readiness contract confirms whether a generated contract is ready for user wallet-signed Ethereum testnet deployment.
+The deployment gate answers:
 
-It does not authorize mainnet deployment and does not hold private keys.
+- Are pre-deployment prerequisites complete?
+- What still blocks actual deployment execution?
+- Are MVP safety boundaries still enforced?
 
-## Likely Fields
+It deliberately separates:
 
-- `gateId`.
-- `projectId`.
-- `runId`.
-- `prdId`.
-- `artifactId`.
-- `targetNetwork`.
-- `protocol`.
-- `prdApproved`.
-- `compilePassed`.
-- `testsPassed`.
-- `qaPassed`.
-- `securityPassed`.
-- `evidencePackReady`.
-- `criticalFindingsUnresolved`.
-- `walletConnectionRequired`.
-- `userSignatureRequired`.
-- `readyForTestnetDeployment`.
-- `blockingReasons`.
-- `createdAt`.
+- `preDeploymentReadiness`: planning/artifact/check/evidence/compile-test completeness.
+- `deploymentExecutionStatus`: actual execution availability.
 
-## Invariants
+For Track 11A, `deploymentExecutionStatus` is always `blocked` because wallet signing is not implemented.
 
-- Mainnet is not allowed in MVP.
-- User wallet signs deployment.
-- Backend does not hold deployer private key.
-- No deployment readiness if PRD is not approved.
-- No deployment readiness if critical security findings are unresolved.
-- Evidence Pack must record readiness state and any waivers.
+## Read Model
 
-## Lifecycle
+The current implementation is `src/domain/deploymentGateReadModel.ts`.
 
-`not_ready` -> `ready_for_signature` -> `submitted` -> `confirmed` -> `failed`
+Inputs are lightweight statuses from existing artifacts and read models:
 
-## Future Fixture/Test Expectations
+- Requirement Brief present/absent.
+- Engineering Brief present/absent.
+- Project Closure readiness status.
+- Smart Contract Artifact Spec status.
+- Artifact Preview status.
+- Check Result status.
+- Evidence-Lite status.
+- Local Compile/Test status.
+- Fixed MVP safety boundaries.
 
-- Add fixture for `not_ready` with blocking reasons.
-- Add fixture for `ready_for_signature` with all gates passed.
-- Add tests for mainnet fail-closed behavior, PRD approval gating, security gating, evidence readiness, and wallet-signature requirement.
-- Add transaction-status fixtures when wallet-signed deployment is implemented.
+The read model returns:
+
+- `gateStatus`: `blocked` or `review_ready`.
+- `preDeploymentReadiness`: `incomplete`, `complete`, or `blocked`.
+- `deploymentExecutionStatus`: `blocked`.
+- `readyForDeploymentGateReview`.
+- `readyForWalletSigningDesign`.
+- prerequisite checks.
+- boundary checks.
+- blocked reasons.
+- remaining gate items.
+
+## Boundary Checks
+
+Track 11A boundary checks explicitly include:
+
+- Ethereum testnet only.
+- Mainnet disabled.
+- Backend holds no private keys.
+- User wallet signing required for any future deployment.
+- Wallet signing not implemented.
+- Deployment not executed.
+- Contract address absent.
+- Transaction hash absent.
+- Audit not performed.
+
+Contract address and transaction hash remain absent boundary checks. They are not nullable future fields in Track 11A.
+
+## Non-Goals
+
+Track 11A does not add:
+
+- UI wiring.
+- backend routes or API endpoints.
+- wallet adapter, wallet connection, or wallet signing.
+- viem transaction code.
+- deployment scripts.
+- backend or frontend command execution.
+- Hardhat execution from the app.
+- persistence, auth, payments, LLM changes, or global state.
+- fake contract address, fake transaction hash, fake deployment status, or audit/security approval claims.
+- transaction lifecycle states such as `ready_for_signature`, `submitted`, `confirmed`, or `failed`.
+
+Future wallet/deployment tracks may define transaction lifecycle contracts after the deployment gate semantics are stable.

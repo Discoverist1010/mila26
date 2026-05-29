@@ -64,6 +64,10 @@ Track 10B adds the compile/test result adapter:
 
 - [`smart-contract-compile-check-contract.md`](smart-contract-compile-check-contract.md): typed representation of the local Hardhat compile/test result plus pure mapping into existing check, evidence-lite, and SCP readiness terminology without backend command execution.
 
+Track 11A adds the deployment gate read model foundation:
+
+- [`deployment-gate-contract.md`](deployment-gate-contract.md): pre-deployment readiness and execution-blocked boundary semantics without UI wiring, wallet signing, transaction lifecycle states, contract addresses, transaction hashes, or deployment execution.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:
@@ -115,7 +119,7 @@ Track 2B documents planned backend/API contracts without implementing routes or 
 - [`prd-approval-contract.md`](prd-approval-contract.md): PRD approval state and orchestration gate.
 - [`solidity-artifact-contract.md`](solidity-artifact-contract.md): Solidity artifact metadata and readiness.
 - [`security-benchmark-contract.md`](security-benchmark-contract.md): QA/security benchmark status and findings.
-- [`deployment-gate-contract.md`](deployment-gate-contract.md): testnet deployment readiness gate.
+- [`deployment-gate-contract.md`](deployment-gate-contract.md): current Track 11A deployment gate read model and future wallet/deployment boundary.
 
 The existing fixtures protect current beta contracts. Planned MVP contracts need fixtures and contract tests before or alongside implementation.
 
