@@ -202,7 +202,11 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(generatedArtifacts.getByText('Review-ready').first()).toBeVisible();
   await expect(generatedArtifacts.getByText('Pre-deployment readiness: Complete. Deployment execution: Blocked.')).toBeVisible();
   await expect(generatedArtifacts.getByText('Wallet Signing Intent', { exact: true })).toBeVisible();
-  await expect(generatedArtifacts.getByText('Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys.')).toBeVisible();
+  await expect(
+    generatedArtifacts.getByText(
+      'Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys. Next milestone: wallet connection and Sepolia signing design.',
+    ),
+  ).toBeVisible();
   await expect(generatedArtifacts.getByText('Smart Contract Operations', { exact: true })).toBeVisible();
   await expect(generatedArtifacts.getByText('Locked', { exact: true })).toBeVisible();
   await expect(generatedArtifacts.getByText(/Required before operations: wallet connection, user-signed deployment/i)).toBeVisible();

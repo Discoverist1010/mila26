@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
+import { expectNoPrematureBlockchainExecutionClaims } from './golden-flow-assertions';
 
 function createJsonResponse(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -256,7 +257,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByRole('button', { name: 'Approve Brief and Run Coding Bot' })).not.toBeInTheDocument();
   });
 
-  it('prepares a Smart Contract Spec and artifact preview through the central workflow action', async () => {
+  it('completes the golden lifecycle flow into wallet-intent review and locked operations without execution claims', async () => {
     let resolveArtifactSpec: (value: Response) => void = () => undefined;
     const smartContractArtifactSpec = {
       specId: 'smart-contract-artifact-spec-engineering-brief-1',
@@ -374,7 +375,11 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(generatedArtifacts.getByText('Pre-deployment readiness: Complete. Deployment execution: Blocked.')).toBeVisible();
     expect(generatedArtifacts.getByText('Track 11A read model')).toBeVisible();
     expect(generatedArtifacts.getByText('Wallet Signing Intent')).toBeVisible();
-    expect(generatedArtifacts.getByText('Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys.')).toBeVisible();
+    expect(
+      generatedArtifacts.getByText(
+        'Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys. Next milestone: wallet connection and Sepolia signing design.',
+      ),
+    ).toBeVisible();
     expect(generatedArtifacts.getByText('Track 12A read model')).toBeVisible();
     expect(generatedArtifacts.getByText('Smart Contract Operations')).toBeVisible();
     expect(generatedArtifacts.getByText('Locked')).toBeVisible();
@@ -454,7 +459,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByText(/^Submitted transaction:/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Confirmed transaction:/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Signed payload:/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/live|verified|audit passed|security approved/i)).not.toBeInTheDocument();
+    expectNoPrematureBlockchainExecutionClaims(document.body.textContent ?? '');
     expect(fetchMock.mock.calls.map(([url]) => String(url)).join(' ')).not.toMatch(/hardhat|contracts:build|test:contracts/i);
   });
 

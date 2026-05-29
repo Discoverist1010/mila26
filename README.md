@@ -90,6 +90,7 @@ npm run test:e2e
 - Frontend component plan: [`docs/architecture/frontend-component-plan.md`](docs/architecture/frontend-component-plan.md)
 - Backend LLM boundary: [`docs/architecture/backend-llm-boundary.md`](docs/architecture/backend-llm-boundary.md)
 - MVP stack decisions: [`docs/architecture/mvp-stack-decisions.md`](docs/architecture/mvp-stack-decisions.md)
+- Alpha demo boundary: [`docs/architecture/alpha-demo-boundary.md`](docs/architecture/alpha-demo-boundary.md)
 - Wallet-signed deployment: [`docs/architecture/wallet-signed-deployment.md`](docs/architecture/wallet-signed-deployment.md)
 - Agent orchestration MVP: [`docs/architecture/agent-orchestration-mvp.md`](docs/architecture/agent-orchestration-mvp.md)
 - MVP memory design: [`docs/architecture/memory-design-mvp.md`](docs/architecture/memory-design-mvp.md)

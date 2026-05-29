@@ -331,7 +331,7 @@ export function App() {
               label: 'Wallet Signing Intent',
               status: formatWalletSigningIntentStatus(walletSigningIntentReadModel.intentStatus),
               detail:
-                'Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys.',
+                'Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys. Next milestone: wallet connection and Sepolia signing design.',
               source: 'Track 12A read model',
             },
             {
