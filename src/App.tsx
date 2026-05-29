@@ -9,6 +9,7 @@ import {
 } from './agents/agentRuntime';
 import { toCockpitActionViewModel } from './domain/cockpitActionRegistry';
 import { toBlockchainEngineerResponseViewModel } from './domain/blockchainEngineerResponseViewModel';
+import { toDeploymentGateReadModel } from './domain/deploymentGateReadModel';
 import { moduleCatalog } from './domain/moduleCatalog';
 import { createDemoProjectClosureLedger } from './domain/projectClosureLedger';
 import { toProjectClosureReadModel } from './domain/projectClosureReadModel';
@@ -107,6 +108,16 @@ function createSmartContractPreparationResponse(): BlockchainEngineerChatRespons
   };
 }
 
+function formatDeploymentGateStatus(status: 'blocked' | 'review_ready') {
+  return status === 'review_ready' ? 'Review-ready' : 'Blocked';
+}
+
+function formatPreDeploymentReadiness(status: 'incomplete' | 'complete' | 'blocked') {
+  if (status === 'complete') return 'Complete';
+  if (status === 'blocked') return 'Blocked';
+  return 'Incomplete';
+}
+
 export function App() {
   const [facts] = useState<FundFacts>(starterFacts);
   const [goal] = useState('We want to launch a tokenized income product for approved investors.');
@@ -157,6 +168,29 @@ export function App() {
       }),
     [projectClosureLedger, brief, engineeringBrief],
   );
+  const deploymentGateReadModel = useMemo(
+    () =>
+      toDeploymentGateReadModel({
+        hasRequirementBrief: Boolean(brief),
+        hasEngineeringBrief: Boolean(engineeringBrief),
+        closureReadinessStatus: projectClosureReadModel.status,
+        artifactSpecStatus: smartContractArtifactSpec?.status ?? 'not_started',
+        artifactPreviewStatus: smartContractArtifactPackage?.status ?? 'not_started',
+        checkResultStatus: smartContractCheckResult?.status ?? 'not_started',
+        evidenceLiteStatus: smartContractEvidenceLite?.status ?? 'not_started',
+        localCompileTestStatus: smartContractCompileTestResult?.status ?? 'not_run',
+      }),
+    [
+      brief,
+      engineeringBrief,
+      projectClosureReadModel,
+      smartContractArtifactSpec,
+      smartContractArtifactPackage,
+      smartContractCheckResult,
+      smartContractEvidenceLite,
+      smartContractCompileTestResult,
+    ],
+  );
   const projectLifecycleReadModel = useMemo(
     () =>
       toProjectLifecycleReadModel({
@@ -171,8 +205,22 @@ export function App() {
               ? 'failed'
               : undefined,
         evidenceStatus: smartContractEvidenceLite?.status === 'ready' ? 'ready' : undefined,
+        deploymentGateStatus:
+          deploymentGateReadModel.gateStatus === 'review_ready'
+            ? 'ready'
+            : deploymentGateReadModel.preDeploymentReadiness === 'blocked'
+              ? 'blocked'
+              : undefined,
       }),
-    [brief, engineeringBrief, projectClosureReadModel, smartContractArtifactSpec, smartContractCompileTestResult, smartContractEvidenceLite],
+    [
+      brief,
+      engineeringBrief,
+      projectClosureReadModel,
+      smartContractArtifactSpec,
+      smartContractCompileTestResult,
+      smartContractEvidenceLite,
+      deploymentGateReadModel,
+    ],
   );
   const cockpitActionViewModel = useMemo(
     () => toCockpitActionViewModel(projectLifecycleReadModel),
@@ -193,6 +241,9 @@ export function App() {
         checkStatus: smartContractCheckResult?.status,
         evidenceStatus: smartContractEvidenceLite?.status,
         ...smartContractCompileTestPresentation?.scpStatus,
+        deploymentGateStatus: deploymentGateReadModel.gateStatus,
+        preDeploymentReadiness: deploymentGateReadModel.preDeploymentReadiness,
+        deploymentExecutionStatus: deploymentGateReadModel.deploymentExecutionStatus,
         customEvents: smartContractArtifactSpec?.eventModel?.customEvents,
       }),
     [
@@ -202,6 +253,7 @@ export function App() {
       smartContractCheckResult,
       smartContractEvidenceLite,
       smartContractCompileTestPresentation,
+      deploymentGateReadModel,
     ],
   );
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
@@ -222,6 +274,7 @@ export function App() {
     smartContractArtifactSpec ? 'Smart Contract Artifact Spec generated' : 'Smart Contract Artifact Spec pending',
     smartContractArtifactPackage ? 'Contract Artifact Preview generated' : 'Contract Artifact Preview pending',
     smartContractCompileTestResult ? 'Local compile/test foundation passed' : 'Local compile/test foundation pending',
+    `Deployment Gate Review: ${formatDeploymentGateStatus(deploymentGateReadModel.gateStatus)}`,
   ];
   const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
   const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
@@ -257,6 +310,12 @@ export function App() {
             },
             ...(smartContractCompileTestPresentation ? [smartContractCompileTestPresentation.artifactCard] : []),
             {
+              label: 'Deployment Gate Review',
+              status: formatDeploymentGateStatus(deploymentGateReadModel.gateStatus),
+              detail: `Pre-deployment readiness: ${formatPreDeploymentReadiness(deploymentGateReadModel.preDeploymentReadiness)}. Deployment execution: Blocked.`,
+              source: 'Track 11A read model',
+            },
+            {
               label: 'Deployment / Signing / Audit',
               status: 'Not executed',
               detail: 'Not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.',
@@ -271,6 +330,7 @@ export function App() {
       smartContractCompileTestPresentation,
       smartContractEvidenceLite,
       smartContractGenerationStatus,
+      deploymentGateReadModel,
     ],
   );
 
@@ -906,6 +966,17 @@ export function App() {
             <p className="eyebrow">Safe-by-Design Summary</p>
             <h2>{projectClosureReadModel.readinessLabel}</h2>
             <p className="muted">{projectClosureReadModel.readinessDescription}</p>
+            <ul className="artifact-list">
+              <li>Deployment Gate Review: {formatDeploymentGateStatus(deploymentGateReadModel.gateStatus)}</li>
+              <li>Pre-deployment readiness: {formatPreDeploymentReadiness(deploymentGateReadModel.preDeploymentReadiness)}</li>
+              <li>Deployment execution: Blocked</li>
+            </ul>
+            <p className="microcopy">Remaining gate items</p>
+            <ul className="artifact-list">
+              {deploymentGateReadModel.remainingGateItems.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
             <p className="open-count">
               {projectClosureReadModel.openItemCount} unresolved / {projectClosureReadModel.deferredItemCount} deferred item(s)
             </p>
@@ -1017,6 +1088,18 @@ export function App() {
               ))}
             </div>
             <p className="microcopy">{smartContractControlPanel.statusDetail}</p>
+          </section>
+
+          <section className="contract-section">
+            <h3>Deployment Gate Review</h3>
+            <div className="health-list">
+              <span>Deployment Gate Review: {formatDeploymentGateStatus(deploymentGateReadModel.gateStatus)}</span>
+              <span>Pre-deployment readiness: {formatPreDeploymentReadiness(deploymentGateReadModel.preDeploymentReadiness)}</span>
+              <span>Deployment execution: Blocked</span>
+            </div>
+            <p className="microcopy">
+              Wallet signing not implemented. User wallet signing required later. Deployment not executed.
+            </p>
           </section>
 
           <section className="contract-section">

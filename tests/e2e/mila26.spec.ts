@@ -198,6 +198,9 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByText('Draft evidence linked')).toBeVisible();
   await expect(generatedArtifacts.getByText('Local Compile/Test', { exact: true })).toBeVisible();
   await expect(generatedArtifacts.getByText('Hardhat fixture compiles and local contract tests pass. Tested capabilities: ERC-20 basics, whitelist restrictions, issuer mint/allocation, valuation event, distribution event, pause/unpause, and access control.')).toBeVisible();
+  await expect(generatedArtifacts.getByText('Deployment Gate Review', { exact: true })).toBeVisible();
+  await expect(generatedArtifacts.getByText('Review-ready')).toBeVisible();
+  await expect(generatedArtifacts.getByText('Pre-deployment readiness: Complete. Deployment execution: Blocked.')).toBeVisible();
   await expect(generatedArtifacts.getByText('Not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.')).toBeVisible();
   await expect(page.getByTestId('engineer-answer')).toContainText('Smart contract preparation is complete for demo review');
   await expect(page.getByTestId('engineer-answer')).toContainText('known local compile/test foundation as passed');
@@ -209,6 +212,13 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(scp.getByText('Solidity fixture: Compiles locally')).toBeVisible();
   await expect(scp.getByText('Contract tests: Passed locally')).toBeVisible();
   await expect(scp.getByText('Tested capabilities: ERC-20 basics, whitelist restrictions, issuer mint/allocation, valuation event, distribution event, pause/unpause, access control')).toBeVisible();
+  await expect(scp.getByText('Deployment Gate Review: Review-ready').first()).toBeVisible();
+  await expect(scp.getByText('Pre-deployment readiness: Complete').first()).toBeVisible();
+  await expect(scp.getByText('Deployment execution: Blocked').first()).toBeVisible();
+  await expect(scp.getByText('Wallet signing not implemented: Not implemented')).toBeVisible();
+  await expect(scp.getByText('User wallet signing required later: Required')).toBeVisible();
+  await expect(scp.getByText('Contract address absent: No contract address')).toBeVisible();
+  await expect(scp.getByText('Transaction hash absent: No transaction hash')).toBeVisible();
   await expect(scp.getByText('Deployment: Not executed', { exact: true })).toBeVisible();
   await expect(scp.getByText('Wallet signing: Not started')).toBeVisible();
   await expect(scp.getByText('Audit: Not audited')).toBeVisible();
@@ -221,6 +231,7 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(scp.getByText('ContractUnpaused')).toBeVisible();
   await expect(scp.getByText('No contract address - not deployed')).toBeVisible();
   await expect(page.getByText(/txHash/i)).toHaveCount(0);
+  await expect(page.getByText(/ready to deploy|ready for signature|submitted|confirmed|production ready|mainnet ready/i)).toHaveCount(0);
 });
 
 test('dashboard shell remains usable on a narrow viewport', async ({ page }) => {

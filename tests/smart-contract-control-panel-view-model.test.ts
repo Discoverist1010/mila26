@@ -203,6 +203,9 @@ describe('Smart Contract Control Panel view model', () => {
       localCompileTestLabel: 'Local compile/test foundation',
       localCompileTestDetail:
         'Passed locally. This is not deployed, wallet signed, audited, connected to a wallet, or represented by a contract address or transaction hash.',
+      deploymentGateStatus: 'review_ready',
+      preDeploymentReadiness: 'complete',
+      deploymentExecutionStatus: 'blocked',
     });
 
     expect(viewModel.status).toBe('artifact_preview_ready');
@@ -216,6 +219,9 @@ describe('Smart Contract Control Panel view model', () => {
           value: 'ERC-20 basics, whitelist restrictions, issuer mint/allocation, valuation event, distribution event, pause/unpause, access control',
           status: 'ready',
         },
+        { label: 'Deployment Gate Review', value: 'Review-ready', status: 'ready' },
+        { label: 'Pre-deployment readiness', value: 'Complete', status: 'ready' },
+        { label: 'Deployment execution', value: 'Blocked', status: 'disabled' },
         { label: 'Deployment', value: 'Not executed', status: 'disabled' },
         { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
         { label: 'Audit', value: 'Not audited', status: 'disabled' },
@@ -226,6 +232,10 @@ describe('Smart Contract Control Panel view model', () => {
     expect(viewModel.boundaryItems).toEqual(
       expect.arrayContaining([
         { label: 'Transaction hash', value: 'None exists', status: 'disabled' },
+        { label: 'User wallet signing required later', value: 'Required', status: 'pending' },
+        { label: 'Wallet signing not implemented', value: 'Not implemented', status: 'disabled' },
+        { label: 'Contract address absent', value: 'No contract address', status: 'disabled' },
+        { label: 'Transaction hash absent', value: 'No transaction hash', status: 'disabled' },
         { label: 'Audit', value: 'Not performed', status: 'disabled' },
       ]),
     );

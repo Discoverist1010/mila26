@@ -58,6 +58,9 @@ export type SmartContractControlPanelGeneratedState = {
   localCompileTestStatus?: 'passed' | 'failed' | 'blocked' | 'not_run';
   localCompileTestLabel?: string;
   localCompileTestDetail?: string;
+  deploymentGateStatus?: 'blocked' | 'review_ready';
+  preDeploymentReadiness?: 'incomplete' | 'complete' | 'blocked';
+  deploymentExecutionStatus?: 'blocked';
   customEvents?: string[];
 };
 
@@ -203,6 +206,31 @@ function compileTestHealthItems(
   ];
 }
 
+function deploymentGateHealthItems(
+  generatedState?: SmartContractControlPanelGeneratedState,
+): SmartContractControlPanelHealthItem[] {
+  if (!generatedState?.deploymentGateStatus) return [];
+
+  return [
+    {
+      label: 'Deployment Gate Review',
+      value: generatedState.deploymentGateStatus === 'review_ready' ? 'Review-ready' : 'Blocked',
+      status: generatedState.deploymentGateStatus === 'review_ready' ? 'ready' : 'blocked',
+    },
+    {
+      label: 'Pre-deployment readiness',
+      value:
+        generatedState.preDeploymentReadiness === 'complete'
+          ? 'Complete'
+          : generatedState.preDeploymentReadiness === 'blocked'
+            ? 'Blocked'
+            : 'Incomplete',
+      status: generatedState.preDeploymentReadiness === 'complete' ? 'ready' : 'blocked',
+    },
+    { label: 'Deployment execution', value: 'Blocked', status: 'disabled' },
+  ];
+}
+
 function healthStatusFor(
   status: SmartContractControlPanelStatus,
   generatedState?: SmartContractControlPanelGeneratedState,
@@ -244,6 +272,7 @@ function healthStatusFor(
       { label: 'Check result', value: 'Spec-consistency result available', status: 'ready' },
       { label: 'Evidence-lite', value: 'Available for later evidence pack wiring', status: 'ready' },
       ...compileTestHealthItems(generatedState),
+      ...deploymentGateHealthItems(generatedState),
       { label: 'Deployment', value: 'Not executed', status: 'disabled' },
       { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
       { label: 'Audit', value: 'Not audited', status: 'disabled' },
@@ -324,8 +353,12 @@ function boundaryItems(): SmartContractControlPanelHealthItem[] {
     { label: 'Mainnet', value: 'Disabled', status: 'disabled' },
     { label: 'Backend private keys', value: 'None held', status: 'disabled' },
     { label: 'Future deployment signer', value: 'User wallet', status: 'pending' },
+    { label: 'User wallet signing required later', value: 'Required', status: 'pending' },
+    { label: 'Wallet signing not implemented', value: 'Not implemented', status: 'disabled' },
     { label: 'Contract deployment', value: 'Not executed', status: 'disabled' },
+    { label: 'Contract address absent', value: 'No contract address', status: 'disabled' },
     { label: 'Transaction hash', value: 'None exists', status: 'disabled' },
+    { label: 'Transaction hash absent', value: 'No transaction hash', status: 'disabled' },
     { label: 'Audit', value: 'Not performed', status: 'disabled' },
   ];
 }

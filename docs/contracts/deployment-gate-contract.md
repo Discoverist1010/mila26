@@ -79,3 +79,15 @@ Track 11A does not add:
 - transaction lifecycle states such as `ready_for_signature`, `submitted`, `confirmed`, or `failed`.
 
 Future wallet/deployment tracks may define transaction lifecycle contracts after the deployment gate semantics are stable.
+
+## Track 11B View Wiring
+
+Track 11B surfaces this read model in Cockpit/SCP as view-only readiness:
+
+- Deployment Gate Review: blocked or review-ready.
+- Pre-deployment readiness: incomplete, blocked, or complete.
+- Deployment execution: blocked.
+- Remaining gate items.
+- Safety boundaries for testnet-only, mainnet disabled, no backend private keys, user wallet signing required later, wallet signing not implemented, deployment not executed, contract address absent, transaction hash absent, and audit not performed.
+
+Track 11B still does not add wallet connection, signing, transaction lifecycle, deployment scripts, backend routes, fake addresses, fake transaction hashes, or audit/deployment claims.
