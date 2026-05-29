@@ -68,6 +68,10 @@ Track 11A adds the deployment gate read model foundation:
 
 - [`deployment-gate-contract.md`](deployment-gate-contract.md): pre-deployment readiness and execution-blocked boundary semantics without UI wiring, wallet signing, transaction lifecycle states, contract addresses, transaction hashes, or deployment execution.
 
+Track 12A adds the wallet-signing intent read model foundation:
+
+- [`wallet-signing-intent-contract.md`](wallet-signing-intent-contract.md): review-ready wallet-signing intent semantics derived from the deployment gate, with wallet execution still not implemented and no wallet addresses, private keys, signed payloads, transaction hashes, contract addresses, or transaction lifecycle states.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:
