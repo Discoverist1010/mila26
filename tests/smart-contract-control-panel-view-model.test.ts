@@ -206,6 +206,8 @@ describe('Smart Contract Control Panel view model', () => {
       deploymentGateStatus: 'review_ready',
       preDeploymentReadiness: 'complete',
       deploymentExecutionStatus: 'blocked',
+      walletSigningIntentStatus: 'review_ready',
+      walletExecutionStatus: 'not_implemented',
     });
 
     expect(viewModel.status).toBe('artifact_preview_ready');
@@ -222,6 +224,21 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'Deployment Gate Review', value: 'Review-ready', status: 'ready' },
         { label: 'Pre-deployment readiness', value: 'Complete', status: 'ready' },
         { label: 'Deployment execution', value: 'Blocked', status: 'disabled' },
+        { label: 'Wallet Signing Intent', value: 'Review-ready', status: 'ready' },
+        { label: 'Wallet execution', value: 'Not implemented', status: 'disabled' },
+        { label: 'Wallet connection', value: 'Not implemented', status: 'disabled' },
+        { label: 'Smart Contract Operations', value: 'Locked', status: 'disabled' },
+        {
+          label: 'Operations reason',
+          value: 'Wallet signing and testnet deployment are not implemented',
+          status: 'disabled',
+        },
+        {
+          label: 'Required before operations',
+          value:
+            'wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging',
+          status: 'pending',
+        },
         { label: 'Deployment', value: 'Not executed', status: 'disabled' },
         { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
         { label: 'Audit', value: 'Not audited', status: 'disabled' },
@@ -232,13 +249,21 @@ describe('Smart Contract Control Panel view model', () => {
     expect(viewModel.boundaryItems).toEqual(
       expect.arrayContaining([
         { label: 'Transaction hash', value: 'None exists', status: 'disabled' },
+        { label: 'Backend never holds private keys', value: 'Enforced', status: 'disabled' },
         { label: 'User wallet signing required later', value: 'Required', status: 'pending' },
         { label: 'Wallet signing not implemented', value: 'Not implemented', status: 'disabled' },
+        { label: 'Wallet connection not implemented', value: 'Not implemented', status: 'disabled' },
+        { label: 'No wallet address', value: 'Absent', status: 'disabled' },
+        { label: 'No signed payload', value: 'Absent', status: 'disabled' },
+        { label: 'No submitted transaction', value: 'Absent', status: 'disabled' },
+        { label: 'No confirmed transaction', value: 'Absent', status: 'disabled' },
         { label: 'Contract address absent', value: 'No contract address', status: 'disabled' },
         { label: 'Transaction hash absent', value: 'No transaction hash', status: 'disabled' },
         { label: 'Audit', value: 'Not performed', status: 'disabled' },
       ]),
     );
+    expect(JSON.stringify(viewModel)).not.toMatch(/wallet address: 0x|signed payload:|submitted transaction:|confirmed transaction:/i);
+    expect(JSON.stringify(viewModel)).not.toMatch(/ready to sign|wallet connected|sign now|live|verified|production ready|mainnet ready/i);
   });
 
   it('keeps all SCP actions disabled until later wallet and transaction tracks', () => {

@@ -20,6 +20,7 @@ import {
   toSmartContractCompileTestPresentation,
 } from './domain/smartContractCompileTestPresentation';
 import { toSmartContractControlPanelViewModel } from './domain/smartContractControlPanelViewModel';
+import { toWalletSigningIntentReadModel } from './domain/walletSigningIntentReadModel';
 import type { BlockchainEngineerChatResponse } from '../server/contracts/chat';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
 import type {
@@ -118,6 +119,10 @@ function formatPreDeploymentReadiness(status: 'incomplete' | 'complete' | 'block
   return 'Incomplete';
 }
 
+function formatWalletSigningIntentStatus(status: 'blocked' | 'review_ready') {
+  return status === 'review_ready' ? 'Review-ready' : 'Blocked';
+}
+
 export function App() {
   const [facts] = useState<FundFacts>(starterFacts);
   const [goal] = useState('We want to launch a tokenized income product for approved investors.');
@@ -191,6 +196,10 @@ export function App() {
       smartContractCompileTestResult,
     ],
   );
+  const walletSigningIntentReadModel = useMemo(
+    () => toWalletSigningIntentReadModel(deploymentGateReadModel),
+    [deploymentGateReadModel],
+  );
   const projectLifecycleReadModel = useMemo(
     () =>
       toProjectLifecycleReadModel({
@@ -244,6 +253,8 @@ export function App() {
         deploymentGateStatus: deploymentGateReadModel.gateStatus,
         preDeploymentReadiness: deploymentGateReadModel.preDeploymentReadiness,
         deploymentExecutionStatus: deploymentGateReadModel.deploymentExecutionStatus,
+        walletSigningIntentStatus: walletSigningIntentReadModel.intentStatus,
+        walletExecutionStatus: walletSigningIntentReadModel.walletExecutionStatus,
         customEvents: smartContractArtifactSpec?.eventModel?.customEvents,
       }),
     [
@@ -254,6 +265,7 @@ export function App() {
       smartContractEvidenceLite,
       smartContractCompileTestPresentation,
       deploymentGateReadModel,
+      walletSigningIntentReadModel,
     ],
   );
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
@@ -316,6 +328,20 @@ export function App() {
               source: 'Track 11A read model',
             },
             {
+              label: 'Wallet Signing Intent',
+              status: formatWalletSigningIntentStatus(walletSigningIntentReadModel.intentStatus),
+              detail:
+                'Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys.',
+              source: 'Track 12A read model',
+            },
+            {
+              label: 'Smart Contract Operations',
+              status: 'Locked',
+              detail:
+                'Reason: wallet signing and testnet deployment are not implemented. Required before operations: wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging.',
+              source: 'SCP operations boundary',
+            },
+            {
               label: 'Deployment / Signing / Audit',
               status: 'Not executed',
               detail: 'Not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.',
@@ -331,6 +357,7 @@ export function App() {
       smartContractEvidenceLite,
       smartContractGenerationStatus,
       deploymentGateReadModel,
+      walletSigningIntentReadModel,
     ],
   );
 
@@ -970,6 +997,17 @@ export function App() {
               <li>Deployment Gate Review: {formatDeploymentGateStatus(deploymentGateReadModel.gateStatus)}</li>
               <li>Pre-deployment readiness: {formatPreDeploymentReadiness(deploymentGateReadModel.preDeploymentReadiness)}</li>
               <li>Deployment execution: Blocked</li>
+              <li>Wallet Signing Intent: {formatWalletSigningIntentStatus(walletSigningIntentReadModel.intentStatus)}</li>
+              <li>Wallet execution: Not implemented</li>
+              <li>User wallet signing required later</li>
+              <li>Backend never holds private keys</li>
+              <li>Wallet connection not implemented</li>
+              <li>No wallet address</li>
+              <li>No signed payload</li>
+              <li>No submitted transaction</li>
+              <li>No confirmed transaction</li>
+              <li>No contract address</li>
+              <li>No transaction hash</li>
             </ul>
             <p className="microcopy">Remaining gate items</p>
             <ul className="artifact-list">
@@ -1099,6 +1137,43 @@ export function App() {
             </div>
             <p className="microcopy">
               Wallet signing not implemented. User wallet signing required later. Deployment not executed.
+            </p>
+          </section>
+
+          <section className="contract-section">
+            <h3>Wallet Signing Readiness</h3>
+            <div className="health-list">
+              <span>Wallet Signing Intent: {formatWalletSigningIntentStatus(walletSigningIntentReadModel.intentStatus)}</span>
+              <span>Wallet execution: Not implemented</span>
+              <span>User wallet signing required later</span>
+              <span>Backend never holds private keys</span>
+              <span>Wallet connection not implemented</span>
+              <span>No wallet address</span>
+              <span>No signed payload</span>
+              <span>No submitted transaction</span>
+              <span>No confirmed transaction</span>
+              <span>No contract address</span>
+              <span>No transaction hash</span>
+            </div>
+            <p className="microcopy">
+              Wallet intent is view-only. No wallet connection, signing request, signed payload, transaction submission,
+              contract address, or transaction hash exists in this stage.
+            </p>
+          </section>
+
+          <section className="contract-section">
+            <h3>Smart Contract Operations</h3>
+            <div className="health-list">
+              <span>Smart Contract Operations: Locked</span>
+              <span>Reason: Wallet signing and testnet deployment are not implemented</span>
+              <span>
+                Required before operations: wallet connection, user-signed deployment, deployed testnet contract address,
+                transaction hash, operation authorization model, evidence logging
+              </span>
+            </div>
+            <p className="microcopy">
+              Operational controls remain unavailable. Mint, burn, pause, resume, NAV, and distribution controls are not
+              active in Track 12B.
             </p>
           </section>
 

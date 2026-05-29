@@ -61,6 +61,8 @@ export type SmartContractControlPanelGeneratedState = {
   deploymentGateStatus?: 'blocked' | 'review_ready';
   preDeploymentReadiness?: 'incomplete' | 'complete' | 'blocked';
   deploymentExecutionStatus?: 'blocked';
+  walletSigningIntentStatus?: 'blocked' | 'review_ready';
+  walletExecutionStatus?: 'not_implemented';
   customEvents?: string[];
 };
 
@@ -231,6 +233,34 @@ function deploymentGateHealthItems(
   ];
 }
 
+function walletSigningHealthItems(
+  generatedState?: SmartContractControlPanelGeneratedState,
+): SmartContractControlPanelHealthItem[] {
+  if (!generatedState?.walletSigningIntentStatus) return [];
+
+  return [
+    {
+      label: 'Wallet Signing Intent',
+      value: generatedState.walletSigningIntentStatus === 'review_ready' ? 'Review-ready' : 'Blocked',
+      status: generatedState.walletSigningIntentStatus === 'review_ready' ? 'ready' : 'blocked',
+    },
+    { label: 'Wallet execution', value: 'Not implemented', status: 'disabled' },
+    { label: 'Wallet connection', value: 'Not implemented', status: 'disabled' },
+    { label: 'Smart Contract Operations', value: 'Locked', status: 'disabled' },
+    {
+      label: 'Operations reason',
+      value: 'Wallet signing and testnet deployment are not implemented',
+      status: 'disabled',
+    },
+    {
+      label: 'Required before operations',
+      value:
+        'wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging',
+      status: 'pending',
+    },
+  ];
+}
+
 function healthStatusFor(
   status: SmartContractControlPanelStatus,
   generatedState?: SmartContractControlPanelGeneratedState,
@@ -273,6 +303,7 @@ function healthStatusFor(
       { label: 'Evidence-lite', value: 'Available for later evidence pack wiring', status: 'ready' },
       ...compileTestHealthItems(generatedState),
       ...deploymentGateHealthItems(generatedState),
+      ...walletSigningHealthItems(generatedState),
       { label: 'Deployment', value: 'Not executed', status: 'disabled' },
       { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
       { label: 'Audit', value: 'Not audited', status: 'disabled' },
@@ -352,9 +383,15 @@ function boundaryItems(): SmartContractControlPanelHealthItem[] {
     { label: 'Ethereum testnet', value: 'Only', status: 'ready' },
     { label: 'Mainnet', value: 'Disabled', status: 'disabled' },
     { label: 'Backend private keys', value: 'None held', status: 'disabled' },
+    { label: 'Backend never holds private keys', value: 'Enforced', status: 'disabled' },
     { label: 'Future deployment signer', value: 'User wallet', status: 'pending' },
     { label: 'User wallet signing required later', value: 'Required', status: 'pending' },
     { label: 'Wallet signing not implemented', value: 'Not implemented', status: 'disabled' },
+    { label: 'Wallet connection not implemented', value: 'Not implemented', status: 'disabled' },
+    { label: 'No wallet address', value: 'Absent', status: 'disabled' },
+    { label: 'No signed payload', value: 'Absent', status: 'disabled' },
+    { label: 'No submitted transaction', value: 'Absent', status: 'disabled' },
+    { label: 'No confirmed transaction', value: 'Absent', status: 'disabled' },
     { label: 'Contract deployment', value: 'Not executed', status: 'disabled' },
     { label: 'Contract address absent', value: 'No contract address', status: 'disabled' },
     { label: 'Transaction hash', value: 'None exists', status: 'disabled' },

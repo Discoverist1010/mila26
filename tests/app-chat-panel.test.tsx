@@ -370,9 +370,19 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('Hardhat fixture compiles and local contract tests pass. Tested capabilities: ERC-20 basics, whitelist restrictions, issuer mint/allocation, valuation event, distribution event, pause/unpause, and access control.')).toBeVisible();
     expect(screen.getByText('Known Track 10A local foundation result')).toBeVisible();
     expect(generatedArtifacts.getByText('Deployment Gate Review')).toBeVisible();
-    expect(generatedArtifacts.getByText('Review-ready')).toBeVisible();
+    expect(generatedArtifacts.getAllByText('Review-ready').length).toBeGreaterThan(0);
     expect(generatedArtifacts.getByText('Pre-deployment readiness: Complete. Deployment execution: Blocked.')).toBeVisible();
     expect(generatedArtifacts.getByText('Track 11A read model')).toBeVisible();
+    expect(generatedArtifacts.getByText('Wallet Signing Intent')).toBeVisible();
+    expect(generatedArtifacts.getByText('Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys.')).toBeVisible();
+    expect(generatedArtifacts.getByText('Track 12A read model')).toBeVisible();
+    expect(generatedArtifacts.getByText('Smart Contract Operations')).toBeVisible();
+    expect(generatedArtifacts.getByText('Locked')).toBeVisible();
+    expect(
+      generatedArtifacts.getByText(
+        'Reason: wallet signing and testnet deployment are not implemented. Required before operations: wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging.',
+      ),
+    ).toBeVisible();
     expect(screen.getByText('Deployment / Signing / Audit')).toBeVisible();
     expect(screen.getByText('Not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.')).toBeVisible();
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Smart contract preparation is complete for demo review');
@@ -391,8 +401,31 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getAllByText('Deployment Gate Review: Review-ready').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Pre-deployment readiness: Complete').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Deployment execution: Blocked').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Wallet Signing Intent: Review-ready').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Wallet execution: Not implemented').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('User wallet signing required later').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Backend never holds private keys').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Wallet connection not implemented').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('No wallet address').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('No signed payload').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('No submitted transaction').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('No confirmed transaction').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('No contract address').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('No transaction hash').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Smart Contract Operations: Locked').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Reason: Wallet signing and testnet deployment are not implemented').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(
+        'Required before operations: wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging',
+      ).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText('Wallet signing not implemented: Not implemented')).toBeVisible();
     expect(screen.getByText('User wallet signing required later: Required')).toBeVisible();
+    expect(screen.getByText('Wallet connection not implemented: Not implemented')).toBeVisible();
+    expect(screen.getByText('No wallet address: Absent')).toBeVisible();
+    expect(screen.getByText('No signed payload: Absent')).toBeVisible();
+    expect(screen.getByText('No submitted transaction: Absent')).toBeVisible();
+    expect(screen.getByText('No confirmed transaction: Absent')).toBeVisible();
     expect(screen.getByText('Contract address absent: No contract address')).toBeVisible();
     expect(screen.getByText('Transaction hash absent: No transaction hash')).toBeVisible();
     expect(screen.getByText('Remaining gate items')).toBeVisible();
@@ -409,9 +442,19 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('ContractPaused')).toBeVisible();
     expect(screen.getByText('ContractUnpaused')).toBeVisible();
     expect(screen.getByText('No contract address - not deployed')).toBeVisible();
+    expect(screen.queryByRole('button', { name: /wallet/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /sign/i })).not.toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: /deploy/i }).every((button) => button.hasAttribute('disabled'))).toBe(
+      true,
+    );
     expect(screen.queryByText(/0x[a-fA-F0-9]{6,}/)).not.toBeInTheDocument();
     expect(screen.queryByText(/txHash/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/ready to deploy|ready for signature|submitted|confirmed|production ready|mainnet ready/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ready to sign|sign now|ready to deploy|ready for signature|production ready|mainnet ready/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Wallet connected$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Submitted transaction:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Confirmed transaction:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Signed payload:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/live|verified|audit passed|security approved/i)).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.map(([url]) => String(url)).join(' ')).not.toMatch(/hardhat|contracts:build|test:contracts/i);
   });
 
@@ -494,6 +537,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(within(rightRail).queryByText('Next Recommended Action')).not.toBeInTheDocument();
     expect(within(rightRail).queryByRole('button', { name: 'Create Requirement Doc' })).not.toBeInTheDocument();
     expect(within(rightRail).queryByRole('button', { name: 'Prepare Smart Contract Spec' })).not.toBeInTheDocument();
+    expect(within(rightRail).queryByRole('button', { name: /wallet|sign|deploy/i })).not.toBeInTheDocument();
     expect(within(rightRail).queryByRole('button', { name: 'Approve Brief and Run Coding Bot' })).not.toBeInTheDocument();
     expect(within(rightRail).getByText('Step 1 To-Do Checklist')).toBeVisible();
     expect(within(rightRail).getByText('Create Requirement Brief')).toBeVisible();

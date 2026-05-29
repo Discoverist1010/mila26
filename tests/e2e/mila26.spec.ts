@@ -199,8 +199,13 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(generatedArtifacts.getByText('Local Compile/Test', { exact: true })).toBeVisible();
   await expect(generatedArtifacts.getByText('Hardhat fixture compiles and local contract tests pass. Tested capabilities: ERC-20 basics, whitelist restrictions, issuer mint/allocation, valuation event, distribution event, pause/unpause, and access control.')).toBeVisible();
   await expect(generatedArtifacts.getByText('Deployment Gate Review', { exact: true })).toBeVisible();
-  await expect(generatedArtifacts.getByText('Review-ready')).toBeVisible();
+  await expect(generatedArtifacts.getByText('Review-ready').first()).toBeVisible();
   await expect(generatedArtifacts.getByText('Pre-deployment readiness: Complete. Deployment execution: Blocked.')).toBeVisible();
+  await expect(generatedArtifacts.getByText('Wallet Signing Intent', { exact: true })).toBeVisible();
+  await expect(generatedArtifacts.getByText('Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys.')).toBeVisible();
+  await expect(generatedArtifacts.getByText('Smart Contract Operations', { exact: true })).toBeVisible();
+  await expect(generatedArtifacts.getByText('Locked', { exact: true })).toBeVisible();
+  await expect(generatedArtifacts.getByText(/Required before operations: wallet connection, user-signed deployment/i)).toBeVisible();
   await expect(generatedArtifacts.getByText('Not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.')).toBeVisible();
   await expect(page.getByTestId('engineer-answer')).toContainText('Smart contract preparation is complete for demo review');
   await expect(page.getByTestId('engineer-answer')).toContainText('known local compile/test foundation as passed');
@@ -215,8 +220,26 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(scp.getByText('Deployment Gate Review: Review-ready').first()).toBeVisible();
   await expect(scp.getByText('Pre-deployment readiness: Complete').first()).toBeVisible();
   await expect(scp.getByText('Deployment execution: Blocked').first()).toBeVisible();
+  await expect(scp.getByText('Wallet Signing Intent: Review-ready').first()).toBeVisible();
+  await expect(scp.getByText('Wallet execution: Not implemented').first()).toBeVisible();
+  await expect(scp.getByText('User wallet signing required later').first()).toBeVisible();
+  await expect(scp.getByText('Backend never holds private keys').first()).toBeVisible();
+  await expect(scp.getByText('Wallet connection not implemented').first()).toBeVisible();
+  await expect(scp.getByText('No wallet address').first()).toBeVisible();
+  await expect(scp.getByText('No signed payload').first()).toBeVisible();
+  await expect(scp.getByText('No submitted transaction').first()).toBeVisible();
+  await expect(scp.getByText('No confirmed transaction').first()).toBeVisible();
+  await expect(scp.getByText('No contract address').first()).toBeVisible();
+  await expect(scp.getByText('No transaction hash').first()).toBeVisible();
+  await expect(scp.getByText('Smart Contract Operations: Locked').first()).toBeVisible();
+  await expect(scp.getByText('Reason: Wallet signing and testnet deployment are not implemented').first()).toBeVisible();
   await expect(scp.getByText('Wallet signing not implemented: Not implemented')).toBeVisible();
   await expect(scp.getByText('User wallet signing required later: Required')).toBeVisible();
+  await expect(scp.getByText('Wallet connection not implemented: Not implemented')).toBeVisible();
+  await expect(scp.getByText('No wallet address: Absent')).toBeVisible();
+  await expect(scp.getByText('No signed payload: Absent')).toBeVisible();
+  await expect(scp.getByText('No submitted transaction: Absent')).toBeVisible();
+  await expect(scp.getByText('No confirmed transaction: Absent')).toBeVisible();
   await expect(scp.getByText('Contract address absent: No contract address')).toBeVisible();
   await expect(scp.getByText('Transaction hash absent: No transaction hash')).toBeVisible();
   await expect(scp.getByText('Deployment: Not executed', { exact: true })).toBeVisible();
@@ -231,7 +254,14 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(scp.getByText('ContractUnpaused')).toBeVisible();
   await expect(scp.getByText('No contract address - not deployed')).toBeVisible();
   await expect(page.getByText(/txHash/i)).toHaveCount(0);
-  await expect(page.getByText(/ready to deploy|ready for signature|submitted|confirmed|production ready|mainnet ready/i)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /wallet|sign/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Review Deployment Gate/i })).toBeDisabled();
+  await expect(page.getByText(/ready to sign|sign now|ready to deploy|ready for signature|production ready|mainnet ready/i)).toHaveCount(0);
+  await expect(page.getByText(/^Wallet connected$/i)).toHaveCount(0);
+  await expect(page.getByText(/^Submitted transaction:/i)).toHaveCount(0);
+  await expect(page.getByText(/^Confirmed transaction:/i)).toHaveCount(0);
+  await expect(page.getByText(/^Signed payload:/i)).toHaveCount(0);
+  await expect(page.getByText(/live|verified|audit passed|security approved/i)).toHaveCount(0);
 });
 
 test('dashboard shell remains usable on a narrow viewport', async ({ page }) => {
