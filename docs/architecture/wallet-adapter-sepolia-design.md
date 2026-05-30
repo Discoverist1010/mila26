@@ -1,6 +1,6 @@
 # Wallet Adapter + Sepolia Signing Design
 
-Track 13A defines MILA26's wallet adapter and Sepolia signing boundary before any wallet runtime is implemented. It is a design and type/read-model track only.
+Track 13A defined MILA26's wallet adapter and Sepolia signing boundary before wallet runtime implementation. Track 13B implements the first frontend-only wallet connection foundation from this design.
 
 ## Recommendation
 
@@ -14,7 +14,30 @@ Use viem later for typed chain, account, ABI, contract, and deployment primitive
 
 Defer wagmi until MILA26 needs multi-wallet connector management, React connector abstractions, wallet discovery, or richer wallet orchestration. Avoid ethers unless there is a clear reason to carry a second Ethereum client library.
 
-Track 13A does not install wallet runtime dependencies.
+Track 13A did not install wallet runtime dependencies. Track 13B also keeps the implementation dependency-free by using a small EIP-1193 adapter boundary directly.
+
+## Track 13B Implementation Note
+
+Track 13B adds:
+
+- `src/wallet/eip1193WalletAdapter.ts` for the minimal EIP-1193 provider boundary.
+- `src/wallet/browserEthereumProvider.ts` for browser provider lookup.
+- local React state in `App.tsx` for wallet connection status only.
+- central Engineering Bot `Connect Wallet for Sepolia Check` action.
+- passive right-rail and SCP wallet connection status.
+
+The adapter calls only:
+
+- `eth_accounts`
+- `eth_requestAccounts`
+- `eth_chainId`
+
+It may listen for:
+
+- `accountsChanged`
+- `chainChanged`
+
+It must not call signing, transaction, deployment, chain-switching, or chain-addition methods in Track 13B.
 
 ## Documentation References Checked
 

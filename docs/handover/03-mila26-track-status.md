@@ -27,15 +27,17 @@ This file is the current handover index. Older planning docs may still describe 
 | Track 12B | Complete | Surfaced Wallet Signing Intent and operations locked state. | `src/App.tsx`, `src/domain/smartContractControlPanelViewModel.ts` | No wallet buttons or transaction lifecycle. |
 | Track 12C | Complete | Added golden-flow hardening and alpha boundary doc. | `tests/golden-flow-assertions.ts`, `tests/app-chat-panel.test.tsx`, `docs/architecture/alpha-demo-boundary.md` | Preserve no-fake-deployment guardrails. |
 | Track 13A | Complete | Added MetaMask-first wallet adapter/Sepolia design and pure wallet connection read model. | `docs/architecture/wallet-adapter-sepolia-design.md`, `src/domain/walletConnectionReadModel.ts`, `tests/wallet-connection-read-model.test.ts` | Track 13B can implement provider detection and Sepolia verification. |
-| Track 13B | Next | Implement MetaMask EIP-1193 wallet connection and Sepolia verification only. | Planned: `src/wallet/` or `src/domain` adapter boundary, `src/App.tsx`, focused tests | No signing, deployment transaction, tx hash, contract address, SCP operations, persistence, or mainnet. |
+| Track 13B | Complete | Added frontend-only MetaMask/EIP-1193 wallet connection and Sepolia verification foundation. | `src/wallet/eip1193WalletAdapter.ts`, `src/wallet/browserEthereumProvider.ts`, `src/App.tsx`, `tests/eip1193-wallet-adapter.test.ts` | No signing, deployment transaction, tx hash, contract address, SCP operations, persistence, or mainnet. |
 
 ## Current Validation Baseline
 
-Recent Track 13A validation:
+Recent Track 13B validation:
 
+- `npm run test -- tests/eip1193-wallet-adapter.test.ts`
 - `npm run test -- tests/wallet-connection-read-model.test.ts`
+- `npm run test -- tests/smart-contract-control-panel-view-model.test.ts`
 - `npm run test -- tests/app-chat-panel.test.tsx`
 - `npm run check`
 - `npm run test:e2e`
 
-All passed before Track 13A was committed.
+All passed before Track 13B was committed.

@@ -67,8 +67,8 @@ The mockup remains directional, not a pixel-perfect implementation mandate. Curr
 ## 9. Wallet Connection + Sepolia Verification
 
 - User goal: connect MetaMask and verify Sepolia.
-- Primary UI: future central Engineering Bot workflow action.
-- Current status: Track 13B next.
+- Primary UI: central Engineering Bot workflow action.
+- Current status: implemented as connection/Sepolia check only.
 - Guardrail: wallet connection is not signing; no tx hash or contract address.
 
 ## 10. Unsigned Deployment Intent

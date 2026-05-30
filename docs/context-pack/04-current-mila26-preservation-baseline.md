@@ -37,11 +37,9 @@ Preserve these boundaries while moving toward blockchain-functional alpha.
 
 ## Safe To Improve Now
 
-- Add wallet adapter tests using mocked EIP-1193 providers.
-- Add small frontend-safe wallet adapter modules for Track 13B.
+- Define unsigned deployment intent as a review-only domain/read-model boundary.
 - Update docs when track status changes.
-- Add copy clarifying that wallet connection is not signing.
-- Add tests for account/chain change handling.
+- Keep wallet connection copy clear that connection is not signing.
 
 ## Still Deferred
 

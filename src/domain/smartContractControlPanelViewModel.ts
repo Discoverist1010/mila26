@@ -63,6 +63,10 @@ export type SmartContractControlPanelGeneratedState = {
   deploymentExecutionStatus?: 'blocked';
   walletSigningIntentStatus?: 'blocked' | 'review_ready';
   walletExecutionStatus?: 'not_implemented';
+  walletConnectionStatus?: 'not_connected' | 'connecting' | 'connected' | 'wrong_chain' | 'rejected' | 'unsupported' | 'error';
+  walletProviderStatus?: 'unknown' | 'available' | 'unsupported';
+  walletChainStatus?: 'unknown' | 'sepolia' | 'wrong_chain';
+  connectedWalletAddressDisplay?: string;
   customEvents?: string[];
 };
 
@@ -245,7 +249,6 @@ function walletSigningHealthItems(
       status: generatedState.walletSigningIntentStatus === 'review_ready' ? 'ready' : 'blocked',
     },
     { label: 'Wallet execution', value: 'Not implemented', status: 'disabled' },
-    { label: 'Wallet connection', value: 'Not implemented', status: 'disabled' },
     { label: 'Smart Contract Operations', value: 'Locked', status: 'disabled' },
     {
       label: 'Operations reason',
@@ -257,6 +260,48 @@ function walletSigningHealthItems(
       value:
         'wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging',
       status: 'pending',
+    },
+  ];
+}
+
+function walletConnectionValue(status?: SmartContractControlPanelGeneratedState['walletConnectionStatus']) {
+  if (status === 'connected') return 'Connected';
+  if (status === 'wrong_chain') return 'Wrong chain';
+  if (status === 'connecting') return 'Connecting';
+  if (status === 'rejected') return 'Rejected';
+  if (status === 'unsupported') return 'Not detected';
+  if (status === 'error') return 'Provider error';
+  return 'Not connected';
+}
+
+function walletChainValue(status?: SmartContractControlPanelGeneratedState['walletChainStatus']) {
+  if (status === 'sepolia') return 'Sepolia';
+  if (status === 'wrong_chain') return 'Wrong chain';
+  return 'Unknown';
+}
+
+function walletConnectionHealthItems(
+  generatedState?: SmartContractControlPanelGeneratedState,
+): SmartContractControlPanelHealthItem[] {
+  const connectionStatus = generatedState?.walletConnectionStatus;
+  const chainStatus = generatedState?.walletChainStatus;
+  const addressDisplay = generatedState?.connectedWalletAddressDisplay;
+
+  return [
+    {
+      label: 'Wallet connection',
+      value: walletConnectionValue(connectionStatus),
+      status: connectionStatus === 'connected' && chainStatus === 'sepolia' ? 'ready' : connectionStatus === 'wrong_chain' || connectionStatus === 'error' ? 'blocked' : 'disabled',
+    },
+    {
+      label: 'Wallet chain',
+      value: walletChainValue(chainStatus),
+      status: chainStatus === 'sepolia' ? 'ready' : chainStatus === 'wrong_chain' ? 'blocked' : 'disabled',
+    },
+    {
+      label: 'Connected wallet',
+      value: addressDisplay || 'No wallet address',
+      status: addressDisplay ? 'ready' : 'disabled',
     },
   ];
 }
@@ -304,6 +349,7 @@ function healthStatusFor(
       ...compileTestHealthItems(generatedState),
       ...deploymentGateHealthItems(generatedState),
       ...walletSigningHealthItems(generatedState),
+      ...walletConnectionHealthItems(generatedState),
       { label: 'Deployment', value: 'Not executed', status: 'disabled' },
       { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
       { label: 'Audit', value: 'Not audited', status: 'disabled' },
@@ -315,6 +361,7 @@ function healthStatusFor(
       { label: 'Lifecycle', value: 'Evidence/check path ready for gate review', status: 'ready' },
       { label: 'Contract artifact', value: 'Tracked by lifecycle placeholders', status: 'ready' },
       { label: 'Checks', value: 'Tracked by lifecycle placeholders', status: 'ready' },
+      ...walletConnectionHealthItems(generatedState),
       { label: 'Deployment', value: 'Gate review only', status: 'pending' },
       { label: 'Mainnet', value: 'Disabled', status: 'disabled' },
     ];
@@ -378,7 +425,9 @@ function statusDetail(
   return 'Smart Contract Control stays preview-only while requirements and engineering artifacts are prepared.';
 }
 
-function boundaryItems(): SmartContractControlPanelHealthItem[] {
+function boundaryItems(generatedState?: SmartContractControlPanelGeneratedState): SmartContractControlPanelHealthItem[] {
+  const walletAddressValue = generatedState?.connectedWalletAddressDisplay ? generatedState.connectedWalletAddressDisplay : 'Absent';
+
   return [
     { label: 'Ethereum testnet', value: 'Only', status: 'ready' },
     { label: 'Mainnet', value: 'Disabled', status: 'disabled' },
@@ -387,8 +436,8 @@ function boundaryItems(): SmartContractControlPanelHealthItem[] {
     { label: 'Future deployment signer', value: 'User wallet', status: 'pending' },
     { label: 'User wallet signing required later', value: 'Required', status: 'pending' },
     { label: 'Wallet signing not implemented', value: 'Not implemented', status: 'disabled' },
-    { label: 'Wallet connection not implemented', value: 'Not implemented', status: 'disabled' },
-    { label: 'No wallet address', value: 'Absent', status: 'disabled' },
+    { label: 'Wallet connection', value: walletConnectionValue(generatedState?.walletConnectionStatus), status: 'disabled' },
+    { label: 'Wallet address', value: walletAddressValue, status: generatedState?.connectedWalletAddressDisplay ? 'ready' : 'disabled' },
     { label: 'No signed payload', value: 'Absent', status: 'disabled' },
     { label: 'No submitted transaction', value: 'Absent', status: 'disabled' },
     { label: 'No confirmed transaction', value: 'Absent', status: 'disabled' },
@@ -416,7 +465,7 @@ export function toSmartContractControlPanelViewModel(
       network: 'Ethereum testnet only',
       deployedBy: 'User Wallet',
       contractType: 'ERC-20 + custom',
-      walletConnection: 'Not connected in MVP',
+      walletConnection: walletConnectionValue(generatedState?.walletConnectionStatus),
       readiness: statusLabel(status),
     },
     coreActions: coreActionLabels.map((label) => ({
@@ -435,6 +484,6 @@ export function toSmartContractControlPanelViewModel(
       'Deployment remains disabled for MVP',
     ],
     healthItems: healthStatusFor(status, generatedState),
-    boundaryItems: boundaryItems(),
+    boundaryItems: boundaryItems(generatedState),
   };
 }

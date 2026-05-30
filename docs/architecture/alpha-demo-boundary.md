@@ -15,6 +15,7 @@ The current application can guide a project through:
 - known local Hardhat compile/test representation.
 - Deployment Gate Review.
 - Wallet Signing Intent.
+- MetaMask-first EIP-1193 wallet connection and Sepolia readiness check.
 - Smart Contract Operations locked state.
 
 This baseline is meant to make the next wallet/testnet work safer by keeping lifecycle status, evidence, and boundaries visible before execution is introduced.
@@ -23,7 +24,6 @@ This baseline is meant to make the next wallet/testnet work safer by keeping lif
 
 The current alpha-demo boundary does not include:
 
-- wallet adapter or wallet connection.
 - wallet signing.
 - transaction preparation, submission, or confirmation tracking.
 - Sepolia deployment execution.
@@ -48,6 +48,6 @@ Future blockchain-functional alpha tracks must preserve these rules:
 
 ## Next Milestone
 
-Track 13A defines the wallet connection and Sepolia signing design. The recommended path is MetaMask first through a minimal EIP-1193 browser-provider boundary, with viem reserved for typed chain/account/contract/deployment primitives later.
+Track 13A defined the wallet connection and Sepolia signing design. Track 13B adds frontend-only provider detection, user-initiated account request, Sepolia/wrong-chain status, and safe provider error states through a minimal EIP-1193 browser-provider boundary.
 
-Track 13B should implement wallet connection and Sepolia verification only. It should not prepare a deployment transaction, request a signature, submit a transaction, display a transaction hash, display a contract address, or unlock SCP operations.
+The next milestone is unsigned deployment intent design. Future tracks still must not request a signature, submit a transaction, display a transaction hash, display a contract address, or unlock SCP operations until the required wallet-signed deployment flow exists.

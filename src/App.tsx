@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { askBlockchainEngineer } from './api/blockchainEngineerChat';
 import { generateEngineeringBrief } from './api/engineeringBrief';
 import { generateSmartContractArtifact } from './api/smartContractArtifact';
@@ -20,7 +20,15 @@ import {
   toSmartContractCompileTestPresentation,
 } from './domain/smartContractCompileTestPresentation';
 import { toSmartContractControlPanelViewModel } from './domain/smartContractControlPanelViewModel';
+import {
+  formatWalletAddressForDisplay,
+  toWalletConnectionReadModel,
+  type WalletConnectionReadModel,
+  type WalletConnectionReadModelInput,
+} from './domain/walletConnectionReadModel';
 import { toWalletSigningIntentReadModel } from './domain/walletSigningIntentReadModel';
+import { getBrowserEthereumProvider } from './wallet/browserEthereumProvider';
+import { createEip1193WalletAdapter } from './wallet/eip1193WalletAdapter';
 import type { BlockchainEngineerChatResponse } from '../server/contracts/chat';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
 import type {
@@ -71,6 +79,7 @@ const uiActions = {
   toggleLeftRail: 'toggle_left_rail',
   toggleRightRail: 'toggle_right_rail',
   scrollToScp: 'scroll_to_scp',
+  connectWallet: 'connect_wallet',
 } as const;
 
 type GeneratedArtifactCard = {
@@ -109,6 +118,24 @@ function createSmartContractPreparationResponse(): BlockchainEngineerChatRespons
   };
 }
 
+function createWalletConnectionResponse(walletConnection: WalletConnectionReadModel): BlockchainEngineerChatResponse {
+  return {
+    messageId: 'local-wallet-connection',
+    agentId: 'blockchain-engineer',
+    content:
+      'Wallet connection check updated. This checks whether a user wallet is available and on Sepolia. It does not sign, deploy, submit a transaction, or unlock Smart Contract Operations.',
+    riskNotes: [
+      `Wallet connection: ${formatWalletConnectionStatus(walletConnection.walletConnectionStatus)}.`,
+      `Wallet chain: ${formatWalletChainStatus(walletConnection.chainStatus)}.`,
+      'Wallet execution remains not implemented.',
+      'Deployment remains not executed.',
+      'No contract address or transaction hash exists.',
+    ],
+    nextRecommendedAction: 'Next milestone remains unsigned deployment intent review after wallet connection and Sepolia status are stable.',
+    createdAt: new Date(0).toISOString(),
+  };
+}
+
 function formatDeploymentGateStatus(status: 'blocked' | 'review_ready') {
   return status === 'review_ready' ? 'Review-ready' : 'Blocked';
 }
@@ -121,6 +148,52 @@ function formatPreDeploymentReadiness(status: 'incomplete' | 'complete' | 'block
 
 function formatWalletSigningIntentStatus(status: 'blocked' | 'review_ready') {
   return status === 'review_ready' ? 'Review-ready' : 'Blocked';
+}
+
+function formatWalletConnectionStatus(status: string) {
+  if (status === 'not_connected') return 'Not connected';
+  if (status === 'connecting') return 'Connecting';
+  if (status === 'wrong_chain') return 'Wrong chain';
+  if (status === 'rejected') return 'Rejected';
+  if (status === 'unsupported') return 'Not detected';
+  if (status === 'connected') return 'Connected';
+  return 'Provider error';
+}
+
+function formatWalletChainStatus(status: string) {
+  if (status === 'sepolia') return 'Sepolia';
+  if (status === 'wrong_chain') return 'Wrong chain';
+  return 'Unknown';
+}
+
+function initialWalletConnectionInput(): WalletConnectionReadModelInput {
+  return getBrowserEthereumProvider()
+    ? {
+        providerStatus: 'unknown',
+        connectionStatus: 'not_connected',
+      }
+    : {
+        providerStatus: 'unsupported',
+        connectionStatus: 'not_connected',
+      };
+}
+
+function walletConnectionInputsMatch(
+  current: WalletConnectionReadModelInput,
+  next: WalletConnectionReadModelInput,
+) {
+  return (
+    current.providerStatus === next.providerStatus &&
+    current.connectionStatus === next.connectionStatus &&
+    current.chainId === next.chainId &&
+    current.connectedWalletAddress === next.connectedWalletAddress &&
+    current.providerError?.code === next.providerError?.code &&
+    current.providerError?.normalizedStatus === next.providerError?.normalizedStatus
+  );
+}
+
+function applyWalletConnectionInput(next: WalletConnectionReadModelInput) {
+  return (current: WalletConnectionReadModelInput) => (walletConnectionInputsMatch(current, next) ? current : next);
 }
 
 export function App() {
@@ -138,10 +211,13 @@ export function App() {
   const [smartContractCompileTestResult, setSmartContractCompileTestResult] = useState<SmartContractCompileTestResult | undefined>();
   const [smartContractGenerationStatus, setSmartContractGenerationStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [smartContractGenerationError, setSmartContractGenerationError] = useState<string | undefined>();
+  const [walletConnectionInput, setWalletConnectionInput] = useState<WalletConnectionReadModelInput>(
+    initialWalletConnectionInput,
+  );
   const [engineerResponse, setEngineerResponse] = useState(() =>
     createLocalEngineerResponse(answerAsBlockchainEngineer(initialBotQuestion)),
   );
-  const [engineerAnswerSource, setEngineerAnswerSource] = useState<'local' | 'backend' | 'generated_artifacts'>(
+  const [engineerAnswerSource, setEngineerAnswerSource] = useState<'local' | 'backend' | 'generated_artifacts' | 'wallet'>(
     'local',
   );
   const [botChatError, setBotChatError] = useState<string | undefined>();
@@ -149,6 +225,27 @@ export function App() {
   const [isLeftRailOpen, setIsLeftRailOpen] = useState(true);
   const [isRightRailOpen, setIsRightRailOpen] = useState(true);
   const [isBriefPreviewExpanded, setIsBriefPreviewExpanded] = useState(false);
+
+  useEffect(() => {
+    const provider = getBrowserEthereumProvider();
+    if (!provider) return undefined;
+
+    const walletAdapter = createEip1193WalletAdapter(provider);
+    let isActive = true;
+
+    void walletAdapter.getSnapshot().then((snapshot) => {
+      if (isActive) setWalletConnectionInput(applyWalletConnectionInput(snapshot));
+    });
+
+    const cleanup = walletAdapter.subscribe((snapshot) => {
+      if (isActive) setWalletConnectionInput(applyWalletConnectionInput(snapshot));
+    });
+
+    return () => {
+      isActive = false;
+      cleanup();
+    };
+  }, []);
 
   const fallbackEngineerAnswer = useMemo(() => answerAsBlockchainEngineer(question || initialBotQuestion, brief), [question, brief]);
   const engineerResponseViewModel = useMemo(
@@ -200,6 +297,11 @@ export function App() {
     () => toWalletSigningIntentReadModel(deploymentGateReadModel),
     [deploymentGateReadModel],
   );
+  const walletConnectionReadModel = useMemo(
+    () => toWalletConnectionReadModel(walletConnectionInput),
+    [walletConnectionInput],
+  );
+  const walletAddressDisplay = formatWalletAddressForDisplay(walletConnectionReadModel.connectedWalletAddress);
   const projectLifecycleReadModel = useMemo(
     () =>
       toProjectLifecycleReadModel({
@@ -255,6 +357,10 @@ export function App() {
         deploymentExecutionStatus: deploymentGateReadModel.deploymentExecutionStatus,
         walletSigningIntentStatus: walletSigningIntentReadModel.intentStatus,
         walletExecutionStatus: walletSigningIntentReadModel.walletExecutionStatus,
+        walletConnectionStatus: walletConnectionReadModel.walletConnectionStatus,
+        walletProviderStatus: walletConnectionReadModel.provider.providerStatus,
+        walletChainStatus: walletConnectionReadModel.chainStatus,
+        connectedWalletAddressDisplay: walletAddressDisplay,
         customEvents: smartContractArtifactSpec?.eventModel?.customEvents,
       }),
     [
@@ -266,6 +372,8 @@ export function App() {
       smartContractCompileTestPresentation,
       deploymentGateReadModel,
       walletSigningIntentReadModel,
+      walletConnectionReadModel,
+      walletAddressDisplay,
     ],
   );
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
@@ -290,6 +398,8 @@ export function App() {
   ];
   const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
   const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
+  const isWalletConnectionComplete =
+    walletConnectionReadModel.walletConnectionStatus === 'connected' && walletConnectionReadModel.chainStatus === 'sepolia';
   const generatedArtifactCards = useMemo<GeneratedArtifactCard[]>(
     () =>
       smartContractGenerationStatus === 'ready'
@@ -331,8 +441,14 @@ export function App() {
               label: 'Wallet Signing Intent',
               status: formatWalletSigningIntentStatus(walletSigningIntentReadModel.intentStatus),
               detail:
-                'Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys. Next milestone: wallet connection and Sepolia signing design.',
+                'Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys.',
               source: 'Track 12A read model',
+            },
+            {
+              label: 'Wallet Connection',
+              status: formatWalletConnectionStatus(walletConnectionReadModel.walletConnectionStatus),
+              detail: `Wallet chain: ${formatWalletChainStatus(walletConnectionReadModel.chainStatus)}. ${walletAddressDisplay ? `Connected wallet: ${walletAddressDisplay}.` : 'No wallet address.'} Connection only; no signing or deployment.`,
+              source: 'Track 13B EIP-1193 adapter',
             },
             {
               label: 'Smart Contract Operations',
@@ -344,7 +460,8 @@ export function App() {
             {
               label: 'Deployment / Signing / Audit',
               status: 'Not executed',
-              detail: 'Not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.',
+              detail:
+                'Not deployed, not audited, not signed, no contract address, no transaction hash. Wallet connection does not execute deployment.',
               source: 'Safety boundary',
             },
           ]
@@ -358,6 +475,8 @@ export function App() {
       smartContractGenerationStatus,
       deploymentGateReadModel,
       walletSigningIntentReadModel,
+      walletConnectionReadModel,
+      walletAddressDisplay,
     ],
   );
 
@@ -492,6 +611,22 @@ export function App() {
     setEngineerAnswerSource('generated_artifacts');
   }
 
+  async function connectWallet() {
+    setWalletConnectionInput((current) => ({
+      ...current,
+      providerStatus: current.providerStatus === 'unknown' ? 'available' : current.providerStatus,
+      connectionStatus: 'connecting',
+      providerError: undefined,
+    }));
+
+    const walletAdapter = createEip1193WalletAdapter(getBrowserEthereumProvider());
+    const snapshot = await walletAdapter.connect();
+    const nextWalletConnectionReadModel = toWalletConnectionReadModel(snapshot);
+    setWalletConnectionInput(snapshot);
+    setEngineerResponse(createWalletConnectionResponse(nextWalletConnectionReadModel));
+    setEngineerAnswerSource('wallet');
+  }
+
   function runCockpitAction(actionId: Mila26UiActionId) {
     switch (actionId) {
       case 'create_requirement_brief':
@@ -502,6 +637,9 @@ export function App() {
         return;
       case 'prepare_smart_contract_spec':
         void prepareSmartContractSpec();
+        return;
+      case 'connect_wallet':
+        void connectWallet();
         return;
       case 'review_assumptions':
       case 'open_brief':
@@ -520,6 +658,13 @@ export function App() {
     if (actionId === 'generate_engineering_brief' && isEngineeringBriefLoading) return 'Generating Engineering Brief...';
     if (actionId === 'prepare_smart_contract_spec' && smartContractGenerationStatus === 'loading') {
       return 'Preparing Smart Contract Spec...';
+    }
+    if (actionId === 'connect_wallet') {
+      if (walletConnectionReadModel.walletConnectionStatus === 'connecting') return 'Connecting Wallet...';
+      if (walletConnectionReadModel.walletConnectionStatus === 'connected' && walletConnectionReadModel.chainStatus === 'sepolia') {
+        return 'Wallet Connected on Sepolia';
+      }
+      if (walletConnectionReadModel.walletConnectionStatus === 'wrong_chain') return 'Recheck Wallet Chain';
     }
     if (actionId === 'ask_question' && isBotReplyLoading) return 'Sending...';
     return fallbackLabel;
@@ -687,7 +832,9 @@ export function App() {
                       disabled={
                         !primaryWorkflowAction.enabled ||
                         isEngineeringBriefLoading ||
-                        smartContractGenerationStatus === 'loading'
+                        smartContractGenerationStatus === 'loading' ||
+                        walletConnectionReadModel.walletConnectionStatus === 'connecting' ||
+                        (primaryWorkflowAction.id === 'connect_wallet' && isWalletConnectionComplete)
                       }
                       onClick={() => runCockpitAction(primaryWorkflowAction.id)}
                       title={primaryWorkflowAction.disabledReason}
@@ -749,7 +896,9 @@ export function App() {
                       ? 'Backend response.'
                       : engineerAnswerSource === 'generated_artifacts'
                         ? 'Backend artifacts generated.'
-                        : 'Local preview shown until a backend response is available.'}
+                        : engineerAnswerSource === 'wallet'
+                          ? 'Wallet connection status updated.'
+                          : 'Local preview shown until a backend response is available.'}
                 </p>
               </section>
 
@@ -998,11 +1147,13 @@ export function App() {
               <li>Pre-deployment readiness: {formatPreDeploymentReadiness(deploymentGateReadModel.preDeploymentReadiness)}</li>
               <li>Deployment execution: Blocked</li>
               <li>Wallet Signing Intent: {formatWalletSigningIntentStatus(walletSigningIntentReadModel.intentStatus)}</li>
+              <li>Wallet connection: {formatWalletConnectionStatus(walletConnectionReadModel.walletConnectionStatus)}</li>
+              <li>Wallet provider: {walletConnectionReadModel.provider.providerStatus === 'available' ? 'Available' : walletConnectionReadModel.provider.providerStatus === 'unsupported' ? 'Not detected' : 'Unknown'}</li>
+              <li>Wallet chain: {formatWalletChainStatus(walletConnectionReadModel.chainStatus)}</li>
+              <li>{walletAddressDisplay ? `Connected wallet: ${walletAddressDisplay}` : 'No wallet address'}</li>
               <li>Wallet execution: Not implemented</li>
               <li>User wallet signing required later</li>
               <li>Backend never holds private keys</li>
-              <li>Wallet connection not implemented</li>
-              <li>No wallet address</li>
               <li>No signed payload</li>
               <li>No submitted transaction</li>
               <li>No confirmed transaction</li>
@@ -1144,11 +1295,12 @@ export function App() {
             <h3>Wallet Signing Readiness</h3>
             <div className="health-list">
               <span>Wallet Signing Intent: {formatWalletSigningIntentStatus(walletSigningIntentReadModel.intentStatus)}</span>
+              <span>Wallet connection: {formatWalletConnectionStatus(walletConnectionReadModel.walletConnectionStatus)}</span>
+              <span>Wallet chain: {formatWalletChainStatus(walletConnectionReadModel.chainStatus)}</span>
+              <span>{walletAddressDisplay ? `Connected wallet: ${walletAddressDisplay}` : 'No wallet address'}</span>
               <span>Wallet execution: Not implemented</span>
               <span>User wallet signing required later</span>
               <span>Backend never holds private keys</span>
-              <span>Wallet connection not implemented</span>
-              <span>No wallet address</span>
               <span>No signed payload</span>
               <span>No submitted transaction</span>
               <span>No confirmed transaction</span>
@@ -1156,8 +1308,9 @@ export function App() {
               <span>No transaction hash</span>
             </div>
             <p className="microcopy">
-              Wallet intent is view-only. No wallet connection, signing request, signed payload, transaction submission,
-              contract address, or transaction hash exists in this stage.
+              Wallet connection checks whether a user wallet is available and on Sepolia. It does not sign or deploy.
+              No signing request, signed payload, transaction submission, contract address, or transaction hash exists in
+              this stage.
             </p>
           </section>
 
@@ -1187,8 +1340,9 @@ export function App() {
               ))}
             </div>
             <p className="microcopy">
-              No contract has been deployed, audited, signed, or connected to a wallet in this MVP stage. Local
-              compile/test status, where shown, is a known developer-local foundation result only.
+              No contract has been deployed, audited, signed, or submitted in this MVP stage. Wallet connection, where
+              shown, is connection and Sepolia status only. Local compile/test status is a known developer-local
+              foundation result only.
             </p>
           </section>
         </div>

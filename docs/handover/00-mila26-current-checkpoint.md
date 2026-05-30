@@ -75,20 +75,18 @@ The next implementation step is real wallet connection and Sepolia verification 
 - Track 12B: Wallet Signing Intent view-only cockpit/SCP wiring and operations locked state.
 - Track 12C: lifecycle golden-flow hardening.
 - Track 13A: MetaMask-first wallet adapter and Sepolia signing design plus pure wallet connection read model.
+- Track 13B: frontend-only EIP-1193 wallet connection and Sepolia verification.
 
 ## Current Next Step
 
-Track 13B: MetaMask EIP-1193 Wallet Connection + Sepolia Verification.
+Track 14A: Unsigned Deployment Transaction Intent.
 
-Track 13B should:
+Track 14A should:
 
-- detect MetaMask/injected EIP-1193 provider.
-- request wallet connection from the central Engineering Bot workflow surface.
-- capture a real connected wallet address only after user approval.
-- verify Sepolia chain ID `11155111` / `0xaa36a7`.
-- normalize provider errors into MILA26-owned statuses.
-- react safely to account and chain changes.
+- define the reviewable unsigned deployment intent.
+- consume lightweight readiness from Deployment Gate, Wallet Signing Intent, Wallet Connection, artifact/check/evidence, and local compile/test state.
 - keep deployment/signing/transaction execution blocked.
+- keep transaction hash, contract address, signed payload, submitted transaction, confirmed transaction, and receipt absent.
 
 ## What Must Not Be Done Yet
 

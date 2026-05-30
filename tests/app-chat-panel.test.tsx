@@ -1,7 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
+import { SEPOLIA_CHAIN_ID_HEX } from '../src/domain/walletConnectionReadModel';
+import type { Eip1193Provider, Eip1193RequestArguments } from '../src/wallet/eip1193WalletAdapter';
 import { expectNoPrematureBlockchainExecutionClaims } from './golden-flow-assertions';
 
 function createJsonResponse(body: unknown, init: ResponseInit = {}): Response {
@@ -67,6 +69,121 @@ const engineeringBrief: EngineeringBrief = {
     productionAdvice: false,
   },
 };
+
+const connectedWalletAddress = '0x1111111111111111111111111111111111111111';
+
+function createMockWalletProvider(options: {
+  requestAccounts?: string[];
+  chainId?: string;
+  rejectRequest?: boolean;
+} = {}) {
+  const calls: string[] = [];
+  const provider: Eip1193Provider = {
+    async request(args: Eip1193RequestArguments) {
+      calls.push(args.method);
+
+      if (args.method === 'eth_accounts') return [];
+      if (args.method === 'eth_chainId') return options.chainId ?? SEPOLIA_CHAIN_ID_HEX;
+      if (args.method === 'eth_requestAccounts') {
+        if (options.rejectRequest) {
+          throw Object.assign(new Error('User rejected request'), { code: 4001 });
+        }
+        return options.requestAccounts ?? [connectedWalletAddress];
+      }
+
+      throw new Error(`Unexpected request method: ${args.method}`);
+    },
+  };
+
+  return { provider, calls };
+}
+
+function stubBrowserWallet(provider: Eip1193Provider) {
+  vi.stubGlobal('ethereum', provider);
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+function stubSmartContractPreparationFetch() {
+  const smartContractArtifactSpec = {
+    specId: 'smart-contract-artifact-spec-engineering-brief-1',
+    projectId: 'brief-1',
+    projectName: 'MILA Income Fund',
+    status: 'ready',
+    eventModel: {
+      customEvents: ['ValuationUpdated', 'DistributionRecorded'],
+    },
+  };
+
+  const fetchMock = vi.fn((url: string) => {
+    if (url.endsWith('/api/prd/engineering-brief')) {
+      return Promise.resolve(createJsonResponse({ ok: true, data: engineeringBrief }));
+    }
+
+    if (url.endsWith('/api/smart-contract/artifact-spec')) {
+      return Promise.resolve(createJsonResponse({ ok: true, data: smartContractArtifactSpec }));
+    }
+
+    if (url.endsWith('/api/smart-contract/artifact')) {
+      return Promise.resolve(
+        createJsonResponse({
+          ok: true,
+          data: {
+            artifactPackage: {
+              artifactId: 'contract-artifact-smart-contract-artifact-spec-engineering-brief-1',
+              specId: smartContractArtifactSpec.specId,
+              projectId: 'brief-1',
+              projectName: 'MILA Income Fund',
+              status: 'generated',
+              sourceModel: {
+                sourceFiles: [{ path: 'contracts/MILARestrictedIncomeFundToken.preview.sol' }],
+              },
+            },
+            checkResult: {
+              checkId: 'contract-check-smart-contract-artifact-spec-engineering-brief-1',
+              artifactId: 'contract-artifact-smart-contract-artifact-spec-engineering-brief-1',
+              specId: smartContractArtifactSpec.specId,
+              status: 'passed',
+              summary:
+                'Deterministic spec-consistency/static-preview checking only. Not a production security audit, compiler result, deployment approval, wallet-signing proof, or legal/compliance opinion.',
+            },
+            evidenceLite: {
+              evidenceId: 'evidence-lite-smart-contract-artifact-spec-engineering-brief-1',
+              artifactId: 'contract-artifact-smart-contract-artifact-spec-engineering-brief-1',
+              specId: smartContractArtifactSpec.specId,
+              checkId: 'contract-check-smart-contract-artifact-spec-engineering-brief-1',
+              status: 'ready',
+              evidenceItems: [{ id: 'evidence-spec-profile' }],
+              eventEvidenceRefs: [{ eventName: 'ValuationUpdated' }],
+            },
+          },
+        }),
+      );
+    }
+
+    return Promise.resolve(createJsonResponse({ ok: false, error: { code: 'UNEXPECTED', message: 'Unexpected route.' } }, { status: 400 }));
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  return fetchMock;
+}
+
+async function completeSmartContractPreparation() {
+  fireEvent.click(screen.getByRole('button', { name: 'Create Requirement Doc' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Generate Engineering Brief' }));
+
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'Prepare Smart Contract Spec' })).toBeEnabled();
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Prepare Smart Contract Spec' }));
+
+  await waitFor(() => {
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toBeVisible();
+  });
+}
 
 describe('App Blockchain Engineer Bot panel', () => {
   it('shows local preview before asking and then renders a backend answer', async () => {
@@ -353,8 +470,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     });
     const generatedArtifacts = within(screen.getByLabelText('Generated smart contract artifacts'));
 
-    expect(screen.getByRole('button', { name: 'Review Deployment Gate' })).toBeDisabled();
-    expect(screen.getByText(/Deployment gate review remains a later/i)).toBeVisible();
+    const connectWalletButton = screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' });
+    expect(connectWalletButton).toBeEnabled();
+    expect(within(screen.getByLabelText('Engineering Bot actions')).getByRole('button', { name: 'Connect Wallet for Sepolia Check' })).toBeVisible();
     expect(screen.getByText('Backend artifacts generated.')).toBeVisible();
     expect(screen.getByText('Smart contract preparation review')).toBeVisible();
     expect(screen.getByText('Demo-ready preview')).toBeVisible();
@@ -377,10 +495,14 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(generatedArtifacts.getByText('Wallet Signing Intent')).toBeVisible();
     expect(
       generatedArtifacts.getByText(
-        'Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys. Next milestone: wallet connection and Sepolia signing design.',
+        'Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys.',
       ),
     ).toBeVisible();
     expect(generatedArtifacts.getByText('Track 12A read model')).toBeVisible();
+    expect(generatedArtifacts.getByText('Wallet Connection')).toBeVisible();
+    expect(generatedArtifacts.getByText('Not detected')).toBeVisible();
+    expect(generatedArtifacts.getByText('Wallet chain: Unknown. No wallet address. Connection only; no signing or deployment.')).toBeVisible();
+    expect(generatedArtifacts.getByText('Track 13B EIP-1193 adapter')).toBeVisible();
     expect(generatedArtifacts.getByText('Smart Contract Operations')).toBeVisible();
     expect(generatedArtifacts.getByText('Locked')).toBeVisible();
     expect(
@@ -389,7 +511,7 @@ describe('App Blockchain Engineer Bot panel', () => {
       ),
     ).toBeVisible();
     expect(screen.getByText('Deployment / Signing / Audit')).toBeVisible();
-    expect(screen.getByText('Not deployed, not audited, not signed, no wallet connected, no address, no transaction hash.')).toBeVisible();
+    expect(screen.getByText('Not deployed, not audited, not signed, no contract address, no transaction hash. Wallet connection does not execute deployment.')).toBeVisible();
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Smart contract preparation is complete for demo review');
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('represented the known local compile/test foundation as passed');
     expect(screen.getByText('Recommended next action')).toBeVisible();
@@ -410,7 +532,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getAllByText('Wallet execution: Not implemented').length).toBeGreaterThan(0);
     expect(screen.getAllByText('User wallet signing required later').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Backend never holds private keys').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Wallet connection not implemented').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Wallet connection: Not detected').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Wallet provider: Not detected').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Wallet chain: Unknown').length).toBeGreaterThan(0);
     expect(screen.getAllByText('No wallet address').length).toBeGreaterThan(0);
     expect(screen.getAllByText('No signed payload').length).toBeGreaterThan(0);
     expect(screen.getAllByText('No submitted transaction').length).toBeGreaterThan(0);
@@ -426,8 +550,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     ).toBeGreaterThan(0);
     expect(screen.getByText('Wallet signing not implemented: Not implemented')).toBeVisible();
     expect(screen.getByText('User wallet signing required later: Required')).toBeVisible();
-    expect(screen.getByText('Wallet connection not implemented: Not implemented')).toBeVisible();
-    expect(screen.getByText('No wallet address: Absent')).toBeVisible();
+    expect(screen.getAllByText('Wallet connection: Not detected').length).toBeGreaterThan(0);
+    expect(screen.getByText('Wallet address: Absent')).toBeVisible();
     expect(screen.getByText('No signed payload: Absent')).toBeVisible();
     expect(screen.getByText('No submitted transaction: Absent')).toBeVisible();
     expect(screen.getByText('No confirmed transaction: Absent')).toBeVisible();
@@ -447,7 +571,11 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('ContractPaused')).toBeVisible();
     expect(screen.getByText('ContractUnpaused')).toBeVisible();
     expect(screen.getByText('No contract address - not deployed')).toBeVisible();
-    expect(screen.queryByRole('button', { name: /wallet/i })).not.toBeInTheDocument();
+    const rightRail = screen.getByLabelText('Project status');
+    const scp = screen.getByTestId('smart-contract-control');
+    expect(within(rightRail).queryByRole('button', { name: /wallet/i })).not.toBeInTheDocument();
+    expect(within(scp).queryByRole('button', { name: /wallet/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' })).toBeEnabled();
     expect(screen.queryByRole('button', { name: /sign/i })).not.toBeInTheDocument();
     expect(screen.queryAllByRole('button', { name: /deploy/i }).every((button) => button.hasAttribute('disabled'))).toBe(
       true,
@@ -461,6 +589,91 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByText(/^Signed payload:/i)).not.toBeInTheDocument();
     expectNoPrematureBlockchainExecutionClaims(document.body.textContent ?? '');
     expect(fetchMock.mock.calls.map(([url]) => String(url)).join(' ')).not.toMatch(/hardhat|contracts:build|test:contracts/i);
+  });
+
+  it('connects a mocked Sepolia wallet from the central workflow surface without unlocking execution', async () => {
+    const { provider, calls } = createMockWalletProvider();
+    stubBrowserWallet(provider);
+    stubSmartContractPreparationFetch();
+
+    render(<App />);
+    await completeSmartContractPreparation();
+
+    const generatedArtifacts = within(screen.getByLabelText('Generated smart contract artifacts'));
+    const rightRail = screen.getByLabelText('Project status');
+    const scp = screen.getByTestId('smart-contract-control');
+
+    expect(screen.queryByText(/0x1111/i)).not.toBeInTheDocument();
+    expect(generatedArtifacts.getByText('Wallet Connection')).toBeVisible();
+    expect(generatedArtifacts.getByText('Not connected')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' })).toBeEnabled();
+    expect(within(rightRail).queryByRole('button', { name: /wallet/i })).not.toBeInTheDocument();
+    expect(within(scp).queryByRole('button', { name: /wallet/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Wallet Connected on Sepolia' })).toBeDisabled();
+    });
+
+    expect(screen.getAllByText('Wallet connection: Connected').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Wallet chain: Sepolia').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Connected wallet: 0x1111...1111').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Wallet execution: Not implemented').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Deployment: Not executed').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Smart Contract Operations: Locked').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Wallet connection check updated');
+    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('It does not sign, deploy, submit a transaction, or unlock Smart Contract Operations.');
+    expect(calls).toContain('eth_requestAccounts');
+    expect(calls).toContain('eth_chainId');
+    expect(calls).not.toContain('eth_sendTransaction');
+    expect(calls).not.toContain('personal_sign');
+    expect(calls).not.toContain('eth_sign');
+    expect(calls).not.toContain('eth_signTypedData');
+    expect(screen.queryByText(/contract address: 0x/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/transaction hash: 0x/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Signed payload:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Submitted transaction:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Confirmed transaction:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ready to sign|sign now|ready to deploy|deploy now|ready for signature|production ready|mainnet ready/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Deployed$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Live$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Verified$/i)).not.toBeInTheDocument();
+  });
+
+  it('shows wrong-chain and rejected wallet states through MILA26-owned statuses', async () => {
+    const wrongChainWallet = createMockWalletProvider({ chainId: '0x1' });
+    stubBrowserWallet(wrongChainWallet.provider);
+    stubSmartContractPreparationFetch();
+
+    render(<App />);
+    await completeSmartContractPreparation();
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Recheck Wallet Chain' })).toBeEnabled();
+    });
+    expect(screen.getAllByText('Wallet connection: Wrong chain').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Wallet chain: Wrong chain').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Wallet execution: Not implemented').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/ready to sign|ready to deploy|contract address: 0x|transaction hash: 0x/i)).not.toBeInTheDocument();
+
+    cleanup();
+    vi.unstubAllGlobals();
+
+    const rejectedWallet = createMockWalletProvider({ rejectRequest: true });
+    stubBrowserWallet(rejectedWallet.provider);
+    stubSmartContractPreparationFetch();
+    render(<App />);
+    await completeSmartContractPreparation();
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Wallet connection: Rejected').length).toBeGreaterThan(0);
+    });
+    expect(screen.getAllByText('Wallet chain: Unknown').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/User rejected request/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ready to sign|ready to deploy|contract address: 0x|transaction hash: 0x/i)).not.toBeInTheDocument();
   });
 
   it('shows a safe Smart Contract Spec error without claiming generated readiness', async () => {

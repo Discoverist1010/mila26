@@ -144,6 +144,29 @@ describe('Cockpit action registry', () => {
     });
   });
 
+  it('returns Connect Wallet for Sepolia Check after deployment gate review is ready', () => {
+    const viewModel = toCockpitActionViewModel(
+      toProjectLifecycleReadModel({
+        hasRequirementBrief: true,
+        hasEngineeringBrief: true,
+        closureReadiness: closureReadiness(),
+        artifactSpecStatus: 'ready',
+        checkStatus: 'passed',
+        evidenceStatus: 'ready',
+        deploymentGateStatus: 'ready',
+      }),
+    );
+
+    expect(viewModel.primaryEngineeringBotAction).toMatchObject({
+      id: 'connect_wallet',
+      label: 'Connect Wallet for Sepolia Check',
+      placement: 'engineering_bot',
+      enabled: true,
+      kind: 'workflow',
+    });
+    expect(getActionsByPlacement(viewModel.actions, 'scp').every((action) => action.kind !== 'workflow')).toBe(true);
+  });
+
   it('keeps panel toggle actions available and avoids right-rail workflow placement', () => {
     const lifecycleReadModel = toProjectLifecycleReadModel({
       hasRequirementBrief: false,

@@ -83,6 +83,12 @@ export function normalizeWalletProviderError(
   return 'error';
 }
 
+export function formatWalletAddressForDisplay(address?: string): string {
+  if (!address) return '';
+  if (address.length <= 12) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
 function deriveConnectionStatus(input: WalletConnectionReadModelInput): WalletConnectionStatus {
   if (input.providerStatus === 'unsupported') return 'unsupported';
 

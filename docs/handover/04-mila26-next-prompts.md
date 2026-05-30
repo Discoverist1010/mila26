@@ -1,6 +1,6 @@
 # MILA26 Next Prompts
 
-## Next Codex Prompt: Track 13B MetaMask Wallet Connection + Sepolia Verification
+## Next Codex Prompt: Track 14A Unsigned Deployment Transaction Intent
 
 ```text
 You are working inside the MILA26 repository:
@@ -10,7 +10,7 @@ You are working inside the MILA26 repository:
 Start from main.
 
 Before making changes:
-1. Confirm Track 13A has been committed and pushed.
+1. Confirm Track 13B has been committed and pushed.
 2. Run:
    git status --short --branch
 3. Working tree must be clean before starting.
@@ -19,87 +19,53 @@ Before making changes:
    to confirm baseline if needed.
 
 Current project status:
-- Track 12C hardened the golden lifecycle flow and no-fake-deployment guardrails.
-- Track 13A added wallet adapter + Sepolia signing design:
-  - docs/architecture/wallet-adapter-sepolia-design.md
-  - src/domain/walletConnectionReadModel.ts
-  - tests/wallet-connection-read-model.test.ts
-- Track 13A recommendation:
-  - MetaMask first through a minimal EIP-1193 browser-provider boundary.
-  - Sepolia only for alpha: decimal 11155111 / hex 0xaa36a7.
-  - viem reserved for typed chain/account/contract/deployment primitives later.
-  - wagmi deferred.
-  - ethers avoided unless there is a clear reason.
+- Track 13A added the MetaMask-first wallet adapter + Sepolia signing design and pure WalletConnectionReadModel.
+- Track 13B added frontend-only EIP-1193 wallet connection and Sepolia verification:
+  - provider detection.
+  - user-initiated account request.
+  - Sepolia/wrong-chain status.
+  - rejected/provider-error/unsupported states.
+  - passive wallet status in cockpit/SCP.
+- Track 13B did not add signing, deployment, transaction preparation/submission, tx hash, contract address, backend wallet route, persistence, SCP operations, or mainnet.
 
-We are starting Track 13B - MetaMask Wallet Connection + Sepolia Verification.
+We are starting Track 14A - Unsigned Deployment Transaction Intent.
 
 Goal:
-Add the smallest safe frontend wallet connection foundation:
-- detect an injected MetaMask/EIP-1193 provider.
-- let the user request wallet connection from the central Engineering Bot workflow surface.
-- capture connected wallet address only after real user approval.
-- verify Sepolia chain.
-- normalize provider errors into MILA26-owned statuses.
-- react safely to account and chain changes.
-- surface wallet connection readiness without enabling signing or deployment.
+Define a typed, reviewable unsigned deployment intent that describes what the user may later be asked to sign for Sepolia deployment, without requesting a signature or submitting a transaction.
 
 Important:
-Track 13B is not a signing track.
-Track 13B is not a deployment track.
-Track 13B must not prepare a transaction, request a signature, submit a transaction, display a transaction hash, display a contract address, unlock SCP operations, or add mainnet behavior.
+Track 14A is not a signing or deployment track. It must not request a signature, submit a transaction, display a transaction hash, display a contract address, unlock SCP operations, add backend private-key custody, or enable mainnet.
 
 Architecture rules:
 - Keep WalletConnectionReadModel separate from WalletSigningIntent.
-- Do not merge wallet connection with deployment gate or signing intent.
-- Use local React state only.
-- Prefer a small wallet adapter module over scattered window.ethereum conditionals in App.tsx.
-- Do not add global state, persistence, backend routes, or a workflow engine.
-- Keep Engineering Bot as the workflow action surface.
-- Right rail remains passive.
-- SCP remains status/evidence/boundary/health and locked operations until real deployment exists.
+- Consume Deployment Gate, Wallet Signing Intent, Wallet Connection, artifact/check/evidence, and compile/test status as lightweight inputs.
+- Do not create a transaction lifecycle model yet.
+- Keep it typed/domain-first; UI wiring can be a later small track unless the scope is explicitly approved.
 
 Suggested files:
-- src/wallet/eip1193WalletAdapter.ts
-- src/wallet/metamaskWalletAdapter.ts
-- src/domain/walletConnectionReadModel.ts only if small refinements are needed
-- src/App.tsx
-- tests/wallet-connection-read-model.test.ts
-- tests/wallet-adapter.test.ts
-- tests/app-chat-panel.test.tsx
-- tests/e2e/mila26.spec.ts if visible text changes
+- src/domain/unsignedDeploymentIntentReadModel.ts
+- tests/unsigned-deployment-intent-read-model.test.ts
+- docs/contracts/unsigned-deployment-intent-contract.md
+- docs/contracts/README.md
 
 Implementation guidance:
-1. Define a minimal typed EIP-1193 provider interface locally if needed.
-2. Do not import wagmi or ethers.
-3. Use existing viem dependency only if it materially reduces risk; direct EIP-1193 is preferred for 13B.
-4. Do not install dependencies.
-5. Implement provider detection without throwing during SSR/tests.
-6. Implement request accounts using EIP-1193 request method.
-7. Read chain ID and compare against Sepolia.
-8. Subscribe to accountsChanged and chainChanged where practical, with cleanup.
-9. Normalize provider errors into rejected, unsupported, wrong_chain, or error.
-10. Do not depend on exact MetaMask error strings.
+1. Model the unsigned deployment intent as a review payload, not an executable transaction.
+2. Include chain target Sepolia only, contract fixture/artifact identity, required bytecode/ABI readiness, constructor/deployment parameter requirements, user wallet address requirement, and safety boundaries.
+3. Keep transaction hash, contract address, signed payload, submitted transaction, confirmed transaction, and receipt absent.
+4. Do not prepare calldata/bytecode transaction submission unless a later track explicitly approves it.
 
 UI behavior:
-- Before connection: central action can show Connect MetaMask Wallet.
-- If no provider: show MetaMask / EIP-1193 provider not detected.
-- If user rejects: show safe rejected message.
-- If wrong chain: show Sepolia required; mainnet disabled.
-- If connected to Sepolia: show wallet connection readiness review-ready.
-- Wallet execution remains not implemented.
-- Wallet Signing Intent remains separate.
-- Deployment and SCP operations remain locked.
+- No UI wiring by default in Track 14A.
+- If any copy/docs mention the intent, it must say unsigned review intent only.
 
 Strict prohibitions:
 - No signing request.
-- No transaction preparation.
 - No transaction submission.
 - No deployment script.
 - No backend route/API.
 - No private keys.
 - No backend private-key custody.
 - No mainnet config.
-- No fake wallet address.
 - No fake contract address.
 - No fake transaction hash.
 - No signed payload.
@@ -110,47 +76,24 @@ Strict prohibitions:
 - No broad UI redesign.
 
 Testing requirements:
-- Mock EIP-1193 provider in Vitest.
-- Test no provider.
-- Test user rejection.
-- Test successful account connection on Sepolia.
-- Test wrong-chain state.
-- Test account change handling.
-- Test chain change handling.
-- Test cleanup if event listeners are added.
-- Test wallet address appears only after mocked real connection.
-- Test no tx hash or contract address appears.
-- Test right rail remains passive.
-- Test SCP operations remain locked.
-- Test no ready-to-sign, ready-to-deploy, deployed, signed, live, verified, audited, production-ready, mainnet-ready claims.
+- Intent remains blocked unless deployment gate, wallet signing intent, wallet connection, artifact/check/evidence, and local compile/test prerequisites are present.
+- Connected Sepolia wallet may be referenced only if it came from WalletConnectionReadModel.
+- Output contains no transaction hash, contract address, signed payload, submitted transaction, confirmed transaction, or receipt.
+- No ready-to-sign, ready-to-deploy, deployed, signed, live, verified, audited, production-ready, or mainnet-ready claims.
 
 Validation:
 Run:
-npm run test -- tests/wallet-connection-read-model.test.ts
-npm run test -- tests/app-chat-panel.test.tsx
+npm run test -- tests/unsigned-deployment-intent-read-model.test.ts
 npm run check
-npm run test:e2e
 git diff --check
 
 Acceptance criteria:
-- MetaMask/EIP-1193 provider detection exists.
-- User can request wallet connection from the central workflow surface.
-- Real connected wallet address is only stored/displayed after connection approval.
-- Sepolia verification works.
-- Wrong-chain and rejection states are safe.
-- Wallet connection readiness is distinct from Wallet Signing Intent.
-- Wallet execution remains not implemented.
+- A typed unsigned deployment intent/read model exists.
+- It consumes existing lightweight readiness state instead of recreating a monolithic lifecycle context.
+- It is review-only and not executable.
 - No signing/deployment/transaction behavior is added.
-- No fake wallet/contract/tx values are added.
+- No fake contract/tx values are added.
 - Tests pass.
-```
-
-## Later Prompt: Track 14A Unsigned Deployment Transaction Intent
-
-```text
-Plan or implement only after Track 13B is stable.
-
-Define the unsigned deployment transaction intent and user review payload needed before requesting a wallet signature. Do not request a signature, submit a transaction, show a transaction hash, or record a contract address in Track 14A.
 ```
 
 ## Later Prompt: Track 14B User Wallet Signs Deployment

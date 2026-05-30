@@ -117,6 +117,6 @@ Those belong only in later explicitly approved wallet/deployment tracks, and onl
 
 ## Next Contract Boundary
 
-Track 13B should add runtime wallet connection adapter behavior while continuing to feed `WalletConnectionReadModel`.
+Track 13B added runtime wallet connection adapter behavior while continuing to feed `WalletConnectionReadModel`.
 
-It should not mutate the signing intent or deployment gate semantics.
+Next contract work should define unsigned deployment intent without mutating the signing intent, wallet connection, or deployment gate semantics.

@@ -74,9 +74,9 @@ The local fixture compiles and tests with Hardhat, but the app does not run Hard
 
 ## Current Wallet/Testnet Direction
 
-Track 13A chooses a MetaMask-first wallet connection path through a minimal EIP-1193 browser-provider boundary.
+Track 13A chose a MetaMask-first wallet connection path through a minimal EIP-1193 browser-provider boundary.
 
-Track 13B should connect wallet and verify Sepolia only. It should not request signatures, prepare deployment transactions, submit transactions, show transaction hashes, show contract addresses, or unlock SCP operations.
+Track 13B connects wallet and verifies Sepolia only. It does not request signatures, prepare deployment transactions, submit transactions, show transaction hashes, show contract addresses, or unlock SCP operations.
 
 ## Guardrails
 

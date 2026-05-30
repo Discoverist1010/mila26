@@ -14,7 +14,8 @@ export type Mila26UiActionId =
   | 'prepare_smart_contract_spec'
   | 'run_contract_checks'
   | 'prepare_evidence_pack'
-  | 'review_deployment_gate';
+  | 'review_deployment_gate'
+  | 'connect_wallet';
 
 export type ProjectLifecycleStage =
   | 'setup'
@@ -89,6 +90,7 @@ const workflowActionIds = [
   'run_contract_checks',
   'prepare_evidence_pack',
   'review_deployment_gate',
+  'connect_wallet',
 ] as const satisfies Mila26UiActionId[];
 
 function disabledReasonsFor(enabledActionIds: Mila26UiActionId[], reason: string) {
@@ -237,13 +239,17 @@ export function toProjectLifecycleReadModel(input: ProjectLifecycleReadModelInpu
     });
   }
 
-  const enabledActionIds: Mila26UiActionId[] = ['review_deployment_gate', 'scroll_to_scp', 'ask_question', 'open_brief'];
+  const enabledActionIds: Mila26UiActionId[] =
+    deploymentGateStatus === 'ready'
+      ? ['connect_wallet', 'review_deployment_gate', 'scroll_to_scp', 'ask_question', 'open_brief']
+      : ['review_deployment_gate', 'scroll_to_scp', 'ask_question', 'open_brief'];
   return model({
     currentStage: deploymentGateStatus === 'ready' ? 'scp_preview' : 'deployment_gate',
     readinessStatus: deploymentGateStatus === 'ready' ? 'deployment_gate_ready' : 'ready_for_deployment_gate',
-    readinessLabel: deploymentGateStatus === 'ready' ? 'Deployment gate ready for preview' : 'Ready for deployment gate review',
+    readinessLabel:
+      deploymentGateStatus === 'ready' ? 'Deployment gate ready for wallet connection check' : 'Ready for deployment gate review',
     blockedReasons: [],
-    nextRecommendedActionId: 'review_deployment_gate',
+    nextRecommendedActionId: deploymentGateStatus === 'ready' ? 'connect_wallet' : 'review_deployment_gate',
     enabledActionIds,
     disabledActionReasons: disabledReasonsFor(
       enabledActionIds,

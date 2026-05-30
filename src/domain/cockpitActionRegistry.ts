@@ -125,6 +125,13 @@ const actionCopy: Record<
     kind: 'placeholder',
     variant: 'primary',
   },
+  connect_wallet: {
+    label: 'Connect Wallet for Sepolia Check',
+    description: 'Connect the user wallet to check provider availability and Sepolia chain status only.',
+    placement: 'engineering_bot',
+    kind: 'workflow',
+    variant: 'primary',
+  },
 };
 
 const panelToggleActionIds: Mila26UiActionId[] = ['toggle_brief_panel', 'toggle_left_rail', 'toggle_right_rail'];

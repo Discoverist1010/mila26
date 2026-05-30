@@ -12,7 +12,7 @@ MILA26 is a clean alpha rebuild of the MILA dashboard. It is designed as a compa
 - Local Hardhat/OpenZeppelin compile/test foundation for `Mila26RestrictedFundToken`.
 - Deployment Gate and Wallet Signing Intent readiness surfaces.
 - Smart Contract Operations locked state.
-- MetaMask-first EIP-1193 / Sepolia wallet connection design for Track 13B.
+- MetaMask-first EIP-1193 wallet connection and Sepolia readiness check.
 
 ## Development
 
@@ -27,7 +27,7 @@ Run the local API skeleton in a second terminal:
 npm run dev:api
 ```
 
-The backend exposes `GET /api/health`, `POST /api/chat/blockchain-engineer`, `POST /api/prd/engineering-brief`, `POST /api/smart-contract/artifact-spec`, and `POST /api/smart-contract/artifact` on `http://127.0.0.1:5174` by default. Persistence, wallet runtime connection, signing, deployment execution, transaction hash display, contract address display, and SCP operation execution are intentionally not implemented yet.
+The backend exposes `GET /api/health`, `POST /api/chat/blockchain-engineer`, `POST /api/prd/engineering-brief`, `POST /api/smart-contract/artifact-spec`, and `POST /api/smart-contract/artifact` on `http://127.0.0.1:5174` by default. Wallet connection is frontend-only through the browser's injected EIP-1193 provider. Persistence, wallet signing, deployment execution, transaction hash display, contract address display, and SCP operation execution are intentionally not implemented yet.
 
 Track 6D adds a frontend action that generates a readable Engineering Brief artifact from the current Requirement Brief. Track 6E can make the backend PRD route LLM-assisted when a real backend provider is configured; deterministic generation remains the default and fallback.
 
@@ -40,6 +40,8 @@ Track 9B adds deterministic Smart Contract Artifact preview, spec-consistency ch
 Track 10A adds a local-only Hardhat compile/test foundation for one restricted ERC-20-compatible fixture. Use `npm run contracts:build` and `npm run test:contracts` for contract compile/tests. These commands do not deploy, sign wallets, configure mainnet, create contract addresses, create transaction hashes, or produce audit claims.
 
 Track 13A defines the wallet adapter and Sepolia signing design for the blockchain-functional alpha. The recommended next implementation path is MetaMask first through a minimal EIP-1193 browser-provider boundary, with viem reserved for typed chain/account/contract primitives later. No wallet runtime, wallet button, signing, deployment, transaction code, mainnet config, or backend private-key custody is added in Track 13A.
+
+Track 13B adds the minimal frontend-only wallet connection foundation. The central Engineering Bot workflow can request accounts from an injected EIP-1193 provider, display a returned wallet address only after connection, and distinguish Sepolia from wrong-chain, rejected, unsupported, and provider-error states. It does not sign, prepare transactions, submit transactions, deploy, persist wallet state, show contract addresses or transaction hashes, unlock SCP operations, or add backend wallet routes.
 
 The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
 

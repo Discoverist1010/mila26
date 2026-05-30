@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   SEPOLIA_CHAIN_ID_DECIMAL,
   SEPOLIA_CHAIN_ID_HEX,
+  formatWalletAddressForDisplay,
   normalizeWalletProviderError,
   toWalletConnectionReadModel,
   type WalletConnectionReadModelInput,
@@ -181,5 +182,11 @@ describe('Wallet Connection Read Model', () => {
         },
       ]),
     );
+  });
+
+  it('formats wallet addresses only when a connected address is present', () => {
+    expect(formatWalletAddressForDisplay()).toBe('');
+    expect(formatWalletAddressForDisplay('0x1234')).toBe('0x1234');
+    expect(formatWalletAddressForDisplay('0x1111111111111111111111111111111111111111')).toBe('0x1111...1111');
   });
 });

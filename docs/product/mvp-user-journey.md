@@ -44,24 +44,15 @@ The current alpha direction is a restricted ERC-20-compatible tokenised fund uni
    - SCP shows operations are locked.
    - Output: no Mint/Burn/Pause/NAV/Distribution buttons are active before real deployment.
 
-10. **Wallet Connection Readiness Design**
-    - Track 13A defines MetaMask-first EIP-1193 and Sepolia readiness.
-    - Output: Track 13B can implement wallet connection without adding signing or deployment.
+10. **Wallet Connection + Sepolia Check**
+    - User connects MetaMask/injected EIP-1193 wallet from the central Engineering Bot workflow surface.
+    - Output: connected wallet address appears only after user connection, Sepolia/wrong-chain/rejected/provider-error states are visible, and signing/deployment remain unavailable.
 
 ## Next Journey Stage
 
-Track 13B should add:
-
-- MetaMask/injected provider detection.
-- user-triggered wallet connection.
-- wallet address display only after real connection.
-- Sepolia verification.
-- safe rejection/error/wrong-chain states.
-
-Track 13B should not add:
+Track 14A should add an unsigned deployment intent and user-review payload only. It should not add:
 
 - signing.
-- deployment transaction preparation.
 - transaction submission.
 - transaction hash.
 - contract address.

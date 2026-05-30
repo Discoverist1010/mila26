@@ -104,7 +104,7 @@ describe('Project Lifecycle Read Model', () => {
     expect(readyForEvidence.nextRecommendedActionId).toBe('prepare_evidence_pack');
   });
 
-  it('keeps deployment gate as a placeholder instead of modeling wallet signing completion', () => {
+  it('moves from deployment gate review into wallet connection check without modeling signing completion', () => {
     const model = toProjectLifecycleReadModel({
       hasRequirementBrief: true,
       hasEngineeringBrief: true,
@@ -117,8 +117,9 @@ describe('Project Lifecycle Read Model', () => {
 
     expect(model.currentStage).toBe('scp_preview');
     expect(model.readinessStatus).toBe('deployment_gate_ready');
-    expect(model.nextRecommendedActionId).toBe('review_deployment_gate');
+    expect(model.nextRecommendedActionId).toBe('connect_wallet');
     expect(model.enabledActionIds).toContain('scroll_to_scp');
+    expect(model.enabledActionIds).toContain('connect_wallet');
     expect(model.disabledActionReasons.prepare_smart_contract_spec).toBe(
       'Deployment remains a gated, user-wallet-signed testnet-only future step.',
     );

@@ -226,7 +226,9 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'Deployment execution', value: 'Blocked', status: 'disabled' },
         { label: 'Wallet Signing Intent', value: 'Review-ready', status: 'ready' },
         { label: 'Wallet execution', value: 'Not implemented', status: 'disabled' },
-        { label: 'Wallet connection', value: 'Not implemented', status: 'disabled' },
+        { label: 'Wallet connection', value: 'Not connected', status: 'disabled' },
+        { label: 'Wallet chain', value: 'Unknown', status: 'disabled' },
+        { label: 'Connected wallet', value: 'No wallet address', status: 'disabled' },
         { label: 'Smart Contract Operations', value: 'Locked', status: 'disabled' },
         {
           label: 'Operations reason',
@@ -252,8 +254,8 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'Backend never holds private keys', value: 'Enforced', status: 'disabled' },
         { label: 'User wallet signing required later', value: 'Required', status: 'pending' },
         { label: 'Wallet signing not implemented', value: 'Not implemented', status: 'disabled' },
-        { label: 'Wallet connection not implemented', value: 'Not implemented', status: 'disabled' },
-        { label: 'No wallet address', value: 'Absent', status: 'disabled' },
+        { label: 'Wallet connection', value: 'Not connected', status: 'disabled' },
+        { label: 'Wallet address', value: 'Absent', status: 'disabled' },
         { label: 'No signed payload', value: 'Absent', status: 'disabled' },
         { label: 'No submitted transaction', value: 'Absent', status: 'disabled' },
         { label: 'No confirmed transaction', value: 'Absent', status: 'disabled' },
@@ -263,7 +265,57 @@ describe('Smart Contract Control Panel view model', () => {
       ]),
     );
     expect(JSON.stringify(viewModel)).not.toMatch(/wallet address: 0x|signed payload:|submitted transaction:|confirmed transaction:/i);
-    expect(JSON.stringify(viewModel)).not.toMatch(/ready to sign|wallet connected|sign now|live|verified|production ready|mainnet ready/i);
+    expect(JSON.stringify(viewModel)).not.toMatch(/ready to sign|sign now|live|verified|production ready|mainnet ready/i);
+  });
+
+  it('represents passive wallet connection states without unlocking execution', () => {
+    const lifecycleReadModel = toProjectLifecycleReadModel({
+      hasRequirementBrief: true,
+      hasEngineeringBrief: true,
+      closureReadiness: closureReadiness(),
+      artifactSpecStatus: 'ready',
+      checkStatus: 'passed',
+      evidenceStatus: 'ready',
+      deploymentGateStatus: 'ready',
+    });
+    const connected = toSmartContractControlPanelViewModel(lifecycleReadModel, {
+      walletConnectionStatus: 'connected',
+      walletProviderStatus: 'available',
+      walletChainStatus: 'sepolia',
+      connectedWalletAddressDisplay: '0x1111...1111',
+      walletSigningIntentStatus: 'review_ready',
+      walletExecutionStatus: 'not_implemented',
+    });
+    const wrongChain = toSmartContractControlPanelViewModel(lifecycleReadModel, {
+      walletConnectionStatus: 'wrong_chain',
+      walletProviderStatus: 'available',
+      walletChainStatus: 'wrong_chain',
+    });
+
+    expect(connected.overview.walletConnection).toBe('Connected');
+    expect(connected.healthItems).toEqual(
+      expect.arrayContaining([
+        { label: 'Wallet connection', value: 'Connected', status: 'ready' },
+        { label: 'Wallet chain', value: 'Sepolia', status: 'ready' },
+        { label: 'Connected wallet', value: '0x1111...1111', status: 'ready' },
+      ]),
+    );
+    expect(connected.boundaryItems).toContainEqual({
+      label: 'Wallet address',
+      value: '0x1111...1111',
+      status: 'ready',
+    });
+    expect(connected.coreActions.every((action) => action.enabled === false)).toBe(true);
+    expect(connected.overview.contractAddress).toBe('No contract address - not deployed');
+    expect(JSON.stringify(connected)).not.toMatch(/transaction hash: 0x|contract address: 0x|signed payload: 0x/i);
+
+    expect(wrongChain.overview.walletConnection).toBe('Wrong chain');
+    expect(wrongChain.healthItems).toEqual(
+      expect.arrayContaining([
+        { label: 'Wallet connection', value: 'Wrong chain', status: 'blocked' },
+        { label: 'Wallet chain', value: 'Wrong chain', status: 'blocked' },
+      ]),
+    );
   });
 
   it('keeps all SCP actions disabled until later wallet and transaction tracks', () => {
