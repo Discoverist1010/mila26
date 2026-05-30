@@ -1,5 +1,7 @@
 # Frontend Chat Integration Plan
 
+Status: historical. The frontend-to-backend chat path has already been implemented. Do not treat this file as the current next prompt; use `docs/handover/04-mila26-next-prompts.md` for the active Track 13B wallet/Sepolia prompt.
+
 This plan defines the smallest safe path for connecting the current frontend Blockchain Engineering Bot panel to the backend mock chat route. It does not implement the integration.
 
 ## Purpose

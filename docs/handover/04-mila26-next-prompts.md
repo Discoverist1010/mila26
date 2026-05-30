@@ -1,97 +1,170 @@
 # MILA26 Next Prompts
 
-## Next Codex Prompt: Track 3C Minimal Frontend Chat Integration
+## Next Codex Prompt: Track 13B MetaMask Wallet Connection + Sepolia Verification
 
 ```text
-You are working inside the MILA26 repository.
+You are working inside the MILA26 repository:
 
-Task:
-Implement Track 3C minimal frontend chat integration.
+/Users/macbookpro18/Desktop/CODE/active/mila26
 
-Before editing, read:
-- README.md
-- package.json
-- docs/handover/
-- docs/architecture/frontend-chat-integration.md
-- docs/architecture/api-response-conventions.md
-- docs/contracts/chat-contract.md
-- server/contracts/chat.ts
-- server/routes/blockchainEngineerChat.ts
+Start from main.
+
+Before making changes:
+1. Confirm Track 13A has been committed and pushed.
+2. Run:
+   git status --short --branch
+3. Working tree must be clean before starting.
+4. Run:
+   npm run check
+   to confirm baseline if needed.
+
+Current project status:
+- Track 12C hardened the golden lifecycle flow and no-fake-deployment guardrails.
+- Track 13A added wallet adapter + Sepolia signing design:
+  - docs/architecture/wallet-adapter-sepolia-design.md
+  - src/domain/walletConnectionReadModel.ts
+  - tests/wallet-connection-read-model.test.ts
+- Track 13A recommendation:
+  - MetaMask first through a minimal EIP-1193 browser-provider boundary.
+  - Sepolia only for alpha: decimal 11155111 / hex 0xaa36a7.
+  - viem reserved for typed chain/account/contract/deployment primitives later.
+  - wagmi deferred.
+  - ethers avoided unless there is a clear reason.
+
+We are starting Track 13B - MetaMask Wallet Connection + Sepolia Verification.
+
+Goal:
+Add the smallest safe frontend wallet connection foundation:
+- detect an injected MetaMask/EIP-1193 provider.
+- let the user request wallet connection from the central Engineering Bot workflow surface.
+- capture connected wallet address only after real user approval.
+- verify Sepolia chain.
+- normalize provider errors into MILA26-owned statuses.
+- react safely to account and chain changes.
+- surface wallet connection readiness without enabling signing or deployment.
+
+Important:
+Track 13B is not a signing track.
+Track 13B is not a deployment track.
+Track 13B must not prepare a transaction, request a signature, submit a transaction, display a transaction hash, display a contract address, unlock SCP operations, or add mainnet behavior.
+
+Architecture rules:
+- Keep WalletConnectionReadModel separate from WalletSigningIntent.
+- Do not merge wallet connection with deployment gate or signing intent.
+- Use local React state only.
+- Prefer a small wallet adapter module over scattered window.ethereum conditionals in App.tsx.
+- Do not add global state, persistence, backend routes, or a workflow engine.
+- Keep Engineering Bot as the workflow action surface.
+- Right rail remains passive.
+- SCP remains status/evidence/boundary/health and locked operations until real deployment exists.
+
+Suggested files:
+- src/wallet/eip1193WalletAdapter.ts
+- src/wallet/metamaskWalletAdapter.ts
+- src/domain/walletConnectionReadModel.ts only if small refinements are needed
 - src/App.tsx
-- tests/
+- tests/wallet-connection-read-model.test.ts
+- tests/wallet-adapter.test.ts
+- tests/app-chat-panel.test.tsx
+- tests/e2e/mila26.spec.ts if visible text changes
 
-Scope:
-- Implement `src/api/client.ts`.
-- Implement `src/api/blockchainEngineerChat.ts`.
-- Use `VITE_MILA26_API_BASE_URL`, defaulting to `http://127.0.0.1:5174`.
-- Integrate the existing Blockchain Engineering Bot panel in `src/App.tsx` with `POST /api/chat/blockchain-engineer`.
-- Keep state local in `App.tsx` or a very small chat module.
-- Add local loading state.
-- Add safe local error state.
-- Add a client-side blank input guard.
-- Render backend `content` as plain text.
-- Add mocked-fetch tests for success, API error envelope handling, network failure, and blank input/client behavior where appropriate.
-- Add light README/doc updates only if needed to explain the new local API base URL or dev flow.
-- Run `npm run check`.
+Implementation guidance:
+1. Define a minimal typed EIP-1193 provider interface locally if needed.
+2. Do not import wagmi or ethers.
+3. Use existing viem dependency only if it materially reduces risk; direct EIP-1193 is preferred for 13B.
+4. Do not install dependencies.
+5. Implement provider detection without throwing during SSR/tests.
+6. Implement request accounts using EIP-1193 request method.
+7. Read chain ID and compare against Sepolia.
+8. Subscribe to accountsChanged and chainChanged where practical, with cleanup.
+9. Normalize provider errors into rejected, unsupported, wrong_chain, or error.
+10. Do not depend on exact MetaMask error strings.
+
+UI behavior:
+- Before connection: central action can show Connect MetaMask Wallet.
+- If no provider: show MetaMask / EIP-1193 provider not detected.
+- If user rejects: show safe rejected message.
+- If wrong chain: show Sepolia required; mainnet disabled.
+- If connected to Sepolia: show wallet connection readiness review-ready.
+- Wallet execution remains not implemented.
+- Wallet Signing Intent remains separate.
+- Deployment and SCP operations remain locked.
+
+Strict prohibitions:
+- No signing request.
+- No transaction preparation.
+- No transaction submission.
+- No deployment script.
+- No backend route/API.
+- No private keys.
+- No backend private-key custody.
+- No mainnet config.
+- No fake wallet address.
+- No fake contract address.
+- No fake transaction hash.
+- No signed payload.
+- No submitted/confirmed transaction.
+- No active Mint/Burn/Pause/NAV/Distribution controls.
+- No persistence/database/auth/payments.
+- No LLM changes.
+- No broad UI redesign.
+
+Testing requirements:
+- Mock EIP-1193 provider in Vitest.
+- Test no provider.
+- Test user rejection.
+- Test successful account connection on Sepolia.
+- Test wrong-chain state.
+- Test account change handling.
+- Test chain change handling.
+- Test cleanup if event listeners are added.
+- Test wallet address appears only after mocked real connection.
+- Test no tx hash or contract address appears.
+- Test right rail remains passive.
+- Test SCP operations remain locked.
+- Test no ready-to-sign, ready-to-deploy, deployed, signed, live, verified, audited, production-ready, mainnet-ready claims.
+
+Validation:
+Run:
+npm run test -- tests/wallet-connection-read-model.test.ts
+npm run test -- tests/app-chat-panel.test.tsx
+npm run check
+npm run test:e2e
+git diff --check
 
 Acceptance criteria:
-- Existing beta journey still works.
-- Frontend does not call LLM providers directly.
-- Backend errors map to safe UI messages.
-- Chat integration uses the backend mock route.
-- `npm run check` passes.
-
-Do not do:
-- No full UI redesign.
-- No real LLM.
-- No persistence or memory.
-- No wallet/blockchain/Solidity tooling.
-- No PRD/orchestration implementation.
-- No payments.
-- No auth.
-- No global state library.
-- No streaming.
-- No requirement cards or drawer implementation.
-- No broad refactor.
-- No new dependency unless absolutely required and justified.
-
-Report:
-- Files created.
-- Files modified.
-- Tests run.
-- `npm run check` result.
-- Whether app behavior changed beyond the requested chat integration.
-- Deliberate non-goals.
+- MetaMask/EIP-1193 provider detection exists.
+- User can request wallet connection from the central workflow surface.
+- Real connected wallet address is only stored/displayed after connection approval.
+- Sepolia verification works.
+- Wrong-chain and rejection states are safe.
+- Wallet connection readiness is distinct from Wallet Signing Intent.
+- Wallet execution remains not implemented.
+- No signing/deployment/transaction behavior is added.
+- No fake wallet/contract/tx values are added.
+- Tests pass.
 ```
 
-## Later Prompt Placeholder: UX Track C App Shell Layout
+## Later Prompt: Track 14A Unsigned Deployment Transaction Intent
 
 ```text
-Implement UX Track C app shell layout only.
+Plan or implement only after Track 13B is stable.
 
-Read the UX vision, screen flow, frontend UX architecture, and component plan first. Add the enhanced ChatGPT-style shell with left sidebar, top project bar, central workspace, and right project/status panel while preserving current product behavior. Do not implement wallet, payments, auth, PRD/orchestration, persistence, or real LLM work. Add focused tests if behavior changes. Run `npm run check`.
+Define the unsigned deployment transaction intent and user review payload needed before requesting a wallet signature. Do not request a signature, submit a transaction, show a transaction hash, or record a contract address in Track 14A.
 ```
 
-## Later Prompt Placeholder: Track 3D Real LLM Provider Planning
+## Later Prompt: Track 14B User Wallet Signs Deployment
 
 ```text
-Plan Track 3D real LLM provider integration only.
+Implement only after unsigned deployment intent is stable.
 
-Read the chat MVP docs, LLM provider contract, API conventions, current backend route, and tests. Produce or update planning docs for backend-only provider integration, provider-disabled local behavior, safe error mapping, environment variables, test strategy, and non-goals. Do not add SDKs or real provider code yet. Run `npm run check`.
+Request user wallet confirmation for Sepolia deployment through the approved wallet adapter. Backend never holds private keys. Capture only real transaction outcomes. No mainnet.
 ```
 
-## Later Prompt Placeholder: Track 3E Backend-Only Real Provider Integration
+## Later Prompt: Track 15A First Wallet-Signed SCP Operation
 
 ```text
-Implement Track 3E backend-only real provider integration after Track 3D planning is approved.
+Implement only after a real wallet-signed Sepolia deployment exists.
 
-Keep provider secrets server-side. Retain the mock provider for tests. Map provider output into `BlockchainEngineerChatResponse`; never pass raw provider output to the frontend. Add provider-error safe envelopes and tests using mocked provider behavior. Do not add persistence, memory, wallet/blockchain tooling, Solidity tooling, PRD/orchestration, payments, auth, or UI redesign. Run `npm run check`.
-```
-
-## Later Prompt Placeholder: Track 3F Lightweight Turn/Project Memory
-
-```text
-Plan or implement Track 3F lightweight turn/project memory only after real provider integration is stable.
-
-Keep the MVP local-laptop first. Prefer the smallest persistence design that supports recent chat turns and project context. Do not introduce vector DB, Redis, queues, microservices, enterprise auth, wallet private keys, or broad orchestration. Update contracts, docs, fixtures, and tests together if persisted shapes become route contracts. Run `npm run check`.
+Add one low-risk wallet-signed SCP operation, likely Record NAV Event, with operation authorization, evidence logging, and no fake live metrics.
 ```

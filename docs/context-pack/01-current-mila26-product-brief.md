@@ -2,89 +2,100 @@
 
 ## Product Summary
 
-MILA26 currently appears to be a frontend beta for a guided "CTO team" that helps a small asset manager prepare tokenized fund launch artifacts. The README positions it as "a clean beta rebuild of the MILA dashboard" and "a compact CTO and developer team for a small asset manager preparing tokenized products" (`README.md:1-3`). The app UI reinforces that positioning with the first-screen headline "CTO team for tokenized fund launches" and a persistent "Real deploy disabled" status (`src/App.tsx:65-70`).
+MILA26 is an AI + blockchain tokenisation workspace for asset managers moving from product intent to a controlled blockchain-functional alpha.
 
-The product is not currently a deployment tool, live blockchain workbench, or real AI-agent backend. It is a deterministic beta skeleton that captures fund facts, creates a structured requirement brief, simulates parallel coding agents, runs a rules-based security review, and generates an evidence pack.
+The current alpha path focuses on a restricted ERC-20-compatible tokenised fund unit model. The app now guides the user through planning artifacts, smart-contract specification, deterministic artifact preview, check/evidence-lite, local compile/test representation, Deployment Gate, Wallet Signing Intent, and locked Smart Contract Operations.
 
-## Likely User
+MILA26 is not yet a live deployment tool. Wallet connection, signing, transaction submission, contract address display, transaction hash display, and SCP operations are still future tracks.
 
-The likely user is a non-technical or semi-technical operator at a small asset manager exploring a tokenized fund launch. The app asks for plain business facts such as fund name, token symbol, jurisdiction, target investors, and launch goal (`src/App.tsx:73-103`). The side panel explicitly says the Blockchain Engineer Bot lets users "Ask plain-language questions" and turns goals into engineering requirements (`src/App.tsx:178-183`).
+## Target User
 
-Secondary users are internal product, engineering, compliance, and audit-preparation stakeholders who need traceable generated artifacts and a summary pack before real implementation or review.
+The primary user is a small asset manager or tokenised-portfolio founder preparing a funding demo or internal technical review.
+
+The product should make complex blockchain readiness understandable:
+
+- what has been specified.
+- what has been checked.
+- what evidence exists.
+- what is still blocked.
+- what the user wallet will later sign.
+- why the backend never holds private keys.
 
 ## Current Guided User Journey
 
-1. User lands on a two-column workspace with a fund setup form and a Blockchain Engineer Bot side panel (`src/App.tsx:63-186`).
-2. User edits seeded fund facts: fund name, token symbol, jurisdiction, and target investors (`src/App.tsx:73-97`).
-3. User enters a launch goal and clicks `Create Requirement Brief` (`src/App.tsx:99-103`).
-4. The app calls `createRequirementBrief(facts, goal)`, stores the parsed brief, and clears any prior agent bundle (`src/App.tsx:45-49`).
-5. The Requirement Brief is shown as formatted JSON and the user can approve it by clicking `Approve Brief and Run Coding Bot` (`src/App.tsx:118-129`).
-6. The app calls `runCodingBotOrchestration(brief)`, displays agent summaries, security review status, generated artifacts, and the Evidence Pack (`src/App.tsx:51-60`, `src/App.tsx:132-174`).
-7. User can download the evidence pack as `MILA26-Evidence-Pack.md` (`src/App.tsx:20-28`, `src/App.tsx:167-173`).
+The current app supports this lifecycle:
 
-The Playwright smoke test preserves this journey: it checks the CTO heading, creates a requirement brief, runs the coding bot, sees `contract_worker`, sees approval, and sees the evidence pack (`tests/e2e/mila26.spec.ts:3-15`).
+1. Requirement Brief creation.
+2. Engineering Brief generation.
+3. Project Closure / Open Items readiness.
+4. Smart Contract Artifact Spec generation.
+5. Deterministic Smart Contract Artifact Preview.
+6. Spec-consistency Check Result.
+7. Evidence-Lite linkage.
+8. Known local Hardhat compile/test representation.
+9. Deployment Gate Review.
+10. Wallet Signing Intent.
+11. Smart Contract Operations locked state.
 
-## Inputs Expected From The User
+The central Engineering Bot remains the active workflow decision surface. The right rail remains passive status/safety. The Smart Contract Control Panel remains status/evidence/boundary/health until a real wallet-signed deployment exists.
 
-Current visible inputs:
+## Current Outputs
 
-- Fund name, token symbol, jurisdiction, target investors (`src/App.tsx:73-97`).
-- Free-text launch goal (`src/App.tsx:99-103`).
-- Free-text question for the Blockchain Engineer Bot (`src/App.tsx:178-183`).
+The app can produce or represent:
 
-Current seeded hidden/default facts:
+- Requirement Brief.
+- Engineering Brief.
+- Closure Ledger / closure readiness.
+- Smart Contract Artifact Spec.
+- deterministic Artifact Preview.
+- Smart Contract Artifact Check Result.
+- Evidence-Lite.
+- local Hardhat compile/test result representation.
+- Deployment Gate Review.
+- Wallet Signing Intent.
+- Wallet Connection Readiness design/read model.
+- locked Smart Contract Operations state.
 
-- `totalSupply: 1_000_000`.
-- `initialNav: 1_000_000`.
+## Current Smart Contract Direction
 
-These are part of the `starterFacts` state seed but are not currently editable in the UI (`src/App.tsx:11-18`). The schema requires both values (`src/domain/schemas.ts:15-22`).
+The current alpha contract direction is:
 
-## Outputs Generated By The App
+- restricted ERC-20-compatible tokenised fund units.
+- OpenZeppelin-based local fixture.
+- AccessControl / issuer roles.
+- Pausable behavior.
+- wallet allowlisting.
+- issuer-controlled allocation/minting.
+- valuation event.
+- distribution event.
+- transfer restrictions.
 
-The app generates:
+The local fixture compiles and tests with Hardhat, but the app does not run Hardhat dynamically and does not deploy.
 
-- Requirement Brief JSON, validated by `RequirementBriefSchema` (`src/domain/schemas.ts:30-39`) and created by `createRequirementBrief` (`src/agents/agentRuntime.ts:33-53`).
-- Agent task/result summaries displayed in the Agent Run panel (`src/App.tsx:132-152`).
-- Generated artifacts rendered as escaped text in `pre` blocks (`src/App.tsx:155-164`).
-- A Solidity beta scaffold (`src/domain/templates.ts:14-104`).
-- A deployment simulation manifest (`src/domain/templates.ts:106-127`).
-- API, frontend, and test-plan notes generated by deterministic mini-bot branches (`src/agents/agentRuntime.ts:120-177`).
-- A Security Review with approval status, findings, and blocked artifact IDs (`src/agents/security.ts:12-36`).
-- A Markdown Evidence Pack with requirement summary, module rationale, security constraints, artifact inventory, security review, work evidence, and legal/compliance disclaimer (`src/agents/evidence.ts:4-60`).
+## Current Wallet/Testnet Direction
 
-## Current Product Positioning
+Track 13A chooses a MetaMask-first wallet connection path through a minimal EIP-1193 browser-provider boundary.
 
-The strongest current positioning is "audit-preparation and engineering planning before tokenized fund launch." The README explicitly lists beta capabilities around guidance, requirement briefs, coding bot orchestration, mini-bot artifacts, security blocking, evidence packs, and deploy simulation (`README.md:5-12`). The app also hardcodes "Real deploy disabled" and creates simulation-only briefs (`src/App.tsx:65-70`, `src/agents/agentRuntime.ts:44-45`).
+Track 13B should connect wallet and verify Sepolia only. It should not request signatures, prepare deployment transactions, submit transactions, show transaction hashes, show contract addresses, or unlock SCP operations.
 
-This should be preserved: MILA26 is safest and most coherent when it is framed as a guided preparation cockpit, not as a one-click legal, audit, or deployment authority.
+## Guardrails
 
-## Core Product Intent Versus Demo Scaffolding
+- Backend never holds user private keys.
+- User wallet signs future deployment and operations.
+- Sepolia/testnet only for alpha.
+- Mainnet disabled.
+- Wallet address appears only after real wallet connection.
+- Transaction hash appears only after real transaction submission.
+- Contract address appears only after real deployment.
+- SCP operations unlock only after wallet-signed deployment and operation authorization gates.
+- No audit/security approval or production legal/compliance claim is made.
 
-Core product intent:
+## What Should Not Be Lost
 
-- Plain-language blockchain engineering guidance for non-technical users (`src/App.tsx:178-183`, `src/agents/agentRuntime.ts:55-71`).
-- Requirement-first workflow before code generation (`src/App.tsx:118-129`).
-- Modular tokenized-fund servicing model using cataloged modules (`src/domain/moduleCatalog.ts:10-67`).
-- Parallel specialist-agent metaphor: contract, API, frontend, and test workers (`src/agents/agentRuntime.ts:73-106`).
-- Security review as a mandatory release gate (`src/agents/agentRuntime.ts:180-185`, `src/agents/security.ts:12-36`).
-- Evidence pack as the user-facing output for audit-preparation handoff (`src/agents/evidence.ts:15-53`).
-
-Demo scaffolding:
-
-- Agent behavior is deterministic TypeScript logic rather than real LLM calls (`src/agents/agentRuntime.ts:55-71`, `src/agents/agentRuntime.ts:108-177`).
-- Generated Solidity is a template string, not compiled or audited (`src/domain/templates.ts:28-95`).
-- API/frontend/test artifacts are static text notes (`src/agents/agentRuntime.ts:120-177`).
-- Deployment is a JSON manifest with `mode: simulation-only` (`src/domain/templates.ts:113-121`).
-- Environment variables suggest future API/audit integrations, but no backend code consumes them today (`.env.example:1-4`).
-
-## What Should Not Be Lost In A Rewrite
-
-- Requirement Brief approval before any artifact generation.
-- Real deployment disabled by default.
-- Plain-English Blockchain Engineer Bot behavior.
-- Module catalog vocabulary and rationale fields.
-- Traceability from brief to tasks to artifacts to evidence pack.
-- Security review gate before evidence release.
-- Evidence Pack as a first-class export.
-- The current e2e journey as a regression baseline.
-- The README legacy policy that prevents importing old dashboard hazards such as proxy files, debug HTML sandboxes, giant HTML entrypoints, or browser secret storage (`README.md:35-37`).
+- Requirement-first workflow.
+- Engineering Bot as the decision orchestrator.
+- Separate typed artifacts and thin read models.
+- Passive right rail.
+- SCP honesty about locked/not-executed states.
+- Golden-flow guardrails against fake deployment and fake signing.
+- Backend-only LLM and private-key boundaries.

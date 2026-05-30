@@ -1,104 +1,94 @@
 # MVP Screen Flow
 
-Approved near-term UX direction reference: `docs/assets/ux/mila26_dashboard_v2.png`.
+Approved directional UX reference: `docs/assets/ux/mila26_dashboard_v2.png`.
 
-The mockup is a directional reference for the enhanced ChatGPT-style project workspace, not a pixel-perfect implementation mandate.
+The mockup remains directional, not a pixel-perfect implementation mandate. Current code uses Cockpit2 plus a scrollable Smart Contract Control Panel.
 
-## 1. Project Home / New Tokenisation Project
+## 1. Cockpit Home / Requirement Brief
 
-- User goal: create or reopen an asset-manager project.
-- Primary UI components: left sidebar project folders, new project button, top project bar, prominent current project name.
-- Backend/API dependency: later `/api/projects`.
-- Data contracts involved: `FundFacts`, future project summary contract.
-- MVP status: next.
-- What not to overbuild yet: no multi-tenant project management or enterprise permissions.
+- User goal: start or continue a tokenisation project.
+- Primary UI: central Engineering Bot workflow surface, left activity rail, passive right rail, collapsible Brief Preview.
+- Current status: implemented.
+- Guardrail: no wallet/deploy buttons in the right rail.
 
-## 2. Blockchain Engineering Bot Chat
+## 2. Engineering Brief
 
-- User goal: discuss tokenizing a portfolio and clarify requirements.
-- Primary UI components: central `ChatWorkspace`, `ChatMessageList`, `ChatInput`, loading/error states, adjacent project/status context.
-- Backend/API dependency: `POST /api/chat/blockchain-engineer`.
-- Data contracts involved: `ChatMessage`, `BlockchainEngineerChatRequest`, `BlockchainEngineerChatResponse`.
-- MVP status: backend current, frontend integration next.
-- What not to overbuild yet: no real LLM, streaming, vector memory, or multi-agent debate.
+- User goal: turn Requirement Brief into an engineering plan.
+- Primary UI: central workflow action and structured Engineering Bot response sections.
+- Backend/API: `POST /api/prd/engineering-brief`.
+- Current status: implemented.
+- Guardrail: backend-only LLM boundary; no frontend LLM secrets.
 
-## 3. Extracted Requirements Cards
+## 3. Closure / Open Items
 
-- User goal: see chat decisions turned into structured, reviewable requirements.
-- Primary UI components: `RequirementCards`, `RequirementCard`.
-- Backend/API dependency: chat response suggested updates now; PRD generation later.
-- Data contracts involved: `SuggestedRequirementUpdate`, future PRD/requirement draft contracts.
-- MVP status: next.
-- What not to overbuild yet: no full rules engine or complex configurator.
+- User goal: see whether planning assumptions and open items block downstream work.
+- Primary UI: passive readiness surfaces and Brief Preview summaries.
+- Current status: implemented.
+- Guardrail: closure is derived from ledger/read model, not scattered UI conditionals.
 
-## 4. Requirement Sub-action Drawer
+## 4. Smart Contract Spec + Artifact Preview
 
-- User goal: edit a focused requirement without losing chat/project context.
-- Primary UI components: `RequirementDrawer`, `ProtocolChoicePanel`, `WhitelistPanel`, `AllocationRulePanel`, `ValuationUpdatePanel`.
-- Backend/API dependency: none initially; later save/update endpoints.
-- Data contracts involved: chat suggested updates, future requirement draft contracts.
-- MVP status: next.
-- What not to overbuild yet: no modal-heavy workflow or separate page for every small edit.
+- User goal: prepare the smart-contract implementation spec and deterministic preview.
+- Primary UI: central Prepare Smart Contract Spec action and generated artifacts area.
+- Backend/API:
+  - `POST /api/smart-contract/artifact-spec`
+  - `POST /api/smart-contract/artifact`
+- Current status: implemented.
+- Guardrail: preview only; no compiled/deployed/audited claim.
 
-## 5. PRD Review And Approval
+## 5. Local Compile/Test Status
 
-- User goal: review and approve the PRD/enhanced Requirement Brief.
-- Primary UI components: PRD review page, approval gate, change summary.
-- Backend/API dependency: later `/api/prd`.
-- Data contracts involved: `RequirementBrief`, `ProductRequirementDocument`, `PRDApproval`.
-- MVP status: later.
-- What not to overbuild yet: no document management suite.
+- User goal: understand whether the local restricted ERC-20-compatible fixture compiles and tests.
+- Primary UI: generated artifacts area and SCP status rows.
+- Current status: implemented as known local compile/test representation.
+- Guardrail: app does not execute Hardhat dynamically.
 
-## 6. Agent Build / QA / Security Progress
+## 6. Deployment Gate
 
-- User goal: watch worker bots generate and review outputs.
-- Primary UI components: `AgentProgressPanel`, project timeline, artifact summaries.
-- Backend/API dependency: later `/api/orchestration/runs`, `/api/artifacts`, `/api/security`.
-- Data contracts involved: `AgentTask`, `AgentResult`, `GeneratedArtifact`, `SecurityReview`, `SecurityBenchmarkStatus`.
-- MVP status: later.
-- What not to overbuild yet: no distributed queue UI before in-process orchestration is insufficient.
+- User goal: understand whether pre-deployment review prerequisites are complete.
+- Primary UI: generated artifacts area, passive right rail, SCP boundary/health rows.
+- Current status: implemented.
+- Guardrail: pre-deployment readiness is separate from deployment execution, which remains blocked.
 
-## 7. Deployment Gate
+## 7. Wallet Signing Intent
 
-- User goal: understand whether testnet deployment is ready.
-- Primary UI components: right-side `DeploymentGateCard`, blocking reasons, evidence readiness.
-- Backend/API dependency: later `/api/deployment`.
-- Data contracts involved: `DeploymentGateReadiness`, `SolidityArtifactMetadata`, `SecurityBenchmarkStatus`, `EvidencePack`.
-- MVP status: later.
-- What not to overbuild yet: no mainnet readiness path.
+- User goal: understand what must be reviewed before future wallet signing.
+- Primary UI: generated artifacts area, passive right rail, SCP boundary rows.
+- Current status: implemented.
+- Guardrail: wallet signing intent is not wallet connection or transaction execution.
 
-## 8. Wallet-signed Testnet Deployment
+## 8. Smart Contract Operations Locked
 
-- User goal: connect wallet and sign deployment.
-- Primary UI components: wallet status, deployment checklist, transaction status.
-- Backend/API dependency: later `/api/deployment`.
-- Data contracts involved: `WalletSignedDeploymentRequest`, `DeploymentTransactionStatus`.
-- MVP status: later.
-- What not to overbuild yet: no backend-held keys, custody, or mainnet deployment.
+- User goal: see that operations are intentionally unavailable before wallet-signed deployment.
+- Primary UI: SCP locked operations section.
+- Current status: implemented.
+- Guardrail: no Mint/Burn/Pause/NAV/Distribution controls before real deployment and operation gates.
 
-## 9. Mint / Whitelist / Allocation / Distribute
+## 9. Wallet Connection + Sepolia Verification
 
-- User goal: mint, whitelist wallets, validate allocation equals 100%, and distribute tokens.
-- Primary UI components: `InvestorAllocationTable`, whitelist drawer, allocation validation, transaction controls.
-- Backend/API dependency: later deployment/token-operation routes.
-- Data contracts involved: `InvestorWalletRecord`, `AllocationPlan`, future token operation contracts.
-- MVP status: later.
-- What not to overbuild yet: no full KYC/AML or investor portal.
+- User goal: connect MetaMask and verify Sepolia.
+- Primary UI: future central Engineering Bot workflow action.
+- Current status: Track 13B next.
+- Guardrail: wallet connection is not signing; no tx hash or contract address.
 
-## 10. Valuation Upload And Portfolio Performance Update
+## 10. Unsigned Deployment Intent
 
-- User goal: upload valuation/performance data and make it visible to token holders.
-- Primary UI components: `ValuationUploadPanel`, validation result, performance summary.
-- Backend/API dependency: later `/api/valuation`.
-- Data contracts involved: `ValuationUploadSummary`, `PortfolioPerformanceUpdate`.
-- MVP status: later.
-- What not to overbuild yet: no production oracle infrastructure or off-chain notification system.
+- User goal: review what would be signed before a signature request exists.
+- Primary UI: future central workflow review surface.
+- Current status: future Track 14A.
+- Guardrail: no signature request or transaction submission.
 
-## 11. Evidence Pack
+## 11. Wallet-Signed Sepolia Deployment
 
-- User goal: review and export evidence for CTO/compliance/audit review.
-- Primary UI components: `EvidencePackPanel`, export button, artifact inventory.
-- Backend/API dependency: later `/api/evidence`; current frontend beta has local evidence generation.
-- Data contracts involved: `EvidencePack`, `ImplementationBundle`, security/QA statuses.
-- MVP status: current beta locally, backend later.
-- What not to overbuild yet: no formal audit certification claims.
+- User goal: sign/submit deployment through user wallet.
+- Primary UI: central workflow action, SCP testnet deployment status.
+- Current status: future Track 14B/14C.
+- Guardrail: backend never holds private keys; mainnet disabled.
+
+## 12. First SCP Operation
+
+- User goal: perform one wallet-signed contract operation after deployment.
+- Preferred first operation: Record NAV Event.
+- Primary UI: SCP gated operation control.
+- Current status: future Track 15A.
+- Guardrail: operation controls unlock only after real wallet-signed deployment and authorization gates.

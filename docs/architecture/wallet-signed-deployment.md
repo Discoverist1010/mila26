@@ -53,16 +53,17 @@ The backend must not hold deployment private keys. The user signs deployment and
 ## Deployment Flow
 
 1. User approves PRD/Requirement Brief.
-2. Coding Bot completes ERC-20/ERC-721 Solidity artifacts.
+2. Smart-contract preparation completes the restricted ERC-20-compatible artifact spec, preview, checks, evidence-lite, and local compile/test representation.
 3. QA Bot completes PRD conformance and code-quality checks.
 4. Security Reviewer Bot completes smart-contract benchmark review.
 5. Evidence Pack Bot records generated artifacts, QA/security status, and any demo waivers.
 6. Deployment Bot prepares testnet deployment intent.
 7. Frontend displays deployment summary.
-8. User connects wallet and confirms.
-9. Wallet signs/submits testnet transaction.
-10. MILA26 tracks transaction hash and status.
-11. Contract address is recorded in run/project memory when persistence exists.
+8. User connects MetaMask through the approved EIP-1193 wallet boundary.
+9. App verifies Sepolia.
+10. User wallet signs/submits the testnet transaction.
+11. MILA26 tracks the real transaction hash and status.
+12. Contract address is recorded only after real deployment confirmation.
 
 ## Mint And Distribute Flow
 

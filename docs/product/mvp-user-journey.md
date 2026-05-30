@@ -2,93 +2,105 @@
 
 ## Narrative
 
-MILA26 is moving toward a funding-demo-ready MVP for an asset manager that wants to tokenize a portfolio, distribute tokens to investors, and expose portfolio performance to token holders.
+MILA26 helps an asset manager move from tokenisation intent to a controlled blockchain-functional alpha path.
 
-The asset manager should be able to work through a real turn-based chat with the Blockchain Engineering Bot, decide whether ERC-20 or ERC-721 is suitable, approve a PRD/enhanced Requirement Brief, watch specialist bots produce and review artifacts, then use wallet-signed Ethereum testnet flows for deployment, minting, allocation, distribution, and performance updates.
+The current alpha direction is a restricted ERC-20-compatible tokenised fund unit contract, with MetaMask and Ethereum Sepolia as the first wallet/testnet execution path.
 
-## Journey Stages
+## Current Implemented Journey
 
-1. **Portfolio Tokenization Intent**
-   - User action: asset manager explains they want to deploy an Ethereum smart contract to tokenize a portfolio.
-   - Bot action: Blockchain Engineering Bot asks clarifying questions about asset type, investor count, transfer restrictions, performance reporting, and token behavior.
-   - System output: captured facts and open questions for the PRD/Requirement Brief.
+1. **Requirement Brief**
+   - User works with the Engineering Bot to create a structured Requirement Brief.
+   - Output: approved requirement artifact and assumptions.
 
-2. **ERC Protocol Decision**
-   - User action: asset manager compares ERC-20 and ERC-721 for the product.
-   - Bot action: Blockchain Engineering Bot explains ERC-20 vs ERC-721 suitability, including predefined events and expected contract behavior.
-   - System output: recommended protocol choice and rationale.
+2. **Engineering Brief**
+   - User generates an Engineering Brief from the Requirement Brief.
+   - Output: engineering plan, risks, open questions, and next action.
 
-3. **Investor And Servicing Requirements**
-   - User action: asset manager provides up to 20 investor wallet addresses and real-world names.
-   - Bot action: Engineering Bot captures whitelist requirements, allocation needs, and performance reporting requirements.
-   - System output: requirements such as 20 whitelisted wallets, allocation percentages, total allocation validation, daily valuation upload, and token-holder performance access.
+3. **Project Closure / Open Items**
+   - System derives closure readiness and open-item blockers.
+   - Output: closure/readiness summary for cockpit surfaces.
 
-4. **PRD / Enhanced Requirement Brief**
-   - User action: asset manager reviews generated PRD/Requirement Brief.
-   - Bot action: Engineering Bot turns the finalized token design into a structured PRD/Requirement Brief.
-   - System output: approved or revised PRD/Requirement Brief.
+4. **Smart Contract Artifact Spec**
+   - User triggers Prepare Smart Contract Spec after lifecycle readiness allows it.
+   - Output: restricted ERC-20-compatible spec with token profile, functions, events, policies, and safety boundaries.
 
-5. **Bot Orchestration**
-   - User action: asset manager approves the PRD and starts generation.
-   - Bot action: Engineering Bot engages Coding Bot, QA Bot, Security Reviewer Bot, Evidence Pack Bot, and other worker bots.
-   - Bot action: Coding Bot generates Solidity contract artifacts based on the approved ERC-20 or ERC-721 choice and PRD features.
-   - Bot action: QA Bot checks Solidity outputs against the approved PRD and smart-contract quality expectations.
-   - Bot action: Security Reviewer Bot runs a smart-contract benchmark review before any deployment path is unlocked.
-   - System output: visible bot progress/status, generated Solidity/API/frontend/test artifacts, QA results, security findings, and evidence pack.
-   - UX requirement: the user can continue chatting with the Blockchain Engineering Bot while other bots are working.
+5. **Artifact Preview / Check / Evidence-Lite**
+   - Backend generates deterministic preview-only artifact package, spec-consistency check result, and Evidence-Lite.
+   - Output: preview artifacts and traceability without claiming compile/deploy/audit.
 
-6. **External Review Adapter**
-   - User action: asset manager reviews internal bot outputs.
-   - Bot action: MILA26 may call an External Auditor Bot adapter after code generation and QA.
-   - System output: external-review-style findings or adapter status.
+6. **Local Compile/Test Representation**
+   - App surfaces the known local Hardhat compile/test result for the restricted ERC-20-compatible fixture.
+   - Output: local compile/test passed status while still not deployed, signed, or audited.
 
-7. **Wallet-Signed Testnet Deployment**
-   - User action: asset manager connects a wallet and confirms deployment.
-   - Bot action: Deployment Bot prepares Ethereum testnet deployment data only after PRD approval, coding completion, QA completion, security benchmark completion, and evidence-pack recording.
-   - System output: transaction request for user wallet signing and deployment status.
-   - Guardrail: backend must not hold deployment private keys.
+7. **Deployment Gate**
+   - System shows whether planning/artifact/check/evidence/compile-test prerequisites are complete.
+   - Output: Deployment Gate Review can become review-ready, but deployment execution remains blocked.
 
-8. **Mint, Whitelist, Allocate, Distribute**
-   - User action: asset manager clicks buttons to deploy to testnet, mint tokens, verify wallet addresses against off-chain names, allocate percentages, validate total allocation equals 100%, and distribute tokens.
-   - Bot/system action: system checks whitelist and allocation rules, prepares transactions, and tracks transaction status.
-   - System output: transaction statuses, allocation validation result, and distribution result.
-   - Guardrail: real-world names stay off-chain in project/local storage by default.
+8. **Wallet Signing Intent**
+   - System shows what must be reviewed before future wallet signing.
+   - Output: signing intent can become review-ready, but wallet execution remains not implemented.
 
-9. **Valuation Upload And Performance Update**
-   - User action: asset manager uploads a valuation file with today's total portfolio performance and gain/loss against initial investment.
-   - Bot/system action: system validates the file, links it to the project/run, and prepares token-holder performance output.
-   - System output: on-chain event emission and/or token-holder dashboard display for the 20 wallet holders.
+9. **Smart Contract Operations Locked**
+   - SCP shows operations are locked.
+   - Output: no Mint/Burn/Pause/NAV/Distribution buttons are active before real deployment.
 
-## What Is Real In MVP
+10. **Wallet Connection Readiness Design**
+    - Track 13A defines MetaMask-first EIP-1193 and Sepolia readiness.
+    - Output: Track 13B can implement wallet connection without adding signing or deployment.
 
-- Turn-based Blockchain Engineering Bot chat.
-- PRD/enhanced Requirement Brief generation and approval.
-- Visible bot orchestration/status.
-- Generated contract/API/frontend/test/evidence artifacts.
-- Solidity ERC-20/ERC-721 scaffold generation from approved PRD requirements.
-- QA/security review before testnet deployment preparation.
-- Security and QA gates appropriate for a funding demo.
-- Ethereum testnet-only deployment preparation.
-- User wallet signing for deployment and token operations.
-- Up to 20 investor wallet addresses.
-- Off-chain real-world investor names.
-- Valuation upload and performance display or event emission.
+## Next Journey Stage
 
-## What Is Simulated Or Adapter-Based In MVP
+Track 13B should add:
 
-- External Auditor Bot may start as an adapter boundary or simulated adapter result.
-- Some worker bots may initially use deterministic or mocked outputs behind stable contracts.
-- Solidity compile/test/static-analysis integrations may start as planned checks or adapter boundaries before real tooling is wired in.
-- Deployment may begin with prepared transaction data and testnet status simulation before full wallet/testnet integration lands.
-- Portfolio performance publication may initially use dashboard display before on-chain event emission is complete.
+- MetaMask/injected provider detection.
+- user-triggered wallet connection.
+- wallet address display only after real connection.
+- Sepolia verification.
+- safe rejection/error/wrong-chain states.
 
-## Deferred
+Track 13B should not add:
 
-- Production mainnet deployment.
-- Formal audit-complete claims.
-- Full KYC/AML workflow.
-- Multi-tenant SaaS.
-- Backend-held deployment keys.
-- Formal audit-complete Solidity certification.
-- Off-chain notifications such as email, WhatsApp, or Telegram.
-- Heavy agent frameworks, vector DB, Redis queues, microservices, Kubernetes, and enterprise auth.
+- signing.
+- deployment transaction preparation.
+- transaction submission.
+- transaction hash.
+- contract address.
+- SCP operation controls.
+- mainnet.
+
+## Future Blockchain-Functional Alpha Journey
+
+After Track 13B, the intended flow is:
+
+1. User connects MetaMask.
+2. App verifies Sepolia.
+3. App prepares an unsigned deployment intent for review.
+4. User reviews deployment intent.
+5. User wallet signs/submits Sepolia deployment.
+6. App records real transaction hash.
+7. App records real contract address after confirmation.
+8. SCP reflects deployed Sepolia state.
+9. User performs one wallet-signed operation, preferably Record NAV Event.
+10. Evidence links artifacts, checks, wallet transaction, and operation result.
+
+## User Experience Rules
+
+- Engineering Bot remains the workflow decision surface.
+- Right rail remains passive status/safety.
+- SCP remains status/evidence/boundary/health before deployment.
+- SCP operations unlock only after real wallet-signed deployment and operation gates.
+- Wallet connection is not signing.
+- Signing intent is not transaction execution.
+- Local compile/test is not deployment or audit approval.
+
+## Guardrails
+
+- Backend never holds user private keys.
+- User wallet signs future deployment and operations.
+- Mainnet disabled.
+- Sepolia/testnet only for alpha.
+- No fake wallet address.
+- No fake transaction hash.
+- No fake contract address.
+- No fake deployed, signed, live, audited, verified, production-ready, or mainnet-ready status.
+- Real-world names stay off-chain by default.

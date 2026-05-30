@@ -1,15 +1,18 @@
 # MILA26
 
-MILA26 is a clean beta rebuild of the MILA dashboard. It is designed as a compact CTO and developer team for a small asset manager preparing tokenized products.
+MILA26 is a clean alpha rebuild of the MILA dashboard. It is designed as a compact AI + blockchain workspace for a small asset manager preparing a restricted ERC-20-compatible tokenised fund product.
 
-## Beta Capabilities
+## Current Alpha Capabilities
 
-- Blockchain Engineer Bot: guides non-technical users and creates a structured requirement brief.
-- Coding Bot: coordinates implementation and spawns parallel mini-bots.
-- Mini Coding Bots: generate contract, API, frontend, and test artifacts in parallel.
-- Security Reviewer Bot: blocks unsafe outputs before release.
-- Evidence & Documentation Bot: creates asset-manager-facing evidence packs.
-- Deploy Simulation: creates a deployment manifest without enabling live deployment.
+- Engineering Bot: guides the lifecycle from Requirement Brief through wallet/testnet readiness.
+- Requirement Brief and Engineering Brief generation.
+- Project Closure Ledger and closure readiness.
+- Smart Contract Artifact Spec for a MILA26 restricted ERC-20-compatible profile.
+- Deterministic artifact preview, check result, and Evidence-Lite linkage.
+- Local Hardhat/OpenZeppelin compile/test foundation for `Mila26RestrictedFundToken`.
+- Deployment Gate and Wallet Signing Intent readiness surfaces.
+- Smart Contract Operations locked state.
+- MetaMask-first EIP-1193 / Sepolia wallet connection design for Track 13B.
 
 ## Development
 
@@ -24,7 +27,7 @@ Run the local API skeleton in a second terminal:
 npm run dev:api
 ```
 
-The backend exposes `GET /api/health`, `POST /api/chat/blockchain-engineer`, `POST /api/prd/engineering-brief`, `POST /api/smart-contract/artifact-spec`, and `POST /api/smart-contract/artifact` on `http://127.0.0.1:5174` by default. Persistence, wallet integration, and deployment behavior are intentionally not implemented yet.
+The backend exposes `GET /api/health`, `POST /api/chat/blockchain-engineer`, `POST /api/prd/engineering-brief`, `POST /api/smart-contract/artifact-spec`, and `POST /api/smart-contract/artifact` on `http://127.0.0.1:5174` by default. Persistence, wallet runtime connection, signing, deployment execution, transaction hash display, contract address display, and SCP operation execution are intentionally not implemented yet.
 
 Track 6D adds a frontend action that generates a readable Engineering Brief artifact from the current Requirement Brief. Track 6E can make the backend PRD route LLM-assisted when a real backend provider is configured; deterministic generation remains the default and fallback.
 

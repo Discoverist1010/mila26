@@ -4,7 +4,7 @@
 
 Turn-based chat with the Blockchain Engineering Bot is the first backend product capability after the health-only API skeleton.
 
-The chat helps an asset manager clarify tokenized-portfolio requirements before PRD/enhanced Requirement Brief generation. Track 3B implements this route with a mock/deterministic backend provider. Real LLM calls and provider secrets must stay backend-only when Track 3C adds a real provider adapter. Frontend code must never call LLM providers directly.
+The chat helps an asset manager clarify tokenized-portfolio requirements before Requirement Brief and Engineering Brief generation. Track 3B implemented this route with a mock/deterministic backend provider, and later tracks added backend-only LLM provider support. Real LLM calls and provider secrets must stay backend-only. Frontend code must never call LLM providers directly.
 
 ## User Journey Support
 

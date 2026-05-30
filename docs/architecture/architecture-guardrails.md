@@ -103,7 +103,7 @@ Generated Solidity remains scaffold/demo code unless compiled, tested, and exter
 
 For MVP deployment, only prepare Ethereum testnet transactions for user wallet signing. Mainnet and backend-held signing must fail closed until a later production design explicitly approves them.
 
-Solidity generation should default to OpenZeppelin Contracts for ERC-20/ERC-721 and common access-control/security primitives unless the approved PRD explicitly justifies otherwise. Any deviation must be captured in the PRD, QA review, Security Review, and Evidence Pack. Do not install or pin Solidity/OpenZeppelin tooling until the relevant implementation track.
+Current alpha Solidity work targets a restricted ERC-20-compatible fund token profile using OpenZeppelin Contracts primitives. Any future ERC-721 or other profile must be justified in the PRD, QA review, Security Review, and Evidence Pack. Hardhat/OpenZeppelin tooling is intentionally present for the local Track 10A fixture only; do not add deployment/mainnet/toolchain expansion without an approved implementation track.
 
 ## Major Change Checklist
 

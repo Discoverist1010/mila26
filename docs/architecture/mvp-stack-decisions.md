@@ -67,9 +67,9 @@ Decision: Track 9B.2 kept Solidity compile/test tooling uninstalled and recommen
 
 Near-term direction:
 
-- Default Solidity generation to OpenZeppelin Contracts for ERC-20/ERC-721 and common access-control/security primitives unless the approved PRD explicitly justifies otherwise.
+- Current alpha Solidity direction is a restricted ERC-20-compatible fund token profile using OpenZeppelin Contracts primitives. ERC-721 remains a comparison/future variant, not the current alpha implementation path.
 - Default to simple non-upgradeable contracts for MVP unless upgradeability is explicitly required.
-- Do not install or pin OpenZeppelin package versions yet; that belongs to a later approved Solidity tooling implementation track.
+- OpenZeppelin Contracts and Hardhat are now intentionally installed for the Track 10A local compile/test fixture only. Do not add broader Solidity/deployment tooling without an approved implementation track.
 - Use `viem` or equivalent TypeScript Ethereum tooling later for wallet/testnet interactions.
 - Keep Solidity compiler/tooling local-only until a deployment gate track is explicitly approved.
 - Use [`solidity-toolchain-decision.md`](solidity-toolchain-decision.md) as the Track 9B.2 ADR for Hardhat / Foundry / defer reasoning.
