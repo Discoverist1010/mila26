@@ -36,6 +36,8 @@ Track 9B adds deterministic Smart Contract Artifact preview, spec-consistency ch
 
 Track 10A adds a local-only Hardhat compile/test foundation for one restricted ERC-20-compatible fixture. Use `npm run contracts:build` and `npm run test:contracts` for contract compile/tests. These commands do not deploy, sign wallets, configure mainnet, create contract addresses, create transaction hashes, or produce audit claims.
 
+Track 13A defines the wallet adapter and Sepolia signing design for the blockchain-functional alpha. The recommended next implementation path is MetaMask first through a minimal EIP-1193 browser-provider boundary, with viem reserved for typed chain/account/contract primitives later. No wallet runtime, wallet button, signing, deployment, transaction code, mainnet config, or backend private-key custody is added in Track 13A.
+
 The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
 
 ```bash
@@ -91,6 +93,7 @@ npm run test:e2e
 - Backend LLM boundary: [`docs/architecture/backend-llm-boundary.md`](docs/architecture/backend-llm-boundary.md)
 - MVP stack decisions: [`docs/architecture/mvp-stack-decisions.md`](docs/architecture/mvp-stack-decisions.md)
 - Alpha demo boundary: [`docs/architecture/alpha-demo-boundary.md`](docs/architecture/alpha-demo-boundary.md)
+- Wallet adapter and Sepolia signing design: [`docs/architecture/wallet-adapter-sepolia-design.md`](docs/architecture/wallet-adapter-sepolia-design.md)
 - Wallet-signed deployment: [`docs/architecture/wallet-signed-deployment.md`](docs/architecture/wallet-signed-deployment.md)
 - Agent orchestration MVP: [`docs/architecture/agent-orchestration-mvp.md`](docs/architecture/agent-orchestration-mvp.md)
 - MVP memory design: [`docs/architecture/memory-design-mvp.md`](docs/architecture/memory-design-mvp.md)

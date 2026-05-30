@@ -48,5 +48,6 @@ Future blockchain-functional alpha tracks must preserve these rules:
 
 ## Next Milestone
 
-The next implementation milestone is wallet connection and Sepolia signing design. That milestone should define the wallet/provider boundary, chain guardrails, user-review language, and error states before any wallet connection, signing request, or deployment transaction is implemented.
+Track 13A defines the wallet connection and Sepolia signing design. The recommended path is MetaMask first through a minimal EIP-1193 browser-provider boundary, with viem reserved for typed chain/account/contract/deployment primitives later.
 
+Track 13B should implement wallet connection and Sepolia verification only. It should not prepare a deployment transaction, request a signature, submit a transaction, display a transaction hash, display a contract address, or unlock SCP operations.

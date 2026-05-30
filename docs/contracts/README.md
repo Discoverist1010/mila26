@@ -72,6 +72,10 @@ Track 12A adds the wallet-signing intent read model foundation:
 
 - [`wallet-signing-intent-contract.md`](wallet-signing-intent-contract.md): review-ready wallet-signing intent semantics derived from the deployment gate, with wallet execution still not implemented and no wallet addresses, private keys, signed payloads, transaction hashes, contract addresses, or transaction lifecycle states.
 
+Track 13A adds the wallet connection design/read-model foundation:
+
+- [`../architecture/wallet-adapter-sepolia-design.md`](../architecture/wallet-adapter-sepolia-design.md): MetaMask-first EIP-1193 wallet boundary, Sepolia-only guardrails, and pure wallet connection readiness terminology without wallet runtime, signing, deployment, transaction hashes, contract addresses, or mainnet configuration.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:
