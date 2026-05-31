@@ -99,6 +99,16 @@ Track 15A should:
 - keep backend private-key custody impossible.
 - remain Sepolia-only.
 
+## Code Review (Agent / PR)
+
+For structured reviews, use the **Code Reviewer trio** (keep severities aligned with the checklist):
+
+1. `docs/handover/05-code-reviewer-skill.md` — how to review and report
+2. `docs/contracts/code-reviewer-checklist.md` — executable phases (PASS/FAIL authority)
+3. `docs/handover/06-code-reviewer-lessons.md` — pattern memory; scan before checklist
+
+Read this checkpoint first. Guardrails here and in `docs/architecture/architecture-guardrails.md` must match Phase 1–2 of the checklist.
+
 ## What Must Not Be Done Yet
 
 - No broad operation suite yet.

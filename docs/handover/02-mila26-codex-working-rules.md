@@ -28,6 +28,10 @@ Apply these rules to every Codex task in this repo.
 - Run `npm run check` before finishing unless blocked.
 - If UI behavior changes materially, consider a focused UI or Playwright smoke test if available and in scope.
 
+## Code Review
+
+When the task is a **review** (not implementation), use the Code Reviewer trio in `docs/handover/00-mila26-current-checkpoint.md` § Code Review. Do not invent severities — follow `docs/contracts/code-reviewer-checklist.md`.
+
 ## Final Report
 
 Report:

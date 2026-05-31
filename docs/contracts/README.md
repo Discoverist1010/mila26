@@ -146,6 +146,14 @@ The existing fixtures protect current beta contracts. Planned MVP contracts need
 
 Track 3B.1 adds chat fixtures for the mock backend chat route. Update these deliberately when frontend chat integration, persistence, or a real LLM provider changes the contract.
 
+## Code Reviewer Quality Contract
+
+Structured code reviews use three coordinated docs (scan lessons → run checklist → emit skill report):
+
+- [`code-reviewer-checklist.md`](code-reviewer-checklist.md) — executable phases and severities (v1.0.2)
+- [`../handover/05-code-reviewer-skill.md`](../handover/05-code-reviewer-skill.md) — reviewer principles and report format
+- [`../handover/06-code-reviewer-lessons.md`](../handover/06-code-reviewer-lessons.md) — recurring patterns (`MILA26-XXX`)
+
 ## Anti-Overengineering Reminder
 
 Do not add schemas, abstractions, frameworks, or infrastructure merely because they may be useful later. Add them when they solve a concrete current problem or unblock a near-term track.
