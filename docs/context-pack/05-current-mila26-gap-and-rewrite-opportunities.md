@@ -6,9 +6,9 @@ MILA26 has moved beyond the initial rewrite context. The active goal is a blockc
 
 | Area | Current state | Gap | Next opportunity | Risk if rushed |
 |---|---|---|---|---|
-| Wallet connection | Track 13B frontend-only EIP-1193 connection exists. | No signing, deployment intent, persistence, or transaction lifecycle yet. | Keep wallet connection stable while Track 14A defines unsigned deployment intent. | Mistaking wallet connection for signing/deployment readiness. |
-| Deployment transaction intent | Deployment Gate and Wallet Signing Intent exist. | No unsigned deployment transaction review payload. | Track 14A unsigned deployment intent only. | Signing request without user-review structure. |
-| Wallet signing | No signing runtime exists. | No real signature request or tx submission. | Track 14B wallet-signed Sepolia deployment after 14A. | Backend key leakage, wrong-chain signing, fake tx status. |
+| Wallet connection | Track 13B frontend-only EIP-1193 connection exists. | No signing, persistence, or transaction lifecycle yet. | Keep wallet connection stable while Track 14B adds real wallet-signed deployment. | Mistaking wallet connection for signing/deployment readiness. |
+| Deployment transaction intent | Track 14A unsigned deployment intent read model exists. | No executable transaction/signature path yet. | Track 14B consumes the review-ready unsigned intent for wallet-signed Sepolia deployment. | Signing request without user-review structure. |
+| Wallet signing | No signing runtime exists. | No real signature request or tx submission. | Track 14B wallet-signed Sepolia deployment. | Backend key leakage, wrong-chain signing, fake tx status. |
 | Transaction record | No tx hash/contract address exists. | No receipt tracking or display. | Track 14C real tx hash, contract address, receipt status only from real submission. | Fake address/hash or misleading deployed state. |
 | SCP operations | Operations locked. | No wallet-signed contract operation yet. | Track 15A one low-risk operation, likely Record NAV Event. | Live-sounding controls before deployed contract exists. |
 | Persistence | Local React state only. | Refresh loses generated artifacts and readiness. | Add persistence only after wallet/deployment flow shape stabilizes. | Premature schema lock-in. |
@@ -16,11 +16,10 @@ MILA26 has moved beyond the initial rewrite context. The active goal is a blockc
 
 ## Recommended Next Sequence
 
-1. Track 14A: unsigned deployment transaction intent and user-review payload.
-2. Track 14B: user wallet signs Sepolia deployment.
-3. Track 14C: capture real tx hash, contract address, and receipt status.
-4. Track 15A: first wallet-signed SCP operation.
-5. Persistence/auth hardening after the execution path is stable.
+1. Track 14B: user wallet signs Sepolia deployment from the unsigned intent.
+2. Track 14C: capture real tx hash, contract address, and receipt status.
+3. Track 15A: first wallet-signed SCP operation.
+4. Persistence/auth hardening after the execution path is stable.
 
 ## Guardrails For All Future Tracks
 

@@ -4,9 +4,9 @@
 
 MILA26 is a blockchain-functional alpha foundation for an AI + blockchain tokenisation workspace for asset managers.
 
-The current app can guide a project from a plain-language requirement through Engineering Brief, closure readiness, Smart Contract Artifact Spec, deterministic artifact preview, check/evidence-lite, local compile/test representation, Deployment Gate, Wallet Signing Intent, and locked Smart Contract Operations.
+The current app can guide a project from a plain-language requirement through Engineering Brief, closure readiness, Smart Contract Artifact Spec, deterministic artifact preview, check/evidence-lite, local compile/test representation, Deployment Gate, Wallet Signing Intent, Wallet Connection Readiness, and locked Smart Contract Operations. The codebase also has a pure unsigned deployment intent read model for the next execution track.
 
-The next implementation step is real wallet connection and Sepolia verification through a MetaMask-first EIP-1193 browser-provider boundary.
+The next implementation step is wallet-signed Sepolia deployment execution, built on the existing unsigned deployment intent boundary.
 
 ## Current Product Direction
 
@@ -28,7 +28,8 @@ The next implementation step is real wallet connection and Sepolia verification 
 - API convention: product routes use `{ ok: true, data }` and `{ ok: false, error }`; `/api/health` remains simple.
 - LLM boundary: backend-only; deterministic mock remains supported; OpenAI mode requires explicit backend config.
 - Smart contract tooling: local Hardhat/OpenZeppelin fixture exists for compile/test only.
-- Wallet boundary: Track 13A defines a MetaMask-first EIP-1193 connection/readiness design; no wallet runtime exists yet.
+- Wallet boundary: MetaMask-first EIP-1193 connection and Sepolia readiness are implemented frontend-only.
+- Unsigned deployment intent boundary: review-only domain model exists; it is not an executable transaction payload.
 - Persistence, auth, payments, wallet signing, deployment execution, transaction lifecycle, and mainnet are not implemented.
 
 ## Current Repo Capabilities
@@ -51,7 +52,8 @@ The next implementation step is real wallet connection and Sepolia verification 
 - Wallet Signing Intent read model and UI surface.
 - Smart Contract Operations locked state.
 - Golden-flow guardrails against fake deployment/signing/address/hash claims.
-- Wallet Connection Read Model for the next MetaMask/Sepolia track.
+- Wallet Connection Read Model and frontend-only EIP-1193 adapter.
+- Unsigned Deployment Intent Read Model.
 
 ## Completed Recent Tracks
 
@@ -76,17 +78,19 @@ The next implementation step is real wallet connection and Sepolia verification 
 - Track 12C: lifecycle golden-flow hardening.
 - Track 13A: MetaMask-first wallet adapter and Sepolia signing design plus pure wallet connection read model.
 - Track 13B: frontend-only EIP-1193 wallet connection and Sepolia verification.
+- Track 14A: unsigned deployment intent read model.
 
 ## Current Next Step
 
-Track 14A: Unsigned Deployment Transaction Intent.
+Track 14B: User Wallet Signs Sepolia Deployment.
 
-Track 14A should:
+Track 14B should:
 
-- define the reviewable unsigned deployment intent.
-- consume lightweight readiness from Deployment Gate, Wallet Signing Intent, Wallet Connection, artifact/check/evidence, and local compile/test state.
-- keep deployment/signing/transaction execution blocked.
-- keep transaction hash, contract address, signed payload, submitted transaction, confirmed transaction, and receipt absent.
+- consume the Track 14A unsigned deployment intent.
+- request user wallet confirmation through the approved frontend wallet adapter.
+- keep backend private-key custody impossible.
+- capture only real wallet/provider transaction outcomes.
+- remain Sepolia-only.
 
 ## What Must Not Be Done Yet
 

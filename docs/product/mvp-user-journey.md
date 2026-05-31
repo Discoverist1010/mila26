@@ -50,7 +50,7 @@ The current alpha direction is a restricted ERC-20-compatible tokenised fund uni
 
 ## Next Journey Stage
 
-Track 14A should add an unsigned deployment intent and user-review payload only. It should not add:
+Track 14A adds an unsigned deployment intent read model and user-review payload boundary only. It does not add:
 
 - signing.
 - transaction submission.
@@ -61,18 +61,17 @@ Track 14A should add an unsigned deployment intent and user-review payload only.
 
 ## Future Blockchain-Functional Alpha Journey
 
-After Track 13B, the intended flow is:
+After Track 14A, the intended flow is:
 
 1. User connects MetaMask.
 2. App verifies Sepolia.
-3. App prepares an unsigned deployment intent for review.
-4. User reviews deployment intent.
-5. User wallet signs/submits Sepolia deployment.
-6. App records real transaction hash.
-7. App records real contract address after confirmation.
-8. SCP reflects deployed Sepolia state.
-9. User performs one wallet-signed operation, preferably Record NAV Event.
-10. Evidence links artifacts, checks, wallet transaction, and operation result.
+3. User reviews the unsigned deployment intent.
+4. User wallet signs/submits Sepolia deployment.
+5. App records real transaction hash.
+6. App records real contract address after confirmation.
+7. SCP reflects deployed Sepolia state.
+8. User performs one wallet-signed operation, preferably Record NAV Event.
+9. Evidence links artifacts, checks, wallet transaction, and operation result.
 
 ## User Experience Rules
 

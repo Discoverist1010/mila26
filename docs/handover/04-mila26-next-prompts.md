@@ -1,6 +1,6 @@
 # MILA26 Next Prompts
 
-## Next Codex Prompt: Track 14A Unsigned Deployment Transaction Intent
+## Next Codex Prompt: Track 14B User Wallet Signs Sepolia Deployment
 
 ```text
 You are working inside the MILA26 repository:
@@ -10,7 +10,7 @@ You are working inside the MILA26 repository:
 Start from main.
 
 Before making changes:
-1. Confirm Track 13B has been committed and pushed.
+1. Confirm Track 14A has been committed and pushed.
 2. Run:
    git status --short --branch
 3. Working tree must be clean before starting.
@@ -19,89 +19,72 @@ Before making changes:
    to confirm baseline if needed.
 
 Current project status:
-- Track 13A added the MetaMask-first wallet adapter + Sepolia signing design and pure WalletConnectionReadModel.
-- Track 13B added frontend-only EIP-1193 wallet connection and Sepolia verification:
-  - provider detection.
-  - user-initiated account request.
-  - Sepolia/wrong-chain status.
-  - rejected/provider-error/unsupported states.
-  - passive wallet status in cockpit/SCP.
-- Track 13B did not add signing, deployment, transaction preparation/submission, tx hash, contract address, backend wallet route, persistence, SCP operations, or mainnet.
+- Track 13B added frontend-only EIP-1193 wallet connection and Sepolia verification.
+- Track 14A added `UnsignedDeploymentIntentReadModel`, which is review-only and not executable.
+- Track 14A still added no signing, no executable transaction payload, no submission, no tx hash, no contract address, no receipt, no backend wallet route, no persistence, SCP operations, or mainnet.
 
-We are starting Track 14A - Unsigned Deployment Transaction Intent.
+We are starting Track 14B - User Wallet Signs Sepolia Deployment.
 
 Goal:
-Define a typed, reviewable unsigned deployment intent that describes what the user may later be asked to sign for Sepolia deployment, without requesting a signature or submitting a transaction.
+Implement the smallest safe wallet-signed Sepolia deployment path from the approved unsigned deployment intent.
 
 Important:
-Track 14A is not a signing or deployment track. It must not request a signature, submit a transaction, display a transaction hash, display a contract address, unlock SCP operations, add backend private-key custody, or enable mainnet.
+Track 14B may request a real user wallet confirmation only after consuming a review-ready unsigned deployment intent and confirming Sepolia. Backend private-key custody remains prohibited. Mainnet remains disabled.
 
 Architecture rules:
 - Keep WalletConnectionReadModel separate from WalletSigningIntent.
-- Consume Deployment Gate, Wallet Signing Intent, Wallet Connection, artifact/check/evidence, and compile/test status as lightweight inputs.
-- Do not create a transaction lifecycle model yet.
-- Keep it typed/domain-first; UI wiring can be a later small track unless the scope is explicitly approved.
+- Consume the Track 14A unsigned deployment intent.
+- Do not invent fake transaction outcomes.
+- Keep transaction state narrow and tied to real wallet/provider responses.
+- Continue to keep right rail passive and SCP operations locked until real deployment confirmation and later operation authorization gates exist.
 
 Suggested files:
-- src/domain/unsignedDeploymentIntentReadModel.ts
-- tests/unsigned-deployment-intent-read-model.test.ts
-- docs/contracts/unsigned-deployment-intent-contract.md
-- docs/contracts/README.md
+- To be planned carefully before implementation.
 
 Implementation guidance:
-1. Model the unsigned deployment intent as a review payload, not an executable transaction.
-2. Include chain target Sepolia only, contract fixture/artifact identity, required bytecode/ABI readiness, constructor/deployment parameter requirements, user wallet address requirement, and safety boundaries.
-3. Keep transaction hash, contract address, signed payload, submitted transaction, confirmed transaction, and receipt absent.
-4. Do not prepare calldata/bytecode transaction submission unless a later track explicitly approves it.
+1. Use the existing EIP-1193 adapter boundary.
+2. Verify connected wallet and Sepolia immediately before requesting signature/submission.
+3. Backend must not hold private keys or sign.
+4. Capture only real provider-returned transaction hash after submission.
+5. Do not show a contract address until a real receipt/deployment confirmation provides one.
 
 UI behavior:
-- No UI wiring by default in Track 14A.
-- If any copy/docs mention the intent, it must say unsigned review intent only.
+- Wallet signing/deployment actions belong only in the central Engineering Bot workflow surface.
+- Right rail remains passive.
+- SCP remains locked until real deployed contract state exists.
 
 Strict prohibitions:
-- No signing request.
-- No transaction submission.
-- No deployment script.
-- No backend route/API.
-- No private keys.
+- No backend private keys.
 - No backend private-key custody.
 - No mainnet config.
 - No fake contract address.
 - No fake transaction hash.
-- No signed payload.
-- No submitted/confirmed transaction.
+- No fake submitted/confirmed transaction.
 - No active Mint/Burn/Pause/NAV/Distribution controls.
 - No persistence/database/auth/payments.
 - No LLM changes.
 - No broad UI redesign.
 
 Testing requirements:
-- Intent remains blocked unless deployment gate, wallet signing intent, wallet connection, artifact/check/evidence, and local compile/test prerequisites are present.
-- Connected Sepolia wallet may be referenced only if it came from WalletConnectionReadModel.
-- Output contains no transaction hash, contract address, signed payload, submitted transaction, confirmed transaction, or receipt.
-- No ready-to-sign, ready-to-deploy, deployed, signed, live, verified, audited, production-ready, or mainnet-ready claims.
+- Use mocked provider tests; do not require MetaMask extension in automated tests.
+- Verify no backend private-key path exists.
+- Verify wrong-chain blocks signing/submission.
+- Verify user rejection is safe.
+- Verify tx hash appears only from mocked provider submission.
+- Verify contract address appears only after mocked real receipt confirmation if receipt tracking is in scope.
 
 Validation:
 Run:
-npm run test -- tests/unsigned-deployment-intent-read-model.test.ts
 npm run check
+npm run test:e2e
 git diff --check
 
 Acceptance criteria:
-- A typed unsigned deployment intent/read model exists.
-- It consumes existing lightweight readiness state instead of recreating a monolithic lifecycle context.
-- It is review-only and not executable.
-- No signing/deployment/transaction behavior is added.
+- Wallet-signed Sepolia deployment path is backed by real provider responses in tests.
+- Backend never holds private keys.
+- Mainnet remains disabled.
 - No fake contract/tx values are added.
 - Tests pass.
-```
-
-## Later Prompt: Track 14B User Wallet Signs Deployment
-
-```text
-Implement only after unsigned deployment intent is stable.
-
-Request user wallet confirmation for Sepolia deployment through the approved wallet adapter. Backend never holds private keys. Capture only real transaction outcomes. No mainnet.
 ```
 
 ## Later Prompt: Track 15A First Wallet-Signed SCP Operation

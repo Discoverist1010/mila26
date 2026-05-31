@@ -13,6 +13,7 @@ MILA26 is a clean alpha rebuild of the MILA dashboard. It is designed as a compa
 - Deployment Gate and Wallet Signing Intent readiness surfaces.
 - Smart Contract Operations locked state.
 - MetaMask-first EIP-1193 wallet connection and Sepolia readiness check.
+- Unsigned Sepolia deployment intent read model for later wallet-signed deployment review.
 
 ## Development
 
@@ -42,6 +43,8 @@ Track 10A adds a local-only Hardhat compile/test foundation for one restricted E
 Track 13A defines the wallet adapter and Sepolia signing design for the blockchain-functional alpha. The recommended next implementation path is MetaMask first through a minimal EIP-1193 browser-provider boundary, with viem reserved for typed chain/account/contract primitives later. No wallet runtime, wallet button, signing, deployment, transaction code, mainnet config, or backend private-key custody is added in Track 13A.
 
 Track 13B adds the minimal frontend-only wallet connection foundation. The central Engineering Bot workflow can request accounts from an injected EIP-1193 provider, display a returned wallet address only after connection, and distinguish Sepolia from wrong-chain, rejected, unsupported, and provider-error states. It does not sign, prepare transactions, submit transactions, deploy, persist wallet state, show contract addresses or transaction hashes, unlock SCP operations, or add backend wallet routes.
+
+Track 14A adds the unsigned deployment intent read model. It consumes existing gate/signing/wallet/artifact/compile-test readiness and can mark a Sepolia deployment intent as review-ready, but it does not create an executable transaction, request a wallet signature, submit a transaction, deploy a contract, show a transaction hash, show a contract address, or unlock SCP operations.
 
 The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
 

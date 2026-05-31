@@ -85,8 +85,9 @@ Current wallet/deployment path:
 - Track 12C hardens the golden flow and no-fake-execution guardrails.
 - Track 13A defines MetaMask-first wallet adapter/Sepolia design and a pure Wallet Connection Read Model.
 - Track 13B implements frontend-only EIP-1193 wallet connection and Sepolia verification.
+- Track 14A defines unsigned deployment intent without requesting a signature or submitting a transaction.
 
-Track 14A should define unsigned deployment intent without requesting a signature or submitting a transaction.
+Track 14B should consume the unsigned deployment intent for the first wallet-signed Sepolia deployment path.
 
 ## Current Guardrails
 

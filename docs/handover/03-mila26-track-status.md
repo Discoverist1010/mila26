@@ -28,11 +28,13 @@ This file is the current handover index. Older planning docs may still describe 
 | Track 12C | Complete | Added golden-flow hardening and alpha boundary doc. | `tests/golden-flow-assertions.ts`, `tests/app-chat-panel.test.tsx`, `docs/architecture/alpha-demo-boundary.md` | Preserve no-fake-deployment guardrails. |
 | Track 13A | Complete | Added MetaMask-first wallet adapter/Sepolia design and pure wallet connection read model. | `docs/architecture/wallet-adapter-sepolia-design.md`, `src/domain/walletConnectionReadModel.ts`, `tests/wallet-connection-read-model.test.ts` | Track 13B can implement provider detection and Sepolia verification. |
 | Track 13B | Complete | Added frontend-only MetaMask/EIP-1193 wallet connection and Sepolia verification foundation. | `src/wallet/eip1193WalletAdapter.ts`, `src/wallet/browserEthereumProvider.ts`, `src/App.tsx`, `tests/eip1193-wallet-adapter.test.ts` | No signing, deployment transaction, tx hash, contract address, SCP operations, persistence, or mainnet. |
+| Track 14A | Complete | Added unsigned deployment intent read model for review-only Sepolia deployment intent. | `src/domain/unsignedDeploymentIntentReadModel.ts`, `tests/unsigned-deployment-intent-read-model.test.ts`, `docs/contracts/deployment-transaction-intent-contract.md` | No signing, executable transaction payload, tx hash, contract address, receipt, backend route, persistence, or mainnet. |
 
 ## Current Validation Baseline
 
-Recent Track 13B validation:
+Recent Track 14A validation:
 
+- `npm run test -- tests/unsigned-deployment-intent-read-model.test.ts`
 - `npm run test -- tests/eip1193-wallet-adapter.test.ts`
 - `npm run test -- tests/wallet-connection-read-model.test.ts`
 - `npm run test -- tests/smart-contract-control-panel-view-model.test.ts`
@@ -40,4 +42,4 @@ Recent Track 13B validation:
 - `npm run check`
 - `npm run test:e2e`
 
-All passed before Track 13B was committed.
+All passed before Track 14A was committed.

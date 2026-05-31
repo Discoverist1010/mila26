@@ -16,6 +16,7 @@ The current application can guide a project through:
 - Deployment Gate Review.
 - Wallet Signing Intent.
 - MetaMask-first EIP-1193 wallet connection and Sepolia readiness check.
+- unsigned Sepolia deployment intent.
 - Smart Contract Operations locked state.
 
 This baseline is meant to make the next wallet/testnet work safer by keeping lifecycle status, evidence, and boundaries visible before execution is introduced.
@@ -50,4 +51,6 @@ Future blockchain-functional alpha tracks must preserve these rules:
 
 Track 13A defined the wallet connection and Sepolia signing design. Track 13B adds frontend-only provider detection, user-initiated account request, Sepolia/wrong-chain status, and safe provider error states through a minimal EIP-1193 browser-provider boundary.
 
-The next milestone is unsigned deployment intent design. Future tracks still must not request a signature, submit a transaction, display a transaction hash, display a contract address, or unlock SCP operations until the required wallet-signed deployment flow exists.
+Track 14A defines an unsigned deployment intent for review. It is not an executable transaction payload and does not request signing.
+
+The next milestone is wallet-signed Sepolia deployment. Future tracks still must not submit a transaction, display a transaction hash, display a contract address, or unlock SCP operations until the required wallet-signed deployment flow exists.

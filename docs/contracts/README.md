@@ -76,6 +76,10 @@ Track 13A adds the wallet connection design/read-model foundation:
 
 - [`../architecture/wallet-adapter-sepolia-design.md`](../architecture/wallet-adapter-sepolia-design.md): MetaMask-first EIP-1193 wallet boundary, Sepolia-only guardrails, and pure wallet connection readiness terminology without wallet runtime, signing, deployment, transaction hashes, contract addresses, or mainnet configuration.
 
+Track 14A adds the unsigned deployment intent read-model foundation:
+
+- [`deployment-transaction-intent-contract.md`](deployment-transaction-intent-contract.md): review-only unsigned Sepolia deployment intent semantics that consume deployment gate, wallet signing intent, wallet connection, compiled artifact reference, and local compile/test readiness without signing, deployment, transaction submission, transaction hashes, contract addresses, receipts, or backend private-key custody.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:

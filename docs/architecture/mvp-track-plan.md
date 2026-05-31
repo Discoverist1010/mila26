@@ -75,6 +75,8 @@ What not to overbuild:
 
 Goal: define the reviewable unsigned deployment intent needed before a wallet signature.
 
+Status: complete as a pure domain/read-model boundary. No signature request, transaction submission, transaction hash, contract address, receipt, backend route, or SCP operation unlock was added.
+
 Expected deliverables:
 
 - Typed unsigned deployment intent/read model.
