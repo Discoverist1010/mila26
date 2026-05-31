@@ -10,11 +10,11 @@ The adapter should remain EIP-1193-shaped so other injected wallets can be consi
 
 MetaMask's current documentation recommends EIP-6963 for multi-injected-provider discovery. MILA26 should treat that as a future compatibility consideration, not as a reason to introduce multi-wallet orchestration in Track 13B. If EIP-6963 support is added later, it should still feed the same MILA26 wallet connection read-model statuses.
 
-Use viem later for typed chain, account, ABI, contract, and deployment primitives as needed. viem is already present in the repo for the Hardhat foundation, and its custom transport can wrap an EIP-1193 provider.
+Use viem narrowly for typed chain, account, ABI, contract, and deployment primitives when needed. viem is already present in the repo for the Hardhat foundation, and Track 14B uses viem deployment-data encoding while preserving the EIP-1193 wallet/provider boundary.
 
 Defer wagmi until MILA26 needs multi-wallet connector management, React connector abstractions, wallet discovery, or richer wallet orchestration. Avoid ethers unless there is a clear reason to carry a second Ethereum client library.
 
-Track 13A did not install wallet runtime dependencies. Track 13B also keeps the implementation dependency-free by using a small EIP-1193 adapter boundary directly.
+Track 13A did not install wallet runtime dependencies. Track 13B also kept the connection implementation dependency-free by using a small EIP-1193 adapter boundary directly.
 
 ## Track 13B Implementation Note
 
@@ -202,8 +202,8 @@ Proposed next sequence:
 
 - Track 13B: connect MetaMask through an EIP-1193 adapter and verify Sepolia only.
 - Track 14A: define unsigned deployment transaction intent and user review payload.
-- Track 14B: user wallet signs deployment.
-- Track 14C: capture real transaction hash, real contract address, and receipt status.
+- Track 14B: user wallet signs/submits Sepolia deployment; transaction hash and contract address may appear only from real provider/receipt responses and remain local-session-only.
+- Track 14C: link deployment status, transaction hash, contract address, chain, receipt, and artifact into durable evidence/readiness.
 - Track 15A: first wallet-signed SCP operation, likely `Record NAV Event`.
 
 ## UI Placement
@@ -214,7 +214,7 @@ Right rail remains passive status and safety.
 
 SCP remains status, evidence, boundary, health, and locked operations before deployment.
 
-After wallet-signed deployment exists, SCP may expose gated contract-operation controls that are backed by the real deployed contract, operation authorization, and evidence logging.
+After wallet-signed deployment evidence linkage exists, SCP may expose gated contract-operation controls that are backed by the real deployed contract, operation authorization, and evidence logging.
 
 ## Track 13B Test Strategy
 
@@ -236,18 +236,27 @@ Tests should cover:
 
 E2E tests should remain deterministic and should not depend on external wallet extension state.
 
+## Track 14B Deployment Boundary
+
+Track 14B keeps wallet deployment frontend-only:
+
+- deployment action lives in the central Engineering Bot workflow surface.
+- backend never holds private keys and exposes no deployment/signing route.
+- the app re-checks `eth_accounts` and `eth_chainId` immediately before `eth_sendTransaction`.
+- duplicate submissions are blocked while waiting for wallet confirmation or receipt.
+- transaction hash appears only after the provider returns it.
+- contract address appears only after `eth_getTransactionReceipt` returns a successful contract-creation receipt.
+- receipt polling is bounded and stale results are ignored.
+- deployment state is local-session-only until Track 14C evidence linkage.
+- SCP operations remain locked.
+
 ## Risks and Deferred Decisions
 
 Deferred:
 
-- wallet runtime implementation.
-- wallet button/UI wiring.
-- viem wallet client usage.
 - wagmi connector setup.
-- deployment transaction construction.
-- transaction signing.
-- transaction submission and confirmation tracking.
 - persistence of wallet/deployment state.
+- deployment evidence/status linkage.
 - SCP operations.
 - mainnet.
 

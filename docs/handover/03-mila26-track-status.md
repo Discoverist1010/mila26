@@ -29,11 +29,13 @@ This file is the current handover index. Older planning docs may still describe 
 | Track 13A | Complete | Added MetaMask-first wallet adapter/Sepolia design and pure wallet connection read model. | `docs/architecture/wallet-adapter-sepolia-design.md`, `src/domain/walletConnectionReadModel.ts`, `tests/wallet-connection-read-model.test.ts` | Track 13B can implement provider detection and Sepolia verification. |
 | Track 13B | Complete | Added frontend-only MetaMask/EIP-1193 wallet connection and Sepolia verification foundation. | `src/wallet/eip1193WalletAdapter.ts`, `src/wallet/browserEthereumProvider.ts`, `src/App.tsx`, `tests/eip1193-wallet-adapter.test.ts` | No signing, deployment transaction, tx hash, contract address, SCP operations, persistence, or mainnet. |
 | Track 14A | Complete | Added unsigned deployment intent read model for review-only Sepolia deployment intent. | `src/domain/unsignedDeploymentIntentReadModel.ts`, `tests/unsigned-deployment-intent-read-model.test.ts`, `docs/contracts/deployment-transaction-intent-contract.md` | No signing, executable transaction payload, tx hash, contract address, receipt, backend route, persistence, or mainnet. |
+| Track 14B | Complete | Added frontend-only wallet-signed Sepolia deployment with pre-send account/chain re-check, duplicate-submit protection, bounded receipt polling, and local-session tx/address display from real provider responses. | `src/wallet/sepoliaDeploymentAdapter.ts`, `src/domain/walletSignedDeploymentReadModel.ts`, `src/contracts/mila26RestrictedFundTokenDeploymentArtifact.ts`, `src/App.tsx`, `tests/sepolia-deployment-adapter.test.ts` | Deployment evidence/status linkage, persistence, and SCP operations remain deferred. |
 
 ## Current Validation Baseline
 
-Recent Track 14A validation:
+Recent Track 14B validation:
 
+- `npm run test -- tests/sepolia-deployment-adapter.test.ts`
 - `npm run test -- tests/unsigned-deployment-intent-read-model.test.ts`
 - `npm run test -- tests/eip1193-wallet-adapter.test.ts`
 - `npm run test -- tests/wallet-connection-read-model.test.ts`
@@ -41,5 +43,8 @@ Recent Track 14A validation:
 - `npm run test -- tests/app-chat-panel.test.tsx`
 - `npm run check`
 - `npm run test:e2e`
+- `npm run contracts:build -- --force`
+- `npm run contracts:export-artifact`
+- `npm run test:contracts`
 
-All passed before Track 14A was committed.
+All should pass before Track 14B is committed.

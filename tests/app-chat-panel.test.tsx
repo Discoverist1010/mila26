@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
 import { SEPOLIA_CHAIN_ID_HEX } from '../src/domain/walletConnectionReadModel';
-import type { Eip1193Provider, Eip1193RequestArguments } from '../src/wallet/eip1193WalletAdapter';
+import type { Eip1193Provider } from '../src/wallet/eip1193WalletAdapter';
 import { expectNoPrematureBlockchainExecutionClaims } from './golden-flow-assertions';
 
 function createJsonResponse(body: unknown, init: ResponseInit = {}): Response {
@@ -76,26 +76,48 @@ function createMockWalletProvider(options: {
   requestAccounts?: string[];
   chainId?: string;
   rejectRequest?: boolean;
+  transactionHash?: string;
+  receiptContractAddress?: string;
+  receiptStatus?: '0x1' | '0x0';
+  receiptNullCount?: number;
 } = {}) {
   const calls: string[] = [];
-  const provider: Eip1193Provider = {
-    async request(args: Eip1193RequestArguments) {
+  const transactionParams: unknown[] = [];
+  let accounts: string[] = [];
+  let receiptNullCount = options.receiptNullCount ?? 0;
+  const provider = {
+    async request(args: { method: string; params?: unknown }) {
       calls.push(args.method);
 
-      if (args.method === 'eth_accounts') return [];
+      if (args.method === 'eth_accounts') return accounts;
       if (args.method === 'eth_chainId') return options.chainId ?? SEPOLIA_CHAIN_ID_HEX;
       if (args.method === 'eth_requestAccounts') {
         if (options.rejectRequest) {
           throw Object.assign(new Error('User rejected request'), { code: 4001 });
         }
-        return options.requestAccounts ?? [connectedWalletAddress];
+        accounts = options.requestAccounts ?? [connectedWalletAddress];
+        return accounts;
+      }
+      if (args.method === 'eth_sendTransaction') {
+        transactionParams.push(args.params);
+        return options.transactionHash ?? '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      }
+      if (args.method === 'eth_getTransactionReceipt') {
+        if (receiptNullCount > 0) {
+          receiptNullCount -= 1;
+          return null;
+        }
+        return {
+          status: options.receiptStatus ?? '0x1',
+          contractAddress: options.receiptContractAddress ?? '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        };
       }
 
       throw new Error(`Unexpected request method: ${args.method}`);
     },
-  };
+  } as Eip1193Provider;
 
-  return { provider, calls };
+  return { provider, calls, transactionParams };
 }
 
 function stubBrowserWallet(provider: Eip1193Provider) {
@@ -507,11 +529,11 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(generatedArtifacts.getByText('Locked')).toBeVisible();
     expect(
       generatedArtifacts.getByText(
-        'Reason: wallet signing and testnet deployment are not implemented. Required before operations: wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging.',
+        'Reason: operation-specific authorization and evidence logging are not implemented. Required before operations: wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging.',
       ),
     ).toBeVisible();
     expect(screen.getByText('Deployment / Signing / Audit')).toBeVisible();
-    expect(screen.getByText('Not deployed, not audited, not signed, no contract address, no transaction hash. Wallet connection does not execute deployment.')).toBeVisible();
+    expect(screen.getByText('Not audited. No production approval. Wallet connection alone does not execute deployment. Smart Contract Operations remain locked.')).toBeVisible();
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Smart contract preparation is complete for demo review');
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('represented the known local compile/test foundation as passed');
     expect(screen.getByText('Recommended next action')).toBeVisible();
@@ -542,7 +564,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getAllByText('No contract address').length).toBeGreaterThan(0);
     expect(screen.getAllByText('No transaction hash').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Smart Contract Operations: Locked').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Reason: Wallet signing and testnet deployment are not implemented').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Reason: operation-specific authorization and evidence logging are not implemented').length).toBeGreaterThan(0);
     expect(
       screen.getAllByText(
         'Required before operations: wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging',
@@ -555,22 +577,22 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('No signed payload: Absent')).toBeVisible();
     expect(screen.getByText('No submitted transaction: Absent')).toBeVisible();
     expect(screen.getByText('No confirmed transaction: Absent')).toBeVisible();
-    expect(screen.getByText('Contract address absent: No contract address')).toBeVisible();
-    expect(screen.getByText('Transaction hash absent: No transaction hash')).toBeVisible();
+    expect(screen.getByText('Contract address: No contract address')).toBeVisible();
+    expect(screen.getByText('Transaction hash: No transaction hash')).toBeVisible();
     expect(screen.getByText('Remaining gate items')).toBeVisible();
     expect(screen.getByText('Design wallet signing before any future Ethereum testnet deployment.')).toBeVisible();
-    expect(screen.getByText('Deployment: Not executed')).toBeVisible();
+    expect(screen.getByText('Deployment: Not started')).toBeVisible();
     expect(screen.getByText('Wallet signing: Not started')).toBeVisible();
     expect(screen.getByText('Audit: Not audited')).toBeVisible();
     expect(screen.getByText('Ethereum testnet: Only')).toBeVisible();
     expect(screen.getByText('Mainnet: Disabled')).toBeVisible();
     expect(screen.getByText('Backend private keys: None held')).toBeVisible();
     expect(screen.getByText('Future deployment signer: User wallet')).toBeVisible();
-    expect(screen.getByText('Transaction hash: None exists')).toBeVisible();
+    expect(screen.getByText('Transaction hash: No transaction hash')).toBeVisible();
     expect(screen.getByText('ValuationUpdated')).toBeVisible();
     expect(screen.getByText('ContractPaused')).toBeVisible();
     expect(screen.getByText('ContractUnpaused')).toBeVisible();
-    expect(screen.getByText('No contract address - not deployed')).toBeVisible();
+    expect(screen.getAllByText('No contract address').length).toBeGreaterThan(0);
     const rightRail = screen.getByLabelText('Project status');
     const scp = screen.getByTestId('smart-contract-control');
     expect(within(rightRail).queryByRole('button', { name: /wallet/i })).not.toBeInTheDocument();
@@ -620,7 +642,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getAllByText('Wallet chain: Sepolia').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Connected wallet: 0x1111...1111').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Wallet execution: Not implemented').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Deployment: Not executed').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Deployment: Not started').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Smart Contract Operations: Locked').length).toBeGreaterThan(0);
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Wallet connection check updated');
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('It does not sign, deploy, submit a transaction, or unlock Smart Contract Operations.');
@@ -639,6 +661,96 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByText(/^Deployed$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Live$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Verified$/i)).not.toBeInTheDocument();
+  });
+
+  it('requests wallet-signed Sepolia deployment from the central workflow and renders provider-returned identifiers only after responses', async () => {
+    const { provider, calls, transactionParams } = createMockWalletProvider();
+    stubBrowserWallet(provider);
+    stubSmartContractPreparationFetch();
+
+    render(<App />);
+    await completeSmartContractPreparation();
+
+    expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeDisabled();
+    expect(screen.queryByText(/0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeEnabled();
+    });
+
+    const deploymentButton = screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' });
+    fireEvent.click(deploymentButton);
+    fireEvent.click(deploymentButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Deployment confirmed on Sepolia')).toBeVisible();
+    });
+
+    expect(calls.filter((method) => method === 'eth_sendTransaction')).toHaveLength(1);
+    expect(calls).toEqual(
+      expect.arrayContaining(['eth_accounts', 'eth_chainId', 'eth_requestAccounts', 'eth_sendTransaction', 'eth_getTransactionReceipt']),
+    );
+    expect(transactionParams).toHaveLength(1);
+    const transaction = (transactionParams[0] as Array<Record<string, unknown>>)[0];
+    expect(transaction.from).toBe(connectedWalletAddress);
+    expect(transaction.to).toBeUndefined();
+    expect(transaction.value).toBe('0x0');
+    expect(String(transaction.data)).toMatch(/^0x[0-9a-f]+/i);
+    expect(screen.getAllByText(/Transaction hash: 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Contract address: 0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Smart Contract Operations: Locked').length).toBeGreaterThan(0);
+    expect(screen.getByText('Deployment status is held in this local session. Evidence linkage follows in Track 14C.')).toBeVisible();
+    expect(within(screen.getByLabelText('Project status')).queryByRole('button', { name: /deploy/i })).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('smart-contract-control')).queryByRole('button', { name: /deploy/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/production ready|mainnet ready|audit passed|security approved/i)).not.toBeInTheDocument();
+  });
+
+  it('blocks wallet-signed deployment when the wallet is wrong-chain or rejects submission', async () => {
+    const wrongChainWallet = createMockWalletProvider({ chainId: '0x1' });
+    stubBrowserWallet(wrongChainWallet.provider);
+    stubSmartContractPreparationFetch();
+
+    render(<App />);
+    await completeSmartContractPreparation();
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Recheck Wallet Chain' })).toBeEnabled();
+    });
+    expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeDisabled();
+    expect(wrongChainWallet.calls).not.toContain('eth_sendTransaction');
+
+    cleanup();
+    vi.unstubAllGlobals();
+
+    const rejectedDeployment = createMockWalletProvider();
+    const originalRequest = rejectedDeployment.provider.request as (args: { method: string; params?: unknown }) => Promise<unknown>;
+    rejectedDeployment.provider.request = async (args: { method: string; params?: unknown }) => {
+      if (args.method === 'eth_sendTransaction') {
+        throw Object.assign(new Error('User rejected deployment'), { code: 4001 });
+      }
+      return originalRequest(args);
+    };
+    stubBrowserWallet(rejectedDeployment.provider);
+    stubSmartContractPreparationFetch();
+    render(<App />);
+    await completeSmartContractPreparation();
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Deployment rejected in wallet')).toBeVisible();
+    });
+    expect(screen.getAllByText('No transaction hash').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('No contract address').length).toBeGreaterThan(0);
   });
 
   it('shows wrong-chain and rejected wallet states through MILA26-owned statuses', async () => {

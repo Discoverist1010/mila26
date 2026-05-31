@@ -48,30 +48,26 @@ The current alpha direction is a restricted ERC-20-compatible tokenised fund uni
     - User connects MetaMask/injected EIP-1193 wallet from the central Engineering Bot workflow surface.
     - Output: connected wallet address appears only after user connection, Sepolia/wrong-chain/rejected/provider-error states are visible, and signing/deployment remain unavailable.
 
+11. **Unsigned Deployment Intent**
+    - System prepares a review-only unsigned deployment intent after the gate, wallet intent, wallet connection, Sepolia, artifact, and compile/test prerequisites are coherent.
+    - Output: intent can become review-ready, but it does not sign or deploy by itself.
+
+12. **Wallet-Signed Sepolia Deployment**
+    - User requests deployment from the central Engineering Bot workflow surface.
+    - Output: transaction hash appears only after the wallet/provider returns it; contract address appears only after a successful receipt confirms contract creation. Status remains local-session-only until evidence linkage is added.
+
 ## Next Journey Stage
 
-Track 14A adds an unsigned deployment intent read model and user-review payload boundary only. It does not add:
-
-- signing.
-- transaction submission.
-- transaction hash.
-- contract address.
-- SCP operation controls.
-- mainnet.
+Track 14C should link deployment status, real transaction hash, real contract address, chain, receipt, and artifact into durable evidence/readiness. It should not unlock SCP operations by itself.
 
 ## Future Blockchain-Functional Alpha Journey
 
-After Track 14A, the intended flow is:
+After Track 14B, the intended flow is:
 
-1. User connects MetaMask.
-2. App verifies Sepolia.
-3. User reviews the unsigned deployment intent.
-4. User wallet signs/submits Sepolia deployment.
-5. App records real transaction hash.
-6. App records real contract address after confirmation.
-7. SCP reflects deployed Sepolia state.
-8. User performs one wallet-signed operation, preferably Record NAV Event.
-9. Evidence links artifacts, checks, wallet transaction, and operation result.
+1. Evidence links artifacts, checks, wallet transaction, receipt, and contract address.
+2. SCP reflects deployed Sepolia state as evidence-backed status.
+3. User performs one wallet-signed operation, preferably Record NAV Event.
+4. Evidence links operation intent, wallet transaction, receipt, and event result.
 
 ## User Experience Rules
 

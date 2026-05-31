@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { askBlockchainEngineer } from './api/blockchainEngineerChat';
 import { generateEngineeringBrief } from './api/engineeringBrief';
 import { generateSmartContractArtifact } from './api/smartContractArtifact';
@@ -20,15 +20,30 @@ import {
   toSmartContractCompileTestPresentation,
 } from './domain/smartContractCompileTestPresentation';
 import { toSmartContractControlPanelViewModel } from './domain/smartContractControlPanelViewModel';
+import { mila26RestrictedFundTokenDeploymentArtifact } from './contracts/mila26RestrictedFundTokenDeploymentArtifact';
+import {
+  createMila26DeploymentConstructorParameters,
+  toUnsignedDeploymentIntentReadModel,
+} from './domain/unsignedDeploymentIntentReadModel';
 import {
   formatWalletAddressForDisplay,
   toWalletConnectionReadModel,
   type WalletConnectionReadModel,
   type WalletConnectionReadModelInput,
 } from './domain/walletConnectionReadModel';
+import {
+  formatWalletSignedDeploymentStatus,
+  initialWalletSignedDeploymentState,
+  isDeploymentAttemptInFlight,
+  type WalletSignedDeploymentState,
+} from './domain/walletSignedDeploymentReadModel';
 import { toWalletSigningIntentReadModel } from './domain/walletSigningIntentReadModel';
 import { getBrowserEthereumProvider } from './wallet/browserEthereumProvider';
 import { createEip1193WalletAdapter } from './wallet/eip1193WalletAdapter';
+import {
+  requestWalletSignedSepoliaDeployment,
+  type SepoliaDeploymentProvider,
+} from './wallet/sepoliaDeploymentAdapter';
 import type { BlockchainEngineerChatResponse } from '../server/contracts/chat';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
 import type {
@@ -80,6 +95,7 @@ const uiActions = {
   toggleRightRail: 'toggle_right_rail',
   scrollToScp: 'scroll_to_scp',
   connectWallet: 'connect_wallet',
+  deployToSepolia: 'deploy_to_sepolia',
 } as const;
 
 type GeneratedArtifactCard = {
@@ -132,6 +148,27 @@ function createWalletConnectionResponse(walletConnection: WalletConnectionReadMo
       'No contract address or transaction hash exists.',
     ],
     nextRecommendedAction: 'Next milestone remains unsigned deployment intent review after wallet connection and Sepolia status are stable.',
+    createdAt: new Date(0).toISOString(),
+  };
+}
+
+function createDeploymentResponse(deployment: WalletSignedDeploymentState): BlockchainEngineerChatResponse {
+  const statusLabel = formatWalletSignedDeploymentStatus(deployment.deploymentStatus);
+
+  return {
+    messageId: 'local-wallet-signed-deployment',
+    agentId: 'blockchain-engineer',
+    content:
+      'Wallet-signed Sepolia deployment status updated. This is local-session deployment state only; Track 14C owns evidence linkage.',
+    riskNotes: [
+      `Deployment status: ${statusLabel}.`,
+      deployment.transactionHash ? `Transaction hash: ${deployment.transactionHash}.` : 'No transaction hash.',
+      deployment.contractAddress ? `Contract address: ${deployment.contractAddress}.` : 'No contract address.',
+      'Backend never holds private keys.',
+      'Mainnet remains disabled.',
+      'Smart Contract Operations remain locked.',
+    ],
+    nextRecommendedAction: 'Next milestone is Track 14C deployment status/evidence linkage before any SCP operation is unlocked.',
     createdAt: new Date(0).toISOString(),
   };
 }
@@ -209,6 +246,9 @@ export function App() {
   const [smartContractCheckResult, setSmartContractCheckResult] = useState<SmartContractArtifactCheckResult | undefined>();
   const [smartContractEvidenceLite, setSmartContractEvidenceLite] = useState<SmartContractEvidenceLite | undefined>();
   const [smartContractCompileTestResult, setSmartContractCompileTestResult] = useState<SmartContractCompileTestResult | undefined>();
+  const [walletSignedDeploymentState, setWalletSignedDeploymentState] = useState<WalletSignedDeploymentState>(
+    initialWalletSignedDeploymentState,
+  );
   const [smartContractGenerationStatus, setSmartContractGenerationStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [smartContractGenerationError, setSmartContractGenerationError] = useState<string | undefined>();
   const [walletConnectionInput, setWalletConnectionInput] = useState<WalletConnectionReadModelInput>(
@@ -225,6 +265,8 @@ export function App() {
   const [isLeftRailOpen, setIsLeftRailOpen] = useState(true);
   const [isRightRailOpen, setIsRightRailOpen] = useState(true);
   const [isBriefPreviewExpanded, setIsBriefPreviewExpanded] = useState(false);
+  const deploymentAttemptSequenceRef = useRef(0);
+  const deploymentAttemptIdRef = useRef('');
 
   useEffect(() => {
     const provider = getBrowserEthereumProvider();
@@ -246,6 +288,14 @@ export function App() {
       cleanup();
     };
   }, []);
+
+  useEffect(
+    () => () => {
+      deploymentAttemptSequenceRef.current += 1;
+      deploymentAttemptIdRef.current = '';
+    },
+    [],
+  );
 
   const fallbackEngineerAnswer = useMemo(() => answerAsBlockchainEngineer(question || initialBotQuestion, brief), [question, brief]);
   const engineerResponseViewModel = useMemo(
@@ -302,6 +352,49 @@ export function App() {
     [walletConnectionInput],
   );
   const walletAddressDisplay = formatWalletAddressForDisplay(walletConnectionReadModel.connectedWalletAddress);
+  const deploymentConstructorParameters = useMemo(
+    () =>
+      walletConnectionReadModel.connectedWalletAddress && smartContractArtifactPackage && smartContractCompileTestResult
+        ? createMila26DeploymentConstructorParameters({
+            tokenName: facts.fundName,
+            tokenSymbol: facts.tokenSymbol,
+            connectedWalletAddressSource: walletConnectionReadModel.connectedWalletAddress,
+            artifactPackageId: smartContractArtifactPackage.artifactId,
+            compileCheckId: smartContractCompileTestResult.compileCheckId,
+          })
+        : undefined,
+    [facts.fundName, facts.tokenSymbol, smartContractArtifactPackage, smartContractCompileTestResult, walletConnectionReadModel],
+  );
+  const unsignedDeploymentIntentReadModel = useMemo(
+    () =>
+      toUnsignedDeploymentIntentReadModel({
+        deploymentGate: deploymentGateReadModel,
+        walletSigningIntent: walletSigningIntentReadModel,
+        walletConnection: walletConnectionReadModel,
+        compiledArtifactReference: {
+          artifactPackageId: smartContractArtifactPackage?.artifactId,
+          specId: smartContractArtifactSpec?.specId,
+          contractName: mila26RestrictedFundTokenDeploymentArtifact.contractName,
+          artifactSource: 'local_compiled_artifact',
+          artifactStatus: smartContractArtifactPackage ? 'available' : 'missing',
+          abiStatus: mila26RestrictedFundTokenDeploymentArtifact.abi.length > 0 ? 'available' : 'missing',
+          bytecodeStatus: mila26RestrictedFundTokenDeploymentArtifact.bytecode.length > 2 ? 'available' : 'missing',
+          bytecodeHash: mila26RestrictedFundTokenDeploymentArtifact.bytecodeHash,
+          compileCheckId: smartContractCompileTestResult?.compileCheckId,
+          compileTestStatus: smartContractCompileTestResult?.status ?? 'not_run',
+        },
+        constructorParameters: deploymentConstructorParameters,
+      }),
+    [
+      deploymentGateReadModel,
+      walletSigningIntentReadModel,
+      walletConnectionReadModel,
+      smartContractArtifactPackage,
+      smartContractArtifactSpec,
+      smartContractCompileTestResult,
+      deploymentConstructorParameters,
+    ],
+  );
   const projectLifecycleReadModel = useMemo(
     () =>
       toProjectLifecycleReadModel({
@@ -361,6 +454,11 @@ export function App() {
         walletProviderStatus: walletConnectionReadModel.provider.providerStatus,
         walletChainStatus: walletConnectionReadModel.chainStatus,
         connectedWalletAddressDisplay: walletAddressDisplay,
+        walletSignedDeploymentStatus: walletSignedDeploymentState.deploymentStatus,
+        deploymentTransactionHash: walletSignedDeploymentState.transactionHash,
+        deploymentContractAddress: walletSignedDeploymentState.contractAddress,
+        deploymentReceiptStatus: walletSignedDeploymentState.receiptStatus,
+        deploymentLocalSessionOnly: walletSignedDeploymentState.localSessionOnly,
         customEvents: smartContractArtifactSpec?.eventModel?.customEvents,
       }),
     [
@@ -374,6 +472,7 @@ export function App() {
       walletSigningIntentReadModel,
       walletConnectionReadModel,
       walletAddressDisplay,
+      walletSignedDeploymentState,
     ],
   );
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
@@ -400,6 +499,13 @@ export function App() {
   const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
   const isWalletConnectionComplete =
     walletConnectionReadModel.walletConnectionStatus === 'connected' && walletConnectionReadModel.chainStatus === 'sepolia';
+  const canRequestSepoliaDeployment =
+    smartContractGenerationStatus === 'ready' &&
+    unsignedDeploymentIntentReadModel.intentStatus === 'review_ready' &&
+    !isDeploymentAttemptInFlight(walletSignedDeploymentState);
+  const deploymentActionDisabledReason = isDeploymentAttemptInFlight(walletSignedDeploymentState)
+    ? 'A wallet deployment request is already awaiting confirmation or receipt.'
+    : unsignedDeploymentIntentReadModel.blockedReasons[0] ?? 'Complete wallet connection and unsigned deployment intent review first.';
   const generatedArtifactCards = useMemo<GeneratedArtifactCard[]>(
     () =>
       smartContractGenerationStatus === 'ready'
@@ -451,17 +557,23 @@ export function App() {
               source: 'Track 13B EIP-1193 adapter',
             },
             {
+              label: 'Sepolia Deployment',
+              status: formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus),
+              detail: `${walletSignedDeploymentState.transactionHash ? `Transaction hash: ${walletSignedDeploymentState.transactionHash}.` : 'No transaction hash.'} ${walletSignedDeploymentState.contractAddress ? `Contract address: ${walletSignedDeploymentState.contractAddress}.` : 'No contract address.'} Deployment state is local-session-only until Track 14C evidence linkage.`,
+              source: 'Track 14B wallet-signed deployment',
+            },
+            {
               label: 'Smart Contract Operations',
               status: 'Locked',
               detail:
-                'Reason: wallet signing and testnet deployment are not implemented. Required before operations: wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging.',
+                'Reason: operation-specific authorization and evidence logging are not implemented. Required before operations: wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging.',
               source: 'SCP operations boundary',
             },
             {
               label: 'Deployment / Signing / Audit',
-              status: 'Not executed',
+              status: walletSignedDeploymentState.deploymentStatus === 'confirmed' ? 'Sepolia deployment confirmed' : 'Not executed',
               detail:
-                'Not deployed, not audited, not signed, no contract address, no transaction hash. Wallet connection does not execute deployment.',
+                'Not audited. No production approval. Wallet connection alone does not execute deployment. Smart Contract Operations remain locked.',
               source: 'Safety boundary',
             },
           ]
@@ -477,6 +589,7 @@ export function App() {
       walletSigningIntentReadModel,
       walletConnectionReadModel,
       walletAddressDisplay,
+      walletSignedDeploymentState,
     ],
   );
 
@@ -550,11 +663,14 @@ export function App() {
   }
 
   function resetSmartContractGeneration() {
+    deploymentAttemptSequenceRef.current += 1;
+    deploymentAttemptIdRef.current = '';
     setSmartContractArtifactSpec(undefined);
     setSmartContractArtifactPackage(undefined);
     setSmartContractCheckResult(undefined);
     setSmartContractEvidenceLite(undefined);
     setSmartContractCompileTestResult(undefined);
+    setWalletSignedDeploymentState(initialWalletSignedDeploymentState);
     setSmartContractGenerationStatus('idle');
     setSmartContractGenerationError(undefined);
   }
@@ -625,6 +741,53 @@ export function App() {
     setWalletConnectionInput(snapshot);
     setEngineerResponse(createWalletConnectionResponse(nextWalletConnectionReadModel));
     setEngineerAnswerSource('wallet');
+  }
+
+  async function requestSepoliaDeployment() {
+    const provider = getBrowserEthereumProvider();
+    const connectedWalletAddress = walletConnectionReadModel.connectedWalletAddress;
+    const attemptId = `wallet-signed-sepolia-deployment-${deploymentAttemptSequenceRef.current + 1}`;
+    deploymentAttemptSequenceRef.current += 1;
+    deploymentAttemptIdRef.current = attemptId;
+
+    const constructorArgs =
+      connectedWalletAddress && deploymentConstructorParameters
+        ? ([facts.fundName, facts.tokenSymbol, connectedWalletAddress] as const)
+        : undefined;
+
+    const immediateState: WalletSignedDeploymentState = {
+      deploymentStatus: 'awaiting_wallet_confirmation',
+      attemptId,
+      receiptStatus: 'pending',
+      localSessionOnly: true,
+    };
+    setWalletSignedDeploymentState(immediateState);
+
+    const result = await requestWalletSignedSepoliaDeployment({
+      provider: provider as SepoliaDeploymentProvider | undefined,
+      connectedWalletAddress,
+      unsignedDeploymentIntent: unsignedDeploymentIntentReadModel,
+      deploymentArtifact: mila26RestrictedFundTokenDeploymentArtifact,
+      constructorArgs,
+      currentDeploymentState: walletSignedDeploymentState,
+      attemptId,
+      pollOptions: {
+        maxAttempts: 8,
+        intervalMs: 1_500,
+      },
+      shouldContinue: (candidateAttemptId) => deploymentAttemptIdRef.current === candidateAttemptId,
+      onStateChange: (nextState) => {
+        if (deploymentAttemptIdRef.current === nextState.attemptId) {
+          setWalletSignedDeploymentState(nextState);
+        }
+      },
+    });
+
+    if (deploymentAttemptIdRef.current === attemptId) {
+      setWalletSignedDeploymentState(result);
+      setEngineerResponse(createDeploymentResponse(result));
+      setEngineerAnswerSource('wallet');
+    }
   }
 
   function runCockpitAction(actionId: Mila26UiActionId) {
@@ -750,7 +913,7 @@ export function App() {
             </div>
             <div className="safety-badges" aria-label="Project safety badges">
               <span>Ethereum testnet only</span>
-              <span>Real deploy disabled</span>
+              <span>Sepolia deploy gated</span>
             </div>
           </header>
 
@@ -841,6 +1004,23 @@ export function App() {
                     >
                       {cockpitActionLabel(primaryWorkflowAction.id, primaryWorkflowAction.label)}
                     </button>
+                    {smartContractGenerationStatus === 'ready' && (
+                      <button
+                        className="workflow-button"
+                        data-action-id={uiActions.deployToSepolia}
+                        disabled={!canRequestSepoliaDeployment}
+                        onClick={() => void requestSepoliaDeployment()}
+                        title={canRequestSepoliaDeployment ? undefined : deploymentActionDisabledReason}
+                      >
+                        {walletSignedDeploymentState.deploymentStatus === 'awaiting_wallet_confirmation'
+                          ? 'Awaiting Wallet Confirmation...'
+                          : walletSignedDeploymentState.deploymentStatus === 'submitted'
+                            ? 'Deployment Submitted to Sepolia'
+                            : walletSignedDeploymentState.deploymentStatus === 'confirmed'
+                              ? 'Deployment Confirmed on Sepolia'
+                              : 'Deploy to Sepolia with Wallet'}
+                      </button>
+                    )}
                     {secondaryWorkflowActions.map((action) => (
                       <button
                         className="workflow-button"
@@ -1152,13 +1332,23 @@ export function App() {
               <li>Wallet chain: {formatWalletChainStatus(walletConnectionReadModel.chainStatus)}</li>
               <li>{walletAddressDisplay ? `Connected wallet: ${walletAddressDisplay}` : 'No wallet address'}</li>
               <li>Wallet execution: Not implemented</li>
+              <li>Wallet-signed Sepolia deployment: {formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus)}</li>
+              <li>
+                {walletSignedDeploymentState.transactionHash
+                  ? `Transaction hash: ${walletSignedDeploymentState.transactionHash}`
+                  : 'No transaction hash'}
+              </li>
+              <li>
+                {walletSignedDeploymentState.contractAddress
+                  ? `Contract address: ${walletSignedDeploymentState.contractAddress}`
+                  : 'No contract address'}
+              </li>
+              <li>Deployment status is held in this local session. Evidence linkage follows in Track 14C.</li>
               <li>User wallet signing required later</li>
               <li>Backend never holds private keys</li>
               <li>No signed payload</li>
-              <li>No submitted transaction</li>
-              <li>No confirmed transaction</li>
-              <li>No contract address</li>
-              <li>No transaction hash</li>
+              <li>{walletSignedDeploymentState.transactionHash ? 'Submitted transaction: Submitted to Sepolia' : 'No submitted transaction'}</li>
+              <li>{walletSignedDeploymentState.contractAddress ? 'Confirmed transaction: Confirmed on Sepolia' : 'No confirmed transaction'}</li>
             </ul>
             <p className="microcopy">Remaining gate items</p>
             <ul className="artifact-list">
@@ -1284,10 +1474,21 @@ export function App() {
             <div className="health-list">
               <span>Deployment Gate Review: {formatDeploymentGateStatus(deploymentGateReadModel.gateStatus)}</span>
               <span>Pre-deployment readiness: {formatPreDeploymentReadiness(deploymentGateReadModel.preDeploymentReadiness)}</span>
-              <span>Deployment execution: Blocked</span>
+              <span>Deployment execution: {formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus)}</span>
+              <span>Wallet-signed Sepolia deployment: {formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus)}</span>
+              <span>
+                {walletSignedDeploymentState.transactionHash
+                  ? `Transaction hash: ${walletSignedDeploymentState.transactionHash}`
+                  : 'No transaction hash'}
+              </span>
+              <span>
+                {walletSignedDeploymentState.contractAddress
+                  ? `Contract address: ${walletSignedDeploymentState.contractAddress}`
+                  : 'No contract address'}
+              </span>
             </div>
             <p className="microcopy">
-              Wallet signing not implemented. User wallet signing required later. Deployment not executed.
+              User wallet signs in browser. Backend never holds private keys. Deployment status is held in this local session; evidence linkage follows in Track 14C.
             </p>
           </section>
 
@@ -1302,15 +1503,22 @@ export function App() {
               <span>User wallet signing required later</span>
               <span>Backend never holds private keys</span>
               <span>No signed payload</span>
-              <span>No submitted transaction</span>
-              <span>No confirmed transaction</span>
-              <span>No contract address</span>
-              <span>No transaction hash</span>
+              <span>{walletSignedDeploymentState.transactionHash ? 'Submitted transaction: Submitted to Sepolia' : 'No submitted transaction'}</span>
+              <span>{walletSignedDeploymentState.contractAddress ? 'Confirmed transaction: Confirmed on Sepolia' : 'No confirmed transaction'}</span>
+              <span>
+                {walletSignedDeploymentState.contractAddress
+                  ? `Contract address: ${walletSignedDeploymentState.contractAddress}`
+                  : 'No contract address'}
+              </span>
+              <span>
+                {walletSignedDeploymentState.transactionHash
+                  ? `Transaction hash: ${walletSignedDeploymentState.transactionHash}`
+                  : 'No transaction hash'}
+              </span>
             </div>
             <p className="microcopy">
-              Wallet connection checks whether a user wallet is available and on Sepolia. It does not sign or deploy.
-              No signing request, signed payload, transaction submission, contract address, or transaction hash exists in
-              this stage.
+              Wallet connection checks whether a user wallet is available and on Sepolia. Deployment uses an explicit
+              wallet-signed Sepolia request only. Signed payloads are not stored by MILA26.
             </p>
           </section>
 
@@ -1318,7 +1526,7 @@ export function App() {
             <h3>Smart Contract Operations</h3>
             <div className="health-list">
               <span>Smart Contract Operations: Locked</span>
-              <span>Reason: Wallet signing and testnet deployment are not implemented</span>
+              <span>Reason: operation-specific authorization and evidence logging are not implemented</span>
               <span>
                 Required before operations: wallet connection, user-signed deployment, deployed testnet contract address,
                 transaction hash, operation authorization model, evidence logging
@@ -1326,7 +1534,7 @@ export function App() {
             </div>
             <p className="microcopy">
               Operational controls remain unavailable. Mint, burn, pause, resume, NAV, and distribution controls are not
-              active in Track 12B.
+              active in Track 14B.
             </p>
           </section>
 
@@ -1340,9 +1548,9 @@ export function App() {
               ))}
             </div>
             <p className="microcopy">
-              No contract has been deployed, audited, signed, or submitted in this MVP stage. Wallet connection, where
-              shown, is connection and Sepolia status only. Local compile/test status is a known developer-local
-              foundation result only.
+              Deployment identifiers appear only after provider responses. Local compile/test status is a known
+              developer-local foundation result only. Deployment status is local-session-only until Track 14C evidence
+              linkage.
             </p>
           </section>
         </div>

@@ -67,10 +67,23 @@ export type SmartContractControlPanelGeneratedState = {
   walletProviderStatus?: 'unknown' | 'available' | 'unsupported';
   walletChainStatus?: 'unknown' | 'sepolia' | 'wrong_chain';
   connectedWalletAddressDisplay?: string;
+  walletSignedDeploymentStatus?:
+    | 'not_started'
+    | 'blocked'
+    | 'awaiting_wallet_confirmation'
+    | 'submitted'
+    | 'confirmed'
+    | 'rejected'
+    | 'failed';
+  deploymentTransactionHash?: string;
+  deploymentContractAddress?: string;
+  deploymentReceiptStatus?: 'pending' | 'success' | 'failed';
+  deploymentLocalSessionOnly?: true;
   customEvents?: string[];
 };
 
-const disabledExecutionReason = 'Preview only. No wallet signing or blockchain transaction is wired in this MVP stage.';
+const disabledExecutionReason =
+  'Operations locked. Deployment status does not enable contract operations until operation authorization and evidence logging are wired.';
 
 const coreActionLabels = ['Mint', 'Distribute', 'Burn', 'Pause/Unpause'] as const;
 
@@ -252,7 +265,7 @@ function walletSigningHealthItems(
     { label: 'Smart Contract Operations', value: 'Locked', status: 'disabled' },
     {
       label: 'Operations reason',
-      value: 'Wallet signing and testnet deployment are not implemented',
+      value: 'Operation-specific authorization and evidence logging are not implemented',
       status: 'disabled',
     },
     {
@@ -306,6 +319,47 @@ function walletConnectionHealthItems(
   ];
 }
 
+function walletSignedDeploymentValue(status?: SmartContractControlPanelGeneratedState['walletSignedDeploymentStatus']) {
+  if (status === 'awaiting_wallet_confirmation') return 'Awaiting wallet confirmation';
+  if (status === 'submitted') return 'Deployment submitted to Sepolia';
+  if (status === 'confirmed') return 'Deployment confirmed on Sepolia';
+  if (status === 'rejected') return 'Deployment rejected in wallet';
+  if (status === 'failed') return 'Deployment failed';
+  if (status === 'blocked') return 'Deployment blocked';
+  return 'Not started';
+}
+
+function walletSignedDeploymentHealthItems(
+  generatedState?: SmartContractControlPanelGeneratedState,
+): SmartContractControlPanelHealthItem[] {
+  const status = generatedState?.walletSignedDeploymentStatus ?? 'not_started';
+  const isSubmitted = status === 'submitted' || status === 'confirmed' || status === 'failed';
+  const isConfirmed = status === 'confirmed';
+
+  return [
+    {
+      label: 'Wallet-signed Sepolia deployment',
+      value: walletSignedDeploymentValue(status),
+      status: isConfirmed ? 'ready' : status === 'failed' || status === 'rejected' || status === 'blocked' ? 'blocked' : 'pending',
+    },
+    {
+      label: 'Deployment transaction hash',
+      value: generatedState?.deploymentTransactionHash ?? 'No transaction hash',
+      status: generatedState?.deploymentTransactionHash ? 'ready' : 'disabled',
+    },
+    {
+      label: 'Deployment contract address',
+      value: generatedState?.deploymentContractAddress ?? (isSubmitted ? 'No contract address yet' : 'No contract address'),
+      status: generatedState?.deploymentContractAddress ? 'ready' : 'disabled',
+    },
+    {
+      label: 'Deployment evidence linkage',
+      value: generatedState?.deploymentLocalSessionOnly ? 'Local session only until Track 14C' : 'Not linked',
+      status: 'disabled',
+    },
+  ];
+}
+
 function healthStatusFor(
   status: SmartContractControlPanelStatus,
   generatedState?: SmartContractControlPanelGeneratedState,
@@ -350,7 +404,8 @@ function healthStatusFor(
       ...deploymentGateHealthItems(generatedState),
       ...walletSigningHealthItems(generatedState),
       ...walletConnectionHealthItems(generatedState),
-      { label: 'Deployment', value: 'Not executed', status: 'disabled' },
+      ...walletSignedDeploymentHealthItems(generatedState),
+      { label: 'Deployment', value: walletSignedDeploymentValue(generatedState?.walletSignedDeploymentStatus), status: generatedState?.walletSignedDeploymentStatus === 'confirmed' ? 'ready' : 'disabled' },
       { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
       { label: 'Audit', value: 'Not audited', status: 'disabled' },
     ];
@@ -412,7 +467,11 @@ function statusDetail(
 
   if (status === 'artifact_preview_ready') {
     if (generatedState?.localCompileTestStatus === 'passed') {
-      return 'Smart Contract Spec, artifact preview, spec-consistency check result, evidence-lite, and local compile/test representation are available. This is not deployed, audited, signed, or connected to a wallet.';
+      if (generatedState.walletSignedDeploymentStatus === 'confirmed') {
+        return 'Smart Contract Spec, artifact preview, evidence-lite, local compile/test, and wallet-signed Sepolia deployment status are available. Deployment status is local-session-only until Track 14C evidence linkage. This is not audited and Smart Contract Operations remain locked.';
+      }
+
+      return 'Smart Contract Spec, artifact preview, spec-consistency check result, evidence-lite, and local compile/test representation are available. Wallet-signed Sepolia deployment may be requested after wallet connection. This is not audited and Smart Contract Operations remain locked.';
     }
 
     return 'Smart Contract Spec, artifact preview, spec-consistency check result, and evidence-lite are available. This is not compiled, deployed, audited, signed, or connected to a wallet.';
@@ -427,6 +486,9 @@ function statusDetail(
 
 function boundaryItems(generatedState?: SmartContractControlPanelGeneratedState): SmartContractControlPanelHealthItem[] {
   const walletAddressValue = generatedState?.connectedWalletAddressDisplay ? generatedState.connectedWalletAddressDisplay : 'Absent';
+  const hasTransactionHash = Boolean(generatedState?.deploymentTransactionHash);
+  const hasContractAddress = Boolean(generatedState?.deploymentContractAddress);
+  const deploymentConfirmed = generatedState?.walletSignedDeploymentStatus === 'confirmed';
 
   return [
     { label: 'Ethereum testnet', value: 'Only', status: 'ready' },
@@ -439,12 +501,32 @@ function boundaryItems(generatedState?: SmartContractControlPanelGeneratedState)
     { label: 'Wallet connection', value: walletConnectionValue(generatedState?.walletConnectionStatus), status: 'disabled' },
     { label: 'Wallet address', value: walletAddressValue, status: generatedState?.connectedWalletAddressDisplay ? 'ready' : 'disabled' },
     { label: 'No signed payload', value: 'Absent', status: 'disabled' },
-    { label: 'No submitted transaction', value: 'Absent', status: 'disabled' },
-    { label: 'No confirmed transaction', value: 'Absent', status: 'disabled' },
-    { label: 'Contract deployment', value: 'Not executed', status: 'disabled' },
-    { label: 'Contract address absent', value: 'No contract address', status: 'disabled' },
-    { label: 'Transaction hash', value: 'None exists', status: 'disabled' },
-    { label: 'Transaction hash absent', value: 'No transaction hash', status: 'disabled' },
+    {
+      label: hasTransactionHash ? 'Submitted transaction' : 'No submitted transaction',
+      value: hasTransactionHash ? 'Submitted to Sepolia' : 'Absent',
+      status: hasTransactionHash ? 'ready' : 'disabled',
+    },
+    {
+      label: deploymentConfirmed ? 'Confirmed transaction' : 'No confirmed transaction',
+      value: deploymentConfirmed ? 'Confirmed on Sepolia' : 'Absent',
+      status: deploymentConfirmed ? 'ready' : 'disabled',
+    },
+    {
+      label: 'Contract deployment',
+      value: deploymentConfirmed ? 'Confirmed on Sepolia' : 'Not executed',
+      status: deploymentConfirmed ? 'ready' : 'disabled',
+    },
+    {
+      label: 'Contract address',
+      value: generatedState?.deploymentContractAddress ?? 'No contract address',
+      status: hasContractAddress ? 'ready' : 'disabled',
+    },
+    {
+      label: 'Transaction hash',
+      value: generatedState?.deploymentTransactionHash ?? 'No transaction hash',
+      status: hasTransactionHash ? 'ready' : 'disabled',
+    },
+    { label: 'Deployment evidence linkage', value: 'Track 14C', status: 'disabled' },
     { label: 'Audit', value: 'Not performed', status: 'disabled' },
   ];
 }
@@ -460,8 +542,13 @@ export function toSmartContractControlPanelViewModel(
     statusLabel: statusLabel(status),
     statusDetail: statusDetail(status, lifecycleReadModel, generatedState),
     overview: {
-      contractStatus: status === 'artifact_preview_ready' ? 'Artifact preview generated - not deployed' : 'Not deployed',
-      contractAddress: 'No contract address - not deployed',
+      contractStatus:
+        generatedState?.walletSignedDeploymentStatus === 'confirmed'
+          ? 'Deployment confirmed on Sepolia - operations locked'
+          : status === 'artifact_preview_ready'
+            ? 'Artifact preview generated - not deployed'
+            : 'Not deployed',
+      contractAddress: generatedState?.deploymentContractAddress ?? 'No contract address - not deployed',
       network: 'Ethereum testnet only',
       deployedBy: 'User Wallet',
       contractType: 'ERC-20 + custom',
@@ -477,6 +564,8 @@ export function toSmartContractControlPanelViewModel(
     customFeatures: toGeneratedCustomFeatures(generatedState?.customEvents),
     recentEvents: [
       'No wallet-signed testnet events yet',
+      ...(generatedState?.deploymentTransactionHash ? ['Wallet-signed Sepolia deployment submitted'] : []),
+      ...(generatedState?.deploymentContractAddress ? ['Sepolia deployment receipt confirmed'] : []),
       ...(status === 'artifact_preview_ready'
         ? ['Smart Contract Spec generated', 'Artifact preview generated', 'Evidence-lite available']
         : []),

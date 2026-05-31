@@ -79,6 +79,7 @@ Track 13A adds the wallet connection design/read-model foundation:
 Track 14A adds the unsigned deployment intent read-model foundation:
 
 - [`deployment-transaction-intent-contract.md`](deployment-transaction-intent-contract.md): review-only unsigned Sepolia deployment intent semantics that consume deployment gate, wallet signing intent, wallet connection, compiled artifact reference, and local compile/test readiness without signing, deployment, transaction submission, transaction hashes, contract addresses, receipts, or backend private-key custody.
+- [`../architecture/wallet-signed-deployment.md`](../architecture/wallet-signed-deployment.md): frontend-only wallet-signed Sepolia deployment boundary, real provider-returned transaction hash and receipt-confirmed contract address rules, and local-session-only Track 14B status before Track 14C evidence linkage.
 
 ## Contract Test Coverage
 

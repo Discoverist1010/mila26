@@ -13,13 +13,27 @@ The backend must not hold deployment private keys. The user signs deployment and
 - Clearer responsibility boundary: backend prepares and validates; wallet signs.
 - Better fit for a local-laptop MVP than custody or server-side signing.
 
+## Track 14B Implementation Boundary
+
+Track 14B implements the first real blockchain execution step:
+
+- the user connects a browser wallet through the EIP-1193 boundary.
+- the app verifies Sepolia.
+- the app consumes the unsigned deployment intent.
+- the user explicitly requests wallet-signed Sepolia deployment from the central Engineering Bot workflow surface.
+- the app re-checks `eth_accounts` and `eth_chainId` immediately before `eth_sendTransaction`.
+- the app sends a contract-creation transaction through the browser wallet provider.
+- transaction hash appears only after the provider returns it.
+- contract address appears only after a successful receipt includes `contractAddress`.
+- deployment state is local-session-only until Track 14C.
+- SCP operations remain locked.
+
 ## Backend Responsibilities
 
-- Prepare contract deployment data.
+- Provide artifact/spec/check/evidence metadata.
 - Validate PRD/Requirement Brief and generated contract metadata.
 - Enforce testnet-only configuration.
-- Provide chain ID, contract ABI/bytecode metadata, constructor arguments, and transaction intent.
-- Track submitted transaction hashes and status.
+- Later, provide chain ID, contract ABI/bytecode metadata, constructor arguments, unsigned transaction intent, and durable evidence/status linkage.
 - Store off-chain project data later when persistence exists.
 - Never store or request private keys or seed phrases.
 
@@ -61,9 +75,11 @@ The backend must not hold deployment private keys. The user signs deployment and
 7. Frontend displays deployment summary.
 8. User connects MetaMask through the approved EIP-1193 wallet boundary.
 9. App verifies Sepolia.
-10. User wallet signs/submits the testnet transaction.
-11. MILA26 tracks the real transaction hash and status.
-12. Contract address is recorded only after real deployment confirmation.
+10. App re-checks account and chain immediately before submission.
+11. User wallet signs/submits the testnet transaction.
+12. MILA26 displays the real transaction hash after provider submission.
+13. Contract address is displayed only after a successful receipt confirms contract creation.
+14. Track 14C links deployment status and identifiers into durable evidence/readiness.
 
 ## Mint And Distribute Flow
 
@@ -85,7 +101,7 @@ Minimum statuses:
 - Confirmed.
 - Failed.
 
-Status should be visible in the UI and traceable in run/project memory once persistence exists.
+Status is visible in the UI as local-session state in Track 14B and becomes traceable in run/project memory only after persistence/evidence linkage exists.
 
 ## Limitations And Deferred Production Concerns
 

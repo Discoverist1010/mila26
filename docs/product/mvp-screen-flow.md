@@ -74,16 +74,16 @@ The mockup remains directional, not a pixel-perfect implementation mandate. Curr
 ## 10. Unsigned Deployment Intent
 
 - User goal: review what would be signed before a signature request exists.
-- Primary UI: future central workflow review surface.
-- Current status: future Track 14A.
+- Primary UI: derived readiness/review model behind the central deployment workflow.
+- Current status: implemented.
 - Guardrail: no signature request or transaction submission.
 
 ## 11. Wallet-Signed Sepolia Deployment
 
 - User goal: sign/submit deployment through user wallet.
 - Primary UI: central workflow action, SCP testnet deployment status.
-- Current status: future Track 14B/14C.
-- Guardrail: backend never holds private keys; mainnet disabled.
+- Current status: implemented as Track 14B local-session state.
+- Guardrail: backend never holds private keys; mainnet disabled; transaction hash and contract address appear only from real provider/receipt responses; durable evidence linkage is Track 14C.
 
 ## 12. First SCP Operation
 

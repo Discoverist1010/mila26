@@ -8,6 +8,7 @@
     "dev:api": "tsx watch server/index.ts",
     "build": "tsc -b && vite build",
     "contracts:build": "hardhat build",
+    "contracts:export-artifact": "node scripts/export-mila26-deployment-artifact.mjs",
     "test:contracts": "node --import tsx/esm --test test/Mila26RestrictedFundToken.ts",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "lint": "eslint .",
@@ -22,6 +23,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "^5.8.0",
+    "viem": "^2.51.3",
     "vite": "^7.0.0",
     "zod": "^3.25.0"
   },
@@ -44,7 +46,6 @@
     "jsdom": "^25.0.0",
     "tsx": "^4.22.3",
     "typescript-eslint": "^8.59.3",
-    "viem": "^2.51.2",
     "vitest": "^3.0.0"
   }
 }

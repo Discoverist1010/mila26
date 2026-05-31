@@ -4,9 +4,9 @@
 
 MILA26 is a blockchain-functional alpha foundation for an AI + blockchain tokenisation workspace for asset managers.
 
-The current app can guide a project from a plain-language requirement through Engineering Brief, closure readiness, Smart Contract Artifact Spec, deterministic artifact preview, check/evidence-lite, local compile/test representation, Deployment Gate, Wallet Signing Intent, Wallet Connection Readiness, and locked Smart Contract Operations. The codebase also has a pure unsigned deployment intent read model for the next execution track.
+The current app can guide a project from a plain-language requirement through Engineering Brief, closure readiness, Smart Contract Artifact Spec, deterministic artifact preview, check/evidence-lite, local compile/test representation, Deployment Gate, Wallet Signing Intent, Wallet Connection Readiness, Unsigned Deployment Intent, and a wallet-signed Sepolia deployment path. Smart Contract Operations remain locked.
 
-The next implementation step is wallet-signed Sepolia deployment execution, built on the existing unsigned deployment intent boundary.
+The next implementation step is durable deployment status/evidence linkage for the wallet-signed Sepolia deployment results.
 
 ## Current Product Direction
 
@@ -16,7 +16,7 @@ The next implementation step is wallet-signed Sepolia deployment execution, buil
 - Keep execution Ethereum Sepolia/testnet-only.
 - Use Engineering Bot as the lifecycle decision surface.
 - Keep the right rail passive.
-- Keep SCP as status/evidence/boundary/health until a real wallet-signed deployment exists.
+- Keep SCP as status/evidence/boundary/health; operation controls stay locked until operation authorization and evidence logging exist.
 - Backend never holds private keys.
 - User wallet signs future deployment and operations.
 
@@ -29,8 +29,9 @@ The next implementation step is wallet-signed Sepolia deployment execution, buil
 - LLM boundary: backend-only; deterministic mock remains supported; OpenAI mode requires explicit backend config.
 - Smart contract tooling: local Hardhat/OpenZeppelin fixture exists for compile/test only.
 - Wallet boundary: MetaMask-first EIP-1193 connection and Sepolia readiness are implemented frontend-only.
-- Unsigned deployment intent boundary: review-only domain model exists; it is not an executable transaction payload.
-- Persistence, auth, payments, wallet signing, deployment execution, transaction lifecycle, and mainnet are not implemented.
+- Unsigned deployment intent boundary: review-only domain model exists.
+- Wallet-signed deployment boundary: frontend-only Sepolia deployment exists; transaction hash and contract address are local-session-only until evidence linkage.
+- Persistence, auth, payments, SCP operations, durable deployment evidence linkage, and mainnet are not implemented.
 
 ## Current Repo Capabilities
 
@@ -54,6 +55,7 @@ The next implementation step is wallet-signed Sepolia deployment execution, buil
 - Golden-flow guardrails against fake deployment/signing/address/hash claims.
 - Wallet Connection Read Model and frontend-only EIP-1193 adapter.
 - Unsigned Deployment Intent Read Model.
+- Wallet-signed Sepolia deployment adapter and local-session deployment state.
 
 ## Completed Recent Tracks
 
@@ -79,26 +81,23 @@ The next implementation step is wallet-signed Sepolia deployment execution, buil
 - Track 13A: MetaMask-first wallet adapter and Sepolia signing design plus pure wallet connection read model.
 - Track 13B: frontend-only EIP-1193 wallet connection and Sepolia verification.
 - Track 14A: unsigned deployment intent read model.
+- Track 14B: wallet-signed Sepolia deployment through browser wallet.
 
 ## Current Next Step
 
-Track 14B: User Wallet Signs Sepolia Deployment.
+Track 14C: Deployment Status / Evidence Linkage.
 
-Track 14B should:
+Track 14C should:
 
-- consume the Track 14A unsigned deployment intent.
-- request user wallet confirmation through the approved frontend wallet adapter.
+- consume local-session wallet-signed deployment outputs.
+- link transaction hash, receipt-confirmed contract address, chain, artifact, and status into MILA26 evidence/readiness.
 - keep backend private-key custody impossible.
-- capture only real wallet/provider transaction outcomes.
 - remain Sepolia-only.
+- keep SCP operations locked until Track 15A or later.
 
 ## What Must Not Be Done Yet
 
-- No deployment transaction preparation.
-- No wallet signing request.
-- No transaction submission.
-- No transaction hash display.
-- No contract address display.
+- No durable deployment evidence/status storage yet.
 - No SCP operational controls.
 - No mainnet.
 - No backend private-key custody.

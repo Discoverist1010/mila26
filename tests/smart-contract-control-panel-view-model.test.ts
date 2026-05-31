@@ -143,7 +143,7 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'Check result', value: 'Spec-consistency result available', status: 'ready' },
         { label: 'Evidence-lite', value: 'Available for later evidence pack wiring', status: 'ready' },
         { label: 'Compiler/toolchain', value: 'Not configured', status: 'disabled' },
-        { label: 'Deployment', value: 'Not executed', status: 'disabled' },
+        { label: 'Deployment', value: 'Not started', status: 'disabled' },
         { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
         { label: 'Audit', value: 'Not audited', status: 'disabled' },
       ]),
@@ -156,7 +156,7 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'Backend private keys', value: 'None held', status: 'disabled' },
         { label: 'Future deployment signer', value: 'User wallet', status: 'pending' },
         { label: 'Contract deployment', value: 'Not executed', status: 'disabled' },
-        { label: 'Transaction hash', value: 'None exists', status: 'disabled' },
+        { label: 'Transaction hash', value: 'No transaction hash', status: 'disabled' },
         { label: 'Audit', value: 'Not performed', status: 'disabled' },
       ]),
     );
@@ -167,21 +167,24 @@ describe('Smart Contract Control Panel view model', () => {
           initiation: 'Not user initiated',
           actionLabel: 'View only',
           enabled: false,
-          disabledReason: 'Preview only. No wallet signing or blockchain transaction is wired in this MVP stage.',
+          disabledReason:
+            'Operations locked. Deployment status does not enable contract operations until operation authorization and evidence logging are wired.',
         },
         {
           name: 'ContractPaused',
           initiation: 'User initiated',
           actionLabel: 'Trigger Event',
           enabled: false,
-          disabledReason: 'Preview only. No wallet signing or blockchain transaction is wired in this MVP stage.',
+          disabledReason:
+            'Operations locked. Deployment status does not enable contract operations until operation authorization and evidence logging are wired.',
         },
         {
           name: 'ContractUnpaused',
           initiation: 'User initiated',
           actionLabel: 'Trigger Event',
           enabled: false,
-          disabledReason: 'Preview only. No wallet signing or blockchain transaction is wired in this MVP stage.',
+          disabledReason:
+            'Operations locked. Deployment status does not enable contract operations until operation authorization and evidence logging are wired.',
         },
       ]),
     );
@@ -232,7 +235,7 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'Smart Contract Operations', value: 'Locked', status: 'disabled' },
         {
           label: 'Operations reason',
-          value: 'Wallet signing and testnet deployment are not implemented',
+          value: 'Operation-specific authorization and evidence logging are not implemented',
           status: 'disabled',
         },
         {
@@ -241,7 +244,7 @@ describe('Smart Contract Control Panel view model', () => {
             'wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging',
           status: 'pending',
         },
-        { label: 'Deployment', value: 'Not executed', status: 'disabled' },
+        { label: 'Deployment', value: 'Not started', status: 'disabled' },
         { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
         { label: 'Audit', value: 'Not audited', status: 'disabled' },
       ]),
@@ -250,7 +253,7 @@ describe('Smart Contract Control Panel view model', () => {
     expect(viewModel.overview.contractAddress).toBe('No contract address - not deployed');
     expect(viewModel.boundaryItems).toEqual(
       expect.arrayContaining([
-        { label: 'Transaction hash', value: 'None exists', status: 'disabled' },
+        { label: 'Transaction hash', value: 'No transaction hash', status: 'disabled' },
         { label: 'Backend never holds private keys', value: 'Enforced', status: 'disabled' },
         { label: 'User wallet signing required later', value: 'Required', status: 'pending' },
         { label: 'Wallet signing not implemented', value: 'Not implemented', status: 'disabled' },
@@ -259,8 +262,8 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'No signed payload', value: 'Absent', status: 'disabled' },
         { label: 'No submitted transaction', value: 'Absent', status: 'disabled' },
         { label: 'No confirmed transaction', value: 'Absent', status: 'disabled' },
-        { label: 'Contract address absent', value: 'No contract address', status: 'disabled' },
-        { label: 'Transaction hash absent', value: 'No transaction hash', status: 'disabled' },
+        { label: 'Contract address', value: 'No contract address', status: 'disabled' },
+        { label: 'Transaction hash', value: 'No transaction hash', status: 'disabled' },
         { label: 'Audit', value: 'Not performed', status: 'disabled' },
       ]),
     );
@@ -318,6 +321,83 @@ describe('Smart Contract Control Panel view model', () => {
     );
   });
 
+  it('represents wallet-signed Sepolia deployment passively while keeping operations locked', () => {
+    const lifecycleReadModel = toProjectLifecycleReadModel({
+      hasRequirementBrief: true,
+      hasEngineeringBrief: true,
+      closureReadiness: closureReadiness(),
+      artifactSpecStatus: 'ready',
+      checkStatus: 'passed',
+      evidenceStatus: 'ready',
+      deploymentGateStatus: 'ready',
+    });
+    const submitted = toSmartContractControlPanelViewModel(lifecycleReadModel, {
+      specStatus: 'ready',
+      artifactStatus: 'generated',
+      checkStatus: 'passed',
+      evidenceStatus: 'ready',
+      walletSignedDeploymentStatus: 'submitted',
+      deploymentTransactionHash: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      deploymentReceiptStatus: 'pending',
+      deploymentLocalSessionOnly: true,
+    });
+    const confirmed = toSmartContractControlPanelViewModel(lifecycleReadModel, {
+      specStatus: 'ready',
+      artifactStatus: 'generated',
+      checkStatus: 'passed',
+      evidenceStatus: 'ready',
+      walletSignedDeploymentStatus: 'confirmed',
+      deploymentTransactionHash: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      deploymentContractAddress: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      deploymentReceiptStatus: 'success',
+      deploymentLocalSessionOnly: true,
+    });
+
+    expect(submitted.healthItems).toEqual(
+      expect.arrayContaining([
+        { label: 'Wallet-signed Sepolia deployment', value: 'Deployment submitted to Sepolia', status: 'pending' },
+        {
+          label: 'Deployment transaction hash',
+          value: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          status: 'ready',
+        },
+        { label: 'Deployment contract address', value: 'No contract address yet', status: 'disabled' },
+        { label: 'Deployment evidence linkage', value: 'Local session only until Track 14C', status: 'disabled' },
+      ]),
+    );
+    expect(submitted.overview.contractAddress).toBe('No contract address - not deployed');
+    expect(submitted.coreActions.every((action) => action.enabled === false)).toBe(true);
+
+    expect(confirmed.overview.contractStatus).toBe('Deployment confirmed on Sepolia - operations locked');
+    expect(confirmed.overview.contractAddress).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+    expect(confirmed.healthItems).toEqual(
+      expect.arrayContaining([
+        { label: 'Wallet-signed Sepolia deployment', value: 'Deployment confirmed on Sepolia', status: 'ready' },
+        { label: 'Deployment', value: 'Deployment confirmed on Sepolia', status: 'ready' },
+      ]),
+    );
+    expect(confirmed.boundaryItems).toEqual(
+      expect.arrayContaining([
+        { label: 'Submitted transaction', value: 'Submitted to Sepolia', status: 'ready' },
+        { label: 'Confirmed transaction', value: 'Confirmed on Sepolia', status: 'ready' },
+        { label: 'Contract deployment', value: 'Confirmed on Sepolia', status: 'ready' },
+        {
+          label: 'Contract address',
+          value: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          status: 'ready',
+        },
+        {
+          label: 'Transaction hash',
+          value: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          status: 'ready',
+        },
+        { label: 'Deployment evidence linkage', value: 'Track 14C', status: 'disabled' },
+      ]),
+    );
+    expect(confirmed.coreActions.every((action) => action.enabled === false)).toBe(true);
+    expect(JSON.stringify(confirmed)).not.toMatch(/production ready|mainnet ready|audit passed|security approved/i);
+  });
+
   it('keeps all SCP actions disabled until later wallet and transaction tracks', () => {
     const viewModel = toSmartContractControlPanelViewModel(
       toProjectLifecycleReadModel({
@@ -335,7 +415,8 @@ describe('Smart Contract Control Panel view model', () => {
       initiation: 'User initiated',
       actionLabel: 'Trigger Event',
       enabled: false,
-      disabledReason: 'Preview only. No wallet signing or blockchain transaction is wired in this MVP stage.',
+      disabledReason:
+        'Operations locked. Deployment status does not enable contract operations until operation authorization and evidence logging are wired.',
     });
   });
 });

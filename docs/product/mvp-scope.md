@@ -46,8 +46,9 @@ ERC-721 remains useful for comparison and later product variants, but it is not 
 - Wallet Signing Intent.
 - MetaMask-first wallet connection.
 - Sepolia chain verification.
-- User wallet-signed testnet deployment later.
+- User wallet-signed Sepolia deployment.
 - Real transaction hash and contract address only after real Sepolia execution.
+- Deployment state is local-session-only until evidence linkage is added.
 - First wallet-signed SCP operation later, likely Record NAV Event.
 
 ## Out Of Scope For Current Alpha
@@ -73,16 +74,13 @@ The app currently supports:
 - locked Smart Contract Operations state.
 - local compile/test representation.
 - deployment gate and wallet intent boundaries.
-- MetaMask/Sepolia design and wallet connection read model.
+- MetaMask/Sepolia wallet connection.
+- unsigned deployment intent.
+- wallet-signed Sepolia deployment local-session status.
 
 The app does not yet support:
 
-- runtime wallet connection.
-- wallet signing.
-- transaction preparation.
-- transaction submission.
-- transaction hash display.
-- contract address display.
+- persistent deployment evidence/status linkage.
 - SCP operation execution.
 - persistence.
 

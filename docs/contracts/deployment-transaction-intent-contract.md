@@ -1,6 +1,6 @@
 # Deployment Transaction Intent Contract
 
-Track 14A adds a pure unsigned deployment intent read model. It defines the review payload needed before a later wallet-signed Sepolia deployment track.
+Track 14A adds a pure unsigned deployment intent read model. It defines the review payload needed before a wallet-signed Sepolia deployment track.
 
 This contract is intentionally named in code as `UnsignedDeploymentIntentReadModel` to avoid implying an executable transaction.
 
@@ -90,7 +90,7 @@ Track 14A explicitly keeps these absent:
 - confirmed transaction.
 - deployment receipt.
 
-These values may appear only after later real wallet-signed execution tracks.
+These values may appear only after real wallet-signed execution. Track 14B can display provider-returned transaction hash and receipt-confirmed contract address in local session state; Track 14C owns durable evidence/readiness linkage.
 
 ## Forbidden Current Payload Fields
 
@@ -127,6 +127,8 @@ Track 14A does not add:
 - mainnet configuration.
 - SCP operation controls.
 - persistence, auth, payments, or LLM changes.
+
+Track 14B consumes this read model but does not change its semantics. The unsigned intent remains the pre-signing review boundary; actual deployment status is tracked separately as local-session wallet-signed deployment state.
 
 ## Tests
 

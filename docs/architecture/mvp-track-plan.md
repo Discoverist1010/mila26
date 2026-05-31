@@ -15,7 +15,9 @@ Requirement Brief
 -> local compile/test representation
 -> Deployment Gate
 -> Wallet Signing Intent
--> Wallet Connection Readiness design
+-> Wallet Connection Readiness
+-> Unsigned Deployment Intent
+-> Wallet-Signed Sepolia Deployment local-session state
 -> Smart Contract Operations locked
 
 ## Completed Foundation
@@ -36,10 +38,12 @@ Requirement Brief
 - Smart Contract Operations locked state.
 - Golden-flow guardrails against fake blockchain execution.
 - MetaMask-first wallet adapter/Sepolia design and pure wallet connection read model.
+- Frontend-only MetaMask/EIP-1193 wallet connection and Sepolia verification.
+- Unsigned deployment intent read model.
 
 ## Track 13B: MetaMask Wallet Connection + Sepolia Verification
 
-Goal: add the smallest safe wallet connection foundation.
+Status: complete. Added the smallest safe wallet connection foundation.
 
 Expected deliverables:
 
@@ -99,19 +103,27 @@ What not to overbuild:
 
 ## Track 14B: User Wallet Signs Sepolia Deployment
 
+Status: complete as a frontend-only local-session execution path.
+
 Goal: use the connected wallet to request a real Sepolia deployment signature/submission after intent review.
 
 Expected deliverables:
 
 - Wallet signature/submission flow using the approved adapter path.
 - Sepolia-only guard.
+- Immediate pre-send account/chain re-check.
+- Duplicate-submit protection.
 - User rejection handling.
-- Safe pending/submitted failure handling.
+- Safe pending/submitted/confirmed/failed handling.
+- Real transaction hash only after provider response.
+- Real contract address only after receipt confirmation.
+- Local-session-only deployment status.
 - Backend remains keyless.
 
 Acceptance criteria:
 
 - Only a real wallet-submitted transaction can create a transaction hash.
+- Only a receipt-confirmed contract creation can create a contract address.
 - No mainnet path exists.
 - No backend private key exists.
 
@@ -123,12 +135,12 @@ What not to overbuild:
 
 ## Track 14C: Real Transaction Hash / Contract Address / Receipt Status
 
-Goal: capture and display real deployment outputs from a real Sepolia transaction.
+Goal: link real deployment outputs from a real Sepolia transaction into MILA26 evidence/readiness.
 
 Expected deliverables:
 
-- Real transaction hash after submission.
-- Real contract address after receipt/deployment confirmation.
+- Persist/link real transaction hash after submission.
+- Persist/link real contract address after receipt/deployment confirmation.
 - Receipt status handling.
 - SCP deployed-testnet state that is clearly testnet-only.
 - Evidence linkage to tx hash, contract address, chain, and artifact.
