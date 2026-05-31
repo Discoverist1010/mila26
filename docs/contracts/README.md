@@ -153,6 +153,7 @@ Structured code reviews use three coordinated docs (scan lessons → run checkli
 - [`code-reviewer-checklist.md`](code-reviewer-checklist.md) — executable phases and severities (v1.0.2)
 - [`../handover/05-code-reviewer-skill.md`](../handover/05-code-reviewer-skill.md) — reviewer principles and report format
 - [`../handover/06-code-reviewer-lessons.md`](../handover/06-code-reviewer-lessons.md) — recurring patterns (`MILA26-XXX`)
+- [`../handover/07-code-review-activation-rules.md`](../handover/07-code-review-activation-rules.md) — pre-commit review-level classifier
 
 ## Anti-Overengineering Reminder
 

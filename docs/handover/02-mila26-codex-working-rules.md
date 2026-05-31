@@ -32,6 +32,14 @@ Apply these rules to every Codex task in this repo.
 
 When the task is a **review** (not implementation), use the Code Reviewer trio in `docs/handover/00-mila26-current-checkpoint.md` § Code Review. Do not invent severities — follow `docs/contracts/code-reviewer-checklist.md`.
 
+When the task is **implementation**, apply `docs/handover/07-code-review-activation-rules.md` after implementation/tests and before commit/push:
+
+- docs-only trivial edits may need only `git diff --check`.
+- guardrail, contract, handover, small domain, small UI, or test changes need quick review.
+- wallet, deployment, tx/hash/address, SCP operation, backend, persistence, LLM, or lifecycle-label changes need full audit.
+
+Critical findings must be fixed before commit/push. High findings should be fixed in the same track unless explicitly deferred.
+
 ## Final Report
 
 Report:

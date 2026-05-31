@@ -107,6 +107,10 @@ For structured reviews, use the **Code Reviewer trio** (keep severities aligned 
 2. `docs/contracts/code-reviewer-checklist.md` — executable phases (PASS/FAIL authority)
 3. `docs/handover/06-code-reviewer-lessons.md` — pattern memory; scan before checklist
 
+Activation before commit/push is governed by:
+
+4. `docs/handover/07-code-review-activation-rules.md` — classify diffs as diff-check only, quick review, or full audit
+
 Read this checkpoint first. Guardrails here and in `docs/architecture/architecture-guardrails.md` must match Phase 1–2 of the checklist.
 
 ## What Must Not Be Done Yet
