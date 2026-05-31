@@ -69,9 +69,9 @@ Current contract path:
 Current limitations:
 
 - The app does not compile Solidity at runtime.
-- The app does not deploy.
-- No deployment scripts exist.
-- No contract address or transaction hash exists.
+- The app deploys only through the connected browser wallet on Sepolia.
+- No backend deployment route or deployment script exists.
+- Contract address and transaction hash appear only after provider/receipt responses.
 - No audit approval is claimed.
 
 ## Wallet And Deployment Foundation
@@ -86,20 +86,20 @@ Current wallet/deployment path:
 - Track 13A defines MetaMask-first wallet adapter/Sepolia design and a pure Wallet Connection Read Model.
 - Track 13B implements frontend-only EIP-1193 wallet connection and Sepolia verification.
 - Track 14A defines unsigned deployment intent without requesting a signature or submitting a transaction.
-
-Track 14B should consume the unsigned deployment intent for the first wallet-signed Sepolia deployment path.
+- Track 14B implements frontend-only wallet-signed Sepolia deployment.
+- Track 14C derives local-session deployment evidence/readiness from provider transaction hash and receipt-confirmed contract address.
 
 ## Current Guardrails
 
 - Backend never holds private keys.
-- User wallet signs future deployment and operations.
+- User wallet signs deployment and future operations.
 - Sepolia/testnet only for alpha.
 - Mainnet disabled.
 - Wallet address appears only after real wallet connection.
 - Contract address appears only after real deployment.
 - Transaction hash appears only after real transaction submission.
-- SCP operations remain locked until wallet-signed deployment and authorization gates exist.
-- No deployment, signing, submitted, confirmed, audited, verified, live, production-ready, or mainnet-ready claim appears before real execution.
+- SCP operations remain locked until wallet-signed deployment evidence and operation authorization gates exist.
+- No audited, verified, live, production-ready, or mainnet-ready claim appears before real approval tracks.
 
 ## Validation Baseline
 

@@ -90,7 +90,7 @@ Track 14A explicitly keeps these absent:
 - confirmed transaction.
 - deployment receipt.
 
-These values may appear only after real wallet-signed execution. Track 14B can display provider-returned transaction hash and receipt-confirmed contract address in local session state; Track 14C owns durable evidence/readiness linkage.
+These values may appear only after real wallet-signed execution. Track 14B can display provider-returned transaction hash and receipt-confirmed contract address in local session state; Track 14C derives local-session evidence/readiness from those values.
 
 ## Forbidden Current Payload Fields
 

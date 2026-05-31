@@ -48,7 +48,7 @@ ERC-721 remains useful for comparison and later product variants, but it is not 
 - Sepolia chain verification.
 - User wallet-signed Sepolia deployment.
 - Real transaction hash and contract address only after real Sepolia execution.
-- Deployment state is local-session-only until evidence linkage is added.
+- Deployment evidence/readiness surface with local-session-only persistence.
 - First wallet-signed SCP operation later, likely Record NAV Event.
 
 ## Out Of Scope For Current Alpha
@@ -77,10 +77,11 @@ The app currently supports:
 - MetaMask/Sepolia wallet connection.
 - unsigned deployment intent.
 - wallet-signed Sepolia deployment local-session status.
+- deployment evidence/readiness local-session surface.
 
 The app does not yet support:
 
-- persistent deployment evidence/status linkage.
+- durable Evidence Pack storage for deployment evidence.
 - SCP operation execution.
 - persistence.
 

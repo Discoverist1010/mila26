@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { toDeploymentEvidenceReadModel } from '../src/domain/deploymentEvidenceReadModel';
 import { createDemoProjectClosureLedger, type ProjectClosureLedger } from '../src/domain/projectClosureLedger';
 import { toProjectClosureReadModel } from '../src/domain/projectClosureReadModel';
 import { toProjectLifecycleReadModel } from '../src/domain/projectLifecycleReadModel';
+import { toRecordNavOperationReadModel } from '../src/domain/recordNavOperationReadModel';
 import { toSmartContractControlPanelViewModel } from '../src/domain/smartContractControlPanelViewModel';
 
 function closureReadiness(overrides: Partial<ProjectClosureLedger> = {}) {
@@ -56,7 +58,7 @@ describe('Smart Contract Control Panel view model', () => {
     expect(viewModel.statusLabel).toBe('Blocked before contract specification');
     expect(viewModel.statusDetail).toMatch(/Security Review/i);
     expect(viewModel.overview.contractStatus).toBe('Not deployed');
-    expect(viewModel.recentEvents).toContain('Deployment remains disabled for MVP');
+    expect(viewModel.recentEvents).toContain('Smart Contract Operations remain locked for MVP');
   });
 
   it('derives ready-for-spec state after closure is ready', () => {
@@ -340,6 +342,14 @@ describe('Smart Contract Control Panel view model', () => {
       deploymentTransactionHash: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       deploymentReceiptStatus: 'pending',
       deploymentLocalSessionOnly: true,
+      deploymentEvidence: toDeploymentEvidenceReadModel({
+        deploymentState: {
+          deploymentStatus: 'submitted',
+          transactionHash: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          receiptStatus: 'pending',
+          localSessionOnly: true,
+        },
+      }),
     });
     const confirmed = toSmartContractControlPanelViewModel(lifecycleReadModel, {
       specStatus: 'ready',
@@ -351,6 +361,35 @@ describe('Smart Contract Control Panel view model', () => {
       deploymentContractAddress: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
       deploymentReceiptStatus: 'success',
       deploymentLocalSessionOnly: true,
+      deploymentEvidence: toDeploymentEvidenceReadModel({
+        deploymentState: {
+          deploymentStatus: 'confirmed',
+          transactionHash: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          contractAddress: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          receiptStatus: 'success',
+          localSessionOnly: true,
+        },
+      }),
+    });
+    const failedWithMalformedAddress = toSmartContractControlPanelViewModel(lifecycleReadModel, {
+      specStatus: 'ready',
+      artifactStatus: 'generated',
+      checkStatus: 'passed',
+      evidenceStatus: 'ready',
+      walletSignedDeploymentStatus: 'failed',
+      deploymentTransactionHash: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      deploymentContractAddress: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      deploymentReceiptStatus: 'failed',
+      deploymentLocalSessionOnly: true,
+      deploymentEvidence: toDeploymentEvidenceReadModel({
+        deploymentState: {
+          deploymentStatus: 'failed',
+          transactionHash: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          contractAddress: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          receiptStatus: 'failed',
+          localSessionOnly: true,
+        },
+      }),
     });
 
     expect(submitted.healthItems).toEqual(
@@ -362,18 +401,24 @@ describe('Smart Contract Control Panel view model', () => {
           status: 'ready',
         },
         { label: 'Deployment contract address', value: 'No contract address yet', status: 'disabled' },
-        { label: 'Deployment evidence linkage', value: 'Local session only until Track 14C', status: 'disabled' },
+        { label: 'Deployment Evidence', value: 'Transaction submitted', status: 'pending' },
+        { label: 'Evidence strength', value: 'Provider transaction hash', status: 'ready' },
+        { label: 'Transaction hash source', value: 'Provider returned', status: 'ready' },
+        { label: 'Contract address source', value: 'Absent', status: 'disabled' },
       ]),
     );
     expect(submitted.overview.contractAddress).toBe('No contract address - not deployed');
     expect(submitted.coreActions.every((action) => action.enabled === false)).toBe(true);
 
-    expect(confirmed.overview.contractStatus).toBe('Deployment confirmed on Sepolia - operations locked');
+    expect(confirmed.overview.contractStatus).toBe('Deployment confirmed on Sepolia - Record NAV gated');
     expect(confirmed.overview.contractAddress).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
     expect(confirmed.healthItems).toEqual(
       expect.arrayContaining([
         { label: 'Wallet-signed Sepolia deployment', value: 'Deployment confirmed on Sepolia', status: 'ready' },
         { label: 'Deployment', value: 'Deployment confirmed on Sepolia', status: 'ready' },
+        { label: 'Deployment Evidence', value: 'Confirmed from receipt', status: 'ready' },
+        { label: 'Evidence strength', value: 'Confirmed receipt', status: 'ready' },
+        { label: 'Evidence persistence', value: 'Local session only', status: 'disabled' },
       ]),
     );
     expect(confirmed.boundaryItems).toEqual(
@@ -391,11 +436,23 @@ describe('Smart Contract Control Panel view model', () => {
           value: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
           status: 'ready',
         },
-        { label: 'Deployment evidence linkage', value: 'Track 14C', status: 'disabled' },
+        { label: 'Deployment Evidence', value: 'Confirmed from receipt', status: 'ready' },
+        { label: 'Evidence strength', value: 'Confirmed receipt', status: 'ready' },
+        { label: 'Evidence persistence', value: 'Local session only', status: 'disabled' },
+        { label: 'Transaction hash source', value: 'Provider returned', status: 'ready' },
+        { label: 'Contract address source', value: 'Receipt returned', status: 'ready' },
+        { label: 'Other Smart Contract Operations', value: 'Locked', status: 'disabled' },
       ]),
     );
     expect(confirmed.coreActions.every((action) => action.enabled === false)).toBe(true);
     expect(JSON.stringify(confirmed)).not.toMatch(/production ready|mainnet ready|audit passed|security approved/i);
+    expect(failedWithMalformedAddress.overview.contractAddress).toBe('No contract address - not deployed');
+    expect(failedWithMalformedAddress.boundaryItems).toEqual(
+      expect.arrayContaining([
+        { label: 'Contract address', value: 'No contract address', status: 'disabled' },
+        { label: 'Contract address source', value: 'Absent', status: 'disabled' },
+      ]),
+    );
   });
 
   it('keeps all SCP actions disabled until later wallet and transaction tracks', () => {
@@ -418,5 +475,66 @@ describe('Smart Contract Control Panel view model', () => {
       disabledReason:
         'Operations locked. Deployment status does not enable contract operations until operation authorization and evidence logging are wired.',
     });
+  });
+
+  it('represents Record NAV operation evidence without unlocking broad SCP operations', () => {
+    const lifecycleReadModel = toProjectLifecycleReadModel({
+      hasRequirementBrief: true,
+      hasEngineeringBrief: true,
+      closureReadiness: closureReadiness(),
+      artifactSpecStatus: 'ready',
+      checkStatus: 'passed',
+      evidenceStatus: 'ready',
+      deploymentGateStatus: 'ready',
+    });
+    const deploymentEvidence = toDeploymentEvidenceReadModel({
+      deploymentState: {
+        deploymentStatus: 'confirmed',
+        transactionHash: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        contractAddress: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        receiptStatus: 'success',
+        localSessionOnly: true,
+      },
+    });
+    const recordNavOperation = toRecordNavOperationReadModel({
+      deploymentEvidence,
+      operationState: {
+        operationStatus: 'confirmed',
+        operationTransactionHash: '0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        operationReceiptStatus: 'success',
+        contractAddress: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        valuation: 1_050_000n,
+        valuationReference: 'MILA26-ALPHA-NAV-001',
+        decodedEvent: {
+          eventName: 'ValuationUpdated',
+          valuation: '1050000',
+          valuationReference: 'MILA26-ALPHA-NAV-001',
+          operator: '0x1111111111111111111111111111111111111111',
+        },
+        localSessionOnly: true,
+      },
+    });
+    const viewModel = toSmartContractControlPanelViewModel(lifecycleReadModel, {
+      specStatus: 'ready',
+      artifactStatus: 'generated',
+      checkStatus: 'passed',
+      evidenceStatus: 'ready',
+      walletSignedDeploymentStatus: 'confirmed',
+      deploymentEvidence,
+      recordNavOperation,
+    });
+
+    expect(viewModel.healthItems).toEqual(
+      expect.arrayContaining([
+        { label: 'Record NAV operation', value: 'confirmed on Sepolia', status: 'ready' },
+        { label: 'Operation transaction hash source', value: 'Provider returned', status: 'ready' },
+        { label: 'Operation receipt source', value: 'Provider receipt', status: 'ready' },
+        { label: 'ValuationUpdated event evidence', value: 'Decoded from receipt', status: 'ready' },
+        { label: 'Operation evidence persistence', value: 'Local session only', status: 'disabled' },
+        { label: 'Other Smart Contract Operations', value: 'Locked', status: 'disabled' },
+      ]),
+    );
+    expect(viewModel.coreActions.every((action) => action.enabled === false)).toBe(true);
+    expect(JSON.stringify(viewModel)).not.toMatch(/production ready|mainnet ready|audit passed|verified/i);
   });
 });

@@ -9,12 +9,21 @@ import {
 } from './agents/agentRuntime';
 import { toCockpitActionViewModel } from './domain/cockpitActionRegistry';
 import { toBlockchainEngineerResponseViewModel } from './domain/blockchainEngineerResponseViewModel';
+import { toDeploymentEvidenceReadModel } from './domain/deploymentEvidenceReadModel';
 import { toDeploymentGateReadModel } from './domain/deploymentGateReadModel';
 import { moduleCatalog } from './domain/moduleCatalog';
 import { createDemoProjectClosureLedger } from './domain/projectClosureLedger';
 import { toProjectClosureReadModel } from './domain/projectClosureReadModel';
 import { toProjectLifecycleReadModel, type Mila26UiActionId } from './domain/projectLifecycleReadModel';
 import { toRequirementBriefContract } from './domain/requirementBrief';
+import {
+  defaultRecordNavOperationPayload,
+  formatRecordNavOperationStatus,
+  initialRecordNavOperationState,
+  isRecordNavOperationInFlight,
+  toRecordNavOperationReadModel,
+  type RecordNavOperationState,
+} from './domain/recordNavOperationReadModel';
 import {
   createKnownLocalCompileTestResult,
   toSmartContractCompileTestPresentation,
@@ -44,6 +53,10 @@ import {
   requestWalletSignedSepoliaDeployment,
   type SepoliaDeploymentProvider,
 } from './wallet/sepoliaDeploymentAdapter';
+import {
+  requestWalletSignedRecordNavOperation,
+  type SepoliaRecordNavOperationProvider,
+} from './wallet/sepoliaRecordNavOperationAdapter';
 import type { BlockchainEngineerChatResponse } from '../server/contracts/chat';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
 import type {
@@ -96,6 +109,7 @@ const uiActions = {
   scrollToScp: 'scroll_to_scp',
   connectWallet: 'connect_wallet',
   deployToSepolia: 'deploy_to_sepolia',
+  recordNavEvent: 'record_nav_event',
 } as const;
 
 type GeneratedArtifactCard = {
@@ -147,7 +161,7 @@ function createWalletConnectionResponse(walletConnection: WalletConnectionReadMo
       'Deployment remains not executed.',
       'No contract address or transaction hash exists.',
     ],
-    nextRecommendedAction: 'Next milestone remains unsigned deployment intent review after wallet connection and Sepolia status are stable.',
+    nextRecommendedAction: 'Next milestone is wallet-signed Sepolia deployment from the reviewed unsigned deployment intent.',
     createdAt: new Date(0).toISOString(),
   };
 }
@@ -159,7 +173,7 @@ function createDeploymentResponse(deployment: WalletSignedDeploymentState): Bloc
     messageId: 'local-wallet-signed-deployment',
     agentId: 'blockchain-engineer',
     content:
-      'Wallet-signed Sepolia deployment status updated. This is local-session deployment state only; Track 14C owns evidence linkage.',
+      'Wallet-signed Sepolia deployment status updated. Deployment evidence is derived from local-session provider and receipt responses only.',
     riskNotes: [
       `Deployment status: ${statusLabel}.`,
       deployment.transactionHash ? `Transaction hash: ${deployment.transactionHash}.` : 'No transaction hash.',
@@ -168,7 +182,31 @@ function createDeploymentResponse(deployment: WalletSignedDeploymentState): Bloc
       'Mainnet remains disabled.',
       'Smart Contract Operations remain locked.',
     ],
-    nextRecommendedAction: 'Next milestone is Track 14C deployment status/evidence linkage before any SCP operation is unlocked.',
+    nextRecommendedAction: 'Next milestone is Track 15A Record NAV Event after operation authorization and evidence logging are designed.',
+    createdAt: new Date(0).toISOString(),
+  };
+}
+
+function createRecordNavOperationResponse(operation: RecordNavOperationState): BlockchainEngineerChatResponse {
+  const statusLabel = formatRecordNavOperationStatus(operation.operationStatus);
+
+  return {
+    messageId: 'local-record-nav-operation',
+    agentId: 'blockchain-engineer',
+    content:
+      'Record NAV operation status updated. SCP owns the active operation control; evidence is derived from local-session provider and receipt responses only.',
+    riskNotes: [
+      `Record NAV operation: ${statusLabel}.`,
+      operation.operationTransactionHash ? `Operation transaction hash: ${operation.operationTransactionHash}.` : 'No operation transaction hash.',
+      operation.decodedEvent ? 'ValuationUpdated event decoded from receipt.' : 'ValuationUpdated event not decoded.',
+      'Backend never holds private keys.',
+      'Mainnet remains disabled.',
+      'Other Smart Contract Operations remain locked.',
+    ],
+    nextRecommendedAction:
+      operation.operationStatus === 'confirmed'
+        ? 'If 15A is clean, next milestone is Track 15B Whitelist + Allocation/Mint Operation.'
+        : 'Continue only after the wallet-signed Record NAV operation is confirmed or safely retried.',
     createdAt: new Date(0).toISOString(),
   };
 }
@@ -249,6 +287,9 @@ export function App() {
   const [walletSignedDeploymentState, setWalletSignedDeploymentState] = useState<WalletSignedDeploymentState>(
     initialWalletSignedDeploymentState,
   );
+  const [recordNavOperationState, setRecordNavOperationState] = useState<RecordNavOperationState>(
+    initialRecordNavOperationState,
+  );
   const [smartContractGenerationStatus, setSmartContractGenerationStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [smartContractGenerationError, setSmartContractGenerationError] = useState<string | undefined>();
   const [walletConnectionInput, setWalletConnectionInput] = useState<WalletConnectionReadModelInput>(
@@ -267,6 +308,8 @@ export function App() {
   const [isBriefPreviewExpanded, setIsBriefPreviewExpanded] = useState(false);
   const deploymentAttemptSequenceRef = useRef(0);
   const deploymentAttemptIdRef = useRef('');
+  const recordNavOperationAttemptSequenceRef = useRef(0);
+  const recordNavOperationAttemptIdRef = useRef('');
 
   useEffect(() => {
     const provider = getBrowserEthereumProvider();
@@ -293,6 +336,8 @@ export function App() {
     () => () => {
       deploymentAttemptSequenceRef.current += 1;
       deploymentAttemptIdRef.current = '';
+      recordNavOperationAttemptSequenceRef.current += 1;
+      recordNavOperationAttemptIdRef.current = '';
     },
     [],
   );
@@ -395,6 +440,27 @@ export function App() {
       deploymentConstructorParameters,
     ],
   );
+  const deploymentEvidenceReadModel = useMemo(
+    () =>
+      toDeploymentEvidenceReadModel({
+        deploymentState: walletSignedDeploymentState,
+        artifactReference: {
+          artifactPackageId: smartContractArtifactPackage?.artifactId,
+          contractName: mila26RestrictedFundTokenDeploymentArtifact.contractName,
+          bytecodeHash: mila26RestrictedFundTokenDeploymentArtifact.bytecodeHash,
+          compileCheckId: smartContractCompileTestResult?.compileCheckId,
+        },
+      }),
+    [walletSignedDeploymentState, smartContractArtifactPackage, smartContractCompileTestResult],
+  );
+  const recordNavOperationReadModel = useMemo(
+    () =>
+      toRecordNavOperationReadModel({
+        operationState: recordNavOperationState,
+        deploymentEvidence: deploymentEvidenceReadModel,
+      }),
+    [recordNavOperationState, deploymentEvidenceReadModel],
+  );
   const projectLifecycleReadModel = useMemo(
     () =>
       toProjectLifecycleReadModel({
@@ -459,6 +525,8 @@ export function App() {
         deploymentContractAddress: walletSignedDeploymentState.contractAddress,
         deploymentReceiptStatus: walletSignedDeploymentState.receiptStatus,
         deploymentLocalSessionOnly: walletSignedDeploymentState.localSessionOnly,
+        deploymentEvidence: deploymentEvidenceReadModel,
+        recordNavOperation: recordNavOperationReadModel,
         customEvents: smartContractArtifactSpec?.eventModel?.customEvents,
       }),
     [
@@ -473,6 +541,8 @@ export function App() {
       walletConnectionReadModel,
       walletAddressDisplay,
       walletSignedDeploymentState,
+      deploymentEvidenceReadModel,
+      recordNavOperationReadModel,
     ],
   );
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
@@ -506,6 +576,25 @@ export function App() {
   const deploymentActionDisabledReason = isDeploymentAttemptInFlight(walletSignedDeploymentState)
     ? 'A wallet deployment request is already awaiting confirmation or receipt.'
     : unsignedDeploymentIntentReadModel.blockedReasons[0] ?? 'Complete wallet connection and unsigned deployment intent review first.';
+  const canRequestRecordNavOperation =
+    smartContractGenerationStatus === 'ready' &&
+    isWalletConnectionComplete &&
+    deploymentEvidenceReadModel.status === 'confirmed' &&
+    deploymentEvidenceReadModel.evidenceStrength === 'confirmed_receipt' &&
+    deploymentEvidenceReadModel.contractAddressSource === 'receipt_returned' &&
+    Boolean(deploymentEvidenceReadModel.contractAddress) &&
+    recordNavOperationState.operationStatus !== 'confirmed' &&
+    !isRecordNavOperationInFlight(recordNavOperationState) &&
+    !recordNavOperationAttemptIdRef.current;
+  const recordNavOperationDisabledReason = isRecordNavOperationInFlight(recordNavOperationState)
+    ? 'A Record NAV operation is already awaiting wallet confirmation or receipt.'
+    : recordNavOperationState.operationStatus === 'confirmed'
+      ? 'Record NAV operation is confirmed for this local session.'
+      : deploymentEvidenceReadModel.status !== 'confirmed'
+        ? 'Confirm wallet-signed Sepolia deployment evidence before recording NAV.'
+        : !isWalletConnectionComplete
+          ? 'Connect a Sepolia wallet before recording NAV.'
+          : 'Record NAV operation is blocked by a precondition.';
   const generatedArtifactCards = useMemo<GeneratedArtifactCard[]>(
     () =>
       smartContractGenerationStatus === 'ready'
@@ -559,14 +648,26 @@ export function App() {
             {
               label: 'Sepolia Deployment',
               status: formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus),
-              detail: `${walletSignedDeploymentState.transactionHash ? `Transaction hash: ${walletSignedDeploymentState.transactionHash}.` : 'No transaction hash.'} ${walletSignedDeploymentState.contractAddress ? `Contract address: ${walletSignedDeploymentState.contractAddress}.` : 'No contract address.'} Deployment state is local-session-only until Track 14C evidence linkage.`,
+              detail: `${walletSignedDeploymentState.transactionHash ? `Transaction hash: ${walletSignedDeploymentState.transactionHash}.` : 'No transaction hash.'} ${walletSignedDeploymentState.contractAddress ? `Contract address: ${walletSignedDeploymentState.contractAddress}.` : 'No contract address.'} Deployment state is local-session-only.`,
               source: 'Track 14B wallet-signed deployment',
             },
             {
+              label: 'Deployment Evidence',
+              status: deploymentEvidenceReadModel.statusLabel,
+              detail: `${deploymentEvidenceReadModel.evidencePersistenceLabel}. Evidence strength: ${deploymentEvidenceReadModel.evidenceStrengthLabel}. Transaction hash source: ${deploymentEvidenceReadModel.transactionHashSourceLabel}. Contract address source: ${deploymentEvidenceReadModel.contractAddressSourceLabel}.`,
+              source: 'Track 14C local-session evidence surface',
+            },
+            {
+              label: 'Record NAV Operation',
+              status: recordNavOperationReadModel.statusLabel,
+              detail: `Operation evidence: ${recordNavOperationReadModel.operationEvidencePersistenceLabel}. Transaction hash source: ${recordNavOperationReadModel.operationTransactionHashSourceLabel}. Receipt source: ${recordNavOperationReadModel.operationReceiptSourceLabel}. Event evidence: ${recordNavOperationReadModel.eventEvidenceSourceLabel}.`,
+              source: 'Track 15A wallet-signed SCP operation',
+            },
+            {
               label: 'Smart Contract Operations',
-              status: 'Locked',
+              status: deploymentEvidenceReadModel.status === 'confirmed' ? 'Record NAV gated' : 'Locked',
               detail:
-                'Reason: operation-specific authorization and evidence logging are not implemented. Required before operations: wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging.',
+                'SCP exposes only the Record NAV Event operation after confirmed deployment evidence. Other Smart Contract Operations remain locked.',
               source: 'SCP operations boundary',
             },
             {
@@ -590,6 +691,8 @@ export function App() {
       walletConnectionReadModel,
       walletAddressDisplay,
       walletSignedDeploymentState,
+      deploymentEvidenceReadModel,
+      recordNavOperationReadModel,
     ],
   );
 
@@ -665,12 +768,15 @@ export function App() {
   function resetSmartContractGeneration() {
     deploymentAttemptSequenceRef.current += 1;
     deploymentAttemptIdRef.current = '';
+    recordNavOperationAttemptSequenceRef.current += 1;
+    recordNavOperationAttemptIdRef.current = '';
     setSmartContractArtifactSpec(undefined);
     setSmartContractArtifactPackage(undefined);
     setSmartContractCheckResult(undefined);
     setSmartContractEvidenceLite(undefined);
     setSmartContractCompileTestResult(undefined);
     setWalletSignedDeploymentState(initialWalletSignedDeploymentState);
+    setRecordNavOperationState(initialRecordNavOperationState);
     setSmartContractGenerationStatus('idle');
     setSmartContractGenerationError(undefined);
   }
@@ -749,6 +855,9 @@ export function App() {
     const attemptId = `wallet-signed-sepolia-deployment-${deploymentAttemptSequenceRef.current + 1}`;
     deploymentAttemptSequenceRef.current += 1;
     deploymentAttemptIdRef.current = attemptId;
+    recordNavOperationAttemptSequenceRef.current += 1;
+    recordNavOperationAttemptIdRef.current = '';
+    setRecordNavOperationState(initialRecordNavOperationState);
 
     const constructorArgs =
       connectedWalletAddress && deploymentConstructorParameters
@@ -787,6 +896,54 @@ export function App() {
       setWalletSignedDeploymentState(result);
       setEngineerResponse(createDeploymentResponse(result));
       setEngineerAnswerSource('wallet');
+    }
+  }
+
+  async function requestRecordNavOperation() {
+    if (recordNavOperationAttemptIdRef.current || isRecordNavOperationInFlight(recordNavOperationState)) return;
+
+    const provider = getBrowserEthereumProvider();
+    const connectedWalletAddress = walletConnectionReadModel.connectedWalletAddress;
+    const attemptId = `record-nav-operation-${recordNavOperationAttemptSequenceRef.current + 1}`;
+    recordNavOperationAttemptSequenceRef.current += 1;
+    recordNavOperationAttemptIdRef.current = attemptId;
+
+    const immediateState: RecordNavOperationState = {
+      operationStatus: 'awaiting_wallet_confirmation',
+      attemptId,
+      contractAddress: deploymentEvidenceReadModel.contractAddress,
+      operationReceiptStatus: 'pending',
+      valuation: defaultRecordNavOperationPayload.valuation,
+      valuationReference: defaultRecordNavOperationPayload.valuationReference,
+      localSessionOnly: true,
+    };
+    setRecordNavOperationState(immediateState);
+
+    const result = await requestWalletSignedRecordNavOperation({
+      provider: provider as SepoliaRecordNavOperationProvider | undefined,
+      connectedWalletAddress,
+      deploymentEvidence: deploymentEvidenceReadModel,
+      contractAbi: mila26RestrictedFundTokenDeploymentArtifact.abi,
+      payload: defaultRecordNavOperationPayload,
+      currentOperationState: recordNavOperationState,
+      attemptId,
+      pollOptions: {
+        maxAttempts: 8,
+        intervalMs: 1_500,
+      },
+      shouldContinue: (candidateAttemptId) => recordNavOperationAttemptIdRef.current === candidateAttemptId,
+      onStateChange: (nextState) => {
+        if (recordNavOperationAttemptIdRef.current === nextState.attemptId) {
+          setRecordNavOperationState(nextState);
+        }
+      },
+    });
+
+    if (recordNavOperationAttemptIdRef.current === attemptId) {
+      setRecordNavOperationState(result);
+      setEngineerResponse(createRecordNavOperationResponse(result));
+      setEngineerAnswerSource('wallet');
+      recordNavOperationAttemptIdRef.current = '';
     }
   }
 
@@ -1333,22 +1490,33 @@ export function App() {
               <li>{walletAddressDisplay ? `Connected wallet: ${walletAddressDisplay}` : 'No wallet address'}</li>
               <li>Wallet execution: Not implemented</li>
               <li>Wallet-signed Sepolia deployment: {formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus)}</li>
+              <li>Deployment evidence status: {deploymentEvidenceReadModel.statusLabel}</li>
+              <li>Evidence strength: {deploymentEvidenceReadModel.evidenceStrengthLabel}</li>
+              <li>Evidence persistence: {deploymentEvidenceReadModel.evidencePersistenceLabel}</li>
+              <li>Transaction hash source: {deploymentEvidenceReadModel.transactionHashSourceLabel}</li>
+              <li>Contract address source: {deploymentEvidenceReadModel.contractAddressSourceLabel}</li>
               <li>
-                {walletSignedDeploymentState.transactionHash
-                  ? `Transaction hash: ${walletSignedDeploymentState.transactionHash}`
+                {deploymentEvidenceReadModel.transactionHash
+                  ? `Transaction hash: ${deploymentEvidenceReadModel.transactionHash}`
                   : 'No transaction hash'}
               </li>
               <li>
-                {walletSignedDeploymentState.contractAddress
-                  ? `Contract address: ${walletSignedDeploymentState.contractAddress}`
+                {deploymentEvidenceReadModel.contractAddress
+                  ? `Contract address: ${deploymentEvidenceReadModel.contractAddress}`
                   : 'No contract address'}
               </li>
-              <li>Deployment status is held in this local session. Evidence linkage follows in Track 14C.</li>
+              <li>Deployment Evidence: Local session only</li>
               <li>User wallet signing required later</li>
               <li>Backend never holds private keys</li>
               <li>No signed payload</li>
-              <li>{walletSignedDeploymentState.transactionHash ? 'Submitted transaction: Submitted to Sepolia' : 'No submitted transaction'}</li>
-              <li>{walletSignedDeploymentState.contractAddress ? 'Confirmed transaction: Confirmed on Sepolia' : 'No confirmed transaction'}</li>
+              <li>{deploymentEvidenceReadModel.transactionHash ? 'Submitted transaction: Submitted to Sepolia' : 'No submitted transaction'}</li>
+              <li>{deploymentEvidenceReadModel.contractAddress ? 'Confirmed transaction: Confirmed on Sepolia' : 'No confirmed transaction'}</li>
+              <li>Record NAV operation: {formatRecordNavOperationStatus(recordNavOperationState.operationStatus)}</li>
+              <li>Operation evidence: {recordNavOperationReadModel.operationEvidencePersistenceLabel}</li>
+              <li>Operation transaction hash source: {recordNavOperationReadModel.operationTransactionHashSourceLabel}</li>
+              <li>Operation receipt source: {recordNavOperationReadModel.operationReceiptSourceLabel}</li>
+              <li>ValuationUpdated event evidence: {recordNavOperationReadModel.eventEvidenceSourceLabel}</li>
+              <li>Other Smart Contract Operations: Locked</li>
             </ul>
             <p className="microcopy">Remaining gate items</p>
             <ul className="artifact-list">
@@ -1477,18 +1645,48 @@ export function App() {
               <span>Deployment execution: {formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus)}</span>
               <span>Wallet-signed Sepolia deployment: {formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus)}</span>
               <span>
-                {walletSignedDeploymentState.transactionHash
-                  ? `Transaction hash: ${walletSignedDeploymentState.transactionHash}`
+                {deploymentEvidenceReadModel.transactionHash
+                  ? `Transaction hash: ${deploymentEvidenceReadModel.transactionHash}`
                   : 'No transaction hash'}
               </span>
               <span>
-                {walletSignedDeploymentState.contractAddress
-                  ? `Contract address: ${walletSignedDeploymentState.contractAddress}`
+                {deploymentEvidenceReadModel.contractAddress
+                  ? `Contract address: ${deploymentEvidenceReadModel.contractAddress}`
                   : 'No contract address'}
               </span>
             </div>
             <p className="microcopy">
-              User wallet signs in browser. Backend never holds private keys. Deployment status is held in this local session; evidence linkage follows in Track 14C.
+              User wallet signs in browser. Backend never holds private keys. Deployment evidence is derived from local-session provider and receipt responses only.
+            </p>
+          </section>
+
+          <section className="contract-section">
+            <h3>Deployment Evidence</h3>
+            <div className="health-list">
+              <span>{deploymentEvidenceReadModel.statusLabel}</span>
+              <span>Evidence strength: {deploymentEvidenceReadModel.evidenceStrengthLabel}</span>
+              <span>Evidence persistence: {deploymentEvidenceReadModel.evidencePersistenceLabel}</span>
+              <span>Transaction hash source: {deploymentEvidenceReadModel.transactionHashSourceLabel}</span>
+              <span>Contract address source: {deploymentEvidenceReadModel.contractAddressSourceLabel}</span>
+              <span>Network: {deploymentEvidenceReadModel.networkName}</span>
+              <span>
+                {deploymentEvidenceReadModel.transactionHash
+                  ? `Transaction hash: ${deploymentEvidenceReadModel.transactionHash}`
+                  : 'No transaction hash'}
+              </span>
+              <span>
+                {deploymentEvidenceReadModel.contractAddress
+                  ? `Contract address: ${deploymentEvidenceReadModel.contractAddress}`
+                  : 'No contract address'}
+              </span>
+              <span>
+                {deploymentEvidenceReadModel.status === 'confirmed'
+                  ? 'Record NAV Event: Gated in SCP'
+                  : 'Smart Contract Operations: Locked until Track 15A'}
+              </span>
+            </div>
+            <p className="microcopy">
+              Deployment Evidence: Local session only. Evidence Pack handoff remains a later track.
             </p>
           </section>
 
@@ -1503,16 +1701,16 @@ export function App() {
               <span>User wallet signing required later</span>
               <span>Backend never holds private keys</span>
               <span>No signed payload</span>
-              <span>{walletSignedDeploymentState.transactionHash ? 'Submitted transaction: Submitted to Sepolia' : 'No submitted transaction'}</span>
-              <span>{walletSignedDeploymentState.contractAddress ? 'Confirmed transaction: Confirmed on Sepolia' : 'No confirmed transaction'}</span>
+              <span>{deploymentEvidenceReadModel.transactionHash ? 'Submitted transaction: Submitted to Sepolia' : 'No submitted transaction'}</span>
+              <span>{deploymentEvidenceReadModel.contractAddress ? 'Confirmed transaction: Confirmed on Sepolia' : 'No confirmed transaction'}</span>
               <span>
-                {walletSignedDeploymentState.contractAddress
-                  ? `Contract address: ${walletSignedDeploymentState.contractAddress}`
+                {deploymentEvidenceReadModel.contractAddress
+                  ? `Contract address: ${deploymentEvidenceReadModel.contractAddress}`
                   : 'No contract address'}
               </span>
               <span>
-                {walletSignedDeploymentState.transactionHash
-                  ? `Transaction hash: ${walletSignedDeploymentState.transactionHash}`
+                {deploymentEvidenceReadModel.transactionHash
+                  ? `Transaction hash: ${deploymentEvidenceReadModel.transactionHash}`
                   : 'No transaction hash'}
               </span>
             </div>
@@ -1525,16 +1723,45 @@ export function App() {
           <section className="contract-section">
             <h3>Smart Contract Operations</h3>
             <div className="health-list">
-              <span>Smart Contract Operations: Locked</span>
-              <span>Reason: operation-specific authorization and evidence logging are not implemented</span>
-              <span>
-                Required before operations: wallet connection, user-signed deployment, deployed testnet contract address,
-                transaction hash, operation authorization model, evidence logging
-              </span>
+              <span>Record NAV operation: {formatRecordNavOperationStatus(recordNavOperationState.operationStatus)}</span>
+              <span>Operation evidence: {recordNavOperationReadModel.operationEvidencePersistenceLabel}</span>
+              <span>Operation transaction hash source: {recordNavOperationReadModel.operationTransactionHashSourceLabel}</span>
+              <span>Operation receipt source: {recordNavOperationReadModel.operationReceiptSourceLabel}</span>
+              <span>ValuationUpdated event evidence: {recordNavOperationReadModel.eventEvidenceSourceLabel}</span>
+              <span>Valuation payload: {defaultRecordNavOperationPayload.valuation.toString()}</span>
+              <span>Valuation reference: {defaultRecordNavOperationPayload.valuationReference}</span>
+              {recordNavOperationReadModel.operationTransactionHash ? (
+                <span>Operation transaction hash: {recordNavOperationReadModel.operationTransactionHash}</span>
+              ) : (
+                <span>No operation transaction hash</span>
+              )}
+              {recordNavOperationReadModel.decodedEvent ? (
+                <span>ValuationUpdated event: Decoded from receipt</span>
+              ) : (
+                <span>ValuationUpdated event: Not decoded</span>
+              )}
+              <span>Other Smart Contract Operations: Locked</span>
             </div>
+            {deploymentEvidenceReadModel.status === 'confirmed' && (
+              <button
+                className="workflow-button"
+                data-action-id={uiActions.recordNavEvent}
+                disabled={!canRequestRecordNavOperation}
+                onClick={() => void requestRecordNavOperation()}
+                title={canRequestRecordNavOperation ? undefined : recordNavOperationDisabledReason}
+              >
+                {recordNavOperationState.operationStatus === 'awaiting_wallet_confirmation'
+                  ? 'Awaiting Wallet Confirmation...'
+                  : recordNavOperationState.operationStatus === 'submitted'
+                    ? 'Record NAV Submitted to Sepolia'
+                    : recordNavOperationState.operationStatus === 'confirmed'
+                      ? 'Record NAV Confirmed on Sepolia'
+                      : 'Record NAV Event'}
+              </button>
+            )}
             <p className="microcopy">
-              Operational controls remain unavailable. Mint, burn, pause, resume, NAV, and distribution controls are not
-              active in Track 14B.
+              SCP exposes only the Record NAV Event operation after confirmed deployment evidence. Mint, burn, pause,
+              resume, whitelist, allocation, and distribution controls remain locked.
             </p>
           </section>
 
@@ -1549,8 +1776,7 @@ export function App() {
             </div>
             <p className="microcopy">
               Deployment identifiers appear only after provider responses. Local compile/test status is a known
-              developer-local foundation result only. Deployment status is local-session-only until Track 14C evidence
-              linkage.
+              developer-local foundation result only. Evidence persistence: Local session only.
             </p>
           </section>
         </div>

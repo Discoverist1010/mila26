@@ -25,7 +25,7 @@ Track 14B implements the first real blockchain execution step:
 - the app sends a contract-creation transaction through the browser wallet provider.
 - transaction hash appears only after the provider returns it.
 - contract address appears only after a successful receipt includes `contractAddress`.
-- deployment state is local-session-only until Track 14C.
+- deployment evidence remains local-session-only until a later persistence/evidence track.
 - SCP operations remain locked.
 
 ## Backend Responsibilities
@@ -33,7 +33,7 @@ Track 14B implements the first real blockchain execution step:
 - Provide artifact/spec/check/evidence metadata.
 - Validate PRD/Requirement Brief and generated contract metadata.
 - Enforce testnet-only configuration.
-- Later, provide chain ID, contract ABI/bytecode metadata, constructor arguments, unsigned transaction intent, and durable evidence/status linkage.
+- Later, provide chain ID, contract ABI/bytecode metadata, constructor arguments, unsigned transaction intent, and durable evidence/status storage.
 - Store off-chain project data later when persistence exists.
 - Never store or request private keys or seed phrases.
 
@@ -79,7 +79,8 @@ Track 14B implements the first real blockchain execution step:
 11. User wallet signs/submits the testnet transaction.
 12. MILA26 displays the real transaction hash after provider submission.
 13. Contract address is displayed only after a successful receipt confirms contract creation.
-14. Track 14C links deployment status and identifiers into durable evidence/readiness.
+14. Track 14C derives local-session evidence/readiness from deployment status and identifiers.
+15. A later persistence/evidence track can store or index deployment evidence durably.
 
 ## Mint And Distribute Flow
 
@@ -101,7 +102,7 @@ Minimum statuses:
 - Confirmed.
 - Failed.
 
-Status is visible in the UI as local-session state in Track 14B and becomes traceable in run/project memory only after persistence/evidence linkage exists.
+Status is visible in the UI as local-session state and local-session evidence/readiness. It becomes traceable in run/project memory only after persistence/evidence storage exists.
 
 ## Limitations And Deferred Production Concerns
 

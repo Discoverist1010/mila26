@@ -1,6 +1,12 @@
 # MILA26 Next Prompts
 
-## Next Codex Prompt: Track 14C Deployment Status / Evidence Linkage
+## Next Codex Prompt: Track 15A.1 or 15B
+
+If Track 15A event decoding, local-session operation evidence, or SCP gating needs cleanup, run a short Track 15A.1 hardening track.
+
+If Track 15A is clean, proceed to Track 15B - Whitelist + Allocation/Mint Operation.
+
+## Prior Prompt: Track 15A First SCP Wallet-Signed Operation - Record NAV Event
 
 ```text
 You are working inside the MILA26 repository:
@@ -10,7 +16,7 @@ You are working inside the MILA26 repository:
 Start from main.
 
 Before making changes:
-1. Confirm Track 14B has been committed and pushed.
+1. Confirm Track 14C has been committed and pushed.
 2. Run:
    git status --short --branch
 3. Working tree must be clean before starting.
@@ -21,42 +27,27 @@ Before making changes:
 Current project status:
 - Track 13B added frontend-only EIP-1193 wallet connection and Sepolia verification.
 - Track 14A added the review-only UnsignedDeploymentIntentReadModel.
-- Track 14B added frontend-only wallet-signed Sepolia deployment:
-  - user wallet signs in browser.
-  - backend never holds private keys.
-  - account and chain are re-checked immediately before eth_sendTransaction.
-  - duplicate deployment attempts are blocked while awaiting wallet confirmation or receipt.
-  - transaction hash appears only after provider response.
-  - contract address appears only after successful receipt confirmation.
-  - deployment status is local-session-only.
-  - SCP operations remain locked.
+- Track 14B added frontend-only wallet-signed Sepolia deployment.
+- Track 14C added local-session deployment evidence/readiness:
+  - transaction hash evidence only if provider-returned.
+  - contract address evidence only if receipt-returned from successful confirmed deployment.
+  - evidence persistence is local-session-only.
+  - no Evidence Pack storage, backend route, mainnet, audit claim, or SCP operations were added.
 
-We are starting Track 14C - Deployment Status / Evidence Linkage.
+We are starting Track 15A - First SCP Wallet-Signed Operation: Record NAV Event.
 
 Goal:
-Link real Track 14B deployment outputs into MILA26 evidence/readiness without adding new wallet execution or SCP operations.
+Add one low-risk wallet-signed SCP operation path for Record NAV Event after confirmed deployment evidence exists.
 
 Important:
-Track 14C should consume already-returned deployment outputs. It should not add a new deployment route, backend signing, private-key custody, mainnet, fake tx hash/address, or active Mint/Burn/Pause/NAV/Distribution controls.
-
-Suggested outputs:
-- typed deployment evidence/status read model.
-- evidence item candidates for transaction hash, contract address, chain, receipt status, artifact hash, and local-session source.
-- SCP/readiness projection that distinguishes evidence-linked deployment state from operation readiness.
+Track 15A should be operation-specific. Do not unlock Mint/Burn/Pause/Distribution suites. Do not add mainnet, backend private-key custody, fake transaction hashes, fake event logs, or broad SCP redesign.
 
 Acceptance criteria:
-- real tx hash and contract address can be represented only if they came from provider/receipt output.
-- deployment evidence linkage is distinct from wallet execution.
-- SCP operations remain locked until a later operation-specific track.
-- backend never holds private keys.
-- mainnet remains disabled.
-- tests pass.
-```
-
-## Later Prompt: Track 15A First Wallet-Signed SCP Operation
-
-```text
-Implement only after wallet-signed Sepolia deployment evidence linkage exists.
-
-Add one low-risk wallet-signed SCP operation, likely Record NAV Event, with operation authorization, evidence logging, and no fake live metrics.
+- Record NAV Event is blocked unless wallet is connected, chain is Sepolia, deployment evidence is confirmed from receipt, and contract address is receipt-returned.
+- User wallet signs the operation in browser.
+- Backend never holds private keys.
+- Operation transaction hash appears only after provider response.
+- Receipt/event evidence appears only after receipt/log response.
+- SCP operations remain gated; only Record NAV Event is introduced.
+- Tests pass.
 ```

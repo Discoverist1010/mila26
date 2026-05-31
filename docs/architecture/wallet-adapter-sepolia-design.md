@@ -203,7 +203,7 @@ Proposed next sequence:
 - Track 13B: connect MetaMask through an EIP-1193 adapter and verify Sepolia only.
 - Track 14A: define unsigned deployment transaction intent and user review payload.
 - Track 14B: user wallet signs/submits Sepolia deployment; transaction hash and contract address may appear only from real provider/receipt responses and remain local-session-only.
-- Track 14C: link deployment status, transaction hash, contract address, chain, receipt, and artifact into durable evidence/readiness.
+- Track 14C: derive local-session deployment evidence/readiness from deployment status, transaction hash, contract address, chain, receipt, and artifact.
 - Track 15A: first wallet-signed SCP operation, likely `Record NAV Event`.
 
 ## UI Placement
@@ -247,7 +247,7 @@ Track 14B keeps wallet deployment frontend-only:
 - transaction hash appears only after the provider returns it.
 - contract address appears only after `eth_getTransactionReceipt` returns a successful contract-creation receipt.
 - receipt polling is bounded and stale results are ignored.
-- deployment state is local-session-only until Track 14C evidence linkage.
+- deployment evidence remains local-session-only until a later persistence/evidence track.
 - SCP operations remain locked.
 
 ## Risks and Deferred Decisions
@@ -256,7 +256,7 @@ Deferred:
 
 - wagmi connector setup.
 - persistence of wallet/deployment state.
-- deployment evidence/status linkage.
+- durable deployment evidence/status storage.
 - SCP operations.
 - mainnet.
 

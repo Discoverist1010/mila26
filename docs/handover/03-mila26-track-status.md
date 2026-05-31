@@ -30,11 +30,14 @@ This file is the current handover index. Older planning docs may still describe 
 | Track 13B | Complete | Added frontend-only MetaMask/EIP-1193 wallet connection and Sepolia verification foundation. | `src/wallet/eip1193WalletAdapter.ts`, `src/wallet/browserEthereumProvider.ts`, `src/App.tsx`, `tests/eip1193-wallet-adapter.test.ts` | No signing, deployment transaction, tx hash, contract address, SCP operations, persistence, or mainnet. |
 | Track 14A | Complete | Added unsigned deployment intent read model for review-only Sepolia deployment intent. | `src/domain/unsignedDeploymentIntentReadModel.ts`, `tests/unsigned-deployment-intent-read-model.test.ts`, `docs/contracts/deployment-transaction-intent-contract.md` | No signing, executable transaction payload, tx hash, contract address, receipt, backend route, persistence, or mainnet. |
 | Track 14B | Complete | Added frontend-only wallet-signed Sepolia deployment with pre-send account/chain re-check, duplicate-submit protection, bounded receipt polling, and local-session tx/address display from real provider responses. | `src/wallet/sepoliaDeploymentAdapter.ts`, `src/domain/walletSignedDeploymentReadModel.ts`, `src/contracts/mila26RestrictedFundTokenDeploymentArtifact.ts`, `src/App.tsx`, `tests/sepolia-deployment-adapter.test.ts` | Deployment evidence/status linkage, persistence, and SCP operations remain deferred. |
+| Track 14C | Complete | Added pure deployment evidence/readiness read model and passive generated-artifact/right-rail/SCP surfaces for provider transaction-hash and receipt-confirmed contract-address evidence. | `src/domain/deploymentEvidenceReadModel.ts`, `tests/deployment-evidence-read-model.test.ts`, `docs/contracts/deployment-evidence-contract.md` | First operation-specific SCP workflow remains deferred to Track 15A. |
+| Track 15A | Complete | Added the first wallet-signed SCP operation, Record NAV Event, gated by confirmed deployment evidence, Sepolia wallet readiness, valid receipt-returned contract address, and local-session operation evidence. | `src/wallet/sepoliaRecordNavOperationAdapter.ts`, `src/domain/recordNavOperationReadModel.ts`, `tests/sepolia-record-nav-operation-adapter.test.ts`, `tests/record-nav-operation-read-model.test.ts`, `docs/contracts/record-nav-operation-contract.md` | If event decoding or SCP gating needs cleanup, use Track 15A.1; otherwise proceed to Track 15B Whitelist + Allocation/Mint Operation. |
 
 ## Current Validation Baseline
 
-Recent Track 14B validation:
+Recent Track 14C validation:
 
+- `npm run test -- tests/deployment-evidence-read-model.test.ts`
 - `npm run test -- tests/sepolia-deployment-adapter.test.ts`
 - `npm run test -- tests/unsigned-deployment-intent-read-model.test.ts`
 - `npm run test -- tests/eip1193-wallet-adapter.test.ts`
@@ -47,4 +50,4 @@ Recent Track 14B validation:
 - `npm run contracts:export-artifact`
 - `npm run test:contracts`
 
-All should pass before Track 14B is committed.
+All should pass before Track 14C is committed.

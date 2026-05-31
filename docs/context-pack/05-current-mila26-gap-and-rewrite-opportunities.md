@@ -6,20 +6,19 @@ MILA26 has moved beyond the initial rewrite context. The active goal is a blockc
 
 | Area | Current state | Gap | Next opportunity | Risk if rushed |
 |---|---|---|---|---|
-| Wallet connection | Track 13B frontend-only EIP-1193 connection exists. | No signing, persistence, or transaction lifecycle yet. | Keep wallet connection stable while Track 14B adds real wallet-signed deployment. | Mistaking wallet connection for signing/deployment readiness. |
-| Deployment transaction intent | Track 14A unsigned deployment intent read model exists. | No executable transaction/signature path yet. | Track 14B consumes the review-ready unsigned intent for wallet-signed Sepolia deployment. | Signing request without user-review structure. |
-| Wallet signing | No signing runtime exists. | No real signature request or tx submission. | Track 14B wallet-signed Sepolia deployment. | Backend key leakage, wrong-chain signing, fake tx status. |
-| Transaction record | No tx hash/contract address exists. | No receipt tracking or display. | Track 14C real tx hash, contract address, receipt status only from real submission. | Fake address/hash or misleading deployed state. |
-| SCP operations | Operations locked. | No wallet-signed contract operation yet. | Track 15A one low-risk operation, likely Record NAV Event. | Live-sounding controls before deployed contract exists. |
+| Wallet connection | Track 13B frontend-only EIP-1193 connection exists. | No persistence or multi-wallet orchestration yet. | Keep wallet connection stable while operation tracks consume it. | Mistaking wallet connection for signing/deployment readiness. |
+| Deployment transaction intent | Track 14A unsigned deployment intent read model exists. | Durable deployment evidence storage is still absent. | Use Track 14C local-session evidence as the input to the next operation track. | Treating local-session evidence as durable storage. |
+| Wallet signing | Track 15A adds wallet-signed Record NAV Event after Track 14B deployment. | Broader operation signing remains future. | Track 15B Whitelist + Allocation/Mint Operation if 15A is clean. | Backend key leakage, wrong-chain signing, fake tx status. |
+| Transaction record | Track 14C local-session deployment evidence/readiness exists. | No durable Evidence Pack storage/indexing yet. | Defer storage until operation evidence shape is proven. | Fake address/hash or misleading durable deployed state. |
+| SCP operations | Record NAV Event is the first gated wallet-signed operation. | Mint/Burn/Pause/Distribution/Whitelist remain locked. | Track 15B Whitelist + Allocation/Mint Operation. | Live-sounding controls before deployed contract exists. |
 | Persistence | Local React state only. | Refresh loses generated artifacts and readiness. | Add persistence only after wallet/deployment flow shape stabilizes. | Premature schema lock-in. |
 | Auth/payments | Not implemented. | No production user/tenant boundary. | Defer until alpha execution path is proven. | Sprawl before core blockchain functionality. |
 
 ## Recommended Next Sequence
 
-1. Track 14B: user wallet signs Sepolia deployment from the unsigned intent.
-2. Track 14C: capture real tx hash, contract address, and receipt status.
-3. Track 15A: first wallet-signed SCP operation.
-4. Persistence/auth hardening after the execution path is stable.
+1. Track 15A.1 hardening if Record NAV event evidence needs cleanup, otherwise Track 15B Whitelist + Allocation/Mint Operation.
+2. Operation evidence linkage for transaction hash, receipt, and event result.
+3. Persistence/auth hardening after the execution path is stable.
 
 ## Guardrails For All Future Tracks
 

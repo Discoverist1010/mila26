@@ -525,13 +525,13 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(generatedArtifacts.getByText('Not detected')).toBeVisible();
     expect(generatedArtifacts.getByText('Wallet chain: Unknown. No wallet address. Connection only; no signing or deployment.')).toBeVisible();
     expect(generatedArtifacts.getByText('Track 13B EIP-1193 adapter')).toBeVisible();
-    expect(generatedArtifacts.getByText('Smart Contract Operations')).toBeVisible();
-    expect(generatedArtifacts.getByText('Locked')).toBeVisible();
-    expect(
-      generatedArtifacts.getByText(
-        'Reason: operation-specific authorization and evidence logging are not implemented. Required before operations: wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging.',
-      ),
-    ).toBeVisible();
+	    expect(generatedArtifacts.getByText('Smart Contract Operations')).toBeVisible();
+	    expect(generatedArtifacts.getByText('Locked')).toBeVisible();
+	    expect(
+	      generatedArtifacts.getByText(
+	        'SCP exposes only the Record NAV Event operation after confirmed deployment evidence. Other Smart Contract Operations remain locked.',
+	      ),
+	    ).toBeVisible();
     expect(screen.getByText('Deployment / Signing / Audit')).toBeVisible();
     expect(screen.getByText('Not audited. No production approval. Wallet connection alone does not execute deployment. Smart Contract Operations remain locked.')).toBeVisible();
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Smart contract preparation is complete for demo review');
@@ -564,12 +564,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getAllByText('No contract address').length).toBeGreaterThan(0);
     expect(screen.getAllByText('No transaction hash').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Smart Contract Operations: Locked').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Reason: operation-specific authorization and evidence logging are not implemented').length).toBeGreaterThan(0);
-    expect(
-      screen.getAllByText(
-        'Required before operations: wallet connection, user-signed deployment, deployed testnet contract address, transaction hash, operation authorization model, evidence logging',
-      ).length,
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByText('SCP exposes only the Record NAV Event operation after confirmed deployment evidence. Other Smart Contract Operations remain locked.').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Record NAV Event' })).not.toBeInTheDocument();
     expect(screen.getByText('Wallet signing not implemented: Not implemented')).toBeVisible();
     expect(screen.getByText('User wallet signing required later: Required')).toBeVisible();
     expect(screen.getAllByText('Wallet connection: Not detected').length).toBeGreaterThan(0);
@@ -579,6 +575,13 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('No confirmed transaction: Absent')).toBeVisible();
     expect(screen.getByText('Contract address: No contract address')).toBeVisible();
     expect(screen.getByText('Transaction hash: No transaction hash')).toBeVisible();
+    expect(screen.getAllByText('Deployment Evidence').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Deployment Evidence: Not available').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Evidence strength: None').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Evidence persistence: Local session only').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Transaction hash source: Absent').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Contract address source: Absent').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Smart Contract Operations: Locked until Track 15A').length).toBeGreaterThan(0);
     expect(screen.getByText('Remaining gate items')).toBeVisible();
     expect(screen.getByText('Design wallet signing before any future Ethereum testnet deployment.')).toBeVisible();
     expect(screen.getByText('Deployment: Not started')).toBeVisible();
@@ -701,11 +704,74 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(String(transaction.data)).toMatch(/^0x[0-9a-f]+/i);
     expect(screen.getAllByText(/Transaction hash: 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Contract address: 0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Deployment Evidence: Confirmed from receipt').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Evidence strength: Confirmed receipt').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Transaction hash source: Provider returned').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Contract address source: Receipt returned').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Evidence persistence: Local session only').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Smart Contract Operations: Locked').length).toBeGreaterThan(0);
-    expect(screen.getByText('Deployment status is held in this local session. Evidence linkage follows in Track 14C.')).toBeVisible();
+    expect(screen.getAllByText('Deployment Evidence: Local session only').length).toBeGreaterThan(0);
+    expect(within(screen.getByLabelText('Engineering Bot actions')).queryByRole('button', { name: /Record NAV/i })).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Record NAV Event' })).toBeEnabled();
+    expect(screen.queryByText(/durable evidence|persistent evidence|permanent evidence/i)).not.toBeInTheDocument();
     expect(within(screen.getByLabelText('Project status')).queryByRole('button', { name: /deploy/i })).not.toBeInTheDocument();
     expect(within(screen.getByTestId('smart-contract-control')).queryByRole('button', { name: /deploy/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/production ready|mainnet ready|audit passed|security approved/i)).not.toBeInTheDocument();
+  });
+
+  it('records the first wallet-signed NAV event from SCP only after confirmed deployment evidence', async () => {
+    const { provider, calls, transactionParams } = createMockWalletProvider();
+    stubBrowserWallet(provider);
+    stubSmartContractPreparationFetch();
+
+    render(<App />);
+    await completeSmartContractPreparation();
+
+    expect(within(screen.getByTestId('smart-contract-control')).queryByRole('button', { name: 'Record NAV Event' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' }));
+
+    await waitFor(() => {
+      expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Record NAV Event' })).toBeEnabled();
+    });
+
+    expect(within(screen.getByLabelText('Engineering Bot actions')).queryByRole('button', { name: /Record NAV/i })).not.toBeInTheDocument();
+    expect(within(screen.getByLabelText('Project status')).queryByRole('button', { name: /Record NAV/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Operation transaction hash: 0x/i)).not.toBeInTheDocument();
+
+    const recordNavButton = within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Record NAV Event' });
+    fireEvent.click(recordNavButton);
+    fireEvent.click(recordNavButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Record NAV confirmed on Sepolia')).toBeVisible();
+    });
+
+    expect(calls.filter((method) => method === 'eth_sendTransaction')).toHaveLength(2);
+    expect(transactionParams).toHaveLength(2);
+    const operationTransaction = (transactionParams[1] as Array<Record<string, unknown>>)[0];
+    expect(operationTransaction.from).toBe(connectedWalletAddress);
+    expect(operationTransaction.to).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+    expect(operationTransaction.value).toBe('0x0');
+    expect(String(operationTransaction.data)).toMatch(/^0x/);
+    expect(screen.getAllByText(/Operation transaction hash: 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Operation evidence: Local session only').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Operation transaction hash source: Provider returned').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Operation receipt source: Provider receipt').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('ValuationUpdated event: Not decoded').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Other Smart Contract Operations: Locked').length).toBeGreaterThan(0);
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Record NAV Confirmed on Sepolia' })).toBeDisabled();
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Mint' })).toBeDisabled();
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Burn' })).toBeDisabled();
+    const distributionButton = within(screen.getByTestId('smart-contract-control')).queryByRole('button', { name: /Distribution/i });
+    if (distributionButton) expect(distributionButton).toBeDisabled();
+    expect(screen.queryByText(/production ready|mainnet ready|audit passed|security approved|operation suite unlocked/i)).not.toBeInTheDocument();
   });
 
   it('blocks wallet-signed deployment when the wallet is wrong-chain or rejects submission', async () => {

@@ -4,9 +4,9 @@
 
 MILA26 is a blockchain-functional alpha foundation for an AI + blockchain tokenisation workspace for asset managers.
 
-The current app can guide a project from a plain-language requirement through Engineering Brief, closure readiness, Smart Contract Artifact Spec, deterministic artifact preview, check/evidence-lite, local compile/test representation, Deployment Gate, Wallet Signing Intent, Wallet Connection Readiness, Unsigned Deployment Intent, and a wallet-signed Sepolia deployment path. Smart Contract Operations remain locked.
+The current app can guide a project from a plain-language requirement through Engineering Brief, closure readiness, Smart Contract Artifact Spec, deterministic artifact preview, check/evidence-lite, local compile/test representation, Deployment Gate, Wallet Signing Intent, Wallet Connection Readiness, Unsigned Deployment Intent, a wallet-signed Sepolia deployment path, local-session deployment evidence/readiness, and the first wallet-signed SCP operation: Record NAV Event. Other Smart Contract Operations remain locked.
 
-The next implementation step is durable deployment status/evidence linkage for the wallet-signed Sepolia deployment results.
+The next implementation step is Track 15A.1 hardening if Record NAV event evidence or SCP gating needs cleanup, otherwise Track 15B Whitelist + Allocation/Mint Operation.
 
 ## Current Product Direction
 
@@ -30,8 +30,9 @@ The next implementation step is durable deployment status/evidence linkage for t
 - Smart contract tooling: local Hardhat/OpenZeppelin fixture exists for compile/test only.
 - Wallet boundary: MetaMask-first EIP-1193 connection and Sepolia readiness are implemented frontend-only.
 - Unsigned deployment intent boundary: review-only domain model exists.
-- Wallet-signed deployment boundary: frontend-only Sepolia deployment exists; transaction hash and contract address are local-session-only until evidence linkage.
-- Persistence, auth, payments, SCP operations, durable deployment evidence linkage, and mainnet are not implemented.
+- Wallet-signed deployment boundary: frontend-only Sepolia deployment exists.
+- Deployment evidence boundary: provider transaction hash and receipt-confirmed contract address are represented as local-session evidence/readiness only.
+- Persistence, auth, payments, SCP operations, durable Evidence Pack storage, and mainnet are not implemented.
 
 ## Current Repo Capabilities
 
@@ -56,6 +57,7 @@ The next implementation step is durable deployment status/evidence linkage for t
 - Wallet Connection Read Model and frontend-only EIP-1193 adapter.
 - Unsigned Deployment Intent Read Model.
 - Wallet-signed Sepolia deployment adapter and local-session deployment state.
+- Deployment Evidence Read Model and passive UI/SCP evidence surface.
 
 ## Completed Recent Tracks
 
@@ -82,23 +84,24 @@ The next implementation step is durable deployment status/evidence linkage for t
 - Track 13B: frontend-only EIP-1193 wallet connection and Sepolia verification.
 - Track 14A: unsigned deployment intent read model.
 - Track 14B: wallet-signed Sepolia deployment through browser wallet.
+- Track 14C: deployment evidence/readiness local-session surface.
 
 ## Current Next Step
 
-Track 14C: Deployment Status / Evidence Linkage.
+Track 15A: First SCP Wallet-Signed Operation - Record NAV Event.
 
-Track 14C should:
+Track 15A should:
 
-- consume local-session wallet-signed deployment outputs.
-- link transaction hash, receipt-confirmed contract address, chain, artifact, and status into MILA26 evidence/readiness.
+- consume confirmed deployment evidence/readiness.
+- add one low-risk operation intent for Record NAV Event.
+- request a user wallet-signed contract operation only after wallet/chain/deployment/authorization gates pass.
+- link operation transaction/receipt result into evidence.
 - keep backend private-key custody impossible.
 - remain Sepolia-only.
-- keep SCP operations locked until Track 15A or later.
 
 ## What Must Not Be Done Yet
 
-- No durable deployment evidence/status storage yet.
-- No SCP operational controls.
+- No broad operation suite yet.
 - No mainnet.
 - No backend private-key custody.
 - No persistence/database.

@@ -70,24 +70,26 @@ The current alpha contract direction is:
 - distribution event.
 - transfer restrictions.
 
-The local fixture compiles and tests with Hardhat, but the app does not run Hardhat dynamically and does not deploy.
+The local fixture compiles and tests with Hardhat, and the app can request wallet-signed Sepolia deployment through the connected browser wallet. The app does not run Hardhat dynamically, deploy from the backend, or hold private keys.
 
 ## Current Wallet/Testnet Direction
 
 Track 13A chose a MetaMask-first wallet connection path through a minimal EIP-1193 browser-provider boundary.
 
-Track 13B connects wallet and verifies Sepolia only. It does not request signatures, prepare deployment transactions, submit transactions, show transaction hashes, show contract addresses, or unlock SCP operations.
+Track 13B connects wallet and verifies Sepolia only.
+
+Track 14B adds wallet-signed Sepolia deployment from the reviewed unsigned deployment intent. Track 14C derives local-session deployment evidence/readiness from provider transaction hash and receipt-confirmed contract address. Neither track unlocks SCP operations.
 
 ## Guardrails
 
 - Backend never holds user private keys.
-- User wallet signs future deployment and operations.
+- User wallet signs deployment and future operations.
 - Sepolia/testnet only for alpha.
 - Mainnet disabled.
 - Wallet address appears only after real wallet connection.
 - Transaction hash appears only after real transaction submission.
 - Contract address appears only after real deployment.
-- SCP operations unlock only after wallet-signed deployment and operation authorization gates.
+- SCP operations unlock only after wallet-signed deployment evidence and operation authorization gates.
 - No audit/security approval or production legal/compliance claim is made.
 
 ## What Should Not Be Lost

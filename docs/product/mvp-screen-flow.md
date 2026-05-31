@@ -83,9 +83,16 @@ The mockup remains directional, not a pixel-perfect implementation mandate. Curr
 - User goal: sign/submit deployment through user wallet.
 - Primary UI: central workflow action, SCP testnet deployment status.
 - Current status: implemented as Track 14B local-session state.
-- Guardrail: backend never holds private keys; mainnet disabled; transaction hash and contract address appear only from real provider/receipt responses; durable evidence linkage is Track 14C.
+- Guardrail: backend never holds private keys; mainnet disabled; transaction hash and contract address appear only from real provider/receipt responses.
 
-## 12. First SCP Operation
+## 12. Deployment Evidence / Readiness
+
+- User goal: understand whether deployment evidence is none, provider transaction hash, or confirmed receipt.
+- Primary UI: generated artifacts, passive right rail, SCP evidence/boundary rows.
+- Current status: implemented as Track 14C local-session evidence surface.
+- Guardrail: no Evidence Pack storage, no backend evidence route, no audit claim, and no SCP operation controls.
+
+## 13. First SCP Operation
 
 - User goal: perform one wallet-signed contract operation after deployment.
 - Preferred first operation: Record NAV Event.

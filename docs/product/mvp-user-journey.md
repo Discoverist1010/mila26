@@ -54,20 +54,23 @@ The current alpha direction is a restricted ERC-20-compatible tokenised fund uni
 
 12. **Wallet-Signed Sepolia Deployment**
     - User requests deployment from the central Engineering Bot workflow surface.
-    - Output: transaction hash appears only after the wallet/provider returns it; contract address appears only after a successful receipt confirms contract creation. Status remains local-session-only until evidence linkage is added.
+    - Output: transaction hash appears only after the wallet/provider returns it; contract address appears only after a successful receipt confirms contract creation.
+
+13. **Deployment Evidence / Readiness**
+    - System derives local-session deployment evidence from the wallet-signed deployment state.
+    - Output: evidence strength distinguishes none, provider transaction hash, and confirmed receipt. Evidence persistence remains local-session-only.
 
 ## Next Journey Stage
 
-Track 14C should link deployment status, real transaction hash, real contract address, chain, receipt, and artifact into durable evidence/readiness. It should not unlock SCP operations by itself.
+Track 15A should add the first operation-specific wallet-signed SCP workflow, likely Record NAV Event. It should not unlock the broader Mint/Burn/Pause/Distribution suite.
 
 ## Future Blockchain-Functional Alpha Journey
 
-After Track 14B, the intended flow is:
+After Track 14C, the intended flow is:
 
-1. Evidence links artifacts, checks, wallet transaction, receipt, and contract address.
-2. SCP reflects deployed Sepolia state as evidence-backed status.
-3. User performs one wallet-signed operation, preferably Record NAV Event.
-4. Evidence links operation intent, wallet transaction, receipt, and event result.
+1. User performs one wallet-signed operation, preferably Record NAV Event.
+2. Evidence links operation intent, wallet transaction, receipt, and event result.
+3. Later tracks may expand operation controls only after the first operation path is proven.
 
 ## User Experience Rules
 
@@ -77,6 +80,7 @@ After Track 14B, the intended flow is:
 - SCP operations unlock only after real wallet-signed deployment and operation gates.
 - Wallet connection is not signing.
 - Signing intent is not transaction execution.
+- Deployment evidence is local-session-only until a later persistence/evidence track.
 - Local compile/test is not deployment or audit approval.
 
 ## Guardrails

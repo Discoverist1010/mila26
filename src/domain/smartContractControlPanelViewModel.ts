@@ -1,4 +1,6 @@
+import type { DeploymentEvidenceReadModel } from './deploymentEvidenceReadModel';
 import type { ProjectLifecycleReadModel } from './projectLifecycleReadModel';
+import type { RecordNavOperationReadModel } from './recordNavOperationReadModel';
 
 export type SmartContractControlPanelStatus =
   | 'preview'
@@ -79,6 +81,8 @@ export type SmartContractControlPanelGeneratedState = {
   deploymentContractAddress?: string;
   deploymentReceiptStatus?: 'pending' | 'success' | 'failed';
   deploymentLocalSessionOnly?: true;
+  deploymentEvidence?: DeploymentEvidenceReadModel;
+  recordNavOperation?: RecordNavOperationReadModel;
   customEvents?: string[];
 };
 
@@ -335,6 +339,8 @@ function walletSignedDeploymentHealthItems(
   const status = generatedState?.walletSignedDeploymentStatus ?? 'not_started';
   const isSubmitted = status === 'submitted' || status === 'confirmed' || status === 'failed';
   const isConfirmed = status === 'confirmed';
+  const transactionHash = generatedState?.deploymentEvidence?.transactionHash ?? generatedState?.deploymentTransactionHash;
+  const contractAddress = generatedState?.deploymentEvidence?.contractAddress;
 
   return [
     {
@@ -344,17 +350,99 @@ function walletSignedDeploymentHealthItems(
     },
     {
       label: 'Deployment transaction hash',
-      value: generatedState?.deploymentTransactionHash ?? 'No transaction hash',
-      status: generatedState?.deploymentTransactionHash ? 'ready' : 'disabled',
+      value: transactionHash ?? 'No transaction hash',
+      status: transactionHash ? 'ready' : 'disabled',
     },
     {
       label: 'Deployment contract address',
-      value: generatedState?.deploymentContractAddress ?? (isSubmitted ? 'No contract address yet' : 'No contract address'),
-      status: generatedState?.deploymentContractAddress ? 'ready' : 'disabled',
+      value: contractAddress ?? (isSubmitted ? 'No contract address yet' : 'No contract address'),
+      status: contractAddress ? 'ready' : 'disabled',
+    },
+  ];
+}
+
+function deploymentEvidenceHealthItems(
+  generatedState?: SmartContractControlPanelGeneratedState,
+): SmartContractControlPanelHealthItem[] {
+  const evidence = generatedState?.deploymentEvidence;
+  if (!evidence) return [];
+
+  return [
+    {
+      label: 'Deployment Evidence',
+      value: evidence.statusLabel.replace('Deployment Evidence: ', ''),
+      status: evidence.evidenceStrength === 'confirmed_receipt' ? 'ready' : evidence.status === 'failed' || evidence.status === 'rejected' || evidence.status === 'blocked' ? 'blocked' : 'pending',
     },
     {
-      label: 'Deployment evidence linkage',
-      value: generatedState?.deploymentLocalSessionOnly ? 'Local session only until Track 14C' : 'Not linked',
+      label: 'Evidence strength',
+      value: evidence.evidenceStrengthLabel,
+      status: evidence.evidenceStrength === 'none' ? 'disabled' : 'ready',
+    },
+    {
+      label: 'Evidence persistence',
+      value: evidence.evidencePersistenceLabel,
+      status: 'disabled',
+    },
+    {
+      label: 'Transaction hash source',
+      value: evidence.transactionHashSourceLabel,
+      status: evidence.transactionHashSource === 'provider_returned' ? 'ready' : 'disabled',
+    },
+    {
+      label: 'Contract address source',
+      value: evidence.contractAddressSourceLabel,
+      status: evidence.contractAddressSource === 'receipt_returned' ? 'ready' : 'disabled',
+    },
+    {
+      label: 'Operations after deployment',
+      value: evidence.evidenceStrength === 'confirmed_receipt' ? 'Record NAV gated; other operations locked' : 'Locked until Track 15A',
+      status: 'disabled',
+    },
+  ];
+}
+
+function recordNavOperationHealthItems(
+  generatedState?: SmartContractControlPanelGeneratedState,
+): SmartContractControlPanelHealthItem[] {
+  const operation = generatedState?.recordNavOperation;
+  if (!operation) return [];
+
+  return [
+    {
+      label: 'Record NAV operation',
+      value: operation.statusLabel.replace('Record NAV ', ''),
+      status:
+        operation.operationStatus === 'confirmed'
+          ? 'ready'
+          : operation.operationStatus === 'failed' || operation.operationStatus === 'rejected' || operation.operationStatus === 'blocked'
+            ? 'blocked'
+            : operation.operationStatus === 'not_started'
+              ? 'disabled'
+              : 'pending',
+    },
+    {
+      label: 'Operation transaction hash source',
+      value: operation.operationTransactionHashSourceLabel,
+      status: operation.operationTransactionHashSource === 'provider_returned' ? 'ready' : 'disabled',
+    },
+    {
+      label: 'Operation receipt source',
+      value: operation.operationReceiptSourceLabel,
+      status: operation.operationReceiptSource === 'provider_receipt' ? 'ready' : 'disabled',
+    },
+    {
+      label: 'ValuationUpdated event evidence',
+      value: operation.eventEvidenceSourceLabel,
+      status: operation.eventEvidenceSource === 'absent' ? 'disabled' : 'ready',
+    },
+    {
+      label: 'Operation evidence persistence',
+      value: operation.operationEvidencePersistenceLabel,
+      status: 'disabled',
+    },
+    {
+      label: 'Other Smart Contract Operations',
+      value: 'Locked',
       status: 'disabled',
     },
   ];
@@ -405,6 +493,8 @@ function healthStatusFor(
       ...walletSigningHealthItems(generatedState),
       ...walletConnectionHealthItems(generatedState),
       ...walletSignedDeploymentHealthItems(generatedState),
+      ...deploymentEvidenceHealthItems(generatedState),
+      ...recordNavOperationHealthItems(generatedState),
       { label: 'Deployment', value: walletSignedDeploymentValue(generatedState?.walletSignedDeploymentStatus), status: generatedState?.walletSignedDeploymentStatus === 'confirmed' ? 'ready' : 'disabled' },
       { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
       { label: 'Audit', value: 'Not audited', status: 'disabled' },
@@ -468,7 +558,7 @@ function statusDetail(
   if (status === 'artifact_preview_ready') {
     if (generatedState?.localCompileTestStatus === 'passed') {
       if (generatedState.walletSignedDeploymentStatus === 'confirmed') {
-        return 'Smart Contract Spec, artifact preview, evidence-lite, local compile/test, and wallet-signed Sepolia deployment status are available. Deployment status is local-session-only until Track 14C evidence linkage. This is not audited and Smart Contract Operations remain locked.';
+        return 'Smart Contract Spec, artifact preview, evidence-lite, local compile/test, and wallet-signed Sepolia deployment evidence are available. Evidence persistence is local session only. Record NAV is the only gated SCP operation; other Smart Contract Operations remain locked.';
       }
 
       return 'Smart Contract Spec, artifact preview, spec-consistency check result, evidence-lite, and local compile/test representation are available. Wallet-signed Sepolia deployment may be requested after wallet connection. This is not audited and Smart Contract Operations remain locked.';
@@ -486,9 +576,13 @@ function statusDetail(
 
 function boundaryItems(generatedState?: SmartContractControlPanelGeneratedState): SmartContractControlPanelHealthItem[] {
   const walletAddressValue = generatedState?.connectedWalletAddressDisplay ? generatedState.connectedWalletAddressDisplay : 'Absent';
-  const hasTransactionHash = Boolean(generatedState?.deploymentTransactionHash);
-  const hasContractAddress = Boolean(generatedState?.deploymentContractAddress);
+  const transactionHash = generatedState?.deploymentEvidence?.transactionHash ?? generatedState?.deploymentTransactionHash;
+  const contractAddress = generatedState?.deploymentEvidence?.contractAddress;
+  const hasTransactionHash = Boolean(transactionHash);
+  const hasContractAddress = Boolean(contractAddress);
   const deploymentConfirmed = generatedState?.walletSignedDeploymentStatus === 'confirmed';
+  const evidence = generatedState?.deploymentEvidence;
+  const recordNavOperation = generatedState?.recordNavOperation;
 
   return [
     { label: 'Ethereum testnet', value: 'Only', status: 'ready' },
@@ -518,15 +612,22 @@ function boundaryItems(generatedState?: SmartContractControlPanelGeneratedState)
     },
     {
       label: 'Contract address',
-      value: generatedState?.deploymentContractAddress ?? 'No contract address',
+      value: contractAddress ?? 'No contract address',
       status: hasContractAddress ? 'ready' : 'disabled',
     },
     {
       label: 'Transaction hash',
-      value: generatedState?.deploymentTransactionHash ?? 'No transaction hash',
+      value: transactionHash ?? 'No transaction hash',
       status: hasTransactionHash ? 'ready' : 'disabled',
     },
-    { label: 'Deployment evidence linkage', value: 'Track 14C', status: 'disabled' },
+    { label: 'Deployment Evidence', value: evidence?.statusLabel.replace('Deployment Evidence: ', '') ?? 'Not available', status: evidence?.evidenceStrength === 'confirmed_receipt' ? 'ready' : 'disabled' },
+    { label: 'Evidence strength', value: evidence?.evidenceStrengthLabel ?? 'None', status: evidence?.evidenceStrength === 'none' || !evidence ? 'disabled' : 'ready' },
+    { label: 'Evidence persistence', value: evidence?.evidencePersistenceLabel ?? 'Local session only', status: 'disabled' },
+    { label: 'Transaction hash source', value: evidence?.transactionHashSourceLabel ?? 'Absent', status: evidence?.transactionHashSource === 'provider_returned' ? 'ready' : 'disabled' },
+    { label: 'Contract address source', value: evidence?.contractAddressSourceLabel ?? 'Absent', status: evidence?.contractAddressSource === 'receipt_returned' ? 'ready' : 'disabled' },
+    { label: 'Record NAV operation', value: recordNavOperation?.statusLabel ?? 'Record NAV operation not started', status: recordNavOperation?.operationStatus === 'confirmed' ? 'ready' : 'disabled' },
+    { label: 'Operation evidence persistence', value: recordNavOperation?.operationEvidencePersistenceLabel ?? 'Local session only', status: 'disabled' },
+    { label: 'Other Smart Contract Operations', value: 'Locked', status: 'disabled' },
     { label: 'Audit', value: 'Not performed', status: 'disabled' },
   ];
 }
@@ -544,11 +645,11 @@ export function toSmartContractControlPanelViewModel(
     overview: {
       contractStatus:
         generatedState?.walletSignedDeploymentStatus === 'confirmed'
-          ? 'Deployment confirmed on Sepolia - operations locked'
+          ? 'Deployment confirmed on Sepolia - Record NAV gated'
           : status === 'artifact_preview_ready'
             ? 'Artifact preview generated - not deployed'
             : 'Not deployed',
-      contractAddress: generatedState?.deploymentContractAddress ?? 'No contract address - not deployed',
+      contractAddress: generatedState?.deploymentEvidence?.contractAddress ?? 'No contract address - not deployed',
       network: 'Ethereum testnet only',
       deployedBy: 'User Wallet',
       contractType: 'ERC-20 + custom',
@@ -564,13 +665,17 @@ export function toSmartContractControlPanelViewModel(
     customFeatures: toGeneratedCustomFeatures(generatedState?.customEvents),
     recentEvents: [
       'No wallet-signed testnet events yet',
-      ...(generatedState?.deploymentTransactionHash ? ['Wallet-signed Sepolia deployment submitted'] : []),
-      ...(generatedState?.deploymentContractAddress ? ['Sepolia deployment receipt confirmed'] : []),
+      ...(generatedState?.deploymentEvidence?.transactionHash ?? generatedState?.deploymentTransactionHash
+        ? ['Wallet-signed Sepolia deployment submitted']
+        : []),
+      ...(generatedState?.deploymentEvidence?.contractAddress ? ['Sepolia deployment receipt confirmed'] : []),
+      ...(generatedState?.recordNavOperation?.operationTransactionHash ? ['Record NAV submitted to Sepolia'] : []),
+      ...(generatedState?.recordNavOperation?.operationStatus === 'confirmed' ? ['Record NAV receipt confirmed'] : []),
       ...(status === 'artifact_preview_ready'
         ? ['Smart Contract Spec generated', 'Artifact preview generated', 'Evidence-lite available']
         : []),
       lifecycleReadModel.readinessLabel,
-      'Deployment remains disabled for MVP',
+      'Smart Contract Operations remain locked for MVP',
     ],
     healthItems: healthStatusFor(status, generatedState),
     boundaryItems: boundaryItems(generatedState),

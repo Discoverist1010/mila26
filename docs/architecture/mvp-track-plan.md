@@ -18,7 +18,9 @@ Requirement Brief
 -> Wallet Connection Readiness
 -> Unsigned Deployment Intent
 -> Wallet-Signed Sepolia Deployment local-session state
--> Smart Contract Operations locked
+-> Deployment Evidence local-session surface
+-> Record NAV Event wallet-signed SCP operation
+-> Other Smart Contract Operations locked
 
 ## Completed Foundation
 
@@ -40,6 +42,9 @@ Requirement Brief
 - MetaMask-first wallet adapter/Sepolia design and pure wallet connection read model.
 - Frontend-only MetaMask/EIP-1193 wallet connection and Sepolia verification.
 - Unsigned deployment intent read model.
+- Wallet-signed Sepolia deployment local-session state.
+- Deployment evidence/readiness local-session surface.
+- First wallet-signed SCP operation: Record NAV Event.
 
 ## Track 13B: MetaMask Wallet Connection + Sepolia Verification
 
@@ -115,6 +120,29 @@ Expected deliverables:
 - Duplicate-submit protection.
 - User rejection handling.
 - Safe pending/submitted/confirmed/failed handling.
+
+## Track 15A: First SCP Wallet-Signed Operation - Record NAV Event
+
+Status: complete when the app can submit one wallet-signed `recordValuation(uint256,string)` call through the connected Sepolia wallet after confirmed deployment evidence exists.
+
+Expected deliverables:
+
+- ABI inspection for `recordValuation(uint256,string)`.
+- Valid non-zero receipt-returned contract address preflight.
+- Immediate pre-send account/chain re-check.
+- Provider-returned operation transaction hash only after submission.
+- Provider receipt/event evidence only after receipt/log response.
+- Local-session-only operation evidence.
+- SCP exposes only the Record NAV Event operation; all other operations remain locked.
+
+What not to overbuild:
+
+- No generic operations registry.
+- No operation history storage.
+- No backend operation route.
+- No role-management UI.
+- No mainnet.
+- No broad SCP operation suite.
 - Real transaction hash only after provider response.
 - Real contract address only after receipt confirmation.
 - Local-session-only deployment status.
@@ -133,29 +161,33 @@ What not to overbuild:
 - No multi-chain support.
 - No custody.
 
-## Track 14C: Real Transaction Hash / Contract Address / Receipt Status
+## Track 14C: Deployment Status + Evidence Linkage Surface
 
-Goal: link real deployment outputs from a real Sepolia transaction into MILA26 evidence/readiness.
+Status: complete as a local-session evidence/readiness surface.
+
+Goal: link real deployment outputs from a real Sepolia transaction into MILA26 evidence/readiness without adding storage or new execution.
 
 Expected deliverables:
 
-- Persist/link real transaction hash after submission.
-- Persist/link real contract address after receipt/deployment confirmation.
+- Represent real transaction hash after provider submission.
+- Represent real contract address after receipt/deployment confirmation.
 - Receipt status handling.
 - SCP deployed-testnet state that is clearly testnet-only.
-- Evidence linkage to tx hash, contract address, chain, and artifact.
+- Evidence/readiness projection for tx hash, contract address, chain, artifact, and local-session source.
 
 Acceptance criteria:
 
 - No fake tx hash or contract address.
 - Failed/rejected/pending states are safe and understandable.
 - Deployment status is backed by provider/chain data.
+- Evidence persistence remains local-session-only.
 
 What not to overbuild:
 
 - No mainnet.
 - No formal audit/security approval.
 - No production monitoring.
+- No database or Evidence Pack storage.
 
 ## Track 15A: First Wallet-Signed SCP Operation
 
