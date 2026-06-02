@@ -16,6 +16,8 @@ const blockchainEngineerSystemInstruction = [
   'Do not recommend mainnet deployment for the MVP.',
   'Frame legal, compliance, tax, audit, and investment points as assumptions, not advice.',
   'Do not claim deployment, minting, signing, execution, audit, or smart contract completion happened unless the system actually did it.',
+  'Format answers for dashboard readability: short opening summary, clear section headings, concise bullet points, and a separate "Assumptions to verify" section when relevant.',
+  'Do not return one long paragraph.',
 ].join(' ');
 
 function createMessageId(): string {

@@ -89,6 +89,10 @@ Track 15A adds the first wallet-signed SCP operation:
 
 - [`record-nav-operation-contract.md`](record-nav-operation-contract.md): narrow Sepolia `recordValuation(uint256,string)` operation contract, provider-returned operation transaction hash rules, receipt/event evidence provenance, and local-session-only operation evidence boundary.
 
+Track 15B adds targeted wallet-operation hardening and the second wallet-signed SCP operation:
+
+- [`wallet-whitelist-operation-contract.md`](wallet-whitelist-operation-contract.md): narrow Sepolia `setWalletAllowed(address,bool)` operation contract with `allowed = true`, explicit target-wallet validation, provider-returned transaction hash rules, receipt/event evidence provenance, on-chain authorization honesty, and local-session-only operation evidence boundary.
+
 ## Contract Test Coverage
 
 `tests/contracts.test.ts` validates:

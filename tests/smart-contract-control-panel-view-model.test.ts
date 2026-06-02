@@ -5,6 +5,7 @@ import { toProjectClosureReadModel } from '../src/domain/projectClosureReadModel
 import { toProjectLifecycleReadModel } from '../src/domain/projectLifecycleReadModel';
 import { toRecordNavOperationReadModel } from '../src/domain/recordNavOperationReadModel';
 import { toSmartContractControlPanelViewModel } from '../src/domain/smartContractControlPanelViewModel';
+import { toWalletWhitelistOperationReadModel } from '../src/domain/walletWhitelistOperationReadModel';
 
 function closureReadiness(overrides: Partial<ProjectClosureLedger> = {}) {
   const base = createDemoProjectClosureLedger();
@@ -410,7 +411,7 @@ describe('Smart Contract Control Panel view model', () => {
     expect(submitted.overview.contractAddress).toBe('No contract address - not deployed');
     expect(submitted.coreActions.every((action) => action.enabled === false)).toBe(true);
 
-    expect(confirmed.overview.contractStatus).toBe('Deployment confirmed on Sepolia - Record NAV gated');
+    expect(confirmed.overview.contractStatus).toBe('Deployment confirmed on Sepolia - Record NAV and Wallet Whitelist gated');
     expect(confirmed.overview.contractAddress).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
     expect(confirmed.healthItems).toEqual(
       expect.arrayContaining([
@@ -531,10 +532,76 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'Operation receipt source', value: 'Provider receipt', status: 'ready' },
         { label: 'ValuationUpdated event evidence', value: 'Decoded from receipt', status: 'ready' },
         { label: 'Operation evidence persistence', value: 'Local session only', status: 'disabled' },
-        { label: 'Other Smart Contract Operations', value: 'Locked', status: 'disabled' },
+        { label: 'Other SCP operations', value: 'Locked', status: 'disabled' },
       ]),
     );
     expect(viewModel.coreActions.every((action) => action.enabled === false)).toBe(true);
     expect(JSON.stringify(viewModel)).not.toMatch(/production ready|mainnet ready|audit passed|verified/i);
+  });
+
+  it('represents Wallet Whitelist operation evidence separately while keeping allocation and other operations locked', () => {
+    const lifecycleReadModel = toProjectLifecycleReadModel({
+      hasRequirementBrief: true,
+      hasEngineeringBrief: true,
+      closureReadiness: closureReadiness(),
+      artifactSpecStatus: 'ready',
+      checkStatus: 'passed',
+      evidenceStatus: 'ready',
+      deploymentGateStatus: 'ready',
+    });
+    const deploymentEvidence = toDeploymentEvidenceReadModel({
+      deploymentState: {
+        deploymentStatus: 'confirmed',
+        transactionHash: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        contractAddress: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        receiptStatus: 'success',
+        localSessionOnly: true,
+      },
+    });
+    const walletWhitelistOperation = toWalletWhitelistOperationReadModel({
+      deploymentEvidence,
+      walletConnectedOnSepolia: true,
+      targetWalletAddress: '0x3333333333333333333333333333333333333333',
+      whitelistFunctionAvailable: true,
+      operationState: {
+        operationStatus: 'confirmed',
+        operationTransactionHash: '0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+        operationReceiptStatus: 'success',
+        contractAddress: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        targetWalletAddress: '0x3333333333333333333333333333333333333333',
+        allowed: true,
+        decodedEvent: {
+          eventName: 'WalletWhitelisted',
+          wallet: '0x3333333333333333333333333333333333333333',
+          allowed: true,
+          operator: '0x1111111111111111111111111111111111111111',
+        },
+        localSessionOnly: true,
+      },
+    });
+    const viewModel = toSmartContractControlPanelViewModel(lifecycleReadModel, {
+      specStatus: 'ready',
+      artifactStatus: 'generated',
+      checkStatus: 'passed',
+      evidenceStatus: 'ready',
+      walletSignedDeploymentStatus: 'confirmed',
+      deploymentEvidence,
+      walletWhitelistOperation,
+    });
+
+    expect(viewModel.healthItems).toEqual(
+      expect.arrayContaining([
+        { label: 'Wallet Whitelist operation', value: 'confirmed on Sepolia', status: 'ready' },
+        { label: 'Whitelist transaction hash source', value: 'Provider returned', status: 'ready' },
+        { label: 'Whitelist receipt source', value: 'Provider receipt', status: 'ready' },
+        { label: 'WalletWhitelisted event evidence', value: 'Decoded from receipt', status: 'ready' },
+        { label: 'Whitelist evidence persistence', value: 'Local session only', status: 'disabled' },
+        { label: 'Contract authorization', value: 'Enforced on-chain', status: 'disabled' },
+        { label: 'Allocation/Mint', value: 'Locked until Track 15C', status: 'disabled' },
+        { label: 'Other Smart Contract Operations', value: 'Locked', status: 'disabled' },
+      ]),
+    );
+    expect(viewModel.coreActions.every((action) => action.enabled === false)).toBe(true);
+    expect(JSON.stringify(viewModel)).not.toMatch(/KYC approved|investor approved|issuer authorized|wallet authorized|production ready|mainnet ready|audit passed|verified/i);
   });
 });

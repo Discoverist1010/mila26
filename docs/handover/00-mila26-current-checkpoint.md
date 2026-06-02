@@ -4,9 +4,9 @@
 
 MILA26 is a blockchain-functional alpha foundation for an AI + blockchain tokenisation workspace for asset managers.
 
-The current app can guide a project from a plain-language requirement through Engineering Brief, closure readiness, Smart Contract Artifact Spec, deterministic artifact preview, check/evidence-lite, local compile/test representation, Deployment Gate, Wallet Signing Intent, Wallet Connection Readiness, Unsigned Deployment Intent, a wallet-signed Sepolia deployment path, local-session deployment evidence/readiness, and the first wallet-signed SCP operation: Record NAV Event. Other Smart Contract Operations remain locked.
+The current app can guide a project from a plain-language requirement through Engineering Brief, closure readiness, Smart Contract Artifact Spec, deterministic artifact preview, check/evidence-lite, local compile/test representation, Deployment Gate, Wallet Signing Intent, Wallet Connection Readiness, Unsigned Deployment Intent, a wallet-signed Sepolia deployment path, local-session deployment evidence/readiness, and two wallet-signed SCP operations: Record NAV Event and Whitelist Wallet. Other Smart Contract Operations remain locked.
 
-The next implementation step is Track 15A.1 hardening if Record NAV event evidence or SCP gating needs cleanup, otherwise Track 15B Whitelist + Allocation/Mint Operation.
+The next implementation step is Track 15C Allocation/Mint Operation if Track 15B remains clean. If Track 15B exposes operation-foundation fragility, run a short hardening-only track first.
 
 ## Current Product Direction
 
@@ -32,7 +32,7 @@ The next implementation step is Track 15A.1 hardening if Record NAV event eviden
 - Unsigned deployment intent boundary: review-only domain model exists.
 - Wallet-signed deployment boundary: frontend-only Sepolia deployment exists.
 - Deployment evidence boundary: provider transaction hash and receipt-confirmed contract address are represented as local-session evidence/readiness only.
-- Persistence, auth, payments, SCP operations, durable Evidence Pack storage, and mainnet are not implemented.
+- Persistence, auth, payments, durable Evidence Pack storage, broad SCP operations, and mainnet are not implemented.
 
 ## Current Repo Capabilities
 
@@ -58,6 +58,7 @@ The next implementation step is Track 15A.1 hardening if Record NAV event eviden
 - Unsigned Deployment Intent Read Model.
 - Wallet-signed Sepolia deployment adapter and local-session deployment state.
 - Deployment Evidence Read Model and passive UI/SCP evidence surface.
+- Record NAV and Wallet Whitelist operation adapters/read models with local-session-only operation evidence.
 
 ## Completed Recent Tracks
 
@@ -85,15 +86,18 @@ The next implementation step is Track 15A.1 hardening if Record NAV event eviden
 - Track 14A: unsigned deployment intent read model.
 - Track 14B: wallet-signed Sepolia deployment through browser wallet.
 - Track 14C: deployment evidence/readiness local-session surface.
+- Track 15A: first wallet-signed SCP operation, Record NAV Event.
+- Track 15B: targeted operation hardening and Wallet Whitelist operation.
 
 ## Current Next Step
 
-Track 15A: First SCP Wallet-Signed Operation - Record NAV Event.
+Track 15C: Allocation/Mint Operation, unless a short hardening-only track is needed first.
 
-Track 15A should:
+Track 15C should:
 
 - consume confirmed deployment evidence/readiness.
-- add one low-risk operation intent for Record NAV Event.
+- consume operation-foundation lessons from Record NAV and Whitelist Wallet.
+- add one allocation/mint operation only after explicit operation gates.
 - request a user wallet-signed contract operation only after wallet/chain/deployment/authorization gates pass.
 - link operation transaction/receipt result into evidence.
 - keep backend private-key custody impossible.

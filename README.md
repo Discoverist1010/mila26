@@ -17,6 +17,7 @@ MILA26 is a clean alpha rebuild of the MILA dashboard. It is designed as a compa
 - Wallet-signed Sepolia deployment through the connected browser wallet, with local-session-only transaction hash and contract address display from real provider/receipt responses.
 - Deployment evidence/readiness surface that derives local-session evidence from provider transaction hash and receipt-confirmed contract address.
 - First wallet-signed SCP operation: Record NAV Event on Sepolia, with local-session-only operation transaction/receipt/event evidence.
+- Second wallet-signed SCP operation: Whitelist Wallet on Sepolia via `setWalletAllowed(address,bool)` with `allowed = true`, local-session-only operation evidence, and on-chain contract authorization honesty.
 
 ## Development
 
@@ -31,7 +32,7 @@ Run the local API skeleton in a second terminal:
 npm run dev:api
 ```
 
-The backend exposes `GET /api/health`, `POST /api/chat/blockchain-engineer`, `POST /api/prd/engineering-brief`, `POST /api/smart-contract/artifact-spec`, and `POST /api/smart-contract/artifact` on `http://127.0.0.1:5174` by default. Wallet connection, Sepolia deployment, and the first Record NAV operation are frontend-only through the browser's injected EIP-1193 provider. Persistence, backend wallet custody, backend deployment/operation routes, mainnet, durable deployment/operation evidence storage, and broad SCP operation execution are intentionally not implemented yet.
+The backend exposes `GET /api/health`, `POST /api/chat/blockchain-engineer`, `POST /api/prd/engineering-brief`, `POST /api/smart-contract/artifact-spec`, and `POST /api/smart-contract/artifact` on `http://127.0.0.1:5174` by default. Wallet connection, Sepolia deployment, Record NAV, and Wallet Whitelist operations are frontend-only through the browser's injected EIP-1193 provider. Persistence, backend wallet custody, backend deployment/operation routes, mainnet, durable deployment/operation evidence storage, and broad SCP operation execution are intentionally not implemented yet.
 
 Track 6D adds a frontend action that generates a readable Engineering Brief artifact from the current Requirement Brief. Track 6E can make the backend PRD route LLM-assisted when a real backend provider is configured; deterministic generation remains the default and fallback.
 
@@ -53,7 +54,9 @@ Track 14B adds the first wallet-signed Sepolia deployment path. The central Engi
 
 Track 14C adds a deployment evidence/readiness surface derived from Track 14B local-session deployment state. It distinguishes no evidence, provider transaction-hash evidence, and confirmed receipt evidence. It does not add a new deployment mechanism, backend route, persistence, mainnet, audit claim, or SCP operation controls.
 
-Track 15A adds the first narrow SCP wallet-signed operation: Record NAV Event. The operation calls `recordValuation(uint256,string)` only after confirmed receipt-derived deployment evidence, a valid non-zero receipt-returned contract address, and a connected Sepolia wallet exist. The operation transaction hash appears only after provider return, receipt/event evidence appears only after provider receipt/log response, and operation evidence remains local-session-only. Mint, burn, pause, whitelist, allocation, and distribution controls remain locked.
+Track 15A adds the first narrow SCP wallet-signed operation: Record NAV Event. The operation calls `recordValuation(uint256,string)` only after confirmed receipt-derived deployment evidence, a valid non-zero receipt-returned contract address, and a connected Sepolia wallet exist. The operation transaction hash appears only after provider return, receipt/event evidence appears only after provider receipt/log response, and operation evidence remains local-session-only.
+
+Track 15B adds targeted operation-path hardening and one additional SCP operation: Whitelist Wallet. The operation calls `setWalletAllowed(address,bool)` with `allowed = true` only after confirmed receipt-derived deployment evidence, a valid explicit non-zero target wallet address, and a connected Sepolia wallet exist. It does not claim issuer authorization, KYC approval, investor eligibility, audit approval, production readiness, or durable evidence storage. Allocation/Mint, burn, pause, distribution, transfer, and role-admin operations remain locked.
 
 The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
 

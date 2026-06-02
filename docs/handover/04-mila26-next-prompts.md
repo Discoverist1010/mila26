@@ -1,10 +1,12 @@
 # MILA26 Next Prompts
 
-## Next Codex Prompt: Track 15A.1 or 15B
+## Next Codex Prompt: Track 15C or Hardening
 
-If Track 15A event decoding, local-session operation evidence, or SCP gating needs cleanup, run a short Track 15A.1 hardening track.
+If Track 15B exposes operation-foundation fragility, run a short hardening-only track before mint/allocation.
 
-If Track 15A is clean, proceed to Track 15B - Whitelist + Allocation/Mint Operation.
+If Track 15B is clean, proceed to Track 15C - Allocation/Mint Operation.
+
+Track 15C should consume confirmed deployment evidence, Sepolia wallet readiness, and the hardened operation pattern from Record NAV and Whitelist Wallet. It should not add broad operation history, persistence, backend signing, mainnet, KYC/legal/audit claims, or a generic operation framework.
 
 ## Prior Prompt: Track 15A First SCP Wallet-Signed Operation - Record NAV Event
 

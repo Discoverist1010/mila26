@@ -132,6 +132,8 @@ describe('blockchain engineer chat api', () => {
         expect(request.messages[0]).toMatchObject({
           role: 'system',
         });
+        expect(request.messages[0]?.content).toMatch(/short opening summary/i);
+        expect(request.messages[0]?.content).toMatch(/Do not return one long paragraph/i);
         expect(request.messages.at(-1)).toMatchObject({
           role: 'user',
           content: 'Can we deploy this tokenized fund?',

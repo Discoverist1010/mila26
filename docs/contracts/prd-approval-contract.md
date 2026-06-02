@@ -36,6 +36,12 @@ The PRD approval contract records the asset manager's approved product design be
 - Material changes after approval create a new version.
 - PRD approval should be traceable to chat turns and user action.
 
+## Post-Alpha Conversation History / Audit Trail
+
+The current alpha UI may keep Engineering Bot turns visible in local React state so the user can scroll and reference the current browser-session conversation. That is not PRD evidence storage and is not sent to the backend as durable history.
+
+After the blockchain-functional alpha, MILA26 should add a deliberate conversation-history and audit-trail track before PRD approval depends on prior chat turns. That track should define which recent turns are sent to backend services, how chat-derived PRD decisions are versioned, what is persisted, and how retention/deletion works. Until then, `generatedFromChatTurnIds` remains a planned PRD field rather than an implemented durable audit record.
+
 ## Future Fixture/Test Expectations
 
 - Add fixtures for draft and approved PRD states.

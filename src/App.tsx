@@ -21,9 +21,18 @@ import {
   formatRecordNavOperationStatus,
   initialRecordNavOperationState,
   isRecordNavOperationInFlight,
+  isValidNonZeroEvmAddress,
   toRecordNavOperationReadModel,
   type RecordNavOperationState,
 } from './domain/recordNavOperationReadModel';
+import {
+  formatWalletWhitelistOperationStatus,
+  initialWalletWhitelistOperationState,
+  isWalletWhitelistOperationInFlight,
+  normalizeWalletWhitelistTargetAddress,
+  toWalletWhitelistOperationReadModel,
+  type WalletWhitelistOperationState,
+} from './domain/walletWhitelistOperationReadModel';
 import {
   createKnownLocalCompileTestResult,
   toSmartContractCompileTestPresentation,
@@ -57,6 +66,11 @@ import {
   requestWalletSignedRecordNavOperation,
   type SepoliaRecordNavOperationProvider,
 } from './wallet/sepoliaRecordNavOperationAdapter';
+import {
+  hasSetWalletAllowedFunction,
+  requestWalletSignedWhitelistOperation,
+  type SepoliaWalletWhitelistOperationProvider,
+} from './wallet/sepoliaWalletWhitelistOperationAdapter';
 import type { BlockchainEngineerChatResponse } from '../server/contracts/chat';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
 import type {
@@ -79,22 +93,57 @@ const starterFacts: FundFacts = {
 
 const initialBotQuestion = 'What should we be careful about before generating code?';
 
-const cockpitStages = [
-  { step: '1', label: 'Setup / Explore', state: 'Active' },
-  { step: '2', label: 'Requirement Brief', state: 'Draft' },
-  { step: '3', label: 'Engineering Brief', state: 'Next' },
-  { step: '4', label: 'Evidence Pack', state: 'Later' },
-  { step: '5', label: 'Deployment Gate', state: 'Locked' },
-  { step: '8', label: 'Smart Contract Control', state: 'Preview' },
-];
+type ProjectDirectorySelection = 'workspace' | 'usequities' | 'sgequities' | 'mixedportfolio';
 
-const currentStageActivities = [
-  'Goal intake',
-  'Project setup',
-  'Assumptions',
-  'Constraints',
-  'Notes & decisions',
-  'Artifacts',
+type DemoProjectFolder = {
+  id: Exclude<ProjectDirectorySelection, 'workspace'>;
+  label: string;
+  title: string;
+  description: string;
+  tokenSymbol: string;
+  marketScope: string;
+};
+
+type EngineerAnswerSource = 'local' | 'backend' | 'generated_artifacts' | 'wallet';
+
+type EngineeringBotConversationTurn =
+  | {
+      id: string;
+      role: 'user';
+      content: string;
+    }
+  | {
+      id: string;
+      role: 'assistant';
+      response: BlockchainEngineerChatResponse;
+      source: EngineerAnswerSource;
+    };
+
+const demoProjectFolders: DemoProjectFolder[] = [
+  {
+    id: 'usequities',
+    label: 'usequities',
+    title: 'US Equities Portfolio',
+    description: 'Tokenized portfolio workspace for US-listed public equities.',
+    tokenSymbol: 'USEQ',
+    marketScope: 'US equities',
+  },
+  {
+    id: 'sgequities',
+    label: 'sgequities',
+    title: 'SG Equities Portfolio',
+    description: 'Tokenized portfolio workspace for Singapore-listed public equities.',
+    tokenSymbol: 'SGEQ',
+    marketScope: 'Singapore equities',
+  },
+  {
+    id: 'mixedportfolio',
+    label: 'mixedportfolio',
+    title: 'Mixed Portfolio',
+    description: 'Tokenized portfolio workspace for blended equity exposure.',
+    tokenSymbol: 'MIXD',
+    marketScope: 'Mixed equities',
+  },
 ];
 
 const uiActions = {
@@ -110,6 +159,7 @@ const uiActions = {
   connectWallet: 'connect_wallet',
   deployToSepolia: 'deploy_to_sepolia',
   recordNavEvent: 'record_nav_event',
+  whitelistWallet: 'whitelist_wallet',
 } as const;
 
 type GeneratedArtifactCard = {
@@ -126,6 +176,10 @@ function createLocalEngineerResponse(content: string): BlockchainEngineerChatRes
     content,
     createdAt: new Date(0).toISOString(),
   };
+}
+
+function createInitialEngineerResponse(): BlockchainEngineerChatResponse {
+  return createLocalEngineerResponse(answerAsBlockchainEngineer(initialBotQuestion));
 }
 
 function createSmartContractPreparationResponse(): BlockchainEngineerChatResponse {
@@ -211,6 +265,33 @@ function createRecordNavOperationResponse(operation: RecordNavOperationState): B
   };
 }
 
+function createWalletWhitelistOperationResponse(operation: WalletWhitelistOperationState): BlockchainEngineerChatResponse {
+  const statusLabel = formatWalletWhitelistOperationStatus(operation.operationStatus);
+
+  return {
+    messageId: 'local-wallet-whitelist-operation',
+    agentId: 'blockchain-engineer',
+    content:
+      'Wallet Whitelist operation status updated. SCP owns the active operation control; evidence is derived from local-session provider and receipt responses only.',
+    riskNotes: [
+      `Wallet Whitelist operation: ${statusLabel}.`,
+      operation.targetWalletAddress ? `Target wallet: ${operation.targetWalletAddress}.` : 'Target wallet address is required.',
+      operation.operationTransactionHash ? `Whitelist transaction hash: ${operation.operationTransactionHash}.` : 'No whitelist transaction hash.',
+      operation.decodedEvent ? 'WalletWhitelisted event decoded from receipt.' : 'WalletWhitelisted event not decoded.',
+      'Contract authorization is enforced on-chain.',
+      'Backend never holds private keys.',
+      'Mainnet remains disabled.',
+      'Allocation/Mint remains locked until Track 15C.',
+      'Other Smart Contract Operations remain locked.',
+    ],
+    nextRecommendedAction:
+      operation.operationStatus === 'confirmed'
+        ? 'If 15B is clean, next milestone is Track 15C Allocation/Mint Operation.'
+        : 'Continue only after the wallet-signed Wallet Whitelist operation is confirmed or safely retried.',
+    createdAt: new Date(0).toISOString(),
+  };
+}
+
 function formatDeploymentGateStatus(status: 'blocked' | 'review_ready') {
   return status === 'review_ready' ? 'Review-ready' : 'Blocked';
 }
@@ -274,6 +355,7 @@ function applyWalletConnectionInput(next: WalletConnectionReadModelInput) {
 export function App() {
   const [facts] = useState<FundFacts>(starterFacts);
   const [goal] = useState('We want to launch a tokenized income product for approved investors.');
+  const [selectedProjectId, setSelectedProjectId] = useState<ProjectDirectorySelection>('workspace');
   const [question, setQuestion] = useState('');
   const [brief, setBrief] = useState<RequirementBrief | undefined>();
   const [engineeringBrief, setEngineeringBrief] = useState<EngineeringBrief | undefined>();
@@ -290,17 +372,24 @@ export function App() {
   const [recordNavOperationState, setRecordNavOperationState] = useState<RecordNavOperationState>(
     initialRecordNavOperationState,
   );
+  const [walletWhitelistOperationState, setWalletWhitelistOperationState] = useState<WalletWhitelistOperationState>(
+    initialWalletWhitelistOperationState,
+  );
+  const [walletWhitelistTargetWallet, setWalletWhitelistTargetWallet] = useState('');
   const [smartContractGenerationStatus, setSmartContractGenerationStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [smartContractGenerationError, setSmartContractGenerationError] = useState<string | undefined>();
   const [walletConnectionInput, setWalletConnectionInput] = useState<WalletConnectionReadModelInput>(
     initialWalletConnectionInput,
   );
-  const [engineerResponse, setEngineerResponse] = useState(() =>
-    createLocalEngineerResponse(answerAsBlockchainEngineer(initialBotQuestion)),
-  );
-  const [engineerAnswerSource, setEngineerAnswerSource] = useState<'local' | 'backend' | 'generated_artifacts' | 'wallet'>(
-    'local',
-  );
+  const [engineeringBotConversation, setEngineeringBotConversation] = useState<EngineeringBotConversationTurn[]>(() => [
+    {
+      id: 'assistant-initial',
+      role: 'assistant',
+      response: createInitialEngineerResponse(),
+      source: 'local',
+    },
+  ]);
+  const [engineerAnswerSource, setEngineerAnswerSource] = useState<EngineerAnswerSource>('local');
   const [botChatError, setBotChatError] = useState<string | undefined>();
   const [isBotReplyLoading, setIsBotReplyLoading] = useState(false);
   const [isLeftRailOpen, setIsLeftRailOpen] = useState(true);
@@ -310,6 +399,9 @@ export function App() {
   const deploymentAttemptIdRef = useRef('');
   const recordNavOperationAttemptSequenceRef = useRef(0);
   const recordNavOperationAttemptIdRef = useRef('');
+  const walletWhitelistOperationAttemptSequenceRef = useRef(0);
+  const walletWhitelistOperationAttemptIdRef = useRef('');
+  const engineeringBotConversationSequenceRef = useRef(0);
 
   useEffect(() => {
     const provider = getBrowserEthereumProvider();
@@ -338,15 +430,12 @@ export function App() {
       deploymentAttemptIdRef.current = '';
       recordNavOperationAttemptSequenceRef.current += 1;
       recordNavOperationAttemptIdRef.current = '';
+      walletWhitelistOperationAttemptSequenceRef.current += 1;
+      walletWhitelistOperationAttemptIdRef.current = '';
     },
     [],
   );
 
-  const fallbackEngineerAnswer = useMemo(() => answerAsBlockchainEngineer(question || initialBotQuestion, brief), [question, brief]);
-  const engineerResponseViewModel = useMemo(
-    () => toBlockchainEngineerResponseViewModel(engineerResponse),
-    [engineerResponse],
-  );
   const requirementBriefContract = useMemo(
     () => (brief ? toRequirementBriefContract(brief, 'ready_for_approval') : undefined),
     [brief],
@@ -461,6 +550,25 @@ export function App() {
       }),
     [recordNavOperationState, deploymentEvidenceReadModel],
   );
+  const normalizedWhitelistTargetWallet = normalizeWalletWhitelistTargetAddress(walletWhitelistTargetWallet);
+  const walletWhitelistOperationReadModel = useMemo(
+    () =>
+      toWalletWhitelistOperationReadModel({
+        operationState: walletWhitelistOperationState,
+        deploymentEvidence: deploymentEvidenceReadModel,
+        walletConnectedOnSepolia:
+          walletConnectionReadModel.walletConnectionStatus === 'connected' && walletConnectionReadModel.chainStatus === 'sepolia',
+        targetWalletAddress: normalizedWhitelistTargetWallet,
+        whitelistFunctionAvailable: hasSetWalletAllowedFunction(mila26RestrictedFundTokenDeploymentArtifact.abi),
+      }),
+    [
+      walletWhitelistOperationState,
+      deploymentEvidenceReadModel,
+      walletConnectionReadModel.walletConnectionStatus,
+      walletConnectionReadModel.chainStatus,
+      normalizedWhitelistTargetWallet,
+    ],
+  );
   const projectLifecycleReadModel = useMemo(
     () =>
       toProjectLifecycleReadModel({
@@ -527,6 +635,7 @@ export function App() {
         deploymentLocalSessionOnly: walletSignedDeploymentState.localSessionOnly,
         deploymentEvidence: deploymentEvidenceReadModel,
         recordNavOperation: recordNavOperationReadModel,
+        walletWhitelistOperation: walletWhitelistOperationReadModel,
         customEvents: smartContractArtifactSpec?.eventModel?.customEvents,
       }),
     [
@@ -543,6 +652,7 @@ export function App() {
       walletSignedDeploymentState,
       deploymentEvidenceReadModel,
       recordNavOperationReadModel,
+      walletWhitelistOperationReadModel,
     ],
   );
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
@@ -552,18 +662,56 @@ export function App() {
       ? 'Engineering Brief generation'
       : 'Requirement brief approval';
   const approvalGateStatus = engineeringBrief ? 'Engineering brief ready' : brief ? 'Brief ready' : 'Draft brief';
+  const selectedProject = demoProjectFolders.find((project) => project.id === selectedProjectId);
+  const activeProjectTitle = selectedProject?.title ?? 'Project Workspace';
+  const activeProjectDescription =
+    selectedProject?.description ?? 'Select a project folder to inspect its Requirement Brief, Engineering Brief, contract artifacts, and evidence.';
   const selectedModules = brief?.modules.filter((module) => module.enabled) ?? [];
   const tokenModelSummary =
     requirementBriefContract?.tokenModel.assumption ?? 'Token model will be confirmed in the Requirement Brief.';
-  const activeStepArtifacts = [
-    brief ? 'Requirement Brief draft' : 'Requirement Brief draft pending',
-    engineeringBrief ? 'Engineering Brief artifact' : 'Engineering Brief pending',
-    `Closure readiness: ${projectClosureReadModel.readinessLabel}`,
-    'Decision notes local only',
-    smartContractArtifactSpec ? 'Smart Contract Artifact Spec generated' : 'Smart Contract Artifact Spec pending',
-    smartContractArtifactPackage ? 'Contract Artifact Preview generated' : 'Contract Artifact Preview pending',
-    smartContractCompileTestResult ? 'Local compile/test foundation passed' : 'Local compile/test foundation pending',
-    `Deployment Gate Review: ${formatDeploymentGateStatus(deploymentGateReadModel.gateStatus)}`,
+  const selectedProjectArtifactRows: GeneratedArtifactCard[] = [
+    {
+      label: 'Requirement Brief',
+      status: brief ? 'Draft created' : 'Pending',
+      detail: brief ? `${activeProjectTitle} has a reviewable Requirement Brief.` : 'Create the Requirement Brief from the Engineering Bot workspace.',
+      source: selectedProject?.label ?? 'project workspace',
+    },
+    {
+      label: 'Engineering Brief',
+      status: engineeringBrief ? 'Generated' : 'Pending',
+      detail: engineeringBrief ? 'Backend Engineering Brief artifact is available.' : 'Generate after the Requirement Brief exists.',
+      source: selectedProject?.label ?? 'project workspace',
+    },
+    {
+      label: 'Smart Contract Artifact Spec',
+      status: smartContractArtifactSpec ? 'Generated' : 'Pending',
+      detail: smartContractArtifactSpec ? 'Contract artifact spec is available for review.' : 'Prepare after the Engineering Brief is ready.',
+      source: selectedProject?.label ?? 'project workspace',
+    },
+    {
+      label: 'Deployment Evidence',
+      status: deploymentEvidenceReadModel.statusLabel,
+      detail: `${deploymentEvidenceReadModel.evidencePersistenceLabel}. ${deploymentEvidenceReadModel.evidenceStrengthLabel}.`,
+      source: 'Sepolia local-session evidence',
+    },
+    {
+      label: 'Record NAV Evidence',
+      status: recordNavOperationReadModel.statusLabel,
+      detail: `${recordNavOperationReadModel.operationEvidencePersistenceLabel}. ${recordNavOperationReadModel.eventEvidenceSourceLabel}.`,
+      source: 'SCP operation evidence',
+    },
+    {
+      label: 'Whitelist Evidence',
+      status: walletWhitelistOperationReadModel.statusLabel,
+      detail: `${walletWhitelistOperationReadModel.operationEvidencePersistenceLabel}. ${walletWhitelistOperationReadModel.eventEvidenceStatusLabel}.`,
+      source: 'SCP operation evidence',
+    },
+    {
+      label: 'Smart Contract Operations',
+      status: deploymentEvidenceReadModel.status === 'confirmed' ? 'Record NAV and Wallet Whitelist gated' : 'Locked',
+      detail: 'Allocation/Mint and other Smart Contract Operations remain locked.',
+      source: 'SCP boundary',
+    },
   ];
   const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
   const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
@@ -595,6 +743,36 @@ export function App() {
         : !isWalletConnectionComplete
           ? 'Connect a Sepolia wallet before recording NAV.'
           : 'Record NAV operation is blocked by a precondition.';
+  const whitelistTargetIsValid = isValidNonZeroEvmAddress(normalizedWhitelistTargetWallet);
+  const whitelistFunctionAvailable = hasSetWalletAllowedFunction(mila26RestrictedFundTokenDeploymentArtifact.abi);
+  const canRequestWalletWhitelistOperation =
+    smartContractGenerationStatus === 'ready' &&
+    isWalletConnectionComplete &&
+    deploymentEvidenceReadModel.status === 'confirmed' &&
+    deploymentEvidenceReadModel.evidenceStrength === 'confirmed_receipt' &&
+    deploymentEvidenceReadModel.contractAddressSource === 'receipt_returned' &&
+    Boolean(deploymentEvidenceReadModel.contractAddress) &&
+    isValidNonZeroEvmAddress(deploymentEvidenceReadModel.contractAddress) &&
+    whitelistFunctionAvailable &&
+    whitelistTargetIsValid &&
+    walletWhitelistOperationState.operationStatus !== 'confirmed' &&
+    !isWalletWhitelistOperationInFlight(walletWhitelistOperationState) &&
+    !walletWhitelistOperationAttemptIdRef.current;
+  const walletWhitelistOperationDisabledReason = isWalletWhitelistOperationInFlight(walletWhitelistOperationState)
+    ? 'A Wallet Whitelist operation is already awaiting wallet confirmation or receipt.'
+    : walletWhitelistOperationState.operationStatus === 'confirmed'
+      ? 'Wallet Whitelist operation is confirmed for this local session.'
+      : deploymentEvidenceReadModel.status !== 'confirmed'
+        ? 'Confirm wallet-signed Sepolia deployment evidence before whitelisting a wallet.'
+        : !isWalletConnectionComplete
+          ? 'Connect a Sepolia wallet before whitelisting a wallet.'
+          : !normalizedWhitelistTargetWallet
+            ? 'Enter a target wallet address before whitelisting.'
+            : !whitelistTargetIsValid
+              ? 'Target wallet address must be a valid non-zero EVM address.'
+              : !whitelistFunctionAvailable
+                ? 'setWalletAllowed(address,bool) is missing from the deployment artifact ABI.'
+                : 'Contract authorization is enforced on-chain.';
   const generatedArtifactCards = useMemo<GeneratedArtifactCard[]>(
     () =>
       smartContractGenerationStatus === 'ready'
@@ -664,10 +842,16 @@ export function App() {
               source: 'Track 15A wallet-signed SCP operation',
             },
             {
+              label: 'Wallet Whitelist Operation Evidence',
+              status: walletWhitelistOperationReadModel.statusLabel,
+              detail: `Wallet whitelist evidence: ${walletWhitelistOperationReadModel.operationEvidencePersistenceLabel}. Transaction hash source: ${walletWhitelistOperationReadModel.operationTransactionHashSourceLabel}. Receipt source: ${walletWhitelistOperationReadModel.operationReceiptSourceLabel}. WalletWhitelisted event: ${walletWhitelistOperationReadModel.eventEvidenceStatusLabel}. Contract authorization is enforced on-chain.`,
+              source: 'Track 15B wallet-signed SCP operation',
+            },
+            {
               label: 'Smart Contract Operations',
-              status: deploymentEvidenceReadModel.status === 'confirmed' ? 'Record NAV gated' : 'Locked',
+              status: deploymentEvidenceReadModel.status === 'confirmed' ? 'Record NAV and Wallet Whitelist gated' : 'Locked',
               detail:
-                'SCP exposes only the Record NAV Event operation after confirmed deployment evidence. Other Smart Contract Operations remain locked.',
+                'SCP exposes at most Record NAV Event and Whitelist Wallet after confirmed deployment evidence. Allocation/Mint and other Smart Contract Operations remain locked.',
               source: 'SCP operations boundary',
             },
             {
@@ -693,8 +877,48 @@ export function App() {
       walletSignedDeploymentState,
       deploymentEvidenceReadModel,
       recordNavOperationReadModel,
+      walletWhitelistOperationReadModel,
     ],
   );
+
+  function nextEngineeringBotConversationTurnId(prefix: 'user' | 'assistant') {
+    engineeringBotConversationSequenceRef.current += 1;
+    return `${prefix}-${engineeringBotConversationSequenceRef.current}`;
+  }
+
+  function publishEngineerResponse(response: BlockchainEngineerChatResponse, source: EngineerAnswerSource) {
+    setEngineerAnswerSource(source);
+    setEngineeringBotConversation((turns) => [
+      ...turns,
+      {
+        id: nextEngineeringBotConversationTurnId('assistant'),
+        role: 'assistant',
+        response,
+        source,
+      },
+    ]);
+  }
+
+  function renderEngineerResponse(response: BlockchainEngineerChatResponse) {
+    const viewModel = toBlockchainEngineerResponseViewModel(response);
+    const visibleSections = viewModel.sections.filter((section) => section.kind !== 'risk_notes');
+
+    return (
+      <div className="engineer-response-view">
+        <p>{viewModel.summary}</p>
+        {visibleSections.map((section) => (
+          <section className="engineer-response-section" key={section.kind}>
+            <h4>{section.title}</h4>
+            <ul>
+              {section.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    );
+  }
 
   function createBrief() {
     const nextBrief = createRequirementBrief(facts, goal);
@@ -727,7 +951,8 @@ export function App() {
   }
 
   async function askBot() {
-    if (!question.trim()) {
+    const submittedQuestion = question.trim();
+    if (!submittedQuestion) {
       setBotChatError('Enter a question before asking the bot.');
       setEngineerAnswerSource('local');
       return;
@@ -735,9 +960,17 @@ export function App() {
 
     setIsBotReplyLoading(true);
     setBotChatError(undefined);
+    setEngineeringBotConversation((turns) => [
+      ...turns,
+      {
+        id: nextEngineeringBotConversationTurnId('user'),
+        role: 'user',
+        content: submittedQuestion,
+      },
+    ]);
 
     const result = await askBlockchainEngineer({
-      userMessage: question,
+      userMessage: submittedQuestion,
       projectContext: brief
         ? {
             fundName: brief.fundFacts.fundName,
@@ -755,14 +988,14 @@ export function App() {
     setIsBotReplyLoading(false);
 
     if (result.ok) {
-      setEngineerResponse(result.data);
-      setEngineerAnswerSource('backend');
+      publishEngineerResponse(result.data, 'backend');
+      setQuestion('');
       return;
     }
 
     setBotChatError(result.message);
-    setEngineerResponse(createLocalEngineerResponse(fallbackEngineerAnswer));
-    setEngineerAnswerSource('local');
+    publishEngineerResponse(createLocalEngineerResponse(answerAsBlockchainEngineer(submittedQuestion, brief)), 'local');
+    setQuestion('');
   }
 
   function resetSmartContractGeneration() {
@@ -770,6 +1003,8 @@ export function App() {
     deploymentAttemptIdRef.current = '';
     recordNavOperationAttemptSequenceRef.current += 1;
     recordNavOperationAttemptIdRef.current = '';
+    walletWhitelistOperationAttemptSequenceRef.current += 1;
+    walletWhitelistOperationAttemptIdRef.current = '';
     setSmartContractArtifactSpec(undefined);
     setSmartContractArtifactPackage(undefined);
     setSmartContractCheckResult(undefined);
@@ -777,6 +1012,8 @@ export function App() {
     setSmartContractCompileTestResult(undefined);
     setWalletSignedDeploymentState(initialWalletSignedDeploymentState);
     setRecordNavOperationState(initialRecordNavOperationState);
+    setWalletWhitelistOperationState(initialWalletWhitelistOperationState);
+    setWalletWhitelistTargetWallet('');
     setSmartContractGenerationStatus('idle');
     setSmartContractGenerationError(undefined);
   }
@@ -829,8 +1066,7 @@ export function App() {
       }),
     );
     setSmartContractGenerationStatus('ready');
-    setEngineerResponse(createSmartContractPreparationResponse());
-    setEngineerAnswerSource('generated_artifacts');
+    publishEngineerResponse(createSmartContractPreparationResponse(), 'generated_artifacts');
   }
 
   async function connectWallet() {
@@ -845,8 +1081,7 @@ export function App() {
     const snapshot = await walletAdapter.connect();
     const nextWalletConnectionReadModel = toWalletConnectionReadModel(snapshot);
     setWalletConnectionInput(snapshot);
-    setEngineerResponse(createWalletConnectionResponse(nextWalletConnectionReadModel));
-    setEngineerAnswerSource('wallet');
+    publishEngineerResponse(createWalletConnectionResponse(nextWalletConnectionReadModel), 'wallet');
   }
 
   async function requestSepoliaDeployment() {
@@ -857,7 +1092,10 @@ export function App() {
     deploymentAttemptIdRef.current = attemptId;
     recordNavOperationAttemptSequenceRef.current += 1;
     recordNavOperationAttemptIdRef.current = '';
+    walletWhitelistOperationAttemptSequenceRef.current += 1;
+    walletWhitelistOperationAttemptIdRef.current = '';
     setRecordNavOperationState(initialRecordNavOperationState);
+    setWalletWhitelistOperationState(initialWalletWhitelistOperationState);
 
     const constructorArgs =
       connectedWalletAddress && deploymentConstructorParameters
@@ -894,8 +1132,7 @@ export function App() {
 
     if (deploymentAttemptIdRef.current === attemptId) {
       setWalletSignedDeploymentState(result);
-      setEngineerResponse(createDeploymentResponse(result));
-      setEngineerAnswerSource('wallet');
+      publishEngineerResponse(createDeploymentResponse(result), 'wallet');
     }
   }
 
@@ -941,9 +1178,56 @@ export function App() {
 
     if (recordNavOperationAttemptIdRef.current === attemptId) {
       setRecordNavOperationState(result);
-      setEngineerResponse(createRecordNavOperationResponse(result));
-      setEngineerAnswerSource('wallet');
+      publishEngineerResponse(createRecordNavOperationResponse(result), 'wallet');
       recordNavOperationAttemptIdRef.current = '';
+    }
+  }
+
+  async function requestWalletWhitelistOperation() {
+    if (walletWhitelistOperationAttemptIdRef.current || isWalletWhitelistOperationInFlight(walletWhitelistOperationState)) return;
+
+    const provider = getBrowserEthereumProvider();
+    const connectedWalletAddress = walletConnectionReadModel.connectedWalletAddress;
+    const targetWalletAddress = normalizeWalletWhitelistTargetAddress(walletWhitelistTargetWallet);
+    const attemptId = `wallet-whitelist-operation-${walletWhitelistOperationAttemptSequenceRef.current + 1}`;
+    walletWhitelistOperationAttemptSequenceRef.current += 1;
+    walletWhitelistOperationAttemptIdRef.current = attemptId;
+
+    const immediateState: WalletWhitelistOperationState = {
+      operationStatus: 'awaiting_wallet_confirmation',
+      attemptId,
+      contractAddress: deploymentEvidenceReadModel.contractAddress,
+      targetWalletAddress,
+      allowed: true,
+      operationReceiptStatus: 'pending',
+      localSessionOnly: true,
+    };
+    setWalletWhitelistOperationState(immediateState);
+
+    const result = await requestWalletSignedWhitelistOperation({
+      provider: provider as SepoliaWalletWhitelistOperationProvider | undefined,
+      connectedWalletAddress,
+      deploymentEvidence: deploymentEvidenceReadModel,
+      contractAbi: mila26RestrictedFundTokenDeploymentArtifact.abi,
+      targetWalletAddress,
+      currentOperationState: walletWhitelistOperationState,
+      attemptId,
+      pollOptions: {
+        maxAttempts: 8,
+        intervalMs: 1_500,
+      },
+      shouldContinue: (candidateAttemptId) => walletWhitelistOperationAttemptIdRef.current === candidateAttemptId,
+      onStateChange: (nextState) => {
+        if (walletWhitelistOperationAttemptIdRef.current === nextState.attemptId) {
+          setWalletWhitelistOperationState(nextState);
+        }
+      },
+    });
+
+    if (walletWhitelistOperationAttemptIdRef.current === attemptId) {
+      setWalletWhitelistOperationState(result);
+      publishEngineerResponse(createWalletWhitelistOperationResponse(result), 'wallet');
+      walletWhitelistOperationAttemptIdRef.current = '';
     }
   }
 
@@ -1025,39 +1309,30 @@ export function App() {
             </div>
           </div>
 
-          <nav className="project-nav" aria-label="MILA26 project folders">
-            <a aria-current="page" href="#workspace">
-              Project workspace
-            </a>
-            <a href="#requirement-brief">Requirement Brief</a>
-            <a href="#engineering-brief">Engineering Brief</a>
-            <a href="#smart-contract-control">Smart Contract Control</a>
+          <nav className="project-nav project-directory" aria-label="MILA26 project folders">
+            <button
+              type="button"
+              className="project-nav-button"
+              aria-current={selectedProjectId === 'workspace' ? 'page' : undefined}
+              onClick={() => setSelectedProjectId('workspace')}
+            >
+              <span>Project workspace</span>
+              <small>All project folders</small>
+            </button>
+            {demoProjectFolders.map((project) => (
+              <button
+                type="button"
+                className="project-nav-button"
+                aria-current={selectedProjectId === project.id ? 'page' : undefined}
+                key={project.id}
+                onClick={() => setSelectedProjectId(project.id)}
+              >
+                <span>{project.label}</span>
+                <small>{project.marketScope}</small>
+              </button>
+            ))}
           </nav>
 
-          <section className="rail-section" aria-label="Current-stage activities">
-            <p className="eyebrow">Current-stage activities</p>
-            <h2>Step 1 workspace</h2>
-            <ul className="rail-list">
-              {currentStageActivities.map((activity) => (
-                <li key={activity}>{activity}</li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="rail-section">
-            <p className="eyebrow">Project Closure Ledger</p>
-            <h2>{projectClosureReadModel.readinessLabel}</h2>
-            <ul className="rail-list">
-              <li>{projectClosureReadModel.openItemCount} unresolved open item(s)</li>
-              <li>{projectClosureReadModel.blockingOpenItemCount} blocking item(s)</li>
-              <li>{projectClosureReadModel.deferredItemCount} deferred item(s)</li>
-              <li>Wallet-signed deployment gate locked</li>
-            </ul>
-          </section>
-
-          <a className="rail-help" href="#goal-copilot">
-            Need help? Ask the Engineering Bot
-          </a>
         </aside>
         )}
 
@@ -1065,8 +1340,8 @@ export function App() {
           <header className="cockpit-header">
             <div>
               <p className="eyebrow">mila26-cockpit2</p>
-              <h1>MILA Income Fund / Tokenized Income Fund</h1>
-              <p className="header-copy">Guided AI + blockchain workspace for asset-manager tokenisation prep.</p>
+              <h1>{activeProjectTitle}</h1>
+              <p className="header-copy">{activeProjectDescription}</p>
             </div>
             <div className="safety-badges" aria-label="Project safety badges">
               <span>Ethereum testnet only</span>
@@ -1074,20 +1349,25 @@ export function App() {
             </div>
           </header>
 
-          <section className="stage-progress" aria-label="Top stage progress">
-            {cockpitStages.map((stage) => (
-              <article key={stage.step} className={stage.step === '1' ? 'active' : stage.step === '8' ? 'downstream' : ''}>
-                <span>{stage.step}</span>
-                <strong>{stage.label}</strong>
-                <small>{stage.state}</small>
-              </article>
-            ))}
+          <section className="workflow-summary" aria-label="Current workflow summary">
+            <div>
+              <span>Current workflow</span>
+              <strong>{currentGate}</strong>
+            </div>
+            <div>
+              <span>Active project</span>
+              <strong>{selectedProject?.label ?? 'Project workspace'}</strong>
+            </div>
+            <div>
+              <span>Next action</span>
+              <strong>{cockpitActionLabel(primaryWorkflowAction.id, primaryWorkflowAction.label)}</strong>
+            </div>
           </section>
 
           <section className="workbench" id="goal-copilot">
             <div className="workbench-heading">
               <div>
-                <p className="eyebrow">Step 1 active</p>
+                <p className="eyebrow">{selectedProject?.label ?? 'Project workspace'}</p>
                 <h2>Engineering Bot decision workspace</h2>
               </div>
               <span className={`gate-badge ${brief ? 'ready' : 'draft'}`}>{approvalGateStatus}</span>
@@ -1106,23 +1386,27 @@ export function App() {
                   <div className="bot-reply">
                     <span>Engineering Bot reply</span>
                     <div className="assistant-response" data-testid="engineer-answer">
-                      {isBotReplyLoading ? (
-                        'Waiting for Blockchain Engineer Bot...'
-                      ) : (
-                        <div className="engineer-response-view">
-                          <p>{engineerResponseViewModel.summary}</p>
-                          {engineerResponseViewModel.sections.map((section) => (
-                            <section className="engineer-response-section" key={section.kind}>
-                              <h4>{section.title}</h4>
-                              <ul>
-                                {section.items.map((item) => (
-                                  <li key={item}>{item}</li>
-                                ))}
-                              </ul>
-                            </section>
-                          ))}
-                        </div>
-                      )}
+                      <div className="conversation-history">
+                        {engineeringBotConversation.map((turn) =>
+                          turn.role === 'user' ? (
+                            <article className="conversation-turn user-turn" key={turn.id}>
+                              <span className="turn-label">You</span>
+                              <p>{turn.content}</p>
+                            </article>
+                          ) : (
+                            <article className="conversation-turn assistant-turn" key={turn.id}>
+                              <span className="turn-label">Engineering Bot</span>
+                              {renderEngineerResponse(turn.response)}
+                            </article>
+                          ),
+                        )}
+                        {isBotReplyLoading && (
+                          <article className="conversation-turn assistant-turn pending-turn" aria-live="polite">
+                            <span className="turn-label">Engineering Bot</span>
+                            <p>Waiting for Blockchain Engineer Bot...</p>
+                          </article>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1352,21 +1636,6 @@ export function App() {
             </div>
           </section>
 
-          <section className="module-band" aria-label="Programmable feature preview">
-            <div>
-              <p className="eyebrow">Programmable features</p>
-              <h2>Servicing modules</h2>
-            </div>
-            <div className="module-grid">
-              {moduleCatalog.slice(0, 4).map((module) => (
-                <article key={module.id} className="module-card">
-                  <strong>{module.label}</strong>
-                  <span>{module.plainEnglish}</span>
-                </article>
-              ))}
-            </div>
-          </section>
-
           {engineeringBrief && (
             <section className="artifact-panel" data-testid="engineering-brief-artifact">
               <div className="section-heading">
@@ -1435,99 +1704,84 @@ export function App() {
 
         {isRightRailOpen && (
         <aside className="right-rail" id="right-rail" aria-label="Project status">
-          <section className="status-panel">
-            <p className="eyebrow">Stage Progress</p>
-            <h2>{currentGate}</h2>
-            <div className="status-meter">
-              <span style={{ width: engineeringBrief ? '48%' : brief ? '32%' : '18%' }} />
-            </div>
-            <p className="muted">Step 1 stays active while setup, assumptions, and constraints are reviewed.</p>
-          </section>
+          {!selectedProject && (
+            <section className="status-panel">
+              <p className="eyebrow">Project artifacts</p>
+              <p className="muted">Select a project folder to view its linked documents and artifacts for download.</p>
+            </section>
+          )}
 
-          <section className="status-panel">
-            <p className="eyebrow">About this step</p>
-            <h2>Business intent to Requirement Brief</h2>
-            <p className="muted">
-              Step 1 turns the asset-manager goal into a reviewable brief. Decisions stay with the Engineering Bot in
-              the central workspace.
-            </p>
-          </section>
+          {selectedProject && (
+            <>
+            <section className="status-panel">
+              <p className="eyebrow">Project Artifacts</p>
+              <h2>{selectedProject.title}</h2>
+              <p className="muted">
+                Artifacts and evidence for {selectedProject.label}. Actions stay in the center workspace and SCP.
+              </p>
+            </section>
 
-          <section className="status-panel">
-            <p className="eyebrow">Step 1 To-Do Checklist</p>
-            <ul className="check-list">
-              {projectClosureReadModel.rightRailChecklistItems.map((todo) => (
-                <li key={todo.label} className={todo.status === 'done' ? 'done' : ''}>
-                  <span>{todo.status === 'done' ? 'Done' : todo.status}</span>
-                  {todo.label}
+            <section className="status-panel">
+              <p className="eyebrow">Linked artifacts</p>
+              <ul className="artifact-list">
+                {selectedProjectArtifactRows.map((artifact) => (
+                  <li key={artifact.label}>
+                    <span>{artifact.status}</span>
+                    {artifact.label}
+                    <small>{artifact.detail}</small>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="status-panel">
+              <p className="eyebrow">Safety boundary</p>
+              <ul className="artifact-list">
+                <li>
+                  <span>Network</span>
+                  Sepolia / Ethereum testnet only
                 </li>
-              ))}
-            </ul>
-          </section>
+                <li>
+                  <span>Private keys</span>
+                  Backend never holds private keys
+                </li>
+                <li>
+                  <span>Operations</span>
+                  Allocation/Mint and other Smart Contract Operations remain locked
+                </li>
+              </ul>
+            </section>
 
-          <section className="status-panel">
-            <p className="eyebrow">Step 1 Artifacts</p>
-            <ul className="artifact-list">
-              {activeStepArtifacts.map((artifact) => (
-                <li key={artifact}>{artifact}</li>
-              ))}
-            </ul>
-            <p className="microcopy">{brief || engineeringBrief ? 'View generated artifacts in the center workspace.' : 'Artifacts appear after the Engineering Bot creates them.'}</p>
-          </section>
-
-          <section className="status-panel" id="deployment-gate">
-            <p className="eyebrow">Safe-by-Design Summary</p>
-            <h2>{projectClosureReadModel.readinessLabel}</h2>
-            <p className="muted">{projectClosureReadModel.readinessDescription}</p>
-            <ul className="artifact-list">
-              <li>Deployment Gate Review: {formatDeploymentGateStatus(deploymentGateReadModel.gateStatus)}</li>
-              <li>Pre-deployment readiness: {formatPreDeploymentReadiness(deploymentGateReadModel.preDeploymentReadiness)}</li>
-              <li>Deployment execution: Blocked</li>
-              <li>Wallet Signing Intent: {formatWalletSigningIntentStatus(walletSigningIntentReadModel.intentStatus)}</li>
-              <li>Wallet connection: {formatWalletConnectionStatus(walletConnectionReadModel.walletConnectionStatus)}</li>
-              <li>Wallet provider: {walletConnectionReadModel.provider.providerStatus === 'available' ? 'Available' : walletConnectionReadModel.provider.providerStatus === 'unsupported' ? 'Not detected' : 'Unknown'}</li>
-              <li>Wallet chain: {formatWalletChainStatus(walletConnectionReadModel.chainStatus)}</li>
-              <li>{walletAddressDisplay ? `Connected wallet: ${walletAddressDisplay}` : 'No wallet address'}</li>
-              <li>Wallet execution: Not implemented</li>
-              <li>Wallet-signed Sepolia deployment: {formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus)}</li>
-              <li>Deployment evidence status: {deploymentEvidenceReadModel.statusLabel}</li>
-              <li>Evidence strength: {deploymentEvidenceReadModel.evidenceStrengthLabel}</li>
-              <li>Evidence persistence: {deploymentEvidenceReadModel.evidencePersistenceLabel}</li>
-              <li>Transaction hash source: {deploymentEvidenceReadModel.transactionHashSourceLabel}</li>
-              <li>Contract address source: {deploymentEvidenceReadModel.contractAddressSourceLabel}</li>
-              <li>
-                {deploymentEvidenceReadModel.transactionHash
-                  ? `Transaction hash: ${deploymentEvidenceReadModel.transactionHash}`
-                  : 'No transaction hash'}
-              </li>
-              <li>
-                {deploymentEvidenceReadModel.contractAddress
-                  ? `Contract address: ${deploymentEvidenceReadModel.contractAddress}`
-                  : 'No contract address'}
-              </li>
-              <li>Deployment Evidence: Local session only</li>
-              <li>User wallet signing required later</li>
-              <li>Backend never holds private keys</li>
-              <li>No signed payload</li>
-              <li>{deploymentEvidenceReadModel.transactionHash ? 'Submitted transaction: Submitted to Sepolia' : 'No submitted transaction'}</li>
-              <li>{deploymentEvidenceReadModel.contractAddress ? 'Confirmed transaction: Confirmed on Sepolia' : 'No confirmed transaction'}</li>
-              <li>Record NAV operation: {formatRecordNavOperationStatus(recordNavOperationState.operationStatus)}</li>
-              <li>Operation evidence: {recordNavOperationReadModel.operationEvidencePersistenceLabel}</li>
-              <li>Operation transaction hash source: {recordNavOperationReadModel.operationTransactionHashSourceLabel}</li>
-              <li>Operation receipt source: {recordNavOperationReadModel.operationReceiptSourceLabel}</li>
-              <li>ValuationUpdated event evidence: {recordNavOperationReadModel.eventEvidenceSourceLabel}</li>
-              <li>Other Smart Contract Operations: Locked</li>
-            </ul>
-            <p className="microcopy">Remaining gate items</p>
-            <ul className="artifact-list">
-              {deploymentGateReadModel.remainingGateItems.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-            <p className="open-count">
-              {projectClosureReadModel.openItemCount} unresolved / {projectClosureReadModel.deferredItemCount} deferred item(s)
-            </p>
-          </section>
+            <section className="status-panel" id="deployment-gate">
+              <p className="eyebrow">Deployment and operation evidence</p>
+              <ul className="artifact-list">
+                <li>Deployment Gate Review: {formatDeploymentGateStatus(deploymentGateReadModel.gateStatus)}</li>
+                <li>Wallet connection: {formatWalletConnectionStatus(walletConnectionReadModel.walletConnectionStatus)}</li>
+                <li>Wallet chain: {formatWalletChainStatus(walletConnectionReadModel.chainStatus)}</li>
+                <li>{walletAddressDisplay ? `Connected wallet: ${walletAddressDisplay}` : 'No wallet address'}</li>
+                <li>Wallet-signed Sepolia deployment: {formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus)}</li>
+                <li>Deployment evidence status: {deploymentEvidenceReadModel.statusLabel}</li>
+                <li>Evidence strength: {deploymentEvidenceReadModel.evidenceStrengthLabel}</li>
+                <li>Evidence persistence: {deploymentEvidenceReadModel.evidencePersistenceLabel}</li>
+                <li>Transaction hash source: {deploymentEvidenceReadModel.transactionHashSourceLabel}</li>
+                <li>Contract address source: {deploymentEvidenceReadModel.contractAddressSourceLabel}</li>
+                <li>
+                  {deploymentEvidenceReadModel.transactionHash
+                    ? `Transaction hash: ${deploymentEvidenceReadModel.transactionHash}`
+                    : 'No transaction hash'}
+                </li>
+                <li>
+                  {deploymentEvidenceReadModel.contractAddress
+                    ? `Contract address: ${deploymentEvidenceReadModel.contractAddress}`
+                    : 'No contract address'}
+                </li>
+                <li>Record NAV operation: {formatRecordNavOperationStatus(recordNavOperationState.operationStatus)}</li>
+                <li>Wallet Whitelist operation: {formatWalletWhitelistOperationStatus(walletWhitelistOperationReadModel.operationStatus)}</li>
+                <li>Other Smart Contract Operations: Locked</li>
+              </ul>
+            </section>
+            </>
+          )}
         </aside>
         )}
       </section>
@@ -1740,28 +1994,69 @@ export function App() {
               ) : (
                 <span>ValuationUpdated event: Not decoded</span>
               )}
+              <span>Wallet Whitelist operation: {formatWalletWhitelistOperationStatus(walletWhitelistOperationReadModel.operationStatus)}</span>
+              <span>Wallet whitelist evidence: {walletWhitelistOperationReadModel.operationEvidencePersistenceLabel}</span>
+              <span>Whitelist transaction hash source: {walletWhitelistOperationReadModel.operationTransactionHashSourceLabel}</span>
+              <span>Whitelist receipt source: {walletWhitelistOperationReadModel.operationReceiptSourceLabel}</span>
+              <span>WalletWhitelisted event: {walletWhitelistOperationReadModel.eventEvidenceStatusLabel}</span>
+              {walletWhitelistOperationReadModel.operationTransactionHash ? (
+                <span>Whitelist transaction hash: {walletWhitelistOperationReadModel.operationTransactionHash}</span>
+              ) : (
+                <span>No whitelist transaction hash</span>
+              )}
+              <span>Target wallet: {normalizedWhitelistTargetWallet ?? 'Target wallet address required'}</span>
+              <span>allowed: true</span>
+              <span>Contract authorization is enforced on-chain</span>
+              <span>Allocation/Mint: Locked until Track 15C</span>
               <span>Other Smart Contract Operations: Locked</span>
             </div>
             {deploymentEvidenceReadModel.status === 'confirmed' && (
-              <button
-                className="workflow-button"
-                data-action-id={uiActions.recordNavEvent}
-                disabled={!canRequestRecordNavOperation}
-                onClick={() => void requestRecordNavOperation()}
-                title={canRequestRecordNavOperation ? undefined : recordNavOperationDisabledReason}
-              >
-                {recordNavOperationState.operationStatus === 'awaiting_wallet_confirmation'
-                  ? 'Awaiting Wallet Confirmation...'
-                  : recordNavOperationState.operationStatus === 'submitted'
-                    ? 'Record NAV Submitted to Sepolia'
-                    : recordNavOperationState.operationStatus === 'confirmed'
-                      ? 'Record NAV Confirmed on Sepolia'
-                      : 'Record NAV Event'}
-              </button>
+              <div className="operation-controls">
+                <button
+                  className="workflow-button"
+                  data-action-id={uiActions.recordNavEvent}
+                  disabled={!canRequestRecordNavOperation}
+                  onClick={() => void requestRecordNavOperation()}
+                  title={canRequestRecordNavOperation ? undefined : recordNavOperationDisabledReason}
+                >
+                  {recordNavOperationState.operationStatus === 'awaiting_wallet_confirmation'
+                    ? 'Awaiting Wallet Confirmation...'
+                    : recordNavOperationState.operationStatus === 'submitted'
+                      ? 'Record NAV Submitted to Sepolia'
+                      : recordNavOperationState.operationStatus === 'confirmed'
+                        ? 'Record NAV Confirmed on Sepolia'
+                        : 'Record NAV Event'}
+                </button>
+                <label className="field-label" htmlFor="wallet-whitelist-target">
+                  Whitelist target wallet
+                  <input
+                    id="wallet-whitelist-target"
+                    value={walletWhitelistTargetWallet}
+                    onChange={(event) => setWalletWhitelistTargetWallet(event.target.value)}
+                    placeholder="0x..."
+                    autoComplete="off"
+                  />
+                </label>
+                <button
+                  className="workflow-button"
+                  data-action-id={uiActions.whitelistWallet}
+                  disabled={!canRequestWalletWhitelistOperation}
+                  onClick={() => void requestWalletWhitelistOperation()}
+                  title={canRequestWalletWhitelistOperation ? undefined : walletWhitelistOperationDisabledReason}
+                >
+                  {walletWhitelistOperationState.operationStatus === 'awaiting_wallet_confirmation'
+                    ? 'Wallet whitelist status: Awaiting wallet confirmation'
+                    : walletWhitelistOperationState.operationStatus === 'submitted'
+                      ? 'Wallet whitelist submitted to Sepolia'
+                      : walletWhitelistOperationState.operationStatus === 'confirmed'
+                        ? 'Wallet whitelist confirmed on Sepolia'
+                        : 'Whitelist Wallet'}
+                </button>
+              </div>
             )}
             <p className="microcopy">
-              SCP exposes only the Record NAV Event operation after confirmed deployment evidence. Mint, burn, pause,
-              resume, whitelist, allocation, and distribution controls remain locked.
+              SCP exposes at most Record NAV Event and Whitelist Wallet after confirmed deployment evidence. Burn, pause,
+              resume, allocation, mint, transfer, role administration, and distribution controls remain locked.
             </p>
           </section>
 

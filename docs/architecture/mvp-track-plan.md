@@ -20,6 +20,7 @@ Requirement Brief
 -> Wallet-Signed Sepolia Deployment local-session state
 -> Deployment Evidence local-session surface
 -> Record NAV Event wallet-signed SCP operation
+-> Wallet Whitelist wallet-signed SCP operation
 -> Other Smart Contract Operations locked
 
 ## Completed Foundation
@@ -45,6 +46,7 @@ Requirement Brief
 - Wallet-signed Sepolia deployment local-session state.
 - Deployment evidence/readiness local-session surface.
 - First wallet-signed SCP operation: Record NAV Event.
+- Second wallet-signed SCP operation: Whitelist Wallet.
 
 ## Track 13B: MetaMask Wallet Connection + Sepolia Verification
 
@@ -217,11 +219,36 @@ What not to overbuild:
 - No production oracle.
 - No mainnet.
 
+## Track 15B: Targeted Operation Hardening + Wallet Whitelist Operation
+
+Status: complete when SCP exposes exactly one additional wallet-signed operation, Whitelist Wallet, without unlocking mint/allocation or a broad operation suite.
+
+Expected deliverables:
+
+- Confirm ABI function `setWalletAllowed(address,bool)` exists and call it with `allowed = true`.
+- Require confirmed receipt-derived deployment evidence and a valid non-zero receipt-returned contract address.
+- Require explicit user-provided valid non-zero target wallet address.
+- Re-check account and Sepolia chain immediately before send.
+- Provider-returned operation transaction hash only after submission.
+- Provider receipt/event evidence only after receipt/log response.
+- Local-session-only operation evidence.
+- Contract authorization copy stays honest: authorization is enforced on-chain, not pre-claimed by the app.
+
+What not to overbuild:
+
+- No allocation/mint until Track 15C.
+- No generic operation registry or command bus.
+- No backend operation route.
+- No persistence or durable operation history.
+- No KYC, legal, audit, issuer-authorized, or investor-eligible claims.
+
 ## Later Tracks
 
-After 15A:
+After 15B:
 
-- Mint/allocation/distribution operation tracks.
+- Track 15C: Allocation/Mint Operation, if Track 15B remains clean.
+- Short hardening-only track first if operation-foundation fragility appears.
+- Distribution operation tracks.
 - Valuation file ingest and validation.
 - Evidence Pack expansion.
 - Persistence/run history.

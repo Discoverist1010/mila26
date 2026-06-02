@@ -132,14 +132,20 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
 
   await page.goto('/');
   await expect(page.getByText('KangLe AI')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'MILA Income Fund / Tokenized Income Fund' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Project Workspace' })).toBeVisible();
   await expect(page.getByLabel('Project navigation')).toBeVisible();
   await expect(page.getByLabel('Project status')).toBeVisible();
   await expect(page.getByLabel('Project safety badges').getByText(/Ethereum testnet only/i)).toBeVisible();
-  await expect(page.getByLabel('Project status').getByRole('heading', { name: 'Requirement Brief pending' })).toBeVisible();
+  await expect(page.getByLabel('Project status').getByRole('heading', { name: 'All projects' })).toHaveCount(0);
+  await expect(page.getByLabel('Project status').getByText('Safety boundary')).toHaveCount(0);
+  await expect(page.getByText('Need help? Ask the Engineering Bot')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /usequities/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /sgequities/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /mixedportfolio/i })).toBeVisible();
   await expect(page.getByTestId('smart-contract-control').getByText('SCP readiness', { exact: true })).toBeVisible();
-  await expect(page.getByLabel('Top stage progress').getByText('Setup / Explore')).toBeVisible();
-  await expect(page.getByLabel('Current-stage activities').getByText('Goal intake')).toBeVisible();
+  await expect(page.getByLabel('Current workflow summary').getByText('Requirement brief approval')).toBeVisible();
+  await expect(page.getByLabel('Top stage progress')).toHaveCount(0);
+  await expect(page.getByLabel('Current-stage activities')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Engineering Bot decision workspace' })).toBeVisible();
   await expect(page.getByLabel('Engineering Bot workspace')).toBeVisible();
   await expect(page.getByLabel('Engineering Bot actions').getByRole('button', { name: 'Create Requirement Doc' })).toBeVisible();
@@ -156,6 +162,10 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByText('Press Enter to send, Shift+Enter for a new line.')).toBeVisible();
   await expect(page.getByTestId('engineer-answer')).toContainText('Requirement Brief');
   await expect(page.getByText(/Local preview shown until a backend response is available/i)).toBeVisible();
+
+  await page.getByRole('button', { name: /usequities/i }).click();
+  await expect(page.getByRole('heading', { name: 'US Equities Portfolio' }).first()).toBeVisible();
+  await expect(page.getByLabel('Project status').getByText('Linked artifacts')).toBeVisible();
 
   await page.getByRole('button', { name: 'Hide left rail' }).click();
   await expect(page.getByLabel('Project navigation')).toBeHidden();
@@ -212,7 +222,7 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(generatedArtifacts.getByText('Wallet chain: Unknown. No wallet address. Connection only; no signing or deployment.')).toBeVisible();
   await expect(generatedArtifacts.getByText('Smart Contract Operations', { exact: true })).toBeVisible();
   await expect(generatedArtifacts.getByText('Locked', { exact: true })).toBeVisible();
-  await expect(generatedArtifacts.getByText(/SCP exposes only the Record NAV Event operation after confirmed deployment evidence/i)).toBeVisible();
+  await expect(generatedArtifacts.getByText(/SCP exposes at most Record NAV Event and Whitelist Wallet after confirmed deployment evidence/i)).toBeVisible();
   await expect(generatedArtifacts.getByText('Sepolia Deployment', { exact: true })).toBeVisible();
   await expect(generatedArtifacts.getByText('Deployment execution not started')).toBeVisible();
   await expect(generatedArtifacts.getByText('No transaction hash. No contract address. Deployment state is local-session-only.')).toBeVisible();
@@ -295,7 +305,7 @@ test('dashboard shell remains usable on a narrow viewport', async ({ page }) => 
   await page.goto('/');
 
   await expect(page.getByText('KangLe AI')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'MILA Income Fund / Tokenized Income Fund' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Project Workspace' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Engineering Bot decision workspace' })).toBeVisible();
   await expect(page.getByLabel('Project status')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Send' })).toBeVisible();
