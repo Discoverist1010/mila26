@@ -36,7 +36,7 @@ These are delivery roles for the engineering process, not MILA26 product bots.
 - **Lead Implementer / Lead Integrator:** main agent; owns correctness and integration.
 - **Test Engineer:** designs and runs Vitest, Playwright, Hardhat, regression, and failure-path tests.
 - **Quality Architect / Refactorer:** removes brittleness, duplicated state, hardcoding, incomplete data flow, and rigid module boundaries.
-- **Code Reviewer:** applies `docs/contracts/code-reviewer-checklist.md` and blocks unresolved Critical/High findings.
+- **Code Reviewer:** applies `docs/handover/05-code-reviewer-skill.md`, `docs/contracts/code-reviewer-checklist.md`, and `docs/handover/06-code-reviewer-lessons.md`; blocks unresolved Critical/High findings.
 - **Security Reviewer:** reviews auth, secrets, private-key custody, wallet safety, OWASP issues, and sensitive data handling.
 - **Solidity Reviewer:** reviews Solidity, Hardhat, OpenZeppelin, viem, Sepolia-only constraints, and contract tests.
 - **Frontend/UX Reviewer:** reviews responsiveness, readability, accessibility, visual hierarchy, and lifecycle tab coherence.
@@ -80,6 +80,16 @@ No implementation track is complete unless the relevant checks pass:
 Before commit/push, apply `docs/handover/07-code-review-activation-rules.md`.
 
 Critical findings must be fixed. High findings should be fixed in the same track unless explicitly deferred.
+
+Reviewer passes must explicitly check MILA26 lifecycle invariants:
+
+- tabs are visual only; shared typed lifecycle state owns data that crosses stages;
+- Investor Registry is the wallet whitelist source of truth;
+- SCP actions cannot bypass lifecycle gates;
+- multi-item flows still work after the first successful operation;
+- read-model counts derive from effective eligibility, not stale stored labels;
+- user UI does not leak internal track labels;
+- wallet whitelisting is not described as KYC, investor eligibility, legal, compliance, or investment-advice approval.
 
 ## Refactor Triggers
 

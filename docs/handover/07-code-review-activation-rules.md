@@ -1,8 +1,8 @@
 # Code Review Activation Rules — MILA26
 
 ## Status: ACTIVE
-**Version:** 1.1.0
-**Last updated:** 2026-06-05
+**Version:** 1.1.1
+**Last updated:** 2026-06-06
 **Applies to:** MILA26 repository
 **File path:** `docs/handover/07-code-review-activation-rules.md`
 
@@ -82,6 +82,7 @@ Use for any diff that touches:
 - contract addresses
 - deployment status or deployment evidence
 - SCP operation controls
+- lifecycle source-of-truth gates, Investor Registry/SCP handoffs, or cross-tab lifecycle state
 - backend routes or API contracts
 - persistence, storage, database, or evidence storage
 - user-visible lifecycle labels
@@ -157,6 +158,7 @@ If the user explicitly asks to skip review, report that the reviewer gate was sk
 | Wallet provider adapter | Level 2 |
 | Deployment adapter or receipt polling | Level 2 |
 | SCP operation button | Level 2 |
+| Investor Registry/SCP handoff or shared lifecycle gate | Level 2 |
 | Backend route | Level 2 |
 | Persistence/evidence storage | Level 2 |
 
@@ -174,5 +176,6 @@ This file only decides which review pass to run. The checklist remains the autho
 
 | Version | Date | Change |
 |---|---|---|
+| 1.1.1 | 2026-06-06 | Added lifecycle source-of-truth and Investor Registry/SCP handoff changes to Level 2 review triggers. |
 | 1.1.0 | 2026-06-05 | Added Lead Implementer ownership, active failure loop, and quality refactor authority. |
 | 1.0.0 | 2026-05-31 | Initial review activation rules. |

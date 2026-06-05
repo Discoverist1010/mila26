@@ -1,8 +1,8 @@
 # Code Reviewer Checklist — MILA26
 
 ## Status: ACTIVE
-**Version:** 1.0.2
-**Last updated:** 2026-05-31
+**Version:** 1.1.0
+**Last updated:** 2026-06-06
 **Applies to:** MILA26 repository
 **File path:** `docs/contracts/code-reviewer-checklist.md`
 
@@ -455,13 +455,24 @@ These checks apply based on the type of code being reviewed. Execute the relevan
 - [ ] Flag violations per severity in the check
 
 ### 9.4 — UI / Lifecycle Workspace Tracks (if applicable)
-- [ ] Engineering Bot is the single workflow decision surface
-- [ ] Right rail contains no action buttons
-- [ ] SCP shows only status/evidence/boundary (pre-deployment) or approved operations (post-deployment)
-- [ ] New UI actions use typed `CockpitAction` pattern
-- [ ] Visual tabs share lifecycle state and do not create per-tab state silos
-- [ ] No workflow buttons in the right rail
-- [ ] Flag violations per severity in the check
+- [ ] Engineering Bot is the single workflow decision surface — flag as **HIGH**, or **CRITICAL** if execution can bypass required approval/safety gates
+- [ ] Right rail contains no action buttons — flag as **HIGH**
+- [ ] SCP shows only status/evidence/boundary (pre-deployment) or approved operations (post-deployment) — flag as **HIGH**, or **CRITICAL** if it exposes unapproved blockchain execution
+- [ ] New UI actions use typed `CockpitAction` pattern — flag as **MEDIUM**, or **HIGH** if the action changes workflow state
+- [ ] Visual tabs share lifecycle state and do not create per-tab state silos — flag as **HIGH**
+- [ ] Tabs are visual structure only; any data needed across stages is owned by a shared typed lifecycle state/read model — flag as **HIGH**
+- [ ] Investor Registry is the source of truth for wallet whitelist readiness; SCP Whitelist Wallet cannot submit an unregistered, invalid, duplicate, or already-whitelisted wallet — flag as **HIGH**
+- [ ] Subscription, Redemption, Maturity, Asset Servicing, Allocation/Mint, and Evidence surfaces do not reconstruct lifecycle parameters independently from UI-local state — flag as **HIGH**
+- [ ] Multi-item flows work after the first successful operation (for example wallet 1 whitelisted, wallet 2 still selectable/submittable, wallet 1 blocked as already whitelisted) — flag as **HIGH**
+- [ ] User-visible UI copy does not expose internal track labels such as `Track 15B`, `Track 15C`, sprint IDs, or roadmap-only status names — flag as **MEDIUM**, or **HIGH** if it confuses user-visible capability readiness
+
+### 9.5 — Financial Product / Investor Wording Tracks (if applicable)
+- [ ] Wallet whitelisting is not described as KYC approval, investor eligibility approval, legal approval, compliance approval, or issuer authorization — flag as **HIGH**, or **CRITICAL** if presented as an actual approval outcome
+- [ ] NAV, valuation, update, advice, and corporate-action copy does not imply regulated investment advice unless that capability and approval are explicitly in scope — flag as **HIGH**, or **CRITICAL** if it creates a live advice claim
+- [ ] Stablecoin subscription/redemption copy clearly distinguishes parameter capture/template configuration from live stablecoin execution — flag as **HIGH**, or **CRITICAL** if it claims funds moved
+- [ ] Redemption timing copy does not imply instant payout when the product has a liquidation/payment delay — flag as **HIGH**
+- [ ] Maturity closeout copy does not imply all outstanding tokens are redeemed unless the corresponding operation/evidence path exists — flag as **HIGH**, or **CRITICAL** if it claims completed redemption
+- [ ] Flag misleading financial-product claims as **HIGH** or **CRITICAL** when they create a false execution, legal, compliance, or advice claim
 
 ---
 
@@ -513,7 +524,7 @@ The report must include:
 | MILA26-003 | 0.4 | Scope creep (HIGH) |
 | MILA26-021 | 0.1–0.3 | Scope violation (CRITICAL) |
 | MILA26-004 | 4 | Generic naming |
-| MILA26-005, 006, 008, 015 | 3, 9.4 | Lifecycle workspace / SCP / context / domain in UI |
+| MILA26-005, 006, 008, 015, 022, 023 | 3, 5, 7, 9.4 | Lifecycle workspace / SCP / context / domain in UI |
 | MILA26-007 | 3, 9.3 | Frontend LLM / secrets |
 | MILA26-009 | 6 | Premature abstraction |
 | MILA26-010, 019 | 5 | Silent swallow, stale closure |
@@ -529,6 +540,7 @@ The report must include:
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 1.1.0 | 2026-06-06 | Added lifecycle source-of-truth, Investor Registry/SCP gate, multi-item flow, internal-track-label, and financial-product wording checks | Codex |
 | 1.0.2 | 2026-05-31 | Aligned Phase 1/3 with Track 15A source-sensitive submitted/confirmed labels and SCP operation-specific controls | AI Bot Factory |
 | 1.0.1 | 2026-05-31 | Aligned trio: lessons pre-scan, phase 0–10, split 2.4 severities, pattern map, 8.6 | AI Bot Factory |
 | 1.0.0 | 2026-05-31 | Initial Code Reviewer Checklist for MILA26 | AI Bot Factory |

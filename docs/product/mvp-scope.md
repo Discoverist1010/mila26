@@ -84,11 +84,12 @@ The app currently supports:
 - deployment evidence/readiness local-session surface.
 - Record NAV Event as a wallet-signed SCP operation.
 - Whitelist Wallet as a wallet-signed SCP operation.
+- Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, and SCP handoff.
 
 The app does not yet support:
 
 - durable project/lifecycle state persistence.
-- full Investor Registry tab data model for up to 50 wallets.
+- Investor Registry import/export, KYC/eligibility workflow, or durable registry persistence.
 - stablecoin subscription parameter capture.
 - redemption delay and payout parameter capture.
 - subscription-redemption smart-contract template parameter handoff.

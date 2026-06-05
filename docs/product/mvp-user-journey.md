@@ -159,12 +159,16 @@ Current output:
 - operation receipt/event evidence only after provider/receipt response;
 - local-session operation evidence.
 
-### 8. Investor Registry: Whitelist Wallet
+### 8. Investor Registry And Whitelist Wallet
 
-After confirmed deployment evidence, user can submit a wallet-signed whitelist operation with an explicit target wallet address.
+The user can register up to 50 investor wallet addresses in the Investor Registry tab. The tab validates wallet format,
+flags duplicates, tracks local-session whitelist status, and hands valid rows into the SCP Whitelist Wallet operation.
+After confirmed deployment evidence, the user can submit a wallet-signed whitelist operation for the selected target
+wallet address.
 
 Current output:
 
+- investor wallet registry rows, validation messages, and local-session whitelist status;
 - `setWalletAllowed(address,bool)` with `allowed = true`;
 - transaction/receipt/event evidence from provider/receipt response;
 - local-session operation evidence.
@@ -173,7 +177,7 @@ Current output:
 
 The UI intentionally shows these as parameters needed or locked for later:
 
-- full investor registry table/import/export for up to 50 wallets;
+- investor registry import/export and durable registry persistence;
 - subscription smart-contract template;
 - permitted stablecoins and payment-per-token parameter capture;
 - redemption template with configurable delay;
@@ -187,10 +191,10 @@ The UI intentionally shows these as parameters needed or locked for later:
 
 Prefer this sequence before broadening operations:
 
-1. Stabilize shared lifecycle state behind the visual tabs.
-2. Add investor registry data model and tab UI.
-3. Add subscription template parameter capture.
-4. Add redemption template parameter capture, including delay unit/duration and payout-per-token configuration.
+1. Add subscription parameter capture to the shared lifecycle state.
+2. Add subscription template parameter capture.
+3. Add redemption template parameter capture, including delay unit/duration and payout-per-token configuration.
+4. Add subscription-redemption smart-contract template handoff.
 5. Add allocation/mint only after investor registry and subscription parameters are coherent.
 6. Add durable evidence persistence after the local-session evidence shape is stable.
 7. Add maturity closeout once subscription/redemption/mint flows are proven.

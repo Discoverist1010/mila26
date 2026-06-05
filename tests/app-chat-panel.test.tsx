@@ -390,10 +390,49 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(artifactScope.getByText('Acceptance criteria')).toBeVisible();
     expect(artifactScope.getByText('Capture tokenized fund requirements.')).toBeVisible();
     expect(screen.getAllByText('Ready for Smart Contract Spec').length).toBeGreaterThan(0);
-    expect(screen.getByText('Continue refining the shared lifecycle inputs, then prepare the next contract parameter set from the same workspace state.')).toBeVisible();
+    expect(screen.getByText('Start by registering investor wallet addresses so subscription, whitelisting, servicing, and evidence can use the same lifecycle state.')).toBeVisible();
     const nextAction = screen.getByRole('button', { name: 'Prepare Smart Contract Spec' });
     expect(nextAction).toBeEnabled();
     expect(screen.queryByRole('button', { name: 'Approve Brief and Run Coding Bot' })).not.toBeInTheDocument();
+  });
+
+  it('uses shared lifecycle state for the Investor Registry tab, snapshot, vault, and SCP handoff', () => {
+    const validWallet = '0x3333333333333333333333333333333333333333';
+    render(<App />);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+
+    const registry = screen.getByLabelText('Investor Registry workspace');
+    expect(within(registry).getByText('No investor wallets registered yet.')).toBeVisible();
+    expect(within(registry).getByText('Investor Registry: Wallets needed')).toBeVisible();
+    expect(within(registry).getByText(/This is not KYC, investor eligibility approval, or legal approval/i)).toBeVisible();
+    expect(within(registry).queryByText(/KYC approved|investor eligibility approved|legally approved/i)).not.toBeInTheDocument();
+
+    fireEvent.change(within(registry).getByLabelText('Investor wallet address'), {
+      target: { value: validWallet },
+    });
+    fireEvent.click(within(registry).getByRole('button', { name: 'Add wallet' }));
+
+    expect(within(registry).getByText('1/50')).toBeVisible();
+    expect(within(registry).getAllByText('Ready to whitelist').length).toBeGreaterThan(0);
+    expect(within(registry).getByText('Valid wallet address')).toBeVisible();
+    expect(screen.getByText('1 ready, 0 whitelisted')).toBeVisible();
+    expect(screen.getByLabelText('Product setup status')).toHaveTextContent('1/50 registered');
+    expect(screen.getByLabelText('Project status')).toHaveTextContent('Investor Registry');
+    expect(screen.getByLabelText('Project status')).toHaveTextContent('Active');
+
+    fireEvent.click(within(registry).getByRole('button', { name: 'Use for SCP whitelist' }));
+    expect(screen.getByRole('heading', { name: 'Smart Contract' })).toBeVisible();
+    expect(screen.getByText(`Target wallet: ${validWallet}`)).toBeVisible();
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+    fireEvent.change(screen.getByLabelText('Investor wallet address'), {
+      target: { value: '0x1234' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add wallet' }));
+
+    expect(screen.getByText('Wallet address must be a valid non-zero EVM address.')).toBeVisible();
+    expect(screen.getByLabelText('Investor Registry blocking items')).toHaveTextContent('Resolve invalid wallet addresses.');
   });
 
   it('completes the golden lifecycle flow into wallet-intent review and locked operations without execution claims', async () => {
@@ -773,6 +812,8 @@ describe('App Blockchain Engineer Bot panel', () => {
   });
 
   it('whitelists a target wallet from SCP only after explicit target input and confirmed deployment evidence', async () => {
+    const firstTargetWallet = '0x3333333333333333333333333333333333333333';
+    const secondTargetWallet = '0x4444444444444444444444444444444444444444';
     const { provider, calls, transactionParams } = createMockWalletProvider({
       transactionHash: '0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
     });
@@ -804,10 +845,29 @@ describe('App Blockchain Engineer Bot panel', () => {
       target: { value: '0x1234' },
     });
     expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeDisabled();
-
     fireEvent.change(screen.getByLabelText('Whitelist target wallet'), {
-      target: { value: '0x3333333333333333333333333333333333333333' },
+      target: { value: '0x5555555555555555555555555555555555555555' },
     });
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeDisabled();
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toHaveAttribute(
+      'title',
+      'Register this wallet in Investor Registry before whitelisting.',
+    );
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+    const registry = screen.getByLabelText('Investor Registry workspace');
+    fireEvent.change(within(registry).getByLabelText('Investor wallet address'), {
+      target: { value: firstTargetWallet },
+    });
+    fireEvent.click(within(registry).getByRole('button', { name: 'Add wallet' }));
+    fireEvent.change(within(registry).getByLabelText('Investor wallet address'), {
+      target: { value: secondTargetWallet },
+    });
+    fireEvent.click(within(registry).getByRole('button', { name: 'Add wallet' }));
+    expect(within(registry).getAllByText('Ready to whitelist').length).toBeGreaterThanOrEqual(2);
+
+    fireEvent.click(within(registry).getAllByRole('button', { name: 'Use for SCP whitelist' })[0]);
+    expect(screen.getByText(`Target wallet: ${firstTargetWallet}`)).toBeVisible();
 
     await waitFor(() => {
       expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeEnabled();
@@ -821,13 +881,55 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(screen.getAllByText('Wallet whitelist confirmed on Sepolia').length).toBeGreaterThan(0);
     });
 
-    expect(calls.filter((method) => method === 'eth_sendTransaction')).toHaveLength(2);
-    expect(transactionParams).toHaveLength(2);
-    const whitelistTransaction = (transactionParams[1] as Array<Record<string, unknown>>)[0];
-    expect(whitelistTransaction.from).toBe(connectedWalletAddress);
-    expect(whitelistTransaction.to).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
-    expect(whitelistTransaction.value).toBe('0x0');
-    expect(String(whitelistTransaction.data)).toMatch(/^0x/);
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+    const updatedRegistry = screen.getByLabelText('Investor Registry workspace');
+    await waitFor(() => {
+      expect(within(updatedRegistry).getByText('Whitelisted locally')).toBeVisible();
+    });
+    const updatedHandoffButtons = within(updatedRegistry).getAllByRole('button', { name: 'Use for SCP whitelist' });
+    expect(updatedHandoffButtons[0]).toBeDisabled();
+    expect(updatedHandoffButtons[1]).toBeEnabled();
+
+    fireEvent.click(updatedHandoffButtons[1]);
+    expect(screen.getByText(`Target wallet: ${secondTargetWallet}`)).toBeVisible();
+
+    await waitFor(() => {
+      expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeEnabled();
+    });
+    fireEvent.change(screen.getByLabelText('Whitelist target wallet'), {
+      target: { value: firstTargetWallet },
+    });
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeDisabled();
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toHaveAttribute(
+      'title',
+      'Selected wallet is already whitelisted in this local session.',
+    );
+    fireEvent.change(screen.getByLabelText('Whitelist target wallet'), {
+      target: { value: secondTargetWallet },
+    });
+    await waitFor(() => {
+      expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeEnabled();
+    });
+    fireEvent.click(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' }));
+
+    await waitFor(() => {
+      expect(calls.filter((method) => method === 'eth_sendTransaction')).toHaveLength(3);
+    });
+    await waitFor(() => {
+      expect(screen.getAllByText('Wallet whitelist confirmed on Sepolia').length).toBeGreaterThan(0);
+    });
+
+    expect(transactionParams).toHaveLength(3);
+    const firstWhitelistTransaction = (transactionParams[1] as Array<Record<string, unknown>>)[0];
+    const secondWhitelistTransaction = (transactionParams[2] as Array<Record<string, unknown>>)[0];
+    expect(firstWhitelistTransaction.from).toBe(connectedWalletAddress);
+    expect(firstWhitelistTransaction.to).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+    expect(firstWhitelistTransaction.value).toBe('0x0');
+    expect(String(firstWhitelistTransaction.data)).toMatch(/^0x/);
+    expect(secondWhitelistTransaction.from).toBe(connectedWalletAddress);
+    expect(secondWhitelistTransaction.to).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+    expect(secondWhitelistTransaction.value).toBe('0x0');
+    expect(String(secondWhitelistTransaction.data)).toMatch(/^0x/);
     expect(screen.getAllByText(/Whitelist transaction hash: 0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Wallet whitelist evidence: Local session only').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Whitelist transaction hash source: Provider returned').length).toBeGreaterThan(0);

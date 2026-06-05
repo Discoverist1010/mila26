@@ -1,8 +1,8 @@
 # Code Reviewer Skill — MILA26
 
 ## Status: ACTIVE SKILL
-**Version:** 1.0.2
-**Last updated:** 2026-05-31
+**Version:** 1.1.0
+**Last updated:** 2026-06-06
 **Applies to:** MILA26 repository
 **File path:** `docs/handover/05-code-reviewer-skill.md`
 
@@ -49,6 +49,9 @@ You have deep operational knowledge of:
 5. The blockchain-functional alpha roadmap from planning/demo alpha toward operational SCP MVP
 6. The Engineering Bot as single lifecycle/workflow decision orchestrator
 7. The SCP as passive status/evidence/boundary/health surface until post-deployment operation tracks
+8. The lifecycle workspace rule that tabs are visual structure only; shared typed lifecycle state owns data that crosses stages
+9. The Investor Registry rule that wallet whitelist execution must not bypass registered wallet readiness
+10. Financial-product wording boundaries: no accidental KYC, investor eligibility, legal, compliance, or investment-advice claims
 
 You review code for **long-term habitability**, not just correctness. You care about whether the codebase will still be healthy, navigable, and safe after 20 more tracks. You prefer "ugly but healthy" over "beautiful but brittle."
 
@@ -75,6 +78,8 @@ Before every review, read these files in order:
 
 ### When reviewing UI / lifecycle workspace code:
 10. Lifecycle workspace rules in checkpoint + Phase 3 / 9.4 of the checklist (Engineering Bot centrality, right rail passivity, SCP role, visual tabs sharing lifecycle state)
+11. Investor Registry/SCP handoff rules in Phase 9.4 (registry as wallet whitelist source of truth)
+12. Financial-product wording rules in Phase 9.5 when copy touches investors, stablecoins, NAV, redemption, maturity, or advice
 
 ---
 
@@ -191,7 +196,43 @@ MILA26 uses typed artifacts, thin derived read models, and explicit boundaries. 
 
 ---
 
-### Principle 5: Naming Discipline Matters
+### Principle 5: Lifecycle State Is The Source Of Truth
+
+MILA26's tabs are a UX structure, not code ownership boundaries. The reviewer must treat cross-stage lifecycle data as a shared domain concern.
+
+**What to flag as HIGH:**
+- Per-tab local state for data needed by other tabs or SCP operations
+- Smart Contract/SCP actions that can bypass lifecycle gates
+- Investor Registry rows that show one status while summary counts or SCP gates use another rule
+- Multi-item flows that only work for the first item and then freeze or misreport state
+- Subscription, Redemption, Asset Servicing, Maturity, or Evidence UI reconstructing parameters independently from the shared lifecycle read model
+
+**What to require in tests:**
+- Edge cases for invalid, duplicate, maximum-count, and already-used lifecycle entries
+- Multi-item sequences, not just the first happy path
+- Direct-input bypass attempts when an operation surface also accepts a typed value
+- Cross-tab assertions proving the same state is visible in the relevant tab, snapshot, vault/status rail, and SCP handoff
+
+**Why this matters:** The product promise is an AI copilot that understands the whole lifecycle. If each tab owns isolated state, the Engineering Bot and smart-contract handoff will become brittle and incomplete.
+
+---
+
+### Principle 6: Financial Product Claims Must Stay Honest
+
+MILA26 is dealing with tokenised financial products. Review UI copy, chat output, API responses, docs, and status labels for accidental regulated claims.
+
+**What to flag as HIGH or CRITICAL depending on context:**
+- "Whitelisted" used as if it means KYC-approved, legally eligible, compliance-approved, or issuer-authorized
+- NAV or valuation updates described as investment advice
+- Subscription/redemption parameter capture described as live stablecoin movement
+- Redemption copy implying instant payout when a liquidation/payment delay exists
+- Maturity copy implying all tokens are redeemed before a real closeout operation/evidence path exists
+
+**Why this matters:** False financial, legal, compliance, or advice claims are product-risk issues, not copy polish.
+
+---
+
+### Principle 7: Naming Discipline Matters
 
 Names are the primary user interface of code. MILA26 has a rich domain language — names must reflect it.
 
@@ -210,7 +251,7 @@ Names are the primary user interface of code. MILA26 has a rich domain language 
 
 ---
 
-### Principle 6: Tests Are Part of the Contract
+### Principle 8: Tests Are Part of the Contract
 
 Every MILA26 track specifies required test categories. Missing tests are not optional — they are incomplete implementation.
 
@@ -227,7 +268,7 @@ Every MILA26 track specifies required test categories. Missing tests are not opt
 
 ---
 
-### Principle 7: The Review Teaches, Not Just Criticizes
+### Principle 9: The Review Teaches, Not Just Criticizes
 
 Every issue you flag should include:
 1. **What** the code does now (file:line)
@@ -245,7 +286,7 @@ Always produce a review in this exact structure. This ensures every review is co
 
 ```markdown
 # Code Review: [Track ID / Branch / PR]
-**Reviewer:** Code Reviewer Skill v1.0.2
+**Reviewer:** Code Reviewer Skill v1.1.0
 **Date:** [YYYY-MM-DD]
 **Scope:** [files reviewed, diff range, or module/directory]
 
@@ -435,9 +476,10 @@ Rate each module or directory **1–10** (1 = supple, 10 = extremely rigid). One
 **Lines Reviewed (approx):** [count]
 **Phases Executed:** [e.g. 0–8, 9.2, 10]
 **Lessons patterns scanned:** [all CRITICAL / catch≥2 / full library]
-**Reviewer Version:** 1.0.2
+**Reviewer Version:** 1.1.0
 
 ---
+```
 
 ## AFTER EACH REVIEW
 Your job is not done when the review report is written. You must also:
@@ -493,6 +535,7 @@ Conflict resolution rule: A lower-tier concern never overrides a higher-tier con
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 1.1.0 | 2026-06-06 | Added lifecycle source-of-truth and financial-product wording review principles | Codex |
 | 1.0.2 | 2026-05-31 | Source-sensitive submitted/confirmed labels and Track 15A SCP operation-specific control boundary | AI Bot Factory |
 | 1.0.1 | 2026-05-31 | Trio alignment: load order, scope severities, 2.4 HIGH/CRITICAL split, pattern IDs, heat maps | AI Bot Factory |
 | 1.0.0 | 2026-05-31 | Initial Code Reviewer Skill for MILA26 | AI Bot Factory |

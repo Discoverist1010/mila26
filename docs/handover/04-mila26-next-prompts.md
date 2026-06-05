@@ -1,8 +1,8 @@
 # MILA26 Next Prompts
 
-## Next Codex Prompt: Lifecycle State + Investor Registry Foundation
+## Completed Prompt: Lifecycle State + Investor Registry Foundation
 
-Use this prompt for the next implementation turn:
+This prompt has been implemented. Keep it here as completion context:
 
 ```text
 You are working inside the MILA26 repository:
@@ -42,20 +42,50 @@ Acceptance:
 - No internal track numbers appear in user-facing UI.
 ```
 
-## Following Prompt: Subscription + Redemption Template Parameters
+## Next Codex Prompt: Subscription + Redemption Template Parameters
 
-After the investor registry foundation is clean, implement parameter capture for the subscription-redemption template:
+Use this prompt for the next implementation turn:
 
-- permitted stablecoins;
-- subscription window;
-- minimum subscription amount;
-- payment wallet/contract address;
-- payment per token;
-- redemption window/date;
-- redemption delay unit and duration;
-- redemption wallet;
-- stablecoin payout asset;
-- payout per token.
+```text
+You are working inside the MILA26 repository:
+
+/Users/macbookpro18/Desktop/CODE/active/mila26
+
+Start from main. Before editing, read `AGENTS.md`, then run:
+
+git status --short --branch
+npm run test -- tests/lifecycle-state.test.ts tests/app-chat-panel.test.tsx
+
+Goal:
+Implement Subscription and Redemption parameter capture for the predefined subscription-redemption smart-contract template.
+
+Scope:
+1. Extend the shared lifecycle state/read model for:
+   - permitted stablecoins;
+   - subscription window;
+   - minimum subscription amount;
+   - payment wallet/contract address;
+   - payment per token;
+   - redemption window/date;
+   - redemption delay unit and duration;
+   - redemption wallet;
+   - stablecoin payout asset;
+   - payout per token.
+2. Implement the Subscription tab UI as parameter capture only.
+3. Implement the Redemption tab UI as parameter capture only.
+4. Keep tabs visual-only. Engineering Bot, lifecycle snapshot, Product Vault, and status panels must read the same shared lifecycle state.
+5. Do not add live stablecoin execution.
+6. Do not add Allocation/Mint yet.
+7. Do not add persistence unless explicitly scoped.
+
+Acceptance:
+- Existing tests continue passing.
+- Add focused tests for subscription/redemption read-model validation and UI.
+- Right rail remains passive.
+- SCP remains the only home for wallet-signed contract operations.
+- No internal track numbers appear in user-facing UI.
+- No claim that stablecoin payment, redemption payout, or liquidity management is live.
+```
 
 This should still be parameter/spec work, not live stablecoin execution.
 

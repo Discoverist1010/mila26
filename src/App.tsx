@@ -11,7 +11,14 @@ import { toCockpitActionViewModel } from './domain/cockpitActionRegistry';
 import { toBlockchainEngineerResponseViewModel } from './domain/blockchainEngineerResponseViewModel';
 import { toDeploymentEvidenceReadModel } from './domain/deploymentEvidenceReadModel';
 import { toDeploymentGateReadModel } from './domain/deploymentGateReadModel';
-import { moduleCatalog } from './domain/moduleCatalog';
+import {
+  createInitialMila26LifecycleState,
+  createInvestorRegistryEntry,
+  markInvestorWalletWhitelisted,
+  MAX_INVESTOR_REGISTRY_ENTRIES,
+  toMila26LifecycleReadModel,
+  type Mila26LifecycleState,
+} from './domain/lifecycleState';
 import { createDemoProjectClosureLedger } from './domain/projectClosureLedger';
 import { toProjectClosureReadModel } from './domain/projectClosureReadModel';
 import { toProjectLifecycleReadModel, type Mila26UiActionId } from './domain/projectLifecycleReadModel';
@@ -375,6 +382,12 @@ function applyWalletConnectionInput(next: WalletConnectionReadModelInput) {
   return (current: WalletConnectionReadModelInput) => (walletConnectionInputsMatch(current, next) ? current : next);
 }
 
+function walletWhitelistTargetsMatch(left?: string, right?: string) {
+  const normalizedLeft = normalizeWalletWhitelistTargetAddress(left);
+  const normalizedRight = normalizeWalletWhitelistTargetAddress(right);
+  return Boolean(normalizedLeft && normalizedRight && normalizedLeft.toLowerCase() === normalizedRight.toLowerCase());
+}
+
 export function App() {
   const [facts] = useState<FundFacts>(starterFacts);
   const [goal] = useState('We want to launch a tokenized income product for approved investors.');
@@ -400,6 +413,9 @@ export function App() {
     initialWalletWhitelistOperationState,
   );
   const [walletWhitelistTargetWallet, setWalletWhitelistTargetWallet] = useState('');
+  const [lifecycleState, setLifecycleState] = useState<Mila26LifecycleState>(() => createInitialMila26LifecycleState());
+  const [investorRegistryDraftWallet, setInvestorRegistryDraftWallet] = useState('');
+  const [investorRegistryError, setInvestorRegistryError] = useState<string | undefined>();
   const [smartContractGenerationStatus, setSmartContractGenerationStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [smartContractGenerationError, setSmartContractGenerationError] = useState<string | undefined>();
   const [walletConnectionInput, setWalletConnectionInput] = useState<WalletConnectionReadModelInput>(
@@ -425,6 +441,7 @@ export function App() {
   const recordNavOperationAttemptIdRef = useRef('');
   const walletWhitelistOperationAttemptSequenceRef = useRef(0);
   const walletWhitelistOperationAttemptIdRef = useRef('');
+  const investorRegistrySequenceRef = useRef(0);
   const engineeringBotConversationSequenceRef = useRef(0);
 
   useEffect(() => {
@@ -593,6 +610,13 @@ export function App() {
       normalizedWhitelistTargetWallet,
     ],
   );
+  const lifecycleReadModel = useMemo(() => toMila26LifecycleReadModel(lifecycleState), [lifecycleState]);
+
+  useEffect(() => {
+    if (walletWhitelistOperationState.operationStatus !== 'confirmed') return;
+    setLifecycleState((current) => markInvestorWalletWhitelisted(current, walletWhitelistOperationState.targetWalletAddress));
+  }, [walletWhitelistOperationState.operationStatus, walletWhitelistOperationState.targetWalletAddress]);
+
   const projectLifecycleReadModel = useMemo(
     () =>
       toProjectLifecycleReadModel({
@@ -688,77 +712,22 @@ export function App() {
         hasDeploymentEvidence: deploymentEvidenceReadModel.status === 'confirmed',
         isWalletWhitelistAvailable: true,
         isNavRecordingAvailable: true,
-        isInvestorRegistryActive: Boolean(normalizedWhitelistTargetWallet || walletWhitelistOperationState.targetWalletAddress),
+        lifecycle: lifecycleReadModel,
       }),
     [
       brief,
       engineeringBrief,
       smartContractArtifactSpec,
       deploymentEvidenceReadModel.status,
-      normalizedWhitelistTargetWallet,
-      walletWhitelistOperationState.targetWalletAddress,
+      lifecycleReadModel,
     ],
   );
   const activeWorkspaceTab =
     workspacePresentation.tabs.find((tab) => tab.id === selectedWorkspaceTab) ?? workspacePresentation.tabs[0];
-  const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
-  const currentGate = engineeringBrief
-    ? 'Engineering Brief generated'
-    : brief
-      ? 'Engineering Brief generation'
-      : 'Requirement brief approval';
-  const approvalGateStatus = engineeringBrief ? 'Engineering brief ready' : brief ? 'Brief ready' : 'Draft brief';
   const selectedProject = demoProjectFolders.find((project) => project.id === selectedProjectId);
   const activeProjectTitle = selectedProject?.title ?? 'All Projects';
-  const activeProjectDescription =
-    selectedProject?.description ?? 'Select a project folder to inspect its Requirement Brief, Engineering Brief, contract artifacts, and evidence.';
-  const selectedModules = brief?.modules.filter((module) => module.enabled) ?? [];
   const tokenModelSummary =
     requirementBriefContract?.tokenModel.assumption ?? 'Token model will be confirmed in the Requirement Brief.';
-  const selectedProjectArtifactRows: GeneratedArtifactCard[] = [
-    {
-      label: 'Requirement Brief',
-      status: brief ? 'Draft created' : 'Pending',
-      detail: brief ? `${activeProjectTitle} has a reviewable Requirement Brief.` : 'Create the Requirement Brief from the Engineering Bot workspace.',
-      source: selectedProject?.label ?? 'project workspace',
-    },
-    {
-      label: 'Engineering Brief',
-      status: engineeringBrief ? 'Generated' : 'Pending',
-      detail: engineeringBrief ? 'Backend Engineering Brief artifact is available.' : 'Generate after the Requirement Brief exists.',
-      source: selectedProject?.label ?? 'project workspace',
-    },
-    {
-      label: 'Smart Contract Artifact Spec',
-      status: smartContractArtifactSpec ? 'Generated' : 'Pending',
-      detail: smartContractArtifactSpec ? 'Contract artifact spec is available for review.' : 'Prepare after the Engineering Brief is ready.',
-      source: selectedProject?.label ?? 'project workspace',
-    },
-    {
-      label: 'Deployment Evidence',
-      status: deploymentEvidenceReadModel.statusLabel,
-      detail: `${deploymentEvidenceReadModel.evidencePersistenceLabel}. ${deploymentEvidenceReadModel.evidenceStrengthLabel}.`,
-      source: 'Sepolia local-session evidence',
-    },
-    {
-      label: 'Record NAV Evidence',
-      status: recordNavOperationReadModel.statusLabel,
-      detail: `${recordNavOperationReadModel.operationEvidencePersistenceLabel}. ${recordNavOperationReadModel.eventEvidenceSourceLabel}.`,
-      source: 'SCP operation evidence',
-    },
-    {
-      label: 'Whitelist Evidence',
-      status: walletWhitelistOperationReadModel.statusLabel,
-      detail: `${walletWhitelistOperationReadModel.operationEvidencePersistenceLabel}. ${walletWhitelistOperationReadModel.eventEvidenceStatusLabel}.`,
-      source: 'SCP operation evidence',
-    },
-    {
-      label: 'Smart Contract Operations',
-      status: deploymentEvidenceReadModel.status === 'confirmed' ? 'Record NAV and Wallet Whitelist gated' : 'Locked',
-      detail: 'Allocation/Mint and other Smart Contract Operations remain locked.',
-      source: 'SCP boundary',
-    },
-  ];
   const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
   const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
   const isWalletConnectionComplete =
@@ -791,6 +760,14 @@ export function App() {
           : 'Record NAV operation is blocked by a precondition.';
   const whitelistTargetIsValid = isValidNonZeroEvmAddress(normalizedWhitelistTargetWallet);
   const whitelistFunctionAvailable = hasSetWalletAllowedFunction(mila26RestrictedFundTokenDeploymentArtifact.abi);
+  const selectedWhitelistRegistryEntry = lifecycleReadModel.investorRegistry.entries.find((entry) =>
+    walletWhitelistTargetsMatch(entry.normalizedWalletAddress, normalizedWhitelistTargetWallet),
+  );
+  const selectedWhitelistTargetAlreadyWhitelisted =
+    selectedWhitelistRegistryEntry?.status === 'whitelisted_local_session_only';
+  const selectedWhitelistTargetAlreadyConfirmed =
+    walletWhitelistOperationState.operationStatus === 'confirmed' &&
+    walletWhitelistTargetsMatch(walletWhitelistOperationState.targetWalletAddress, normalizedWhitelistTargetWallet);
   const canRequestWalletWhitelistOperation =
     smartContractGenerationStatus === 'ready' &&
     isWalletConnectionComplete &&
@@ -801,24 +778,27 @@ export function App() {
     isValidNonZeroEvmAddress(deploymentEvidenceReadModel.contractAddress) &&
     whitelistFunctionAvailable &&
     whitelistTargetIsValid &&
-    walletWhitelistOperationState.operationStatus !== 'confirmed' &&
+    Boolean(selectedWhitelistRegistryEntry?.canUseForWhitelist) &&
+    !selectedWhitelistTargetAlreadyConfirmed &&
     !isWalletWhitelistOperationInFlight(walletWhitelistOperationState) &&
     !walletWhitelistOperationAttemptIdRef.current;
-  const walletWhitelistOperationDisabledReason = isWalletWhitelistOperationInFlight(walletWhitelistOperationState)
-    ? 'A Wallet Whitelist operation is already awaiting wallet confirmation or receipt.'
-    : walletWhitelistOperationState.operationStatus === 'confirmed'
-      ? 'Wallet Whitelist operation is confirmed for this local session.'
-      : deploymentEvidenceReadModel.status !== 'confirmed'
-        ? 'Confirm wallet-signed Sepolia deployment evidence before whitelisting a wallet.'
-        : !isWalletConnectionComplete
-          ? 'Connect a Sepolia wallet before whitelisting a wallet.'
-          : !normalizedWhitelistTargetWallet
-            ? 'Enter a target wallet address before whitelisting.'
-            : !whitelistTargetIsValid
-              ? 'Target wallet address must be a valid non-zero EVM address.'
-              : !whitelistFunctionAvailable
-                ? 'setWalletAllowed(address,bool) is missing from the deployment artifact ABI.'
-                : 'Contract authorization is enforced on-chain.';
+  const walletWhitelistOperationDisabledReason = (() => {
+    if (isWalletWhitelistOperationInFlight(walletWhitelistOperationState)) {
+      return 'A Wallet Whitelist operation is already awaiting wallet confirmation or receipt.';
+    }
+    if (selectedWhitelistTargetAlreadyConfirmed) return 'Selected wallet is whitelisted in this local session.';
+    if (deploymentEvidenceReadModel.status !== 'confirmed') {
+      return 'Confirm wallet-signed Sepolia deployment evidence before whitelisting a wallet.';
+    }
+    if (!isWalletConnectionComplete) return 'Connect a Sepolia wallet before whitelisting a wallet.';
+    if (!normalizedWhitelistTargetWallet) return 'Enter a target wallet address before whitelisting.';
+    if (!whitelistTargetIsValid) return 'Target wallet address must be a valid non-zero EVM address.';
+    if (!selectedWhitelistRegistryEntry) return 'Register this wallet in Investor Registry before whitelisting.';
+    if (selectedWhitelistTargetAlreadyWhitelisted) return 'Selected wallet is already whitelisted in this local session.';
+    if (!selectedWhitelistRegistryEntry.canUseForWhitelist) return 'Resolve this Investor Registry wallet before SCP whitelist.';
+    if (!whitelistFunctionAvailable) return 'setWalletAllowed(address,bool) is missing from the deployment artifact ABI.';
+    return 'Contract authorization is enforced on-chain.';
+  })();
   const generatedArtifactCards = useMemo<GeneratedArtifactCard[]>(
     () =>
       smartContractGenerationStatus === 'ready'
@@ -1062,6 +1042,51 @@ export function App() {
     setWalletWhitelistTargetWallet('');
     setSmartContractGenerationStatus('idle');
     setSmartContractGenerationError(undefined);
+  }
+
+  function addInvestorRegistryWallet() {
+    const walletAddress = investorRegistryDraftWallet.trim();
+
+    if (!lifecycleReadModel.investorRegistry.canAddEntry) {
+      setInvestorRegistryError('Investor Registry already has the maximum 50 wallet addresses.');
+      return;
+    }
+
+    investorRegistrySequenceRef.current += 1;
+    const entry = createInvestorRegistryEntry({
+      id: `investor-wallet-${investorRegistrySequenceRef.current}`,
+      walletAddress,
+      existingEntries: lifecycleState.investorRegistryEntries,
+    });
+
+    setLifecycleState((current) => ({
+      ...current,
+      investorRegistryEntries: [...current.investorRegistryEntries, entry],
+    }));
+    setInvestorRegistryDraftWallet('');
+    setInvestorRegistryError(undefined);
+  }
+
+  function updateWalletWhitelistTargetWallet(walletAddress: string) {
+    const nextTarget = normalizeWalletWhitelistTargetAddress(walletAddress);
+    const currentOperationTarget = normalizeWalletWhitelistTargetAddress(walletWhitelistOperationState.targetWalletAddress);
+    const targetChanged =
+      Boolean(nextTarget || currentOperationTarget) && !walletWhitelistTargetsMatch(nextTarget, currentOperationTarget);
+    const canResetOperationForTarget =
+      walletWhitelistOperationState.operationStatus !== 'not_started' && !isWalletWhitelistOperationInFlight(walletWhitelistOperationState);
+
+    if (targetChanged && canResetOperationForTarget) {
+      walletWhitelistOperationAttemptSequenceRef.current += 1;
+      walletWhitelistOperationAttemptIdRef.current = '';
+      setWalletWhitelistOperationState(initialWalletWhitelistOperationState);
+    }
+
+    setWalletWhitelistTargetWallet(walletAddress);
+  }
+
+  function selectInvestorWalletForWhitelist(walletAddress: string) {
+    updateWalletWhitelistTargetWallet(walletAddress);
+    setSelectedWorkspaceTab('smart_contract');
   }
 
   async function prepareSmartContractSpec() {
@@ -1489,6 +1514,107 @@ export function App() {
               </span>
             </div>
 
+            {activeWorkspaceTab.id === 'investor_registry' && (
+              <section className="registry-panel" aria-label="Investor Registry workspace">
+                <div className="registry-panel-heading">
+                  <div>
+                    <h3>Investor wallet registry</h3>
+                    <p>
+                      Register up to {MAX_INVESTOR_REGISTRY_ENTRIES} investor wallet addresses for whitelisting. This is not KYC,
+                      investor eligibility approval, or legal approval.
+                    </p>
+                  </div>
+                  <span className="gate-badge draft">{lifecycleReadModel.investorRegistry.statusLabel}</span>
+                </div>
+
+                <div className="registry-summary" aria-label="Investor Registry summary">
+                  <article>
+                    <span>Registered</span>
+                    <strong>{lifecycleReadModel.investorRegistry.entryCount}/50</strong>
+                  </article>
+                  <article>
+                    <span>Ready to whitelist</span>
+                    <strong>{lifecycleReadModel.investorRegistry.readyToWhitelistCount}</strong>
+                  </article>
+                  <article>
+                    <span>Whitelisted</span>
+                    <strong>{lifecycleReadModel.investorRegistry.whitelistedCount}</strong>
+                  </article>
+                  <article>
+                    <span>Remaining slots</span>
+                    <strong>{lifecycleReadModel.investorRegistry.remainingSlots}</strong>
+                  </article>
+                </div>
+
+                <div className="registry-form">
+                  <label htmlFor="investor-registry-wallet">
+                    Investor wallet address
+                    <input
+                      id="investor-registry-wallet"
+                      value={investorRegistryDraftWallet}
+                      onChange={(event) => setInvestorRegistryDraftWallet(event.target.value)}
+                      placeholder="0x..."
+                      autoComplete="off"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="workflow-button primary-action"
+                    onClick={addInvestorRegistryWallet}
+                    disabled={!lifecycleReadModel.investorRegistry.canAddEntry}
+                  >
+                    Add wallet
+                  </button>
+                </div>
+
+                {investorRegistryError && (
+                  <p className="error-text" role="alert">
+                    {investorRegistryError}
+                  </p>
+                )}
+
+                {lifecycleReadModel.investorRegistry.blockingReasons.length > 0 && (
+                  <ul className="registry-warnings" aria-label="Investor Registry blocking items">
+                    {lifecycleReadModel.investorRegistry.blockingReasons.map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                )}
+
+                <div className="registry-table" role="table" aria-label="Investor wallet entries">
+                  <div className="registry-row registry-header" role="row">
+                    <span role="columnheader">Wallet</span>
+                    <span role="columnheader">Registry status</span>
+                    <span role="columnheader">Validation</span>
+                    <span role="columnheader">SCP handoff</span>
+                  </div>
+                  {lifecycleReadModel.investorRegistry.entries.length === 0 ? (
+                    <p className="empty-registry">No investor wallets registered yet.</p>
+                  ) : (
+                    lifecycleReadModel.investorRegistry.entries.map((entry) => (
+                      <div className="registry-row" role="row" key={entry.id}>
+                        <span role="cell">{entry.walletAddress || 'Wallet address missing'}</span>
+                        <span role="cell">{entry.statusLabel}</span>
+                        <span role="cell">
+                          {entry.validationMessages.length > 0 ? entry.validationMessages.join(' ') : 'Valid wallet address'}
+                        </span>
+                        <span role="cell">
+                          <button
+                            type="button"
+                            className="workflow-button"
+                            disabled={!entry.canUseForWhitelist}
+                            onClick={() => selectInvestorWalletForWhitelist(entry.walletAddress)}
+                          >
+                            Use for SCP whitelist
+                          </button>
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+            )}
+
             <section className="bot-workspace ai-workspace" aria-label="Engineering Bot workspace">
               <div className="bot-title-row">
                 <div className="bot-identity">
@@ -1532,7 +1658,9 @@ export function App() {
               <section className="next-action-panel" aria-label="Next suggested action">
                 <h3>Next best action</h3>
                 <p>
-                  {brief
+                  {lifecycleReadModel.investorRegistry.entryCount === 0
+                    ? 'Start by registering investor wallet addresses so subscription, whitelisting, servicing, and evidence can use the same lifecycle state.'
+                    : brief
                     ? 'Continue refining the shared lifecycle inputs, then prepare the next contract parameter set from the same workspace state.'
                     : 'Create the Requirement Brief so MILA26 can structure subscription, redemption, investor whitelist, servicing, and maturity parameters together.'}
                 </p>
@@ -2096,9 +2224,10 @@ export function App() {
                   <input
                     id="wallet-whitelist-target"
                     value={walletWhitelistTargetWallet}
-                    onChange={(event) => setWalletWhitelistTargetWallet(event.target.value)}
+                    onChange={(event) => updateWalletWhitelistTargetWallet(event.target.value)}
                     placeholder="0x..."
                     autoComplete="off"
+                    disabled={isWalletWhitelistOperationInFlight(walletWhitelistOperationState)}
                   />
                 </label>
                 <button
@@ -2112,7 +2241,7 @@ export function App() {
                     ? 'Wallet whitelist status: Awaiting wallet confirmation'
                     : walletWhitelistOperationState.operationStatus === 'submitted'
                       ? 'Wallet whitelist submitted to Sepolia'
-                      : walletWhitelistOperationState.operationStatus === 'confirmed'
+                      : selectedWhitelistTargetAlreadyConfirmed
                         ? 'Wallet whitelist confirmed on Sepolia'
                         : 'Whitelist Wallet'}
                 </button>

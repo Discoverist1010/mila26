@@ -2,8 +2,8 @@
 
 ## Status: ACTIVE — GROWS WITH EACH REVIEW
 
-**Version:** 1.0.2  
-**Last updated:** 2026-05-31  
+**Version:** 1.1.0
+**Last updated:** 2026-06-06
 **Applies to:** MILA26 repository  
 **File path:** `docs/handover/06-code-reviewer-lessons.md`
 
@@ -652,12 +652,68 @@ RECEIPT_POLLING_MAX_ATTEMPTS=30     # Maximum attempts for transaction receipt p
 
 ---
 
+### Pattern ID: MILA26-022
+
+**Name:** Operation bypasses lifecycle source of truth
+**Category:** Architecture / Brittleness
+**Severity:** HIGH
+**First caught:** 2026-06-06 (Sprint Track 1 review)
+**Catch count:** 1
+**Checklist:** Phase 3.2, 5.6, 7.3, 9.4
+**Description:** An operation surface accepts a direct typed value and can execute without checking the shared lifecycle read model that is supposed to own readiness. In Sprint Track 1, SCP Whitelist Wallet could accept any valid EVM address even though Investor Registry was the intended wallet whitelist source of truth. This weakens cross-tab state integrity and lets operation controls bypass lifecycle gates.
+**Detection:** For each operation button or transaction path, identify the domain/read model that owns readiness. Verify the `canRequest...` or equivalent gate depends on that read model, not only local field validation. Search for editable operation inputs such as target wallet, stablecoin, redemption wallet, amount, date, or payout fields and verify direct input cannot bypass the relevant lifecycle tab state.
+**Example:**
+
+```typescript
+// FLAGGED — typed input bypasses Investor Registry
+const canWhitelist = isValidNonZeroEvmAddress(targetWallet) && deploymentConfirmed;
+
+// CORRECT — SCP consults lifecycle read model
+const selectedRegistryEntry = lifecycleReadModel.investorRegistry.entries.find((entry) =>
+  addressesMatch(entry.normalizedWalletAddress, targetWallet),
+);
+const canWhitelist =
+  deploymentConfirmed &&
+  Boolean(selectedRegistryEntry?.canUseForWhitelist);
+```
+
+**Occurrences:**
+- 2026-06-06 — Sprint Track 1 — `src/App.tsx` — SCP Whitelist Wallet initially accepted valid unregistered target wallets before being gated by Investor Registry readiness.
+
+---
+
+### Pattern ID: MILA26-023
+
+**Name:** Readiness count derived from stale stored status
+**Category:** Brittleness / Read Model
+**Severity:** MEDIUM
+**First caught:** 2026-06-06 (Sprint Track 1 review)
+**Catch count:** 1
+**Checklist:** Phase 5.6, 7.3, 9.4
+**Description:** A summary count or status badge is derived from raw stored state while row-level eligibility is derived from effective validation. This causes contradictory UI, such as duplicate wallets being counted as "ready to whitelist" while their row is blocked. Read-model summaries must derive from effective eligibility, not stale labels.
+**Detection:** Compare row-level `can...` / validation logic with summary counts, vault status, lifecycle snapshot text, and tab status. If counts use raw stored statuses while buttons use derived eligibility, flag the mismatch. Require regression tests for duplicates, invalid entries, max-count boundaries, and already-used items.
+**Example:**
+
+```typescript
+// FLAGGED — raw status ignores later duplicate validation
+const readyToWhitelistCount = entries.filter((entry) => entry.status === 'ready_to_whitelist').length;
+
+// CORRECT — summary matches actual handoff eligibility
+const readyToWhitelistCount = readModelEntries.filter((entry) => entry.canUseForWhitelist).length;
+```
+
+**Occurrences:**
+- 2026-06-06 — Sprint Track 1 — `src/domain/lifecycleState.ts` — duplicate wallets initially inflated `readyToWhitelistCount` before the count was derived from `canUseForWhitelist`.
+
+---
+
 ## REVIEW SESSION LOG
 
 | Date | Track/Branch | Issues Found (C/H/M/L) | Patterns Triggered | New Patterns Added | Reviewer Version |
 |------|--------------|------------------------|--------------------|--------------------|------------------|
 | 2026-05-31 | — (initial seed) | 0/0/0/0 | None | MILA26-001 through MILA26-020 | 1.0.0 |
 | 2026-05-31 | — (trio alignment) | 0/0/0/0 | None | MILA26-021; severities aligned with checklist | 1.0.1 |
+| 2026-06-06 | Sprint Track 1 review | 0/1/1/0 | MILA26-022, MILA26-023 | MILA26-022, MILA26-023 | 1.1.0 |
 
 ---
 
@@ -686,6 +742,8 @@ RECEIPT_POLLING_MAX_ATTEMPTS=30     # Maximum attempts for transaction receipt p
 | MILA26-019 | Stale closure or async reference | 0 | HIGH | — |
 | MILA26-020 | Missing .env.example entry | 0 | LOW | — |
 | MILA26-021 | Scope violation (CRITICAL) | 0 | CRITICAL | — |
+| MILA26-022 | Operation bypasses lifecycle source of truth | 1 | HIGH | 2026-06-06 |
+| MILA26-023 | Readiness count derived from stale stored status | 1 | MEDIUM | 2026-06-06 |
 
 ---
 
@@ -694,8 +752,8 @@ RECEIPT_POLLING_MAX_ATTEMPTS=30     # Maximum attempts for transaction receipt p
 | Severity | Count | Pattern IDs |
 |----------|-------|-------------|
 | CRITICAL | 7 | 001, 002, 006, 007, 011, 014, 021 |
-| HIGH | 9 | 003, 005, 008, 010, 012, 013, 015, 018, 019 |
-| MEDIUM | 4 | 004, 009, 016, 017 |
+| HIGH | 10 | 003, 005, 008, 010, 012, 013, 015, 018, 019, 022 |
+| MEDIUM | 5 | 004, 009, 016, 017, 023 |
 | LOW | 1 | 020 |
 
 ---
@@ -704,7 +762,7 @@ RECEIPT_POLLING_MAX_ATTEMPTS=30     # Maximum attempts for transaction receipt p
 
 Use this template when adding patterns after a review:
 
-```markdown
+````markdown
 ### Pattern ID: MILA26-XXX
 **Name:** [Brief, descriptive name]
 **Category:** [Safety / Guardrail / Scope / Architecture / Naming / Brittleness / Rigidity / Test Quality / Documentation / Blockchain Safety]
@@ -724,7 +782,7 @@ Use this template when adding patterns after a review:
 ```
 **Occurrences:**
 - [YYYY-MM-DD] — [Track/Branch] — [File:line] — [Brief note]
-```
+````
 
 Then:
 
@@ -740,6 +798,7 @@ Then:
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 1.1.0 | 2026-06-06 | Added lifecycle source-of-truth and stale-readiness-count patterns from Sprint Track 1 review | Codex |
 | 1.0.2 | 2026-05-31 | Aligned unsafe-label and SCP-control lessons with source-sensitive execution evidence and Track 15A operation-specific controls | AI Bot Factory |
 | 1.0.1 | 2026-05-31 | Trio alignment: MILA26-021 scope violation; MILA26-003 scope creep only; checklist phase map | AI Bot Factory |
 | 1.0.0 | 2026-05-31 | Initial pattern library seeded with 20 patterns from architecture, guardrail, safety, and code quality review | AI Bot Factory |

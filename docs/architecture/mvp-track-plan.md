@@ -246,12 +246,11 @@ What not to overbuild:
 
 After the lifecycle workspace update:
 
-- Shared lifecycle state for Investor Registry, Subscription, Redemption, and Maturity.
-- Investor Registry tab functionality for up to 50 wallet addresses.
 - Subscription parameter capture.
 - Redemption parameter capture.
 - Subscription-redemption template handoff.
 - Allocation/Mint Operation only after registry/subscription state is coherent.
+- Investor Registry import/export and durable persistence.
 - Distribution operation tracks.
 - Valuation file ingest and validation.
 - Evidence Pack expansion.

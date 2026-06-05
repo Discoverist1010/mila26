@@ -7,6 +7,8 @@ MILA26 is a clean alpha rebuild of the MILA dashboard. It is designed as a compa
 - MILA26 lifecycle workspace UI with visual tabs: Overview, Requirements, Investor Registry, Subscription, Smart Contract, Asset Servicing, Redemption, Maturity, and Evidence.
 - Engineering Bot: guides the lifecycle across all tabs from product intent through wallet/testnet readiness.
 - Shared workspace presentation state for tab/status/Product Vault surfaces.
+- Shared lifecycle state for investor registry, subscription, redemption, and maturity parameters.
+- Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, and SCP whitelist target handoff.
 - Requirement Brief and Engineering Brief generation.
 - Project Closure Ledger and closure readiness.
 - Smart Contract Artifact Spec for a MILA26 restricted ERC-20-compatible profile.
@@ -58,7 +60,7 @@ The first narrow SCP wallet-signed operation is Record NAV Event. The operation 
 
 The second narrow SCP wallet-signed operation is Whitelist Wallet. The operation calls `setWalletAllowed(address,bool)` with `allowed = true` only after confirmed receipt-derived deployment evidence, a valid explicit non-zero target wallet address, and a connected Sepolia wallet exist. It does not claim issuer authorization, KYC approval, investor eligibility, audit approval, production readiness, or durable evidence storage. Allocation/Mint, burn, pause, distribution, transfer, and role-admin operations remain locked.
 
-Next implementation work should make the visual tabs functional in sequence: shared lifecycle state, Investor Registry, Subscription parameters, Redemption parameters, subscription-redemption template handoff, then Allocation/Mint.
+Next implementation work should make the Subscription and Redemption tabs functional as parameter capture for the predefined subscription-redemption template, then add template handoff and only later Allocation/Mint.
 
 The frontend chat client also defaults to `http://127.0.0.1:5174`. Override it for local testing with:
 

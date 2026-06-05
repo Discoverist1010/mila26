@@ -6,8 +6,8 @@ MILA26 now has a blockchain-functional alpha foundation and a lifecycle workspac
 
 | Area | Current state | Gap | Next opportunity | Risk if rushed |
 |---|---|---|---|---|
-| Shared lifecycle state | `workspacePresentation` provides a presentation model for tabs/status. | Subscription, redemption, investor registry, and maturity parameters are not yet first-class lifecycle state. | Add typed shared lifecycle state/read models before building more tab UI. | Per-tab state silos and inconsistent Engineering Bot context. |
-| Investor Registry | Whitelist Wallet operation exists after deployment evidence. | No full registry table for up to 50 investor wallet addresses. | Build Investor Registry tab with validation and status per wallet. | Mistaking wallet whitelisting for KYC/investor eligibility approval. |
+| Shared lifecycle state | Typed lifecycle state/read models now back investor registry, subscription, redemption, and maturity placeholders. | Subscription, redemption, and maturity still need parameter edit flows. | Build parameter capture on the shared lifecycle state instead of per-tab local state. | Per-tab state silos and inconsistent Engineering Bot context. |
+| Investor Registry | Investor Registry tab supports up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, and SCP handoff. | No CSV/import/export, durable persistence, or KYC/eligibility workflow. | Use the registry as the allocation/mint dependency after subscription parameters exist. | Mistaking wallet whitelisting for KYC/investor eligibility approval. |
 | Subscription | UI shows subscription parameters needed. | No permitted stablecoin/payment-per-token template parameter capture. | Add subscription template parameter UI and read model. | Premature stablecoin transfer execution. |
 | Redemption | UI shows redemption parameters needed. | No redemption delay, redemption wallet, or payout-per-token parameter capture. | Add redemption template parameter UI and read model. | Misleading investors into thinking redemption payout execution exists. |
 | Asset Servicing | Record NAV Event exists. | Broader investor updates/corporate-action pushes are not implemented. | Add asset-servicing event/update specs after subscription/redemption parameters stabilize. | Advice/notification claims without delivery/evidence model. |
@@ -17,14 +17,13 @@ MILA26 now has a blockchain-functional alpha foundation and a lifecycle workspac
 
 ## Recommended Next Sequence
 
-1. Shared lifecycle state/read models for investor registry, subscription, redemption, and maturity.
-2. Investor Registry tab functionality for up to 50 wallet addresses.
-3. Subscription parameter capture.
-4. Redemption parameter capture, including delay unit/duration.
-5. Smart-contract template parameter handoff for subscription-redemption.
-6. Allocation/Mint operation.
-7. Durable Evidence Vault persistence.
-8. Maturity closeout.
+1. Subscription parameter capture.
+2. Redemption parameter capture, including delay unit/duration.
+3. Smart-contract template parameter handoff for subscription-redemption.
+4. Allocation/Mint operation using Investor Registry and Subscription state.
+5. Investor Registry import/export and persistence.
+6. Durable Evidence Vault persistence.
+7. Maturity closeout.
 
 ## Guardrails For All Future Work
 

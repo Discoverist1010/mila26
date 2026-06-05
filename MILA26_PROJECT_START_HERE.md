@@ -27,6 +27,8 @@ The target product flow is:
 - Deployment evidence/readiness derived from wallet-signed deployment status.
 - First wallet-signed SCP operation: Record NAV Event.
 - Second wallet-signed SCP operation: Whitelist Wallet.
+- Shared lifecycle state for investor registry, subscription, redemption, and maturity placeholders.
+- Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, and SCP whitelist target handoff.
 
 ## Current Architecture Principles
 
@@ -55,19 +57,18 @@ Avoid exposing internal implementation labels such as track numbers to users. Tr
 
 ## Immediate Next Step
 
-Implement the lifecycle state and Investor Registry foundation before building allocation/mint.
+Implement Subscription and Redemption parameter capture before building allocation/mint.
 
 The next coding track should add:
 
-- a shared lifecycle state/read model consumed by all visual tabs.
-- Investor Registry data for up to 50 whitelisted wallet addresses.
-- validation for wallet address format, duplicate addresses, max investor count, and active/inactive status.
-- UI for the `Investor Registry` tab that uses the shared lifecycle state.
-- Engineering Bot next-action wiring so registry gaps can be surfaced from any tab.
-- Product Vault and lifecycle snapshot updates driven from the same model.
-- focused unit and e2e tests proving cross-tab state is shared rather than duplicated.
+- permitted stablecoin parameter capture.
+- subscription window, minimum subscription amount, payment wallet/contract address, and payment per token.
+- redemption window/date, redemption wallet, payout stablecoin, payout per token, and redemption delay unit/duration.
+- shared lifecycle read-model validation for subscription and redemption parameters.
+- Product Vault, lifecycle snapshot, and Engineering Bot next-action updates from the same shared lifecycle state.
+- focused tests proving subscription/redemption data is parameter/spec work only, not live stablecoin execution.
 
-After that, build subscription parameters, redemption parameters, template handoff, and only then allocation/mint.
+After that, build subscription-redemption template handoff and only then allocation/mint.
 
 ## Files To Read Next
 

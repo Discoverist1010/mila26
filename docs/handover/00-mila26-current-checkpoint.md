@@ -10,12 +10,11 @@ The current UI is the MILA26 lifecycle workspace. It uses visual lifecycle tabs,
 
 The next implementation step should follow the new tab-aligned roadmap, not the old dashboard flow:
 
-1. shared lifecycle state hardening;
-2. Investor Registry tab functionality;
-3. Subscription template parameter capture;
-4. Redemption template parameter capture;
-5. Allocation/Mint only after registry/subscription parameters are coherent;
-6. Evidence persistence and maturity closeout later.
+1. Subscription template parameter capture;
+2. Redemption template parameter capture;
+3. subscription-redemption template handoff;
+4. Allocation/Mint only after registry/subscription parameters are coherent;
+5. Evidence persistence and maturity closeout later.
 
 For coding execution, read root `AGENTS.md` first. It defines the Lead Implementer role, active debugging loop, quality refactor triggers, dynamic skill/MCP acquisition policy, and review gates.
 
@@ -50,6 +49,8 @@ For coding execution, read root `AGENTS.md` first. It defines the Lead Implement
 - MILA26 lifecycle workspace UI.
 - Visual tabs: Overview, Requirements, Investor Registry, Subscription, Smart Contract, Asset Servicing, Redemption, Maturity, Evidence.
 - Shared workspace presentation model: `src/domain/workspacePresentation.ts`.
+- Shared lifecycle state/read model: `src/domain/lifecycleState.ts`.
+- Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, and SCP whitelist target handoff.
 - Passive right rail and Product Vault.
 - Backend chat route: `POST /api/chat/blockchain-engineer`.
 - Backend Engineering Brief route: `POST /api/prd/engineering-brief`.
@@ -78,6 +79,7 @@ For coding execution, read root `AGENTS.md` first. It defines the Lead Implement
 - Deployment Gate, Wallet Signing Intent, Wallet Connection, Unsigned Deployment Intent, wallet-signed Sepolia deployment, and deployment evidence.
 - Record NAV Event operation.
 - Whitelist Wallet operation.
+- Sprint Track 1 shared lifecycle state and Investor Registry functionality.
 - Lifecycle workspace UX implementation:
   - dark left navigation rail;
   - top project/network/wallet/safety bar;
@@ -92,22 +94,20 @@ For coding execution, read root `AGENTS.md` first. It defines the Lead Implement
 
 Recommended next coding sequence:
 
-1. Add shared lifecycle data structures for investor registry, subscription parameters, redemption parameters, and maturity settings.
-2. Implement the Investor Registry tab UI and state for up to 50 wallet addresses.
-3. Implement Subscription tab parameter capture:
+1. Implement Subscription tab parameter capture:
    - permitted stablecoins;
    - subscription window;
    - minimum subscription;
    - payment wallet/contract;
    - payment per token.
-4. Implement Redemption tab parameter capture:
+2. Implement Redemption tab parameter capture:
    - redemption window/date;
    - redemption wallet;
    - delay unit/duration;
    - payout per token;
    - permitted stablecoin payout asset.
-5. Prepare the subscription-redemption smart-contract template spec.
-6. Only then add Allocation/Mint.
+3. Prepare the subscription-redemption smart-contract template spec.
+4. Only then add Allocation/Mint.
 
 ## Code Review (Agent / PR)
 

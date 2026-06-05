@@ -1,3 +1,5 @@
+import type { LifecycleParameterStatus, Mila26LifecycleReadModel } from './lifecycleState';
+
 export type WorkspaceTabId =
   | 'overview'
   | 'requirements'
@@ -41,7 +43,7 @@ export type WorkspacePresentationInput = {
   hasDeploymentEvidence: boolean;
   isWalletWhitelistAvailable: boolean;
   isNavRecordingAvailable: boolean;
-  isInvestorRegistryActive: boolean;
+  lifecycle: Mila26LifecycleReadModel;
 };
 
 export type WorkspacePresentation = {
@@ -54,7 +56,7 @@ export type WorkspacePresentation = {
   openItems: ProductCapabilityRow[];
 };
 
-export const workspaceTabs: WorkspaceTab[] = [
+const baseWorkspaceTabs: WorkspaceTab[] = [
   {
     id: 'overview',
     label: 'Overview',
@@ -111,6 +113,36 @@ export const workspaceTabs: WorkspaceTab[] = [
   },
 ];
 
+export function workspaceTabsForLifecycle(lifecycle: Mila26LifecycleReadModel): WorkspaceTab[] {
+  return baseWorkspaceTabs.map((tab) => {
+    if (tab.id === 'investor_registry') {
+      return {
+        ...tab,
+        status:
+          lifecycle.investorRegistry.status === 'active'
+            ? 'available'
+            : lifecycle.investorRegistry.status === 'empty' || lifecycle.investorRegistry.status === 'needs_attention'
+              ? 'needs_parameters'
+              : 'needs_review',
+      };
+    }
+
+    if (tab.id === 'subscription') {
+      return { ...tab, status: parameterStatusToTabStatus(lifecycle.subscriptionStatus) };
+    }
+
+    if (tab.id === 'redemption') {
+      return { ...tab, status: parameterStatusToTabStatus(lifecycle.redemptionStatus) };
+    }
+
+    if (tab.id === 'maturity') {
+      return { ...tab, status: parameterStatusToTabStatus(lifecycle.maturityStatus) };
+    }
+
+    return tab;
+  });
+}
+
 function status(input: WorkspacePresentationInput): ProductCapabilityRow[] {
   return [
     { label: 'Current capabilities ready', status: 'available' },
@@ -122,42 +154,80 @@ function status(input: WorkspacePresentationInput): ProductCapabilityRow[] {
 }
 
 export function toWorkspacePresentation(input: WorkspacePresentationInput): WorkspacePresentation {
+  const investorRegistry = input.lifecycle.investorRegistry;
+
   return {
-    tabs: workspaceTabs,
+    tabs: workspaceTabsForLifecycle(input.lifecycle),
     workspaceStatus: status(input),
     capabilityStatus: [
       { label: 'Wallet whitelist', status: input.isWalletWhitelistAvailable ? 'available' : 'locked_for_later' },
       { label: 'NAV recording', status: input.isNavRecordingAvailable ? 'available' : 'locked_for_later' },
       { label: 'Allocation / Mint', status: 'locked_for_later' },
-      { label: 'Subscription template', status: 'needs_parameters' },
-      { label: 'Redemption template', status: 'needs_parameters' },
-      { label: 'Maturity closeout', status: 'locked_for_later' },
+      { label: 'Investor registry', status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'active' : 'needs_parameters' },
+      { label: 'Subscription template', status: parameterStatusToCapabilityStatus(input.lifecycle.subscriptionStatus) },
+      { label: 'Redemption template', status: parameterStatusToCapabilityStatus(input.lifecycle.redemptionStatus) },
+      { label: 'Maturity closeout', status: parameterStatusToCapabilityStatus(input.lifecycle.maturityStatus) },
     ],
     productSetup: [
       { label: 'Requirements', detail: input.hasRequirementBrief ? 'Draft ready' : 'Needs review', status: input.hasRequirementBrief ? 'ready' : 'needs_review' },
-      { label: 'Investor Wallets', detail: 'Wallets needed', status: 'wallet_needed' },
+      {
+        label: 'Investor Wallets',
+        detail: investorRegistry.entryCount > 0 ? `${investorRegistry.entryCount}/50 registered` : 'Wallets needed',
+        status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'ready' : 'wallet_needed',
+      },
       { label: 'Smart Contract', detail: input.hasSmartContractSpec ? 'Core contract ready' : 'Needs parameters', status: input.hasSmartContractSpec ? 'ready' : 'needs_parameters' },
       { label: 'Evidence', detail: input.hasDeploymentEvidence ? 'Local session only' : 'Not started', status: 'local_session_only' },
     ],
     lifecycleSnapshot: [
       { label: 'Requirements', detail: input.hasRequirementBrief ? 'Draft ready' : 'Needs review', status: input.hasRequirementBrief ? 'ready' : 'needs_review' },
-      { label: 'Investor Registry', detail: input.isInvestorRegistryActive ? 'Active' : 'Wallets needed', status: input.isInvestorRegistryActive ? 'ready' : 'wallet_needed' },
-      { label: 'Subscription Template', detail: 'Parameters needed', status: 'needs_parameters' },
-      { label: 'Redemption Template', detail: 'Delay not set', status: 'needs_parameters' },
+      {
+        label: 'Investor Registry',
+        detail:
+          investorRegistry.entryCount > 0
+            ? `${investorRegistry.readyToWhitelistCount} ready, ${investorRegistry.whitelistedCount} whitelisted`
+            : 'Wallets needed',
+        status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'ready' : 'wallet_needed',
+      },
+      { label: 'Subscription Template', detail: parameterStatusDetail(input.lifecycle.subscriptionStatus), status: input.lifecycle.subscriptionStatus === 'ready' ? 'ready' : 'needs_parameters' },
+      { label: 'Redemption Template', detail: parameterStatusDetail(input.lifecycle.redemptionStatus), status: input.lifecycle.redemptionStatus === 'ready' ? 'ready' : 'needs_parameters' },
     ],
     productVault: [
       { label: 'Requirement Brief', status: input.hasRequirementBrief ? 'Draft' : 'Pending' },
       { label: 'Engineering Brief', status: input.hasEngineeringBrief ? 'Draft' : 'Pending' },
       { label: 'Smart Contract Spec', status: input.hasSmartContractSpec ? 'Draft' : 'Pending' },
       { label: 'Contract Template (Sub-Redemption)', status: 'Draft' },
-      { label: 'Investor Registry', status: input.isInvestorRegistryActive ? 'Active' : 'Pending' },
+      { label: 'Investor Registry', status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'Active' : 'Pending' },
     ],
     openItems: [
       { label: 'Open questions', status: input.hasRequirementBrief ? 'draft' : 'needs_parameters' },
-      { label: 'Subscription parameters', status: 'needs_parameters' },
-      { label: 'Redemption parameters', status: 'needs_parameters' },
-      { label: 'Maturity parameters', status: 'locked_for_later' },
-      { label: 'Investor registry gaps', status: 'needs_parameters' },
+      { label: 'Subscription parameters', status: parameterStatusToCapabilityStatus(input.lifecycle.subscriptionStatus) },
+      { label: 'Redemption parameters', status: parameterStatusToCapabilityStatus(input.lifecycle.redemptionStatus) },
+      { label: 'Maturity parameters', status: parameterStatusToCapabilityStatus(input.lifecycle.maturityStatus) },
+      {
+        label: 'Investor registry gaps',
+        status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'active' : 'needs_parameters',
+      },
     ],
   };
+}
+
+function parameterStatusToTabStatus(status: LifecycleParameterStatus): WorkspaceTab['status'] {
+  if (status === 'ready') return 'available';
+  if (status === 'draft') return 'needs_review';
+  if (status === 'locked_for_later') return 'locked_for_later';
+  return 'needs_parameters';
+}
+
+function parameterStatusToCapabilityStatus(status: LifecycleParameterStatus): ProductCapabilityStatus {
+  if (status === 'ready') return 'available';
+  if (status === 'draft') return 'draft';
+  if (status === 'locked_for_later') return 'locked_for_later';
+  return 'needs_parameters';
+}
+
+function parameterStatusDetail(status: LifecycleParameterStatus): string {
+  if (status === 'ready') return 'Ready';
+  if (status === 'draft') return 'Draft parameters';
+  if (status === 'locked_for_later') return 'Locked for later';
+  return 'Parameters needed';
 }

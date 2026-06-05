@@ -48,11 +48,13 @@ Future components:
 
 Purpose: make each visual tab functional while reading from shared lifecycle state.
 
-First implementation target: `InvestorRegistryTab`.
+First implementation target completed in Sprint Track 1: the center workspace now renders the Investor Registry tab
+from shared lifecycle state. Extract dedicated components only when the registry grows beyond the current inline
+surface.
 
 ## 4. Investor Registry Components
 
-Future components:
+Potential extracted components:
 
 - `InvestorRegistryTable`
 - `InvestorWalletRow`
