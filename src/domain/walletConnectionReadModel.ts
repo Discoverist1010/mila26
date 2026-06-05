@@ -154,7 +154,7 @@ function blockedReasonsFor(
   }
 
   if (connectionStatus === 'connected' && chainStatus === 'sepolia') {
-    reasons.push('Wallet execution remains not implemented; Track 13A defines connection readiness only.');
+    reasons.push('Wallet execution remains not implemented; this step defines connection readiness only.');
   }
 
   return reasons;
@@ -166,7 +166,7 @@ function buildBoundaries(): WalletConnectionBoundary[] {
       id: 'metamask-first-eip1193-provider',
       label: 'MetaMask first through EIP-1193 provider boundary',
       status: 'enforced',
-      detail: 'Track 13B should target MetaMask as the first injected browser wallet while keeping the adapter EIP-1193-shaped.',
+      detail: 'The first browser-wallet target is MetaMask, with the adapter kept EIP-1193-shaped.',
     },
     {
       id: 'backend-never-holds-private-keys',
@@ -184,7 +184,7 @@ function buildBoundaries(): WalletConnectionBoundary[] {
       id: 'sepolia-only-alpha',
       label: 'Sepolia testnet only for alpha',
       status: 'enforced',
-      detail: 'Track 13B should accept Ethereum Sepolia chain ID 11155111 / 0xaa36a7 only.',
+      detail: 'Only Ethereum Sepolia chain ID 11155111 / 0xaa36a7 is accepted.',
     },
     {
       id: 'mainnet-disabled',
@@ -196,7 +196,7 @@ function buildBoundaries(): WalletConnectionBoundary[] {
       id: 'wallet-execution-not-implemented',
       label: 'Wallet execution not implemented',
       status: 'not_implemented',
-      detail: 'Track 13A does not add signing, deployment, or transaction preparation.',
+      detail: 'Connection readiness does not add signing, deployment, or transaction preparation.',
     },
     {
       id: 'transaction-hash-absent',

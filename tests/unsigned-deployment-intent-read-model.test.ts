@@ -226,8 +226,8 @@ describe('Unsigned Deployment Intent Read Model', () => {
         expect.objectContaining({ id: 'mainnet-disabled', status: 'enforced' }),
       ]),
     );
-    expect(readModel.blockedReasons).toContain('Wallet signing is not implemented in Track 14A.');
-    expect(readModel.blockedReasons).toContain('Deployment execution is not implemented in Track 14A.');
+    expect(readModel.blockedReasons).toContain('Wallet signing is not implemented in this review step.');
+    expect(readModel.blockedReasons).toContain('Deployment execution is not implemented in this review step.');
   });
 
   it('keeps execution artifacts absent and does not model transaction lifecycle output', () => {

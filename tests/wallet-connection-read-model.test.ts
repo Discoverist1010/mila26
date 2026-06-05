@@ -123,7 +123,7 @@ describe('Wallet Connection Read Model', () => {
     expect(hexModel.connectedWalletAddress).toBe(connectedSepoliaInput.connectedWalletAddress);
     expect(decimalModel.chainStatus).toBe('sepolia');
     expect(hexModel.blockedReasons).toContain(
-      'Wallet execution remains not implemented; Track 13A defines connection readiness only.',
+      'Wallet execution remains not implemented; this step defines connection readiness only.',
     );
   });
 
@@ -160,7 +160,7 @@ describe('Wallet Connection Read Model', () => {
           label: 'MetaMask first through EIP-1193 provider boundary',
           status: 'enforced',
           detail:
-            'Track 13B should target MetaMask as the first injected browser wallet while keeping the adapter EIP-1193-shaped.',
+            'The first browser-wallet target is MetaMask, with the adapter kept EIP-1193-shaped.',
         },
         {
           id: 'backend-never-holds-private-keys',
@@ -172,13 +172,13 @@ describe('Wallet Connection Read Model', () => {
           id: 'sepolia-only-alpha',
           label: 'Sepolia testnet only for alpha',
           status: 'enforced',
-          detail: 'Track 13B should accept Ethereum Sepolia chain ID 11155111 / 0xaa36a7 only.',
+          detail: 'Only Ethereum Sepolia chain ID 11155111 / 0xaa36a7 is accepted.',
         },
         {
           id: 'wallet-execution-not-implemented',
           label: 'Wallet execution not implemented',
           status: 'not_implemented',
-          detail: 'Track 13A does not add signing, deployment, or transaction preparation.',
+          detail: 'Connection readiness does not add signing, deployment, or transaction preparation.',
         },
       ]),
     );

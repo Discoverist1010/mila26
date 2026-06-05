@@ -240,21 +240,18 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     render(<App />);
 
-    expect(screen.getByText('KangLe AI')).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Project Workspace' })).toBeVisible();
+    expect(screen.getByText('MILA26')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Alpha Income Fund I' })).toBeVisible();
     expect(screen.getByLabelText('Project navigation')).toBeVisible();
     expect(screen.getByLabelText('Project status')).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Engineering Bot decision workspace' })).toBeVisible();
+    expect(screen.getByLabelText('Tokenisation lifecycle tabs')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Overview' })).toBeVisible();
     expect(screen.getByLabelText('Engineering Bot workspace')).toBeVisible();
-    expect(screen.getByText('Chief Engineering Officer')).toBeVisible();
-    expect(screen.getByText('Master Orchestrator')).toBeVisible();
-    expect(screen.getByText('mila26-cockpit2')).toBeVisible();
-    expect(screen.getByLabelText('Current workflow summary')).toBeVisible();
-    expect(screen.getByText('Current workflow')).toBeVisible();
-    expect(screen.getAllByText('Project workspace').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /usequities/i })).toBeVisible();
-    expect(screen.getByRole('button', { name: /sgequities/i })).toBeVisible();
-    expect(screen.getByRole('button', { name: /mixedportfolio/i })).toBeVisible();
+    expect(screen.getByText('Cross-stage intelligence across requirements, investor registry, subscription, redemption, asset servicing, and evidence.')).toBeVisible();
+    expect(screen.getByText('Next best action')).toBeVisible();
+    expect(screen.getByRole('button', { name: /Alpha Income Fund I/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /Singapore REIT Token/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /Mixed Portfolio Token/i })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Smart Contract Control Panel' })).toBeVisible();
     expect(screen.queryByLabelText('Current-stage activities')).not.toBeInTheDocument();
     expect(screen.queryByText('Goal intake')).not.toBeInTheDocument();
@@ -263,7 +260,6 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByText('Need help? Ask the Engineering Bot')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'All projects' })).not.toBeInTheDocument();
     expect(screen.queryByText('Choose a project folder on the left to inspect its linked artifacts and evidence.')).not.toBeInTheDocument();
-    expect(screen.getByText('Select a project folder to view its linked documents and artifacts for download.')).toBeVisible();
     expect(screen.getByText('Local preview shown until a backend response is available.')).toBeVisible();
     expect(screen.getByLabelText('Engineering Bot actions')).toBeVisible();
     expect(screen.queryByText('Recommendation')).not.toBeInTheDocument();
@@ -274,11 +270,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByRole('button', { name: 'Approve Brief and Run Coding Bot' })).not.toBeInTheDocument();
     expect(screen.queryByText('What I understand')).not.toBeInTheDocument();
     expect(screen.queryByText('Tokenisation goal')).not.toBeInTheDocument();
-    expect(screen.getByText('Engineering Bot reply')).toBeVisible();
     expect(screen.getByRole('textbox', { name: 'Engineering Bot MILA' })).toBeVisible();
-    expect(screen.getByText('Press Enter to send, Shift+Enter for a new line.')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Send' })).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'Ask a question' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ask a question' })).toBeVisible();
     expect(screen.queryByText('Next Recommended Action')).not.toBeInTheDocument();
     expect(screen.getByTestId('smart-contract-control')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Smart Contract Control Panel' })).toBeVisible();
@@ -295,7 +289,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.keyDown(botComposer, { key: 'Enter', code: 'Enter' });
 
     expect(screen.getByRole('button', { name: 'Sending...' })).toBeDisabled();
-    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Waiting for Blockchain Engineer Bot...');
+    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Waiting for Engineering Bot response...');
 
     await waitFor(() => {
       expect(screen.getByText('Backend response.')).toBeVisible();
@@ -396,7 +390,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(artifactScope.getByText('Acceptance criteria')).toBeVisible();
     expect(artifactScope.getByText('Capture tokenized fund requirements.')).toBeVisible();
     expect(screen.getAllByText('Ready for Smart Contract Spec').length).toBeGreaterThan(0);
-    expect(within(screen.getByLabelText('Current workflow summary')).getByText('Engineering Brief generated')).toBeVisible();
+    expect(screen.getByText('Continue refining the shared lifecycle inputs, then prepare the next contract parameter set from the same workspace state.')).toBeVisible();
     const nextAction = screen.getByRole('button', { name: 'Prepare Smart Contract Spec' });
     expect(nextAction).toBeEnabled();
     expect(screen.queryByRole('button', { name: 'Approve Brief and Run Coding Bot' })).not.toBeInTheDocument();
@@ -500,11 +494,11 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     const connectWalletButton = screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' });
     expect(connectWalletButton).toBeEnabled();
-    expect(within(screen.getByLabelText('Engineering Bot actions')).getByRole('button', { name: 'Connect Wallet for Sepolia Check' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' })).toBeVisible();
     expect(screen.getByText('Backend artifacts generated.')).toBeVisible();
     expect(screen.getByText('Smart contract preparation review')).toBeVisible();
-    expect(screen.getByText('Demo-ready preview')).toBeVisible();
-    expect(screen.getByText('Smart Contract Spec')).toBeVisible();
+    expect(screen.getByText('Preview')).toBeVisible();
+    expect(generatedArtifacts.getByText('Smart Contract Spec')).toBeVisible();
     expect(screen.getByText('restricted_erc20 / ERC-20-compatible profile.')).toBeVisible();
     expect(screen.getByText('Artifact Preview')).toBeVisible();
     expect(screen.getByText('Preview only')).toBeVisible();
@@ -515,22 +509,22 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('Draft evidence linked')).toBeVisible();
     expect(screen.getByText('Local Compile/Test')).toBeVisible();
     expect(screen.getByText('Hardhat fixture compiles and local contract tests pass. Tested capabilities: ERC-20 basics, whitelist restrictions, issuer mint/allocation, valuation event, distribution event, pause/unpause, and access control.')).toBeVisible();
-    expect(screen.getByText('Known Track 10A local foundation result')).toBeVisible();
+    expect(screen.getByText('Known local foundation result')).toBeVisible();
     expect(generatedArtifacts.getByText('Deployment Gate Review')).toBeVisible();
     expect(generatedArtifacts.getAllByText('Review-ready').length).toBeGreaterThan(0);
     expect(generatedArtifacts.getByText('Pre-deployment readiness: Complete. Deployment execution: Blocked.')).toBeVisible();
-    expect(generatedArtifacts.getByText('Track 11A read model')).toBeVisible();
+    expect(generatedArtifacts.getByText('Deployment gate')).toBeVisible();
     expect(generatedArtifacts.getByText('Wallet Signing Intent')).toBeVisible();
     expect(
       generatedArtifacts.getByText(
         'Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys.',
       ),
     ).toBeVisible();
-    expect(generatedArtifacts.getByText('Track 12A read model')).toBeVisible();
+    expect(generatedArtifacts.getByText('Wallet signing intent')).toBeVisible();
     expect(generatedArtifacts.getByText('Wallet Connection')).toBeVisible();
     expect(generatedArtifacts.getByText('Not detected')).toBeVisible();
     expect(generatedArtifacts.getByText('Wallet chain: Unknown. No wallet address. Connection only; no signing or deployment.')).toBeVisible();
-    expect(generatedArtifacts.getByText('Track 13B EIP-1193 adapter')).toBeVisible();
+    expect(generatedArtifacts.getByText('Wallet connection')).toBeVisible();
 	    expect(generatedArtifacts.getByText('Smart Contract Operations')).toBeVisible();
 	    expect(generatedArtifacts.getByText('Locked')).toBeVisible();
     expect(
@@ -590,7 +584,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getAllByText('Evidence persistence: Local session only').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Transaction hash source: Absent').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Contract address source: Absent').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Smart Contract Operations: Locked until Track 15A').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Smart Contract Operations: Locked until deployment evidence is confirmed').length).toBeGreaterThan(0);
     expect(screen.getByText('Deployment: Not started')).toBeVisible();
     expect(screen.getByText('Wallet signing: Not started')).toBeVisible();
     expect(screen.getByText('Audit: Not audited')).toBeVisible();
@@ -609,9 +603,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(within(scp).queryByRole('button', { name: /wallet/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' })).toBeEnabled();
     expect(screen.queryByRole('button', { name: /sign/i })).not.toBeInTheDocument();
-    expect(screen.queryAllByRole('button', { name: /deploy/i }).every((button) => button.hasAttribute('disabled'))).toBe(
-      true,
-    );
+    expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeDisabled();
     expect(screen.queryByText(/0x[a-fA-F0-9]{6,}/)).not.toBeInTheDocument();
     expect(screen.queryByText(/txHash/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/ready to sign|sign now|ready to deploy|ready for signature|production ready|mainnet ready/i)).not.toBeInTheDocument();
@@ -756,7 +748,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(recordNavButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Record NAV confirmed on Sepolia')).toBeVisible();
+      expect(screen.getAllByText('Record NAV confirmed on Sepolia').length).toBeGreaterThan(0);
     });
 
     expect(calls.filter((method) => method === 'eth_sendTransaction')).toHaveLength(2);
@@ -841,7 +833,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getAllByText('Whitelist transaction hash source: Provider returned').length).toBeGreaterThan(0);
     expect(screen.getAllByText('WalletWhitelisted event: Not decoded').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Contract authorization is enforced on-chain').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Allocation/Mint: Locked until Track 15C').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Allocation/Mint: Locked for later').length).toBeGreaterThan(0);
     expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Wallet whitelist confirmed on Sepolia' })).toBeDisabled();
     expect(within(screen.getByTestId('smart-contract-control')).queryByRole('button', { name: /Mint/i })).toBeDisabled();
     expect(screen.queryByText(/KYC approved|investor approved|legally eligible|issuer authorized|wallet authorized|production ready|mainnet ready|audit passed|operation suite unlocked/i)).not.toBeInTheDocument();
@@ -999,7 +991,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByTestId('engineering-brief-artifact')).not.toBeInTheDocument();
   });
 
-  it('supports passive side rails and an expandable artifact-focused Brief Preview', () => {
+  it('supports passive side rails, lifecycle tabs, and a non-dashboard brief artifact surface', () => {
     render(<App />);
 
     const rightRail = screen.getByLabelText('Project status');
@@ -1014,35 +1006,32 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(within(rightRail).queryByText('SG Equities Portfolio')).not.toBeInTheDocument();
     expect(within(rightRail).queryByText('Mixed Portfolio')).not.toBeInTheDocument();
     expect(within(rightRail).queryByText('Safety boundary')).not.toBeInTheDocument();
+    expect(within(rightRail).getByRole('heading', { name: 'Workspace Status' })).toBeVisible();
+    expect(within(rightRail).getByRole('heading', { name: 'Capability Status' })).toBeVisible();
+    expect(within(rightRail).getByRole('heading', { name: 'Product Vault' })).toBeVisible();
+    expect(within(rightRail).getByText('Requirement Brief')).toBeVisible();
+    expect(within(rightRail).getByText('Engineering Brief')).toBeVisible();
+    expect(within(rightRail).getByText('Smart Contract Spec')).toBeVisible();
     expect(screen.queryByText('Step 1 To-Do Checklist')).not.toBeInTheDocument();
     expect(screen.queryByText('Step 1 Artifacts')).not.toBeInTheDocument();
     expect(screen.queryByText('Project Closure Ledger')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /usequities/i }));
-    expect(screen.getAllByRole('heading', { name: 'US Equities Portfolio' }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: /Singapore REIT Token/i }));
+    expect(screen.getAllByRole('heading', { name: 'Singapore REIT Token' }).length).toBeGreaterThan(0);
     expect(screen.queryByText('Need help? Ask the Engineering Bot')).not.toBeInTheDocument();
     expect(screen.queryByText('Select a project folder to view its linked documents and artifacts for download.')).not.toBeInTheDocument();
-    expect(within(rightRail).getByText('Project Artifacts')).toBeVisible();
-    expect(within(rightRail).getByText('Linked artifacts')).toBeVisible();
-    expect(within(rightRail).getByText('Requirement Brief')).toBeVisible();
-    expect(within(rightRail).getByText('Engineering Brief')).toBeVisible();
-    expect(within(rightRail).getByText('Smart Contract Artifact Spec')).toBeVisible();
 
     const briefPreview = screen.getByLabelText('Brief Preview');
-    expect(within(briefPreview).getByText('Business objective')).toBeVisible();
-    expect(within(briefPreview).getByText('Token model')).toBeVisible();
-    expect(within(briefPreview).getByText('Investor access')).toBeVisible();
+    expect(within(briefPreview).getByText('Business objective')).toBeInTheDocument();
+    expect(within(briefPreview).getByText('Token model')).toBeInTheDocument();
+    expect(within(briefPreview).getByText('Investor access')).toBeInTheDocument();
     expect(within(briefPreview).queryByText('Key workflows')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Expand Brief Preview' }));
-    expect(within(briefPreview).getByText('Key workflows')).toBeVisible();
-    expect(within(briefPreview).getByText('Deployment boundary')).toBeVisible();
-    expect(within(briefPreview).getByText('Open items')).toBeVisible();
-    expect(within(briefPreview).getAllByText('Requirement Brief pending').length).toBeGreaterThan(0);
-    expect(within(briefPreview).getByText('Create the brief before closure checks can be reviewed.')).toBeVisible();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Collapse Brief Preview' }));
-    expect(within(briefPreview).queryByText('Key workflows')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Subscription/ }));
+    expect(screen.getByRole('heading', { name: 'Subscription' })).toBeVisible();
+    expect(screen.getByText('Define permitted stablecoins, subscription windows, and payment-per-token terms.')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: /Asset Servicing/ }));
+    expect(screen.getByRole('heading', { name: 'Asset Servicing' })).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: 'Hide left rail' }));
     expect(screen.queryByLabelText('Project navigation')).not.toBeInTheDocument();

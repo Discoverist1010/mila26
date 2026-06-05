@@ -397,7 +397,7 @@ function deploymentEvidenceHealthItems(
     },
     {
       label: 'Operations after deployment',
-      value: evidence.evidenceStrength === 'confirmed_receipt' ? 'Record NAV gated; other operations locked' : 'Locked until Track 15A',
+      value: evidence.evidenceStrength === 'confirmed_receipt' ? 'Record NAV gated; other operations locked' : 'Locked until deployment evidence',
       status: 'disabled',
     },
   ];
@@ -496,7 +496,7 @@ function walletWhitelistOperationHealthItems(
     },
     {
       label: 'Allocation/Mint',
-      value: 'Locked until Track 15C',
+      value: 'Locked for later',
       status: 'disabled',
     },
     {
@@ -691,7 +691,7 @@ function boundaryItems(generatedState?: SmartContractControlPanelGeneratedState)
     { label: 'Wallet Whitelist operation', value: walletWhitelistOperation?.statusLabel ?? 'Wallet whitelist not started', status: walletWhitelistOperation?.operationStatus === 'confirmed' ? 'ready' : 'disabled' },
     { label: 'Whitelist evidence persistence', value: walletWhitelistOperation?.operationEvidencePersistenceLabel ?? 'Local session only', status: 'disabled' },
     { label: 'Contract authorization', value: 'Enforced on-chain', status: 'disabled' },
-    { label: 'Allocation/Mint', value: 'Locked until Track 15C', status: 'disabled' },
+    { label: 'Allocation/Mint', value: 'Locked for later', status: 'disabled' },
     { label: 'Other Smart Contract Operations', value: 'Locked', status: 'disabled' },
     { label: 'Audit', value: 'Not performed', status: 'disabled' },
   ];

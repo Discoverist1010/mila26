@@ -38,6 +38,11 @@ import {
   toSmartContractCompileTestPresentation,
 } from './domain/smartContractCompileTestPresentation';
 import { toSmartContractControlPanelViewModel } from './domain/smartContractControlPanelViewModel';
+import {
+  toWorkspacePresentation,
+  type ProductCapabilityStatus,
+  type WorkspaceTabId,
+} from './domain/workspacePresentation';
 import { mila26RestrictedFundTokenDeploymentArtifact } from './contracts/mila26RestrictedFundTokenDeploymentArtifact';
 import {
   createMila26DeploymentConstructorParameters,
@@ -91,7 +96,7 @@ const starterFacts: FundFacts = {
   initialNav: 1_000_000,
 };
 
-const initialBotQuestion = 'What should we be careful about before generating code?';
+const initialBotQuestion = 'I want investors to subscribe with stablecoins and redeem later after a delay.';
 
 type ProjectDirectorySelection = 'workspace' | 'usequities' | 'sgequities' | 'mixedportfolio';
 
@@ -122,25 +127,25 @@ type EngineeringBotConversationTurn =
 const demoProjectFolders: DemoProjectFolder[] = [
   {
     id: 'usequities',
-    label: 'usequities',
-    title: 'US Equities Portfolio',
-    description: 'Tokenized portfolio workspace for US-listed public equities.',
+    label: 'Alpha Income Fund I',
+    title: 'Alpha Income Fund I',
+    description: 'Tokenised financial product workspace for up to 50 investors.',
     tokenSymbol: 'USEQ',
     marketScope: 'US equities',
   },
   {
     id: 'sgequities',
-    label: 'sgequities',
-    title: 'SG Equities Portfolio',
-    description: 'Tokenized portfolio workspace for Singapore-listed public equities.',
+    label: 'Singapore REIT Token',
+    title: 'Singapore REIT Token',
+    description: 'Tokenised income workspace for Singapore real estate exposure.',
     tokenSymbol: 'SGEQ',
     marketScope: 'Singapore equities',
   },
   {
     id: 'mixedportfolio',
-    label: 'mixedportfolio',
-    title: 'Mixed Portfolio',
-    description: 'Tokenized portfolio workspace for blended equity exposure.',
+    label: 'Mixed Portfolio Token',
+    title: 'Mixed Portfolio Token',
+    description: 'Tokenised portfolio workspace for blended asset exposure.',
     tokenSymbol: 'MIXD',
     marketScope: 'Mixed equities',
   },
@@ -236,7 +241,7 @@ function createDeploymentResponse(deployment: WalletSignedDeploymentState): Bloc
       'Mainnet remains disabled.',
       'Smart Contract Operations remain locked.',
     ],
-    nextRecommendedAction: 'Next milestone is Track 15A Record NAV Event after operation authorization and evidence logging are designed.',
+    nextRecommendedAction: 'Next recommended operation is Record NAV Event after deployment evidence is confirmed.',
     createdAt: new Date(0).toISOString(),
   };
 }
@@ -259,7 +264,7 @@ function createRecordNavOperationResponse(operation: RecordNavOperationState): B
     ],
     nextRecommendedAction:
       operation.operationStatus === 'confirmed'
-        ? 'If 15A is clean, next milestone is Track 15B Whitelist + Allocation/Mint Operation.'
+        ? 'Next recommended operation is Wallet Whitelist. Allocation/Mint remains locked for a later build.'
         : 'Continue only after the wallet-signed Record NAV operation is confirmed or safely retried.',
     createdAt: new Date(0).toISOString(),
   };
@@ -281,12 +286,12 @@ function createWalletWhitelistOperationResponse(operation: WalletWhitelistOperat
       'Contract authorization is enforced on-chain.',
       'Backend never holds private keys.',
       'Mainnet remains disabled.',
-      'Allocation/Mint remains locked until Track 15C.',
+      'Allocation/Mint remains locked for a later build.',
       'Other Smart Contract Operations remain locked.',
     ],
     nextRecommendedAction:
       operation.operationStatus === 'confirmed'
-        ? 'If 15B is clean, next milestone is Track 15C Allocation/Mint Operation.'
+        ? 'Next recommended operation is Allocation/Mint after the subscription and investor registry setup is complete.'
         : 'Continue only after the wallet-signed Wallet Whitelist operation is confirmed or safely retried.',
     createdAt: new Date(0).toISOString(),
   };
@@ -322,6 +327,24 @@ function formatWalletChainStatus(status: string) {
   return 'Unknown';
 }
 
+function productCapabilityStatusLabel(status: ProductCapabilityStatus) {
+  if (status === 'available') return 'Available';
+  if (status === 'needs_parameters') return 'Needs parameters';
+  if (status === 'locked_for_later') return 'Locked for later';
+  if (status === 'local_session_only') return 'Local session only';
+  if (status === 'active') return 'Active';
+  return 'Draft';
+}
+
+function tabStatusLabel(status: ReturnType<typeof toWorkspacePresentation>['tabs'][number]['status']) {
+  if (status === 'in_progress') return 'In progress';
+  if (status === 'needs_review') return 'Needs review';
+  if (status === 'needs_parameters') return 'Needs parameters';
+  if (status === 'available') return 'Available';
+  if (status === 'local_session_only') return 'Local session only';
+  return 'Locked for later';
+}
+
 function initialWalletConnectionInput(): WalletConnectionReadModelInput {
   return getBrowserEthereumProvider()
     ? {
@@ -355,7 +378,8 @@ function applyWalletConnectionInput(next: WalletConnectionReadModelInput) {
 export function App() {
   const [facts] = useState<FundFacts>(starterFacts);
   const [goal] = useState('We want to launch a tokenized income product for approved investors.');
-  const [selectedProjectId, setSelectedProjectId] = useState<ProjectDirectorySelection>('workspace');
+  const [selectedProjectId, setSelectedProjectId] = useState<ProjectDirectorySelection>('usequities');
+  const [selectedWorkspaceTab, setSelectedWorkspaceTab] = useState<WorkspaceTabId>('overview');
   const [question, setQuestion] = useState('');
   const [brief, setBrief] = useState<RequirementBrief | undefined>();
   const [engineeringBrief, setEngineeringBrief] = useState<EngineeringBrief | undefined>();
@@ -655,6 +679,28 @@ export function App() {
       walletWhitelistOperationReadModel,
     ],
   );
+  const workspacePresentation = useMemo(
+    () =>
+      toWorkspacePresentation({
+        hasRequirementBrief: Boolean(brief),
+        hasEngineeringBrief: Boolean(engineeringBrief),
+        hasSmartContractSpec: Boolean(smartContractArtifactSpec),
+        hasDeploymentEvidence: deploymentEvidenceReadModel.status === 'confirmed',
+        isWalletWhitelistAvailable: true,
+        isNavRecordingAvailable: true,
+        isInvestorRegistryActive: Boolean(normalizedWhitelistTargetWallet || walletWhitelistOperationState.targetWalletAddress),
+      }),
+    [
+      brief,
+      engineeringBrief,
+      smartContractArtifactSpec,
+      deploymentEvidenceReadModel.status,
+      normalizedWhitelistTargetWallet,
+      walletWhitelistOperationState.targetWalletAddress,
+    ],
+  );
+  const activeWorkspaceTab =
+    workspacePresentation.tabs.find((tab) => tab.id === selectedWorkspaceTab) ?? workspacePresentation.tabs[0];
   const enabledModuleCount = brief?.modules.filter((module) => module.enabled).length ?? moduleCatalog.length;
   const currentGate = engineeringBrief
     ? 'Engineering Brief generated'
@@ -663,7 +709,7 @@ export function App() {
       : 'Requirement brief approval';
   const approvalGateStatus = engineeringBrief ? 'Engineering brief ready' : brief ? 'Brief ready' : 'Draft brief';
   const selectedProject = demoProjectFolders.find((project) => project.id === selectedProjectId);
-  const activeProjectTitle = selectedProject?.title ?? 'Project Workspace';
+  const activeProjectTitle = selectedProject?.title ?? 'All Projects';
   const activeProjectDescription =
     selectedProject?.description ?? 'Select a project folder to inspect its Requirement Brief, Engineering Brief, contract artifacts, and evidence.';
   const selectedModules = brief?.modules.filter((module) => module.enabled) ?? [];
@@ -781,13 +827,13 @@ export function App() {
               label: 'Smart Contract Spec',
               status: 'Generated',
               detail: `${smartContractArtifactSpec?.tokenStandardProfile?.mila26RestrictionProfile ?? 'restricted_erc20'} / ERC-20-compatible profile.`,
-              source: 'Track 9A route',
+              source: 'Smart contract spec route',
             },
             {
               label: 'Artifact Preview',
               status: 'Preview only',
               detail: `${smartContractArtifactPackage?.sourceModel?.sourceFiles.length ?? 0} deterministic preview file(s). Preview artifact not deployed or audited.`,
-              source: 'Track 9B route',
+              source: 'Artifact preview route',
             },
             {
               label: 'Check Result',
@@ -808,44 +854,44 @@ export function App() {
               label: 'Deployment Gate Review',
               status: formatDeploymentGateStatus(deploymentGateReadModel.gateStatus),
               detail: `Pre-deployment readiness: ${formatPreDeploymentReadiness(deploymentGateReadModel.preDeploymentReadiness)}. Deployment execution: Blocked.`,
-              source: 'Track 11A read model',
+              source: 'Deployment gate',
             },
             {
               label: 'Wallet Signing Intent',
               status: formatWalletSigningIntentStatus(walletSigningIntentReadModel.intentStatus),
               detail:
                 'Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys.',
-              source: 'Track 12A read model',
+              source: 'Wallet signing intent',
             },
             {
               label: 'Wallet Connection',
               status: formatWalletConnectionStatus(walletConnectionReadModel.walletConnectionStatus),
               detail: `Wallet chain: ${formatWalletChainStatus(walletConnectionReadModel.chainStatus)}. ${walletAddressDisplay ? `Connected wallet: ${walletAddressDisplay}.` : 'No wallet address.'} Connection only; no signing or deployment.`,
-              source: 'Track 13B EIP-1193 adapter',
+              source: 'Wallet connection',
             },
             {
               label: 'Sepolia Deployment',
               status: formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus),
               detail: `${walletSignedDeploymentState.transactionHash ? `Transaction hash: ${walletSignedDeploymentState.transactionHash}.` : 'No transaction hash.'} ${walletSignedDeploymentState.contractAddress ? `Contract address: ${walletSignedDeploymentState.contractAddress}.` : 'No contract address.'} Deployment state is local-session-only.`,
-              source: 'Track 14B wallet-signed deployment',
+              source: 'Wallet-signed deployment',
             },
             {
               label: 'Deployment Evidence',
               status: deploymentEvidenceReadModel.statusLabel,
               detail: `${deploymentEvidenceReadModel.evidencePersistenceLabel}. Evidence strength: ${deploymentEvidenceReadModel.evidenceStrengthLabel}. Transaction hash source: ${deploymentEvidenceReadModel.transactionHashSourceLabel}. Contract address source: ${deploymentEvidenceReadModel.contractAddressSourceLabel}.`,
-              source: 'Track 14C local-session evidence surface',
+              source: 'Local-session evidence',
             },
             {
               label: 'Record NAV Operation',
               status: recordNavOperationReadModel.statusLabel,
               detail: `Operation evidence: ${recordNavOperationReadModel.operationEvidencePersistenceLabel}. Transaction hash source: ${recordNavOperationReadModel.operationTransactionHashSourceLabel}. Receipt source: ${recordNavOperationReadModel.operationReceiptSourceLabel}. Event evidence: ${recordNavOperationReadModel.eventEvidenceSourceLabel}.`,
-              source: 'Track 15A wallet-signed SCP operation',
+              source: 'Wallet-signed operation',
             },
             {
               label: 'Wallet Whitelist Operation Evidence',
               status: walletWhitelistOperationReadModel.statusLabel,
               detail: `Wallet whitelist evidence: ${walletWhitelistOperationReadModel.operationEvidencePersistenceLabel}. Transaction hash source: ${walletWhitelistOperationReadModel.operationTransactionHashSourceLabel}. Receipt source: ${walletWhitelistOperationReadModel.operationReceiptSourceLabel}. WalletWhitelisted event: ${walletWhitelistOperationReadModel.eventEvidenceStatusLabel}. Contract authorization is enforced on-chain.`,
-              source: 'Track 15B wallet-signed SCP operation',
+              source: 'Wallet-signed operation',
             },
             {
               label: 'Smart Contract Operations',
@@ -1277,8 +1323,8 @@ export function App() {
   return (
     <main className="cockpit-page">
       <section
-        className={`cockpit-shell ${isLeftRailOpen ? '' : 'left-collapsed'} ${isRightRailOpen ? '' : 'right-collapsed'}`}
-        aria-label="mila26-cockpit2 workspace"
+        className={`cockpit-shell product-workspace-shell ${isLeftRailOpen ? '' : 'left-collapsed'} ${isRightRailOpen ? '' : 'right-collapsed'}`}
+        aria-label="MILA26 tokenisation workspace"
       >
         <button
           className="rail-toggle left-toggle"
@@ -1300,121 +1346,252 @@ export function App() {
         </button>
 
         {isLeftRailOpen && (
-        <aside className="left-rail" id="left-rail" aria-label="Project navigation">
-          <div className="brand-block">
-            <img src="/assets/brand/kangle-ai-logo.png" alt="" />
-            <div>
-              <strong>KangLe AI</strong>
-              <span>MILA26 cockpit</span>
+          <aside className="left-rail mila-left-rail" id="left-rail" aria-label="Project navigation">
+            <div className="brand-block mila-brand">
+              <div className="brand-mark" aria-hidden="true">M</div>
+              <div>
+                <strong>MILA26</strong>
+                <span>AI Tokenisation Copilot</span>
+              </div>
             </div>
-          </div>
 
-          <nav className="project-nav project-directory" aria-label="MILA26 project folders">
-            <button
-              type="button"
-              className="project-nav-button"
-              aria-current={selectedProjectId === 'workspace' ? 'page' : undefined}
-              onClick={() => setSelectedProjectId('workspace')}
-            >
-              <span>Project workspace</span>
-              <small>All project folders</small>
-            </button>
-            {demoProjectFolders.map((project) => (
+            <nav className="project-nav project-directory" aria-label="MILA26 project folders">
+              <p className="rail-label">Project</p>
+              {demoProjectFolders.map((project) => (
+                <button
+                  type="button"
+                  className="project-nav-button"
+                  aria-current={selectedProjectId === project.id ? 'page' : undefined}
+                  key={project.id}
+                  onClick={() => setSelectedProjectId(project.id)}
+                >
+                  <span>{project.label}</span>
+                  <small>{project.marketScope}</small>
+                </button>
+              ))}
+            </nav>
+
+            <nav className="project-nav rail-section" aria-label="Workspace navigation">
+              <p className="rail-label">Workspace</p>
+              <button type="button" className="project-nav-button" aria-current="page" onClick={() => setSelectedWorkspaceTab('overview')}>
+                <span>Overview</span>
+              </button>
+              <button type="button" className="project-nav-button" onClick={() => setSelectedProjectId('workspace')}>
+                <span>All Projects</span>
+              </button>
+              <button type="button" className="project-nav-button">
+                <span>Templates</span>
+              </button>
+              <button type="button" className="project-nav-button">
+                <span>Knowledge Base</span>
+              </button>
+              <button type="button" className="project-nav-button">
+                <span>Activity Log</span>
+              </button>
+            </nav>
+
+            <nav className="project-nav rail-section" aria-label="Engineering navigation">
+              <p className="rail-label">Engineering</p>
+              <button type="button" className="project-nav-button" aria-current="page">
+                <span>Engineering Bot</span>
+              </button>
+              <button type="button" className="project-nav-button" onClick={() => setSelectedWorkspaceTab('smart_contract')}>
+                <span>Smart Contract Lab</span>
+              </button>
+              <button type="button" className="project-nav-button" onClick={() => setSelectedWorkspaceTab('evidence')}>
+                <span>Deployments</span>
+              </button>
+              <button type="button" className="project-nav-button" onClick={() => setSelectedWorkspaceTab('evidence')}>
+                <span>Evidence Vault</span>
+              </button>
+            </nav>
+
+            <nav className="project-nav rail-section" aria-label="Settings navigation">
+              <p className="rail-label">Settings</p>
+              <button type="button" className="project-nav-button">
+                <span>Wallet & Network</span>
+              </button>
+              <button type="button" className="project-nav-button">
+                <span>Team</span>
+              </button>
+              <button type="button" className="project-nav-button">
+                <span>Preferences</span>
+              </button>
+              <button type="button" className="project-nav-button">
+                <span>Audit Trail</span>
+              </button>
+            </nav>
+
+            <section className="left-status-card" aria-label="Product setup status">
+              <h2>Product Setup</h2>
+              <ul className="compact-status-list">
+                {workspacePresentation.productSetup.map((item) => (
+                  <li key={item.label}>
+                    <span className={`status-dot ${item.status}`} aria-hidden="true" />
+                    <span>{item.label}</span>
+                    <small>{item.detail}</small>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <a className="rail-help" href="#workspace">Help & Support</a>
+          </aside>
+        )}
+
+        <section className="workspace" id="workspace">
+          <header className="project-topbar">
+            <div className="project-title-block">
+              <div className="project-icon" aria-hidden="true">SC</div>
+              <div>
+                <h1>{activeProjectTitle}</h1>
+                <p>
+                  Tokenised Financial Product <span>Up to 50 investors</span>
+                </p>
+              </div>
+            </div>
+            <div className="topbar-controls" aria-label="Workspace controls">
+              <span className="topbar-pill">Sepolia Testnet</span>
+              <span className="topbar-pill">
+                {walletAddressDisplay ? walletAddressDisplay : 'Wallet not connected'}
+              </span>
+              <span className="mode-toggle" aria-label="Mode selector">
+                <button type="button" aria-current="true">Guided</button>
+                <button type="button">Expert</button>
+              </span>
+              <span className="topbar-pill safety">Safety Status</span>
+            </div>
+          </header>
+
+          <nav className="workspace-tabs" aria-label="Tokenisation lifecycle tabs">
+            {workspacePresentation.tabs.map((tab, index) => (
               <button
                 type="button"
-                className="project-nav-button"
-                aria-current={selectedProjectId === project.id ? 'page' : undefined}
-                key={project.id}
-                onClick={() => setSelectedProjectId(project.id)}
+                key={tab.id}
+                aria-current={activeWorkspaceTab.id === tab.id ? 'page' : undefined}
+                onClick={() => setSelectedWorkspaceTab(tab.id)}
+                title={tab.purpose}
               >
-                <span>{project.label}</span>
-                <small>{project.marketScope}</small>
+                <span>{index + 1}</span>
+                {tab.label}
               </button>
             ))}
           </nav>
 
-        </aside>
-        )}
-
-        <section className="workspace" id="workspace">
-          <header className="cockpit-header">
-            <div>
-              <p className="eyebrow">mila26-cockpit2</p>
-              <h1>{activeProjectTitle}</h1>
-              <p className="header-copy">{activeProjectDescription}</p>
-            </div>
-            <div className="safety-badges" aria-label="Project safety badges">
-              <span>Ethereum testnet only</span>
-              <span>Sepolia deploy gated</span>
-            </div>
-          </header>
-
-          <section className="workflow-summary" aria-label="Current workflow summary">
-            <div>
-              <span>Current workflow</span>
-              <strong>{currentGate}</strong>
-            </div>
-            <div>
-              <span>Active project</span>
-              <strong>{selectedProject?.label ?? 'Project workspace'}</strong>
-            </div>
-            <div>
-              <span>Next action</span>
-              <strong>{cockpitActionLabel(primaryWorkflowAction.id, primaryWorkflowAction.label)}</strong>
-            </div>
-          </section>
-
-          <section className="workbench" id="goal-copilot">
-            <div className="workbench-heading">
+          <section className="workspace-stage" id="goal-copilot">
+            <div className="stage-header">
               <div>
-                <p className="eyebrow">{selectedProject?.label ?? 'Project workspace'}</p>
-                <h2>Engineering Bot decision workspace</h2>
+                <h2>{activeWorkspaceTab.label}</h2>
+                <p>{activeWorkspaceTab.purpose}</p>
               </div>
-              <span className={`gate-badge ${brief ? 'ready' : 'draft'}`}>{approvalGateStatus}</span>
+              <span className={`gate-badge ${activeWorkspaceTab.status === 'available' ? 'ready' : 'draft'}`}>
+                {tabStatusLabel(activeWorkspaceTab.status)}
+              </span>
             </div>
 
-            <div className="workbench-grid">
-              <section className="bot-workspace" aria-label="Engineering Bot workspace">
-                <div className="bot-title-row">
+            <section className="bot-workspace ai-workspace" aria-label="Engineering Bot workspace">
+              <div className="bot-title-row">
+                <div className="bot-identity">
+                  <div className="bot-avatar" aria-hidden="true">AI</div>
                   <div>
-                    <p className="eyebrow">Chief Engineering Officer</p>
                     <h3>Engineering Bot</h3>
-                  </div>
-                  <span>Master Orchestrator</span>
-                </div>
-                <div className="bot-conversation" aria-label="Engineering Bot conversation">
-                  <div className="bot-reply">
-                    <span>Engineering Bot reply</span>
-                    <div className="assistant-response" data-testid="engineer-answer">
-                      <div className="conversation-history">
-                        {engineeringBotConversation.map((turn) =>
-                          turn.role === 'user' ? (
-                            <article className="conversation-turn user-turn" key={turn.id}>
-                              <span className="turn-label">You</span>
-                              <p>{turn.content}</p>
-                            </article>
-                          ) : (
-                            <article className="conversation-turn assistant-turn" key={turn.id}>
-                              <span className="turn-label">Engineering Bot</span>
-                              {renderEngineerResponse(turn.response)}
-                            </article>
-                          ),
-                        )}
-                        {isBotReplyLoading && (
-                          <article className="conversation-turn assistant-turn pending-turn" aria-live="polite">
-                            <span className="turn-label">Engineering Bot</span>
-                            <p>Waiting for Blockchain Engineer Bot...</p>
-                          </article>
-                        )}
-                      </div>
-                    </div>
+                    <p>Cross-stage intelligence across requirements, investor registry, subscription, redemption, asset servicing, and evidence.</p>
                   </div>
                 </div>
-                <label className="chat-composer">
-                  <span className="composer-title">Engineering Bot MILA</span>
+                <button type="button" className="secondary-button" data-action-id={uiActions.askQuestion} onClick={() => void askBot()}>
+                  Ask a question
+                </button>
+              </div>
+
+              <div className="bot-conversation" aria-label="Engineering Bot conversation">
+                <div className="assistant-response" data-testid="engineer-answer">
+                  <div className="conversation-history">
+                    {engineeringBotConversation.map((turn) =>
+                      turn.role === 'user' ? (
+                        <article className="conversation-turn user-turn" key={turn.id}>
+                          <span className="turn-label">You</span>
+                          <p>{turn.content}</p>
+                        </article>
+                      ) : (
+                        <article className="conversation-turn assistant-turn" key={turn.id}>
+                          <span className="turn-label">Engineering Bot</span>
+                          {renderEngineerResponse(turn.response)}
+                        </article>
+                      ),
+                    )}
+                    {isBotReplyLoading && (
+                      <article className="conversation-turn assistant-turn pending-turn" aria-live="polite">
+                        <span className="turn-label">Engineering Bot</span>
+                        <p>Waiting for Engineering Bot response...</p>
+                      </article>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <section className="next-action-panel" aria-label="Next suggested action">
+                <h3>Next best action</h3>
+                <p>
+                  {brief
+                    ? 'Continue refining the shared lifecycle inputs, then prepare the next contract parameter set from the same workspace state.'
+                    : 'Create the Requirement Brief so MILA26 can structure subscription, redemption, investor whitelist, servicing, and maturity parameters together.'}
+                </p>
+                <div className="suggested-action-row">
+                  <button
+                    type="button"
+                    className="workflow-button primary-action"
+                    data-action-id={primaryWorkflowAction.id}
+                    disabled={
+                      !primaryWorkflowAction.enabled ||
+                      isEngineeringBriefLoading ||
+                      smartContractGenerationStatus === 'loading' ||
+                      walletConnectionReadModel.walletConnectionStatus === 'connecting' ||
+                      (primaryWorkflowAction.id === 'connect_wallet' && isWalletConnectionComplete)
+                    }
+                    onClick={() => runCockpitAction(primaryWorkflowAction.id)}
+                    title={primaryWorkflowAction.disabledReason}
+                  >
+                    {cockpitActionLabel(primaryWorkflowAction.id, primaryWorkflowAction.label)}
+                  </button>
+                  <button type="button" className="workflow-button" onClick={() => setSelectedWorkspaceTab('subscription')}>
+                    Define permitted stablecoins
+                  </button>
+                  <button type="button" className="workflow-button" onClick={() => setSelectedWorkspaceTab('redemption')}>
+                    Set redemption delay
+                  </button>
+                  <button type="button" className="workflow-button" onClick={() => setSelectedWorkspaceTab('investor_registry')}>
+                    Review investor wallet registry
+                  </button>
+                  {smartContractGenerationStatus === 'ready' && (
+                    <button
+                      type="button"
+                      className="workflow-button"
+                      data-action-id={uiActions.deployToSepolia}
+                      disabled={!canRequestSepoliaDeployment}
+                      onClick={() => void requestSepoliaDeployment()}
+                      title={canRequestSepoliaDeployment ? undefined : deploymentActionDisabledReason}
+                    >
+                      {walletSignedDeploymentState.deploymentStatus === 'awaiting_wallet_confirmation'
+                        ? 'Awaiting Wallet Confirmation...'
+                        : walletSignedDeploymentState.deploymentStatus === 'submitted'
+                          ? 'Deployment Submitted to Sepolia'
+                          : walletSignedDeploymentState.deploymentStatus === 'confirmed'
+                            ? 'Deployment Confirmed on Sepolia'
+                            : 'Deploy to Sepolia with Wallet'}
+                    </button>
+                  )}
+                </div>
+                {!primaryWorkflowAction.enabled && primaryWorkflowAction.disabledReason && (
+                  <p className="action-disabled-reason">{primaryWorkflowAction.disabledReason}</p>
+                )}
+              </section>
+
+              <label className="chat-composer ai-composer">
+                <span className="composer-title">Engineering Bot MILA</span>
+                <div className="composer-shell">
                   <textarea
                     aria-label="Engineering Bot MILA"
-                    placeholder="Engineering Bot MILA"
+                    placeholder="Ask MILA26 what to design, configure, or review next..."
                     value={question}
                     onChange={(event) => setQuestion(event.target.value)}
                     onKeyDown={(event) => {
@@ -1423,70 +1600,80 @@ export function App() {
                         void askBot();
                       }
                     }}
-                    rows={5}
+                    rows={2}
                   />
-                  <span>Press Enter to send, Shift+Enter for a new line.</span>
-                  <div className="composer-actions" aria-label="Engineering Bot actions">
-                    <button className="send-button" data-action-id={uiActions.askQuestion} onClick={askBot} disabled={isBotReplyLoading}>
-                      {isBotReplyLoading ? 'Sending...' : 'Send'}
-                    </button>
+                  <button className="send-button" data-action-id={uiActions.askQuestion} onClick={() => void askBot()} disabled={isBotReplyLoading}>
+                    {isBotReplyLoading ? 'Sending...' : 'Send'}
+                  </button>
+                </div>
+                <div className="composer-actions" aria-label="Engineering Bot actions">
+                  {secondaryWorkflowActions.map((action) => (
                     <button
+                      type="button"
                       className="workflow-button"
-                      data-action-id={primaryWorkflowAction.id}
-                      disabled={
-                        !primaryWorkflowAction.enabled ||
-                        isEngineeringBriefLoading ||
-                        smartContractGenerationStatus === 'loading' ||
-                        walletConnectionReadModel.walletConnectionStatus === 'connecting' ||
-                        (primaryWorkflowAction.id === 'connect_wallet' && isWalletConnectionComplete)
-                      }
-                      onClick={() => runCockpitAction(primaryWorkflowAction.id)}
-                      title={primaryWorkflowAction.disabledReason}
+                      data-action-id={action.id}
+                      disabled={!action.enabled}
+                      key={action.id}
+                      onClick={() => runCockpitAction(action.id)}
+                      title={action.disabledReason}
                     >
-                      {cockpitActionLabel(primaryWorkflowAction.id, primaryWorkflowAction.label)}
+                      {action.label}
                     </button>
-                    {smartContractGenerationStatus === 'ready' && (
-                      <button
-                        className="workflow-button"
-                        data-action-id={uiActions.deployToSepolia}
-                        disabled={!canRequestSepoliaDeployment}
-                        onClick={() => void requestSepoliaDeployment()}
-                        title={canRequestSepoliaDeployment ? undefined : deploymentActionDisabledReason}
-                      >
-                        {walletSignedDeploymentState.deploymentStatus === 'awaiting_wallet_confirmation'
-                          ? 'Awaiting Wallet Confirmation...'
-                          : walletSignedDeploymentState.deploymentStatus === 'submitted'
-                            ? 'Deployment Submitted to Sepolia'
-                            : walletSignedDeploymentState.deploymentStatus === 'confirmed'
-                              ? 'Deployment Confirmed on Sepolia'
-                              : 'Deploy to Sepolia with Wallet'}
-                      </button>
-                    )}
-                    {secondaryWorkflowActions.map((action) => (
-                      <button
-                        className="workflow-button"
-                        data-action-id={action.id}
-                        disabled={!action.enabled}
-                        key={action.id}
-                        onClick={() => runCockpitAction(action.id)}
-                        title={action.disabledReason}
-                      >
-                        {action.label}
-                      </button>
-                    ))}
-                  </div>
-                </label>
-                {!primaryWorkflowAction.enabled && primaryWorkflowAction.disabledReason && (
-                  <p className="action-disabled-reason">{primaryWorkflowAction.disabledReason}</p>
-                )}
+                  ))}
+                </div>
+              </label>
+
+              {smartContractGenerationStatus === 'error' && smartContractGenerationError && (
+                <p className="error-text" role="alert">
+                  {smartContractGenerationError}
+                </p>
+              )}
+              {botChatError && (
+                <p className="error-text" role="alert">
+                  {botChatError}
+                </p>
+              )}
+              {engineeringBriefError && (
+                <p className="error-text" role="alert">
+                  {engineeringBriefError}
+                </p>
+              )}
+              <p className="chat-status">
+                {isBotReplyLoading
+                  ? 'Calling backend route.'
+                  : engineerAnswerSource === 'backend'
+                    ? 'Backend response.'
+                    : engineerAnswerSource === 'generated_artifacts'
+                      ? 'Backend artifacts generated.'
+                      : engineerAnswerSource === 'wallet'
+                        ? 'Wallet status updated.'
+                        : 'Local preview shown until a backend response is available.'}
+              </p>
+            </section>
+
+            <section className="lifecycle-snapshot" aria-label="Lifecycle snapshot">
+              <h3>Lifecycle snapshot</h3>
+              <div>
+                {workspacePresentation.lifecycleSnapshot.map((item) => (
+                  <article key={item.label}>
+                    <span className={`status-dot ${item.status}`} aria-hidden="true" />
+                    <strong>{item.label}</strong>
+                    <small>{item.detail}</small>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            {(smartContractGenerationStatus === 'ready' || engineeringBrief) && (
+              <section className="artifact-panel compact-artifact-panel" aria-label="Workspace artifacts">
                 {smartContractGenerationStatus === 'ready' && (
                   <div className="generated-artifacts" aria-label="Generated smart contract artifacts">
                     <div className="generated-artifacts-heading">
                       <div>
-                        <p className="eyebrow">Generated artifacts</p>
                         <h3>Smart contract preparation review</h3>
+                        <p className="muted">Generated from the shared lifecycle state, not from a single tab.</p>
                       </div>
-                      <span className="gate-badge ready">Demo-ready preview</span>
+                      <span className="gate-badge ready">Preview</span>
                     </div>
                     <div className="generated-artifact-grid">
                       {generatedArtifactCards.map((card) => (
@@ -1500,290 +1687,167 @@ export function App() {
                     </div>
                   </div>
                 )}
-                {smartContractGenerationStatus === 'error' && smartContractGenerationError && (
-                  <p className="error-text" role="alert">
-                    {smartContractGenerationError}
-                  </p>
-                )}
-                {botChatError && (
-                  <p className="error-text" role="alert">
-                    {botChatError}
-                  </p>
-                )}
-                <p className="chat-status">
-                  {isBotReplyLoading
-                    ? 'Calling backend route.'
-                    : engineerAnswerSource === 'backend'
-                      ? 'Backend response.'
-                      : engineerAnswerSource === 'generated_artifacts'
-                        ? 'Backend artifacts generated.'
-                        : engineerAnswerSource === 'wallet'
-                          ? 'Wallet connection status updated.'
-                          : 'Local preview shown until a backend response is available.'}
-                </p>
-              </section>
-
-              <section
-                className={`brief-column ${isBriefPreviewExpanded ? 'expanded' : 'compact'}`}
-                id="requirement-brief"
-                aria-label="Brief Preview"
-              >
-                <div className="brief-column-header">
-                  <div>
-                    <p className="eyebrow">Attached artifact</p>
-                    <h3>Brief Preview</h3>
-                    <p className="muted">Decision-ready summary generated from the Engineering Bot workspace.</p>
-                  </div>
-                  <button
-                    className="secondary-button"
-                    data-action-id={uiActions.toggleBriefPanel}
-                    onClick={() => setIsBriefPreviewExpanded((current) => !current)}
-                  >
-                    {isBriefPreviewExpanded ? 'Collapse Brief Preview' : 'Expand Brief Preview'}
-                  </button>
-                </div>
-
-                {brief && requirementBriefContract ? (
-                  <div className="brief-preview" data-testid="requirement-brief">
-                    <div>
-                      <span>Business objective</span>
-                      <strong>{goal}</strong>
-                      <p>{facts.fundName} remains bounded to a local MVP planning workflow.</p>
+                {engineeringBrief && (
+                  <div data-testid="engineering-brief-artifact">
+                    <div className="generated-artifacts-heading">
+                      <div>
+                        <h3>Engineering Brief Artifact</h3>
+                        <p className="muted">Backend artifact generated from the approved Requirement Brief.</p>
+                      </div>
+                      <span className="gate-badge ready">Generated</span>
                     </div>
-                    <div>
-                      <span>Token model</span>
-                      <strong>{requirementBriefContract.tokenModel.standardPreference}</strong>
-                      <p>{tokenModelSummary}</p>
-                    </div>
-                    <div>
-                      <span>Investor access</span>
-                      <strong>
-                        {requirementBriefContract.investorAccess.walletWhitelistRequired ? 'Wallet whitelist required' : 'Access model pending'}
-                      </strong>
-                      <p>{requirementBriefContract.investorAccess.assumptions[0]}</p>
-                    </div>
-                    <div>
-                      <span>Key workflows</span>
-                      <strong>{selectedModules.length || enabledModuleCount} programmable modules</strong>
-                      <p>{selectedModules[0]?.rationale ?? moduleCatalog[0].plainEnglish}</p>
-                    </div>
-                    <div>
-                      <span>Deployment boundary</span>
-                      <strong>{requirementBriefContract.deploymentBoundary.currentTarget}</strong>
-                      <p>
-                        {requirementBriefContract.networkBoundary}; {requirementBriefContract.deploymentBoundary.signing};{' '}
-                        {requirementBriefContract.backendCustodyBoundary}.
-                      </p>
-                    </div>
-                    <div>
-                      <span>Open items</span>
-                      <strong>{projectClosureReadModel.briefPreviewOpenItemSummary.label}</strong>
-                      <p>{projectClosureReadModel.briefPreviewOpenItemSummary.detail}</p>
+                    <div className="artifact-grid">
+                      <article>
+                        <span>Project context</span>
+                        <strong>{engineeringBrief.projectContext.projectName}</strong>
+                        <p>
+                          {engineeringBrief.projectContext.fundName} ({engineeringBrief.projectContext.tokenSymbol}) for{' '}
+                          {engineeringBrief.projectContext.targetInvestors}.
+                        </p>
+                      </article>
+                      <article>
+                        <span>Wallet / access model</span>
+                        <strong>{engineeringBrief.walletAndAccessModel.whitelistRequired ? 'Whitelist required' : 'Whitelist not required'}</strong>
+                        <p>{engineeringBrief.walletAndAccessModel.assumptions[0]}</p>
+                      </article>
+                      <article>
+                        <span>Functional requirements</span>
+                        <ul>
+                          {engineeringBrief.functionalRequirements.slice(0, 3).map((requirement) => (
+                            <li key={requirement}>{requirement}</li>
+                          ))}
+                        </ul>
+                      </article>
+                      <article>
+                        <span>Deployment boundary</span>
+                        <strong>{engineeringBrief.deploymentBoundary.network}</strong>
+                        <p>{engineeringBrief.deploymentBoundary.status}</p>
+                      </article>
+                      <article>
+                        <span>QA / evidence plan</span>
+                        <ul>
+                          {[...engineeringBrief.testingAndQaPlan.slice(0, 2), ...engineeringBrief.evidencePackPlan.slice(0, 2)].map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </article>
+                      <article>
+                        <span>Risks / controls</span>
+                        <strong>{engineeringBrief.risksAndControls[0].risk}</strong>
+                        <p>{engineeringBrief.risksAndControls[0].control}</p>
+                      </article>
+                      <article>
+                        <span>Acceptance criteria</span>
+                        <ul>
+                          {engineeringBrief.acceptanceCriteria.slice(0, 3).map((criterion) => (
+                            <li key={criterion}>{criterion}</li>
+                          ))}
+                        </ul>
+                      </article>
                     </div>
                   </div>
-                ) : (
-                  <div className="brief-preview compact-preview" data-testid="requirement-brief">
-                    <div>
-                      <span>Business objective</span>
-                      <strong>{goal}</strong>
-                      <p>This will become the core Requirement Brief objective.</p>
-                    </div>
-                    <div>
-                      <span>Token model</span>
-                      <strong>ERC-20 / ERC-721 under review</strong>
-                      <p>Protocol choice remains reviewable until the Requirement Brief is created.</p>
-                    </div>
-                    <div>
-                      <span>Investor access</span>
-                      <strong>Approved investors</strong>
-                      <p>Wallet whitelist assumptions will be captured in the brief.</p>
-                    </div>
-                    {isBriefPreviewExpanded && (
-                      <>
-                        <div>
-                          <span>Key workflows</span>
-                          <strong>Goal intake, assumptions, constraints</strong>
-                          <p>Programmable servicing modules will be selected after requirement review.</p>
-                        </div>
-                        <div>
-                          <span>Deployment boundary</span>
-                          <strong>Ethereum testnet only</strong>
-                          <p>User wallet signs; backend holds no private keys; no mainnet in MVP.</p>
-                        </div>
-                        <div>
-                          <span>Open items</span>
-                          <strong>{projectClosureReadModel.briefPreviewOpenItemSummary.label}</strong>
-                          <p>{projectClosureReadModel.briefPreviewOpenItemSummary.detail}</p>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                <button
-                  className="view-link-button"
-                  data-action-id={uiActions.openBrief}
-                  onClick={() => setIsBriefPreviewExpanded(true)}
-                >
-                  Open full brief
-                </button>
-                {engineeringBriefError && (
-                  <p className="error-text" role="alert">
-                    {engineeringBriefError}
-                  </p>
                 )}
               </section>
-            </div>
-          </section>
+            )}
 
-          {engineeringBrief && (
-            <section className="artifact-panel" data-testid="engineering-brief-artifact">
-              <div className="section-heading">
+            <section className={`brief-column hidden-brief ${isBriefPreviewExpanded ? 'expanded' : 'compact'}`} id="requirement-brief" aria-label="Brief Preview">
+              <div className="brief-preview compact-preview" data-testid="requirement-brief">
                 <div>
-                  <p className="eyebrow">Step 3</p>
-                  <h2>Engineering Brief Artifact</h2>
-                  <p className="muted">Backend artifact generated from the approved Requirement Brief.</p>
+                  <span>Business objective</span>
+                  <strong>{goal}</strong>
+                  <p>{brief ? `${facts.fundName} has a reviewable Requirement Brief.` : 'This will become the core Requirement Brief objective.'}</p>
                 </div>
-                <span className="gate-badge ready">Generated</span>
-              </div>
-              <div className="artifact-grid">
-                <article>
-                  <span>Project context</span>
-                  <strong>{engineeringBrief.projectContext.projectName}</strong>
-                  <p>
-                    {engineeringBrief.projectContext.fundName} ({engineeringBrief.projectContext.tokenSymbol}) for{' '}
-                    {engineeringBrief.projectContext.targetInvestors}.
-                  </p>
-                </article>
-                <article>
-                  <span>Functional requirements</span>
-                  <ul>
-                    {engineeringBrief.functionalRequirements.slice(0, 3).map((requirement) => (
-                      <li key={requirement}>{requirement}</li>
-                    ))}
-                  </ul>
-                </article>
-                <article>
-                  <span>Wallet / access model</span>
-                  <strong>{engineeringBrief.walletAndAccessModel.whitelistRequired ? 'Whitelist required' : 'Whitelist not required'}</strong>
-                  <p>{engineeringBrief.walletAndAccessModel.assumptions[0]}</p>
-                </article>
-                <article>
-                  <span>Deployment boundary</span>
-                  <strong>{engineeringBrief.deploymentBoundary.network}</strong>
-                  <p>{engineeringBrief.deploymentBoundary.status}</p>
-                </article>
-                <article>
-                  <span>QA / evidence plan</span>
-                  <ul>
-                    {[...engineeringBrief.testingAndQaPlan.slice(0, 2), ...engineeringBrief.evidencePackPlan.slice(0, 2)].map(
-                      (item) => (
-                        <li key={item}>{item}</li>
-                      ),
-                    )}
-                  </ul>
-                </article>
-                <article>
-                  <span>Risks / controls</span>
-                  <strong>{engineeringBrief.risksAndControls[0].risk}</strong>
-                  <p>{engineeringBrief.risksAndControls[0].control}</p>
-                </article>
-                <article>
-                  <span>Acceptance criteria</span>
-                  <ul>
-                    {engineeringBrief.acceptanceCriteria.slice(0, 3).map((criterion) => (
-                      <li key={criterion}>{criterion}</li>
-                    ))}
-                  </ul>
-                </article>
+                <div>
+                  <span>Token model</span>
+                  <strong>{requirementBriefContract?.tokenModel.standardPreference ?? 'ERC-20 / ERC-721 under review'}</strong>
+                  <p>{requirementBriefContract ? tokenModelSummary : 'Protocol choice remains reviewable until the Requirement Brief is created.'}</p>
+                </div>
+                <div>
+                  <span>Investor access</span>
+                  <strong>
+                    {requirementBriefContract?.investorAccess.walletWhitelistRequired ? 'Wallet whitelist required' : 'Approved investors'}
+                  </strong>
+                  <p>{requirementBriefContract?.investorAccess.assumptions[0] ?? 'Wallet whitelist assumptions will be captured in the brief.'}</p>
+                </div>
               </div>
             </section>
-          )}
-
+          </section>
         </section>
 
-        {isRightRailOpen && (
-        <aside className="right-rail" id="right-rail" aria-label="Project status">
-          {!selectedProject && (
-            <section className="status-panel">
-              <p className="eyebrow">Project artifacts</p>
-              <p className="muted">Select a project folder to view its linked documents and artifacts for download.</p>
-            </section>
-          )}
+          {isRightRailOpen && (
+            <aside className="right-rail mila-right-rail" id="right-rail" aria-label="Project status">
+              <section className="status-panel">
+                <h2>Workspace Status</h2>
+                <ul className="artifact-list">
+                  {workspacePresentation.workspaceStatus.map((item) => (
+                    <li key={item.label}>
+                      <span className={item.status}>{productCapabilityStatusLabel(item.status)}</span>
+                      {item.label}
+                    </li>
+                  ))}
+                </ul>
+              </section>
 
-          {selectedProject && (
-            <>
-            <section className="status-panel">
-              <p className="eyebrow">Project Artifacts</p>
-              <h2>{selectedProject.title}</h2>
-              <p className="muted">
-                Artifacts and evidence for {selectedProject.label}. Actions stay in the center workspace and SCP.
-              </p>
-            </section>
+              <section className="status-panel">
+                <h2>Capability Status</h2>
+                <ul className="artifact-list">
+                  {workspacePresentation.capabilityStatus.map((item) => (
+                    <li key={item.label}>
+                      <span className={item.status}>{productCapabilityStatusLabel(item.status)}</span>
+                      {item.label}
+                    </li>
+                  ))}
+                </ul>
+              </section>
 
-            <section className="status-panel">
-              <p className="eyebrow">Linked artifacts</p>
-              <ul className="artifact-list">
-                {selectedProjectArtifactRows.map((artifact) => (
-                  <li key={artifact.label}>
-                    <span>{artifact.status}</span>
-                    {artifact.label}
-                    <small>{artifact.detail}</small>
+              <section className="status-panel">
+                <div className="panel-title-row">
+                  <h2>Product Vault</h2>
+                  <button type="button" className="link-button" onClick={() => setSelectedWorkspaceTab('evidence')}>
+                    View all
+                  </button>
+                </div>
+                <ul className="artifact-list">
+                  {workspacePresentation.productVault.map((item) => (
+                    <li key={item.label}>
+                      <span>{item.status}</span>
+                      {item.label}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              <section className="status-panel">
+                <div className="panel-title-row">
+                  <h2>Recent Activity</h2>
+                  <button type="button" className="link-button" onClick={() => setSelectedWorkspaceTab('evidence')}>
+                    View all
+                  </button>
+                </div>
+                <ul className="artifact-list">
+                  <li>
+                    <span>{recordNavOperationReadModel.operationStatus === 'confirmed' ? 'Done' : 'Pending'}</span>
+                    Record NAV Event
+                    <small>{recordNavOperationReadModel.statusLabel}</small>
                   </li>
-                ))}
-              </ul>
-            </section>
+                  <li>
+                    <span>{walletWhitelistOperationReadModel.operationStatus === 'confirmed' ? 'Done' : 'Pending'}</span>
+                    Wallet whitelisted
+                    <small>{walletWhitelistOperationReadModel.statusLabel}</small>
+                  </li>
+                  <li>
+                    <span>{deploymentEvidenceReadModel.status === 'confirmed' ? 'Done' : 'Pending'}</span>
+                    Sepolia deployment
+                    <small>{deploymentEvidenceReadModel.statusLabel}</small>
+                  </li>
+                </ul>
+              </section>
 
-            <section className="status-panel">
-              <p className="eyebrow">Safety boundary</p>
-              <ul className="artifact-list">
-                <li>
-                  <span>Network</span>
-                  Sepolia / Ethereum testnet only
-                </li>
-                <li>
-                  <span>Private keys</span>
-                  Backend never holds private keys
-                </li>
-                <li>
-                  <span>Operations</span>
-                  Allocation/Mint and other Smart Contract Operations remain locked
-                </li>
-              </ul>
-            </section>
-
-            <section className="status-panel" id="deployment-gate">
-              <p className="eyebrow">Deployment and operation evidence</p>
-              <ul className="artifact-list">
-                <li>Deployment Gate Review: {formatDeploymentGateStatus(deploymentGateReadModel.gateStatus)}</li>
-                <li>Wallet connection: {formatWalletConnectionStatus(walletConnectionReadModel.walletConnectionStatus)}</li>
-                <li>Wallet chain: {formatWalletChainStatus(walletConnectionReadModel.chainStatus)}</li>
-                <li>{walletAddressDisplay ? `Connected wallet: ${walletAddressDisplay}` : 'No wallet address'}</li>
-                <li>Wallet-signed Sepolia deployment: {formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus)}</li>
-                <li>Deployment evidence status: {deploymentEvidenceReadModel.statusLabel}</li>
-                <li>Evidence strength: {deploymentEvidenceReadModel.evidenceStrengthLabel}</li>
-                <li>Evidence persistence: {deploymentEvidenceReadModel.evidencePersistenceLabel}</li>
-                <li>Transaction hash source: {deploymentEvidenceReadModel.transactionHashSourceLabel}</li>
-                <li>Contract address source: {deploymentEvidenceReadModel.contractAddressSourceLabel}</li>
-                <li>
-                  {deploymentEvidenceReadModel.transactionHash
-                    ? `Transaction hash: ${deploymentEvidenceReadModel.transactionHash}`
-                    : 'No transaction hash'}
-                </li>
-                <li>
-                  {deploymentEvidenceReadModel.contractAddress
-                    ? `Contract address: ${deploymentEvidenceReadModel.contractAddress}`
-                    : 'No contract address'}
-                </li>
-                <li>Record NAV operation: {formatRecordNavOperationStatus(recordNavOperationState.operationStatus)}</li>
-                <li>Wallet Whitelist operation: {formatWalletWhitelistOperationStatus(walletWhitelistOperationReadModel.operationStatus)}</li>
-                <li>Other Smart Contract Operations: Locked</li>
-              </ul>
-            </section>
-            </>
+              <section className="status-panel">
+                <p className="muted">All executable actions are wallet-signed. Backend never holds private keys. Sepolia testnet environment.</p>
+              </section>
+            </aside>
           )}
-        </aside>
-        )}
       </section>
 
       <section className="smart-contract-panel" id="smart-contract-control" data-testid="smart-contract-control">
@@ -1936,7 +2000,7 @@ export function App() {
               <span>
                 {deploymentEvidenceReadModel.status === 'confirmed'
                   ? 'Record NAV Event: Gated in SCP'
-                  : 'Smart Contract Operations: Locked until Track 15A'}
+                  : 'Smart Contract Operations: Locked until deployment evidence is confirmed'}
               </span>
             </div>
             <p className="microcopy">
@@ -2007,7 +2071,7 @@ export function App() {
               <span>Target wallet: {normalizedWhitelistTargetWallet ?? 'Target wallet address required'}</span>
               <span>allowed: true</span>
               <span>Contract authorization is enforced on-chain</span>
-              <span>Allocation/Mint: Locked until Track 15C</span>
+              <span>Allocation/Mint: Locked for later</span>
               <span>Other Smart Contract Operations: Locked</span>
             </div>
             {deploymentEvidenceReadModel.status === 'confirmed' && (

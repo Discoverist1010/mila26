@@ -135,13 +135,13 @@ const absentExecutionArtifacts: AbsentExecutionArtifact[] = [
     id: 'signed-payload-absent',
     label: 'No signed payload',
     status: 'absent',
-    reason: 'Track 14A does not request or store a wallet signature.',
+    reason: 'This review step does not request or store a wallet signature.',
   },
   {
     id: 'submitted-transaction-absent',
     label: 'No submitted transaction',
     status: 'absent',
-    reason: 'Track 14A does not submit transactions.',
+    reason: 'This review step does not submit transactions.',
   },
   {
     id: 'confirmed-transaction-absent',
@@ -168,13 +168,13 @@ const signingBoundaries: UnsignedDeploymentSigningBoundary[] = [
     id: 'wallet-signing-not-implemented',
     label: 'Wallet signing not implemented',
     status: 'not_implemented',
-    detail: 'Track 14A does not request wallet signatures.',
+    detail: 'This review step does not request wallet signatures.',
   },
   {
     id: 'deployment-execution-not-implemented',
     label: 'Deployment execution not implemented',
     status: 'not_implemented',
-    detail: 'Track 14A does not submit, deploy, confirm, or record deployment results.',
+    detail: 'This review step does not submit, deploy, confirm, or record deployment results.',
   },
   {
     id: 'backend-never-holds-private-keys',
@@ -198,7 +198,7 @@ const signingBoundaries: UnsignedDeploymentSigningBoundary[] = [
     id: 'mainnet-disabled',
     label: 'Mainnet disabled',
     status: 'enforced',
-    detail: 'Mainnet is not available in Track 14A.',
+    detail: 'Mainnet is not available in this workspace.',
   },
 ];
 
@@ -311,8 +311,8 @@ function blockedReasonsFor(reviewItems: UnsignedDeploymentReviewItem[]): string[
 
   return [
     ...reviewReasons,
-    'Wallet signing is not implemented in Track 14A.',
-    'Deployment execution is not implemented in Track 14A.',
+    'Wallet signing is not implemented in this review step.',
+    'Deployment execution is not implemented in this review step.',
     'Unsigned deployment intent is review-only; it is not an executable transaction payload.',
   ];
 }

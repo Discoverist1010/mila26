@@ -302,7 +302,7 @@ function boundaryItems(): WalletWhitelistOperationEvidenceItem[] {
       id: 'allocation-mint-locked',
       label: 'Allocation/Mint',
       status: 'blocked',
-      detail: 'Allocation/Mint: Locked until Track 15C.',
+      detail: 'Allocation/Mint: Locked for later.',
     },
     {
       id: 'other-operations-locked',

@@ -597,7 +597,7 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'WalletWhitelisted event evidence', value: 'Decoded from receipt', status: 'ready' },
         { label: 'Whitelist evidence persistence', value: 'Local session only', status: 'disabled' },
         { label: 'Contract authorization', value: 'Enforced on-chain', status: 'disabled' },
-        { label: 'Allocation/Mint', value: 'Locked until Track 15C', status: 'disabled' },
+        { label: 'Allocation/Mint', value: 'Locked for later', status: 'disabled' },
         { label: 'Other Smart Contract Operations', value: 'Locked', status: 'disabled' },
       ]),
     );

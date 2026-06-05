@@ -131,41 +131,39 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   });
 
   await page.goto('/');
-  await expect(page.getByText('KangLe AI')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Project Workspace' })).toBeVisible();
+  await expect(page.getByLabel('Project navigation').getByText('MILA26', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Alpha Income Fund I' })).toBeVisible();
   await expect(page.getByLabel('Project navigation')).toBeVisible();
   await expect(page.getByLabel('Project status')).toBeVisible();
-  await expect(page.getByLabel('Project safety badges').getByText(/Ethereum testnet only/i)).toBeVisible();
+  await expect(page.getByLabel('Workspace controls').getByText(/Sepolia Testnet/i)).toBeVisible();
   await expect(page.getByLabel('Project status').getByRole('heading', { name: 'All projects' })).toHaveCount(0);
   await expect(page.getByLabel('Project status').getByText('Safety boundary')).toHaveCount(0);
   await expect(page.getByText('Need help? Ask the Engineering Bot')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /usequities/i })).toBeVisible();
-  await expect(page.getByRole('button', { name: /sgequities/i })).toBeVisible();
-  await expect(page.getByRole('button', { name: /mixedportfolio/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Alpha Income Fund I/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Singapore REIT Token/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Mixed Portfolio Token/i })).toBeVisible();
   await expect(page.getByTestId('smart-contract-control').getByText('SCP readiness', { exact: true })).toBeVisible();
-  await expect(page.getByLabel('Current workflow summary').getByText('Requirement brief approval')).toBeVisible();
+  await expect(page.getByLabel('Tokenisation lifecycle tabs')).toBeVisible();
   await expect(page.getByLabel('Top stage progress')).toHaveCount(0);
   await expect(page.getByLabel('Current-stage activities')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Engineering Bot decision workspace' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
   await expect(page.getByLabel('Engineering Bot workspace')).toBeVisible();
-  await expect(page.getByLabel('Engineering Bot actions').getByRole('button', { name: 'Create Requirement Doc' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create Requirement Doc' })).toBeVisible();
   await expect(page.getByText('Recommendation')).toHaveCount(0);
   await expect(page.getByText('I am ready to create the Requirement Brief.')).toHaveCount(0);
   await expect(page.getByLabel('Brief Preview')).toContainText('Business objective');
   await expect(page.getByLabel('Brief Preview')).toContainText('Token model');
-  await page.getByRole('button', { name: 'Expand Brief Preview' }).click();
-  await expect(page.getByLabel('Brief Preview')).toContainText('Open items');
-  await expect(page.getByText('Engineering Bot reply')).toBeVisible();
+  await expect(page.getByText('Next best action')).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Engineering Bot MILA' })).toBeVisible();
   await expect(page.getByText('What I understand')).toHaveCount(0);
   await expect(page.getByText('Tokenisation goal')).toHaveCount(0);
-  await expect(page.getByText('Press Enter to send, Shift+Enter for a new line.')).toBeVisible();
+  await expect(page.getByText('Lifecycle snapshot')).toBeVisible();
   await expect(page.getByTestId('engineer-answer')).toContainText('Requirement Brief');
   await expect(page.getByText(/Local preview shown until a backend response is available/i)).toBeVisible();
 
-  await page.getByRole('button', { name: /usequities/i }).click();
-  await expect(page.getByRole('heading', { name: 'US Equities Portfolio' }).first()).toBeVisible();
-  await expect(page.getByLabel('Project status').getByText('Linked artifacts')).toBeVisible();
+  await page.getByRole('button', { name: /Singapore REIT Token/i }).click();
+  await expect(page.getByRole('heading', { name: 'Singapore REIT Token' }).first()).toBeVisible();
+  await expect(page.getByLabel('Project status').getByText('Product Vault')).toBeVisible();
 
   await page.getByRole('button', { name: 'Hide left rail' }).click();
   await expect(page.getByLabel('Project navigation')).toBeHidden();
@@ -184,7 +182,7 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByText('Distribution Recorded')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Trigger Event' }).first()).toBeVisible();
 
-  const cockpitBox = await page.getByLabel('mila26-cockpit2 workspace').boundingBox();
+  const cockpitBox = await page.getByLabel('MILA26 tokenisation workspace').boundingBox();
   const controlBox = await page.getByTestId('smart-contract-control').boundingBox();
   expect(controlBox?.y).toBeGreaterThan((cockpitBox?.y ?? 0) + 200);
 
@@ -194,7 +192,6 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await page.getByRole('button', { name: /Create Requirement Doc/i }).click();
   await expect(page.getByTestId('requirement-brief')).toContainText('Business objective');
   await expect(page.getByTestId('requirement-brief')).toContainText('Investor access');
-  await expect(page.getByText(/Deployment boundary/i)).toBeVisible();
   await expect(page.getByRole('button', { name: /Generate Engineering Brief/i })).toBeVisible();
   await page.getByRole('button', { name: /Generate Engineering Brief/i }).click();
   await expect(page.getByRole('button', { name: 'Prepare Smart Contract Spec' })).toBeEnabled();
@@ -264,7 +261,7 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(scp.getByText('Evidence persistence: Local session only').first()).toBeVisible();
   await expect(scp.getByText('Transaction hash source: Absent').first()).toBeVisible();
   await expect(scp.getByText('Contract address source: Absent').first()).toBeVisible();
-  await expect(scp.getByText('Smart Contract Operations: Locked until Track 15A').first()).toBeVisible();
+  await expect(scp.getByText('Smart Contract Operations: Locked until deployment evidence is confirmed').first()).toBeVisible();
   await expect(scp.getByText('Smart Contract Operations: Locked').first()).toBeVisible();
   await expect(scp.getByText('Reason: operation-specific authorization and evidence logging are not implemented').first()).toBeVisible();
   await expect(scp.getByText('Wallet signing not implemented: Not implemented')).toBeVisible();
@@ -288,7 +285,7 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(scp.getByText('ContractUnpaused')).toBeVisible();
   await expect(scp.getByText('No contract address - not deployed')).toBeVisible();
   await expect(page.getByText(/txHash/i)).toHaveCount(0);
-  await expect(page.getByLabel('Engineering Bot actions').getByRole('button', { name: 'Connect Wallet for Sepolia Check' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Connect Wallet for Sepolia Check' })).toBeVisible();
   await expect(page.getByLabel('Project status').getByRole('button', { name: /wallet|sign/i })).toHaveCount(0);
   await expect(scp.getByRole('button', { name: /wallet|sign/i })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Review Deployment Gate/i })).toHaveCount(0);
@@ -304,9 +301,9 @@ test('dashboard shell remains usable on a narrow viewport', async ({ page }) => 
   await page.setViewportSize({ width: 900, height: 900 });
   await page.goto('/');
 
-  await expect(page.getByText('KangLe AI')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Project Workspace' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Engineering Bot decision workspace' })).toBeVisible();
+  await expect(page.getByLabel('Project navigation').getByText('MILA26', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Alpha Income Fund I' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
   await expect(page.getByLabel('Project status')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Send' })).toBeVisible();
 

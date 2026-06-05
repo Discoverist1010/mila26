@@ -116,7 +116,7 @@ const signingBoundaries: WalletSigningBoundary[] = [
     id: 'wallet-signing-not-implemented',
     label: 'Wallet signing is not implemented yet',
     status: 'not_implemented',
-    detail: 'Track 12A defines intent only and does not make signing executable.',
+    detail: 'This intent review defines signing readiness only and does not make signing executable.',
   },
   {
     id: 'wallet-connection-not-implemented',
@@ -128,7 +128,7 @@ const signingBoundaries: WalletSigningBoundary[] = [
     id: 'deployment-execution-not-implemented',
     label: 'Deployment execution is not implemented yet',
     status: 'not_implemented',
-    detail: 'No transaction preparation, submission, or deployment execution exists in Track 12A.',
+    detail: 'No transaction preparation, submission, or deployment execution exists in this readiness step.',
   },
   {
     id: 'ethereum-testnet-only',

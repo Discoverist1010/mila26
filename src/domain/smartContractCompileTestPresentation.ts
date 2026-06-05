@@ -93,7 +93,7 @@ export function toSmartContractCompileTestPresentation(
       localCompileTestStatus: result.status,
       localCompileTestLabel: 'Local compile/test foundation',
       localCompileTestDetail: passed
-        ? 'Passed locally. Known Track 10A foundation result; not run by this UI action, not deployed, not signed, not audited, no address, no transaction hash.'
+        ? 'Passed locally. Known local foundation result; not run by this UI action, not deployed, not signed, not audited, no address, no transaction hash.'
         : 'Local compile/test result is not passed. No deployment or audit readiness is claimed.',
     },
     artifactCard: {
@@ -102,7 +102,7 @@ export function toSmartContractCompileTestPresentation(
       detail: passed
         ? `Hardhat fixture compiles and local contract tests pass. Tested capabilities: ${testedCapabilitiesSummary}`
         : 'Local compile/test foundation is not passed. No deployment readiness is claimed.',
-      source: 'Known Track 10A local foundation result',
+      source: 'Known local foundation result',
     },
     testedCapabilitiesSummary,
   };

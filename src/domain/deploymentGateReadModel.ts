@@ -240,14 +240,14 @@ function buildBoundaryChecks(input: DeploymentGateReadModelInput): DeploymentGat
       label: 'Wallet signing not implemented',
       status: boundary.walletSigningImplemented ? 'execution_blocked' : 'enforced',
       detail: boundary.walletSigningImplemented
-        ? 'Wallet signing implementation is out of Track 11A scope.'
+        ? 'Wallet signing implementation is outside the current deployment gate review.'
         : 'Wallet signing remains a later implementation track.',
     },
     {
       id: 'deployment-not-executed',
       label: 'Deployment not executed',
       status: boundary.deploymentExecuted ? 'execution_blocked' : 'enforced',
-      detail: boundary.deploymentExecuted ? 'Deployment execution is not allowed in Track 11A.' : 'No deployment has been executed.',
+      detail: boundary.deploymentExecuted ? 'Deployment execution is not allowed in the deployment gate review.' : 'No deployment has been executed.',
     },
     {
       id: 'contract-address-absent',
@@ -265,7 +265,7 @@ function buildBoundaryChecks(input: DeploymentGateReadModelInput): DeploymentGat
       id: 'audit-not-performed',
       label: 'Audit not performed',
       status: boundary.auditPerformed ? 'execution_blocked' : 'enforced',
-      detail: boundary.auditPerformed ? 'Audit completion is not claimed in Track 11A.' : 'No audit has been performed.',
+      detail: boundary.auditPerformed ? 'Audit completion is not claimed in the deployment gate review.' : 'No audit has been performed.',
     },
   ];
 }

@@ -115,7 +115,7 @@ function statusDetail(status: DeploymentEvidenceStatus): string {
     return 'The provider returned a Sepolia transaction hash. Contract address remains absent until a successful receipt confirms contract creation.';
   }
   if (status === 'confirmed') {
-    return 'Sepolia deployment is confirmed from a successful receipt. Record NAV can be gated by Track 15A; other Smart Contract Operations remain locked.';
+    return 'Sepolia deployment is confirmed from a successful receipt. Record NAV can be gated by deployment evidence; other Smart Contract Operations remain locked.';
   }
   if (status === 'rejected') {
     return 'Deployment was rejected in the wallet. No confirmed deployment evidence exists.';
