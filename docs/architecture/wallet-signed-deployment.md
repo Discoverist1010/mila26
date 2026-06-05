@@ -84,10 +84,10 @@ Track 14B implements the first real blockchain execution step:
 
 ## Mint And Distribute Flow
 
-1. User verifies up to 20 whitelisted wallet addresses against off-chain real-world names.
-2. User allocates percentages to addresses.
-3. MILA26 validates total allocation equals 100%.
-4. User signs mint/distribution transactions.
+1. User verifies up to 50 whitelisted wallet addresses against off-chain real-world names.
+2. User confirms subscription parameters and permitted stablecoin receipts.
+3. MILA26 derives allocation/mint inputs from the approved investor registry and subscription state.
+4. User signs allocation/mint transactions after the registry and subscription model are coherent.
 5. MILA26 tracks transaction status and shows completion/failure.
 
 ## Transaction Status Tracking

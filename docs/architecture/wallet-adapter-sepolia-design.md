@@ -196,15 +196,16 @@ Normalize provider errors into:
 
 Do not build user-facing behavior around exact MetaMask/vendor error messages.
 
-## Future Deployment Signing Path
+## Implemented Deployment Signing Path
 
-Proposed next sequence:
+Current sequence:
 
-- Track 13B: connect MetaMask through an EIP-1193 adapter and verify Sepolia only.
-- Track 14A: define unsigned deployment transaction intent and user review payload.
-- Track 14B: user wallet signs/submits Sepolia deployment; transaction hash and contract address may appear only from real provider/receipt responses and remain local-session-only.
-- Track 14C: derive local-session deployment evidence/readiness from deployment status, transaction hash, contract address, chain, receipt, and artifact.
-- Track 15A: first wallet-signed SCP operation, likely `Record NAV Event`.
+- connect MetaMask through an EIP-1193 adapter and verify Sepolia only;
+- define unsigned deployment transaction intent and user review payload;
+- user wallet signs/submits Sepolia deployment;
+- transaction hash and contract address appear only from real provider/receipt responses and remain local-session-only;
+- derive local-session deployment evidence/readiness from deployment status, transaction hash, contract address, chain, receipt, and artifact;
+- expose only operation-specific SCP controls: Record NAV Event and Whitelist Wallet.
 
 ## UI Placement
 
@@ -212,7 +213,7 @@ Future wallet workflow controls belong in the central Engineering Bot workflow s
 
 Right rail remains passive status and safety.
 
-SCP remains status, evidence, boundary, health, and locked operations before deployment.
+SCP remains status, evidence, boundary, health, and operation-specific controls. Future broad operations stay locked until individually implemented.
 
 After wallet-signed deployment evidence linkage exists, SCP may expose gated contract-operation controls that are backed by the real deployed contract, operation authorization, and evidence logging.
 

@@ -65,7 +65,7 @@ Track 10B adds pure mappers that can produce:
 
 The compile/test result supplements Track 9B spec-consistency checking. It does not replace the preview-only artifact package or mutate artifact ownership.
 
-Track 10C surfaces the known local compile/test result in the Cockpit/SCP as lightweight status only. The UI does not execute Hardhat and does not turn the result into deployment, signing, audit, or mainnet readiness.
+Track 10C surfaces the known local compile/test result in the workspace/SCP as lightweight status only. The UI does not execute Hardhat and does not turn the result into deployment, signing, audit, or mainnet readiness.
 
 ## Non-Goals
 

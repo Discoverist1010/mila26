@@ -46,14 +46,21 @@ Future blockchain-functional alpha tracks must preserve these rules:
 - user wallet signs any deployment transaction in the browser.
 - Ethereum testnet remains the only allowed execution target until explicitly changed.
 - mainnet remains disabled.
-- only operation-specific SCP controls may unlock; Tracks 15A and 15B unlock Record NAV Event and Whitelist Wallet only after confirmed deployment evidence and operation-specific gates.
-- Mint/allocation, burn, pause, transfer, role administration, and distribution controls remain locked until their own tracks exist.
+- only operation-specific SCP controls may unlock; Record NAV Event and Whitelist Wallet unlock only after confirmed deployment evidence and operation-specific gates.
+- Mint/allocation, burn, pause, transfer, role administration, and distribution controls remain locked until their own capability work exists.
 - contract address and transaction hash appear only after real wallet-signed testnet execution.
-- Track 14C deployment evidence is local-session-only; a later persistence/evidence track owns durable storage.
+- Deployment and operation evidence are local-session-only; a later persistence/evidence capability owns durable storage.
 - local compile/test status must not be presented as runtime app-triggered compilation, audit approval, deployment readiness, or production readiness.
 
 ## Next Milestone
 
-Track 13A defined the wallet connection and Sepolia signing design. Track 13B adds frontend-only provider detection, user-initiated account request, Sepolia/wrong-chain status, and safe provider error states through a minimal EIP-1193 browser-provider boundary.
+The wallet connection, unsigned deployment intent, wallet-signed Sepolia deployment, local-session deployment evidence, Record NAV Event, and Whitelist Wallet foundations are implemented.
 
-Track 14A defines an unsigned deployment intent for review. Track 14B consumes it for a frontend-only, wallet-signed Sepolia deployment path. Track 14C links real provider-returned transaction hash, receipt-confirmed contract address, chain, artifact, and status into local-session MILA26 evidence/readiness surfaces. Track 15A adds Record NAV Event. Track 15B adds Whitelist Wallet. Both operation evidence surfaces are local-session-only, backend private keys remain impossible, and Allocation/Mint remains deferred to Track 15C.
+The next milestone is tab-aligned lifecycle functionality:
+
+1. shared lifecycle state;
+2. Investor Registry;
+3. Subscription parameters;
+4. Redemption parameters;
+5. subscription-redemption template handoff;
+6. Allocation/Mint only after registry and subscription parameters are coherent.

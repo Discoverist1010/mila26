@@ -1,98 +1,111 @@
 # Frontend UX Architecture
 
-This document describes the frontend architecture implied by the MVP UX vision. It does not implement the redesign.
+This document describes the frontend architecture for the current MILA26 lifecycle workspace.
 
-Approved near-term UX direction reference: `docs/assets/ux/mila26_dashboard_v2.png`.
+## Current UX Model
 
-The mockup is the canonical visual/product direction for the near-term dashboard shell. It should guide layout hierarchy, density, tone, and component sequencing, but it is not a pixel-perfect implementation mandate.
+The implemented app is an AI-first lifecycle workspace:
+
+- dark MILA26 left navigation rail;
+- top project/network/wallet/safety bar;
+- visual lifecycle tab strip;
+- large Engineering Bot answer and conversation area;
+- suggested next action row;
+- passive right rail;
+- Product Vault and Recent Activity;
+- Smart Contract Control Panel below the main AI workspace.
+
+Tabs are visual only. They must not create separate state silos.
 
 ## Frontend Responsibilities
 
 - Layout shell and responsive behavior.
-- Chat UI and safe rendering of backend responses.
+- Visual tab state and tab-purpose copy.
+- Shared lifecycle presentation state.
+- Engineering Bot conversation and safe rendering of backend responses.
 - Current project context display.
-- Requirement cards and sub-action drawers.
-- Project status panels and next-action display.
-- Collapsible left and right panels.
-- Top protocol/network/wallet/service-cart status area.
-- Wallet connection later.
-- API client calls.
+- Product Vault and passive status rail.
+- Generated artifact display.
+- Wallet connection and wallet-signed Sepolia actions through the browser provider.
+- SCP status/evidence/boundary/operation controls.
 - Safe loading, empty, blocked, and error states.
 
 ## Backend Responsibilities
 
 - LLM calls behind backend-only providers.
-- Agent orchestration.
-- Memory and persistence later.
-- PRD generation.
-- Security/deployment gate decisions.
-- Evidence generation.
+- Requirement/Engineering Brief generation.
+- Smart Contract Artifact Spec generation.
+- Deterministic artifact/check/evidence-lite generation.
 - No private keys.
+- No wallet signing.
+- No frontend secrets.
 
 ## Suggested Frontend Layers
 
-- UI components: pure presentational pieces.
-- Feature modules: chat, projects, requirements, status, deployment.
-- API client layer: typed calls to backend routes.
-- Local UI state: panel collapsed state, drawer open state, current form edits.
-- Future project state store if shared state becomes painful.
+- `src/domain/`: pure read models and presentation models.
+- `src/api/`: typed backend clients.
+- `src/wallet/`: browser wallet adapters.
+- `src/contracts/`: exported local deployment artifacts.
+- `src/App.tsx`: current integrated shell; split only when component boundaries are stable.
+- Future `src/components/`: layout, tabs, AI workspace, rails, Product Vault, SCP sections.
 
-## Suggested Folder Direction
+## Shared State Approach
 
-Do not implement this structure until a UI track begins:
+Current state can remain local to `App.tsx` while the product is alpha-stage.
 
-```text
-src/
-  api/
-  components/layout/
-  components/chat/
-  components/requirements/
-  components/project/
-  components/wallet/
-  components/services/
-  features/chat/
-  features/projects/
-  features/requirements/
-```
+Add structured domain/read-model layers before adding heavier state tools:
 
-Keep the initial migration incremental. Do not move `App.tsx` wholesale before the target components and tests are clear.
+- investor registry state;
+- subscription parameters;
+- redemption parameters;
+- maturity parameters;
+- evidence persistence state when implemented.
 
-## State Management Approach
+Avoid a monolithic lifecycle context until repeated cross-component plumbing proves it is necessary.
 
-- Start with local React state.
-- Introduce React Context or a reducer only when shared state becomes painful.
-- Consider Zustand later only if the app has concrete cross-surface state needs.
-- Avoid Redux, XState, or heavy state machines for now.
+## Tab Architecture
 
-## API Client Principle
+Tabs should be backed by shared state and presentation models:
 
-- Do not scatter `fetch` calls across components.
-- Use a small typed client layer under `src/api/` when frontend integration begins.
-- For initial chat integration, use `VITE_MILA26_API_BASE_URL` with local default `http://127.0.0.1:5174`; see `docs/architecture/frontend-chat-integration.md`.
-- Map API errors to safe UI messages.
-- Keep API response envelopes aligned with `docs/architecture/api-response-conventions.md`.
-- Never call LLM providers directly from frontend code.
+- Overview;
+- Requirements;
+- Investor Registry;
+- Subscription;
+- Smart Contract;
+- Asset Servicing;
+- Redemption;
+- Maturity;
+- Evidence.
 
-## Collapsible Panels
+Each tab may render a different view, but the Engineering Bot should always see the whole lifecycle.
 
-- Left and right panels should be collapsible.
-- Collapsed rails should preserve key icons.
-- Main workspace expands when panels collapse.
-- User preference can be remembered later, but is not required immediately.
-- The near-term shell should follow the approved mockup direction without forcing pixel-perfect measurements.
+## Right Rail Rule
 
-## Sub-action Drawer Pattern
+The right rail is passive.
 
-- Requirement cards are entry points.
-- Drawer handles detail editing.
-- Header includes breadcrumb, such as `Project > Requirements > Whitelist`.
-- Drawer has save/cancel actions.
-- Background project context remains visible.
-- Use full pages only for larger workflows like PRD review, wallet allocation, deployment checklist, or valuation upload.
+It can show:
+
+- Workspace Status;
+- Capability Status;
+- Product Vault;
+- Recent Activity;
+- safety notes.
+
+It must not show:
+
+- deploy buttons;
+- wallet buttons;
+- operation buttons;
+- primary workflow buttons.
 
 ## Testing Implications
 
-- Add component tests for chat client and requirement drawer later.
-- Add Playwright smoke tests for the main journey later.
-- Do not make UI tests brittle on long copy text.
-- Prefer structural assertions: visible project name, active workflow gate, chat response, requirement card count, drawer open/close, and safe error state.
+- Prefer structural assertions over long copy assertions.
+- Keep tests for:
+  - lifecycle tabs visible;
+  - center Engineering Bot workspace visible;
+  - right rail passive;
+  - primary actions in center;
+  - SCP owns wallet-signed operations;
+  - no fake wallet/deployment/evidence claims.
+- Keep Playwright smoke tests for desktop and narrow viewport.

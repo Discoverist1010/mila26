@@ -1,101 +1,83 @@
 # MVP Screen Flow
 
-Approved directional UX reference: `docs/assets/ux/mila26_dashboard_v2.png`.
+The current implemented screen is the MILA26 lifecycle workspace. It is aligned to the latest mockup direction but is not intended to be pixel-perfect.
 
-The mockup remains directional, not a pixel-perfect implementation mandate. Current code uses Cockpit2 plus a scrollable Smart Contract Control Panel.
+## 1. Workspace Overview
 
-## 1. Cockpit Home / Requirement Brief
-
-- User goal: start or continue a tokenisation project.
-- Primary UI: central Engineering Bot workflow surface, left activity rail, passive right rail, collapsible Brief Preview.
+- User goal: start or continue a tokenised financial product workspace.
+- Primary UI: lifecycle tabs, large Engineering Bot answer area, next best action, lifecycle snapshot.
 - Current status: implemented.
-- Guardrail: no wallet/deploy buttons in the right rail.
+- Guardrail: the tabs are visual only; code uses shared lifecycle state.
 
-## 2. Engineering Brief
+## 2. Requirements
 
-- User goal: turn Requirement Brief into an engineering plan.
-- Primary UI: central workflow action and structured Engineering Bot response sections.
-- Backend/API: `POST /api/prd/engineering-brief`.
+- User goal: turn plain-language product intent into a Requirement Brief.
+- Primary UI: Engineering Bot and central primary action.
 - Current status: implemented.
-- Guardrail: backend-only LLM boundary; no frontend LLM secrets.
+- Guardrail: Requirement Brief is an engineering/product artifact, not legal/compliance approval.
 
-## 3. Closure / Open Items
+## 3. Investor Registry
 
-- User goal: see whether planning assumptions and open items block downstream work.
-- Primary UI: passive readiness surfaces and Brief Preview summaries.
-- Current status: implemented.
-- Guardrail: closure is derived from ledger/read model, not scattered UI conditionals.
+- User goal: define up to 50 investor wallet addresses that can be whitelisted.
+- Primary UI: visual tab and suggested action today; wallet whitelist operation exists in SCP after deployment evidence.
+- Current status: partially implemented through Whitelist Wallet operation and read models.
+- Gap: no full investor registry CRUD or import/export table yet.
 
-## 4. Smart Contract Spec + Artifact Preview
+## 4. Subscription
 
-- User goal: prepare the smart-contract implementation spec and deterministic preview.
-- Primary UI: central Prepare Smart Contract Spec action and generated artifacts area.
+- User goal: define permitted stablecoins, subscription window, minimum subscription, payment wallet/contract address, and payment per token.
+- Primary UI: visual tab and suggested action today.
+- Current status: future parameter/template flow.
+- Guardrail: no subscription smart-contract template execution yet.
+
+## 5. Smart Contract
+
+- User goal: prepare/review the smart-contract artifact spec, deterministic preview, local compile/test representation, deployment gate, and wallet-signed deployment path.
 - Backend/API:
   - `POST /api/smart-contract/artifact-spec`
   - `POST /api/smart-contract/artifact`
-- Current status: implemented.
-- Guardrail: preview only; no compiled/deployed/audited claim.
+- Current status: implemented through generated artifacts and SCP.
+- Guardrail: preview/check/local compile-test status is not audit, mainnet, or production readiness.
 
-## 5. Local Compile/Test Status
+## 6. Asset Servicing
 
-- User goal: understand whether the local restricted ERC-20-compatible fixture compiles and tests.
-- Primary UI: generated artifacts area and SCP status rows.
-- Current status: implemented as known local compile/test representation.
-- Guardrail: app does not execute Hardhat dynamically.
+- User goal: record NAV and later push investor information such as valuation, investment information, corporate actions, and notices.
+- Primary UI: visual tab plus Record NAV Event in SCP after confirmed deployment evidence.
+- Current status: Record NAV Event implemented; broader investor updates are future.
+- Guardrail: current NAV operation evidence is local-session-only.
 
-## 6. Deployment Gate
+## 7. Redemption
 
-- User goal: understand whether pre-deployment review prerequisites are complete.
-- Primary UI: generated artifacts area, passive right rail, SCP boundary/health rows.
-- Current status: implemented.
-- Guardrail: pre-deployment readiness is separate from deployment execution, which remains blocked.
+- User goal: configure redemption dates/windows, redemption delay, redemption wallet, and stablecoin payout mechanics.
+- Primary UI: visual tab and suggested action today.
+- Current status: future subscription-redemption template parameters.
+- Guardrail: no redemption wallet payout execution exists yet.
 
-## 7. Wallet Signing Intent
+## 8. Maturity
 
-- User goal: understand what must be reviewed before future wallet signing.
-- Primary UI: generated artifacts area, passive right rail, SCP boundary rows.
-- Current status: implemented.
-- Guardrail: wallet signing intent is not wallet connection or transaction execution.
+- User goal: close out all outstanding tokens at product maturity.
+- Primary UI: visual tab today.
+- Current status: future maturity closeout flow.
+- Guardrail: no forced final redemption execution exists yet.
 
-## 8. Smart Contract Operations Locked
+## 9. Evidence
 
-- User goal: see that operations are intentionally unavailable before wallet-signed deployment.
-- Primary UI: SCP locked operations section.
-- Current status: implemented.
-- Guardrail: no Mint/Burn/Pause/NAV/Distribution controls before real deployment and operation gates.
+- User goal: inspect local-session evidence and generated artifacts.
+- Primary UI: Product Vault, Recent Activity, generated artifacts, SCP evidence sections.
+- Current status: local-session evidence implemented for deployment, Record NAV, and Whitelist Wallet.
+- Gap: durable Evidence Vault persistence remains future.
 
-## 9. Wallet Connection + Sepolia Verification
+## Current Wallet/Blockchain Execution Flow
 
-- User goal: connect MetaMask and verify Sepolia.
-- Primary UI: central Engineering Bot workflow action.
-- Current status: implemented as connection/Sepolia check only.
-- Guardrail: wallet connection is not signing; no tx hash or contract address.
+1. Connect MetaMask/injected EIP-1193 wallet.
+2. Verify Sepolia chain.
+3. Prepare unsigned deployment intent.
+4. Request wallet-signed Sepolia deployment.
+5. Display transaction hash only after provider return.
+6. Display contract address only after successful receipt.
+7. Derive local-session deployment evidence.
+8. Unlock only operation-specific SCP controls:
+   - Record NAV Event;
+   - Whitelist Wallet.
 
-## 10. Unsigned Deployment Intent
-
-- User goal: review what would be signed before a signature request exists.
-- Primary UI: derived readiness/review model behind the central deployment workflow.
-- Current status: implemented.
-- Guardrail: no signature request or transaction submission.
-
-## 11. Wallet-Signed Sepolia Deployment
-
-- User goal: sign/submit deployment through user wallet.
-- Primary UI: central workflow action, SCP testnet deployment status.
-- Current status: implemented as Track 14B local-session state.
-- Guardrail: backend never holds private keys; mainnet disabled; transaction hash and contract address appear only from real provider/receipt responses.
-
-## 12. Deployment Evidence / Readiness
-
-- User goal: understand whether deployment evidence is none, provider transaction hash, or confirmed receipt.
-- Primary UI: generated artifacts, passive right rail, SCP evidence/boundary rows.
-- Current status: implemented as Track 14C local-session evidence surface.
-- Guardrail: no Evidence Pack storage, no backend evidence route, no audit claim, and no SCP operation controls.
-
-## 13. First SCP Operation
-
-- User goal: perform one wallet-signed contract operation after deployment.
-- Preferred first operation: Record NAV Event.
-- Primary UI: SCP gated operation control.
-- Current status: future Track 15A.
-- Guardrail: operation controls unlock only after real wallet-signed deployment and authorization gates.
+All other operations remain locked until explicitly implemented and tested.

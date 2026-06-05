@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Solidity artifact metadata contract records whether a generated Solidity artifact is suitable for QA, security review, evidence packaging, and later wallet-signed testnet deployment preparation.
+The Solidity artifact metadata contract records whether a generated Solidity artifact is suitable for QA, security review, evidence packaging, and wallet-signed testnet deployment preparation.
 
 ## Relationship To `GeneratedArtifact`
 

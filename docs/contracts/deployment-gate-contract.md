@@ -82,7 +82,7 @@ Future wallet/deployment tracks may define transaction lifecycle contracts after
 
 ## Track 11B View Wiring
 
-Track 11B surfaces this read model in Cockpit/SCP as view-only readiness:
+Track 11B surfaced this read model in the workspace/SCP as view-only readiness:
 
 - Deployment Gate Review: blocked or review-ready.
 - Pre-deployment readiness: incomplete, blocked, or complete.

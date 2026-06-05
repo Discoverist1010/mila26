@@ -106,7 +106,7 @@ The deterministic Engineering Brief explicitly preserves:
 - backend holds no private keys
 - future LLM calls and secrets stay backend-only
 - this route is deterministic/mock, not production legal/compliance/investment/audit advice
-- deployment remains disabled unless a later wallet-signed testnet track enables it
+- deployment remains disabled unless the wallet-signed testnet path enables it
 
 ## Implementation
 

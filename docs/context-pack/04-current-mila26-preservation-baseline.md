@@ -6,7 +6,7 @@ Preserve these boundaries while moving toward blockchain-functional alpha.
 |---|---|---|
 | Engineering Bot workflow surface | Central action/recommendation surface in `src/App.tsx` and `src/domain/cockpitActionRegistry.ts` | Prevents workflow buttons from spreading into passive panels. |
 | Right rail | Passive status/safety only | Keeps the UI understandable and avoids accidental workflow bypasses. |
-| SCP | Status/evidence/boundary/health plus locked operations before deployment | Prevents fake live operations before a real wallet-signed deployment. |
+| SCP | Status/evidence/boundary/health plus operation controls only after operation-specific wallet gates | Prevents fake live operations while allowing approved wallet-signed controls. |
 | Separate artifacts/read models | Files in `src/domain/` and `server/contracts/` | Avoids a brittle monolithic lifecycle context. |
 | API envelopes | `server/http/responses.ts` | Keeps backend errors safe and consistent. |
 | Backend-only LLM boundary | `server/llm/` and route integration | Prevents frontend secrets and raw provider output leaks. |
@@ -15,7 +15,12 @@ Preserve these boundaries while moving toward blockchain-functional alpha.
 | Compile/test representation | `server/contracts/smartContractCompileCheck.ts` and mapper | Avoids runtime backend command execution. |
 | Deployment Gate | `src/domain/deploymentGateReadModel.ts` | Separates pre-deployment readiness from execution. |
 | Wallet Signing Intent | `src/domain/walletSigningIntentReadModel.ts` | Separates signing review from wallet connection/runtime execution. |
-| Wallet Connection Read Model | `src/domain/walletConnectionReadModel.ts` | Provides Track 13B status vocabulary without wallet runtime. |
+| Wallet Connection Read Model | `src/domain/walletConnectionReadModel.ts` | Provides wallet/provider/chain status vocabulary for the browser wallet path. |
+| Deployment Transaction Intent | `src/domain/deploymentTransactionIntentReadModel.ts` | Keeps transaction review separate from signing/submission. |
+| Deployment Evidence | `src/domain/deploymentEvidenceReadModel.ts` | Derives local-session evidence from provider transaction hash and receipt-confirmed contract address. |
+| Record NAV Operation | `src/domain/recordNavOperationReadModel.ts` | Keeps NAV recording operation-specific and gated. |
+| Wallet Whitelist Operation | `src/domain/walletWhitelistOperationReadModel.ts` | Keeps wallet whitelisting operation-specific and gated. |
+| Workspace Presentation Model | `src/domain/workspacePresentation.ts` | Keeps visual tab/status surfaces aligned without per-tab state silos. |
 | Golden-flow guardrails | `tests/golden-flow-assertions.ts` and cockpit/e2e tests | Blocks fake deployment/signing/address/hash claims. |
 
 ## Do Not Delete Before Replacement
@@ -26,6 +31,11 @@ Preserve these boundaries while moving toward blockchain-functional alpha.
 - `src/domain/deploymentGateReadModel.ts`
 - `src/domain/walletSigningIntentReadModel.ts`
 - `src/domain/walletConnectionReadModel.ts`
+- `src/domain/deploymentTransactionIntentReadModel.ts`
+- `src/domain/deploymentEvidenceReadModel.ts`
+- `src/domain/recordNavOperationReadModel.ts`
+- `src/domain/walletWhitelistOperationReadModel.ts`
+- `src/domain/workspacePresentation.ts`
 - `server/contracts/smartContractArtifactSpec.ts`
 - `server/contracts/smartContractArtifact.ts`
 - `server/contracts/smartContractCompileCheck.ts`
@@ -37,19 +47,21 @@ Preserve these boundaries while moving toward blockchain-functional alpha.
 
 ## Safe To Improve Now
 
-- Define unsigned deployment intent as a review-only domain/read-model boundary.
+- Define shared lifecycle state for visual tabs.
+- Implement Investor Registry data and UI for up to 50 whitelisted wallets.
+- Add subscription and redemption parameter capture.
+- Prepare subscription-redemption template parameter handoff.
 - Update docs when track status changes.
-- Keep wallet connection copy clear that connection is not signing.
+- Keep wallet and operation copy clear about provider-returned hashes, receipt-confirmed addresses, and local-session evidence.
 
 ## Still Deferred
 
 - Persistence/database.
 - Auth/payments.
-- Wallet signing.
-- Deployment transaction preparation/submission.
-- Transaction receipt tracking.
-- Contract address display.
-- Transaction hash display.
-- SCP operation controls.
+- Stablecoin subscription execution.
+- Redemption execution and delayed payout.
+- Allocation/Mint.
+- Maturity closeout.
+- Broad SCP operation controls beyond the approved deployment, Record NAV, and Whitelist Wallet paths.
 - Mainnet.
 - Formal audit or production legal/compliance claims.

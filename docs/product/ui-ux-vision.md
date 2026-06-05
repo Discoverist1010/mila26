@@ -2,75 +2,136 @@
 
 ## Product UX Identity
 
-MILA26 should become a professional AI + blockchain project workspace for asset managers preparing tokenized portfolio products.
+MILA26 is a professional AI tokenisation workspace for asset managers preparing a controlled tokenised financial product. The interface should help a user who knows the desired product outcome but does not yet know the blockchain, smart-contract, investor-registry, subscription, redemption, or evidence steps.
 
-Approved near-term UX direction reference:
+The current implemented direction is the MILA26 lifecycle workspace:
 
-```text
-docs/assets/ux/mila26_dashboard_v2.png
-```
+- dark left navigation rail;
+- top project, wallet, network, and safety bar;
+- visual lifecycle tabs;
+- large central Engineering Bot conversation and answer surface;
+- suggested next actions based on the user's intent;
+- passive right status/Product Vault rail;
+- Smart Contract Control Panel below the main AI workspace for executable wallet-signed operations.
 
-This mockup is the canonical near-term direction for layout, tone, and product surface planning. It is not a pixel-perfect implementation mandate.
+The tabs are visual separation only. The Engineering Bot and code should operate over one shared product lifecycle state.
 
-The interface should feel familiar like an enhanced ChatGPT-style workspace, but it should not become a plain chat clone. MILA26 needs visible project state, workflow gates, agent progress, wallet/deployment controls, evidence packs, and project folders.
+## Visual Identity
 
-Visual identity:
-
-- Professional dark navy, silver-blue, and institutional trust aesthetic.
-- Clean, high-trust, slightly futuristic tone.
-- Prominent KangLe AI / MILA26 branding.
-- Prominent current project name.
-- Asset-manager-friendly language and structure.
-- Avoid crypto-casino aesthetics, meme-token visuals, neon clutter, or speculative trading energy.
+- MILA26 is the visible brand.
+- Tone is institutional, calm, and asset-manager-friendly.
+- Use a high-trust dark navy shell with restrained blue/green status accents.
+- Avoid crypto-casino visuals, speculative trading language, neon clutter, or retail-token energy.
+- The first viewport should identify the current product, investor cap, Sepolia testnet boundary, connected wallet state, and safety status.
 
 ## Core Layout Thesis
 
-- Enhanced ChatGPT-style shell for familiarity.
-- F-layout for scanability: left navigation, top project context, central work area, right status panel.
-- K-style workflow spine inside the project workspace: requirements -> PRD -> build -> QA/security -> deploy -> distribute -> valuation/evidence.
-- Chat-first, but not chat-only.
-- State should not be hidden inside chat; important decisions must become structured cards, gates, and status panels.
+MILA26 is AI-first, not dashboard-first.
+
+The central column must prioritize:
+
+- the user's latest intent;
+- the Engineering Bot's readable answer;
+- the next best action;
+- a small set of lifecycle snapshot cards.
+
+Operational and artifact status belongs in passive surrounding context. Do not crowd the Engineering Bot answer with dashboard cards, repeated readiness meters, or dense stage summaries.
 
 ## Main UI Regions
 
-- Collapsible left sidebar: project folders, recent projects, KangLe AI / MILA26 brand, core navigation.
-- Prominent top project bar: current project name, protocol, network, wallet status, and services/cart entry.
-- Central chat/workspace: Blockchain Engineering Bot conversation plus structured workspace content.
-- Extracted requirement cards: protocol choice, whitelist, allocation, valuation update, deployment model, security gates.
-- Contextual slide-over drawer: focused sub-actions such as whitelist configuration, allocation rules, protocol rationale, or valuation upload requirements.
-- Collapsible right project panel: project status, next action, agent progress, deployment gate, and evidence status.
+### Left Rail
 
-## Key UX Principles
+Responsibilities:
 
-- Always show current project context.
-- Always show protocol, network, and wallet status.
-- Convert chat decisions into structured requirement cards.
-- Use drawers for sub-actions so users do not feel lost.
-- Use clear next actions and workflow gates.
-- Show agent progress visibly.
-- Keep financial, legal, deployment, and audit disclaimers clear.
-- Keep the experience calm, professional, and funding-demo credible.
-- Avoid dashboard clutter; the main surface should prioritize the next decision and current workflow state.
+- MILA26 brand;
+- active project selector;
+- workspace navigation;
+- Engineering Bot / Smart Contract Lab / Deployments / Evidence Vault links;
+- settings links;
+- compact Product Setup status.
 
-## Branding
+The left rail is navigation, not a duplicate workflow dashboard.
 
-Canonical MVP logo asset path:
+### Top Bar
 
-```text
-public/assets/brand/kangle-ai-logo.png
-```
+Responsibilities:
 
-Use the logo in the top-left sidebar/header area. The brand should read as a credible AI engineering workspace for tokenized funds, not as a retail trading product.
+- active project name, e.g. `Alpha Income Fund I`;
+- product type and investor cap, e.g. `Tokenised Financial Product`, `Up to 50 investors`;
+- network, wallet, guided/expert mode, and safety status.
 
-## Future Paid Services / Cart
+### Lifecycle Tabs
 
-Place a services/cart icon after wallet status in the top project bar. Label it as `Services` or `Add Services` rather than only `Shopping Cart`.
+Current tabs:
 
-Future uses:
+1. Overview
+2. Requirements
+3. Investor Registry
+4. Subscription
+5. Smart Contract
+6. Asset Servicing
+7. Redemption
+8. Maturity
+9. Evidence
 
-- AI smart contract audit.
-- External audit handoff.
-- Premium evidence pack.
-- Deployment support.
+Tabs structure the user's mental model only. They must not create real state silos in code.
 
-Do not implement payment logic yet.
+### Center Workspace
+
+Responsibilities:
+
+- Engineering Bot conversation;
+- readable structured AI responses;
+- next best action;
+- suggested buttons such as defining stablecoins, redemption delay, investor registry, or smart-contract parameters;
+- generated artifacts below the AI surface when relevant;
+- hidden/accessibility-preserved brief artifact data for tests and future drawers.
+
+### Right Rail
+
+Responsibilities:
+
+- Workspace Status;
+- Capability Status;
+- Product Vault;
+- Recent Activity;
+- passive safety note.
+
+The right rail must not contain workflow or wallet execution buttons.
+
+### Smart Contract Control Panel
+
+Responsibilities:
+
+- wallet-signed Sepolia deployment evidence;
+- Record NAV Event operation;
+- Whitelist Wallet operation;
+- locked/future operations;
+- operation evidence and safety boundaries.
+
+The SCP remains the place for executable wallet-signed contract operations once their gates exist.
+
+## UX Principles
+
+- The Engineering Bot should have cross-stage context at all times.
+- Use tabs to guide the user, not to fragment state.
+- Keep AI answers readable with normal body text, short sections, and clear next actions.
+- Show one next best action, then optional supporting actions.
+- Keep the right rail passive.
+- Keep financial-product wording user-facing; do not expose internal track numbers in the app UI.
+- Avoid in-app legal/tax/accounting disclaimer clutter unless required for a specific flow.
+- Preserve explicit blockchain safety boundaries: Sepolia only, user wallet signs, backend never holds private keys, local-session evidence only where applicable.
+
+## Current Product Gaps Shown By The UI
+
+The UI intentionally shows some future capabilities as not ready or needing parameters:
+
+- subscription stablecoin template;
+- redemption template and delay;
+- investor registry data model for up to 50 whitelisted wallets;
+- allocation/mint operation;
+- maturity closeout;
+- durable Evidence Vault persistence;
+- investor communication/asset servicing automation beyond current NAV event recording.
+
+These are roadmap signals, not broken UI states.

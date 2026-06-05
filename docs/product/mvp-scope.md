@@ -27,7 +27,7 @@ ERC-721 remains useful for comparison and later product variants, but it is not 
 ## Scale
 
 - 1 asset manager.
-- Up to 20 investor wallet addresses.
+- Up to 50 whitelisted investor wallet addresses.
 - Local Mac laptop demo first.
 - Ethereum Sepolia/testnet only.
 - Funding-demo-ready, not production mainnet.
@@ -49,7 +49,9 @@ ERC-721 remains useful for comparison and later product variants, but it is not 
 - User wallet-signed Sepolia deployment.
 - Real transaction hash and contract address only after real Sepolia execution.
 - Deployment evidence/readiness surface with local-session-only persistence.
-- First wallet-signed SCP operation later, likely Record NAV Event.
+- wallet-signed SCP operation for Record NAV Event.
+- wallet-signed SCP operation for Whitelist Wallet.
+- visual lifecycle workspace tabs for overview, requirements, investor registry, subscription, smart contract, asset servicing, redemption, maturity, and evidence.
 
 ## Out Of Scope For Current Alpha
 
@@ -62,6 +64,9 @@ ERC-721 remains useful for comparison and later product variants, but it is not 
 - Multi-tenant SaaS.
 - Enterprise auth.
 - Payment flows.
+- Stablecoin subscription/redemption execution.
+- Production redemption liquidity management.
+- Automated investor advice delivery as regulated financial advice.
 - Production oracle infrastructure.
 - Multi-wallet connector orchestration before MetaMask path is proven.
 - Redis queues, vector DB, microservices, Kubernetes, and heavy agent frameworks.
@@ -70,19 +75,25 @@ ERC-721 remains useful for comparison and later product variants, but it is not 
 
 The app currently supports:
 
-- lifecycle cockpit through Wallet Signing Intent.
-- locked Smart Contract Operations state.
+- lifecycle workspace UI and shared presentation state.
 - local compile/test representation.
 - deployment gate and wallet intent boundaries.
 - MetaMask/Sepolia wallet connection.
 - unsigned deployment intent.
 - wallet-signed Sepolia deployment local-session status.
 - deployment evidence/readiness local-session surface.
+- Record NAV Event as a wallet-signed SCP operation.
+- Whitelist Wallet as a wallet-signed SCP operation.
 
 The app does not yet support:
 
+- durable project/lifecycle state persistence.
+- full Investor Registry tab data model for up to 50 wallets.
+- stablecoin subscription parameter capture.
+- redemption delay and payout parameter capture.
+- subscription-redemption smart-contract template parameter handoff.
+- maturity closeout flow.
 - durable Evidence Pack storage for deployment evidence.
-- SCP operation execution.
 - persistence.
 
 ## Funding-Demo Success Criteria
@@ -97,7 +108,7 @@ The app does not yet support:
 
 ## Risks And Assumptions
 
-- Wallet UX can be fragile in live demos; Track 13B must normalize provider states and handle rejection/wrong-chain cases.
+- Wallet UX can be fragile in live demos; operation flows must keep provider states, rejection handling, and wrong-chain handling explicit.
 - Local compile/test is not a production audit.
 - Contract deployment should stay blocked until Deployment Gate, Wallet Signing Intent, wallet connection, Sepolia verification, and unsigned deployment intent are all coherent.
 - Real-world names should remain off-chain by default.

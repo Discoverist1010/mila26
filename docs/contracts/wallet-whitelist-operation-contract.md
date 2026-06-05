@@ -1,6 +1,6 @@
 # Wallet Whitelist Operation Contract
 
-Track 15B adds one wallet-signed SCP operation: Whitelist Wallet.
+Whitelist Wallet is the second wallet-signed SCP operation.
 
 The operation calls the current deployed contract ABI function:
 
@@ -8,7 +8,7 @@ The operation calls the current deployed contract ABI function:
 setWalletAllowed(address wallet, bool allowed)
 ```
 
-For Track 15B, `allowed` is always `true`.
+In the current alpha, `allowed` is always `true`.
 
 ## Scope
 
@@ -58,7 +58,7 @@ The receipt status appears only after the provider returns a receipt.
 
 `WalletWhitelisted` event evidence appears only if decoded from receipt logs. A successful receipt may confirm the operation even when event decoding is unavailable; in that case the event remains `Not decoded`.
 
-Evidence persistence is always `local_session_only` in Track 15B.
+Evidence persistence is always `local_session_only` in the current alpha.
 
 ## Authorization Honesty
 
@@ -82,9 +82,9 @@ If the contract rejects the transaction because the connected account lacks auth
 
 ## Locked Operations
 
-After Track 15B, SCP may expose at most two active wallet-signed operation controls:
+SCP may expose at most two active wallet-signed operation controls:
 
 - Record NAV Event
 - Whitelist Wallet
 
-Allocation/Mint remains deferred to Track 15C. Burn, pause/unpause, transfer, distribution, and role-administration operations remain locked or absent until their own tracks exist.
+Allocation/Mint remains deferred until investor registry and subscription parameters are coherent. Burn, pause/unpause, transfer, distribution, and role-administration operations remain locked or absent until their own capability work exists.

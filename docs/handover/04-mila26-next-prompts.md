@@ -1,55 +1,71 @@
 # MILA26 Next Prompts
 
-## Next Codex Prompt: Track 15C or Hardening
+## Next Codex Prompt: Lifecycle State + Investor Registry Foundation
 
-If Track 15B exposes operation-foundation fragility, run a short hardening-only track before mint/allocation.
-
-If Track 15B is clean, proceed to Track 15C - Allocation/Mint Operation.
-
-Track 15C should consume confirmed deployment evidence, Sepolia wallet readiness, and the hardened operation pattern from Record NAV and Whitelist Wallet. It should not add broad operation history, persistence, backend signing, mainnet, KYC/legal/audit claims, or a generic operation framework.
-
-## Prior Prompt: Track 15A First SCP Wallet-Signed Operation - Record NAV Event
+Use this prompt for the next implementation turn:
 
 ```text
 You are working inside the MILA26 repository:
 
 /Users/macbookpro18/Desktop/CODE/active/mila26
 
-Start from main.
+Start from main. Before editing, run:
 
-Before making changes:
-1. Confirm Track 14C has been committed and pushed.
-2. Run:
-   git status --short --branch
-3. Working tree must be clean before starting.
-4. Run baseline validation:
-   npm run check
-   npm run test:e2e
-
-Current project status:
-- Track 13B added frontend-only EIP-1193 wallet connection and Sepolia verification.
-- Track 14A added the review-only UnsignedDeploymentIntentReadModel.
-- Track 14B added frontend-only wallet-signed Sepolia deployment.
-- Track 14C added local-session deployment evidence/readiness:
-  - transaction hash evidence only if provider-returned.
-  - contract address evidence only if receipt-returned from successful confirmed deployment.
-  - evidence persistence is local-session-only.
-  - no Evidence Pack storage, backend route, mainnet, audit claim, or SCP operations were added.
-
-We are starting Track 15A - First SCP Wallet-Signed Operation: Record NAV Event.
+git status --short --branch
+npm run test -- tests/app-chat-panel.test.tsx
 
 Goal:
-Add one low-risk wallet-signed SCP operation path for Record NAV Event after confirmed deployment evidence exists.
+Implement the next lifecycle workspace foundation after the UI update.
 
-Important:
-Track 15A should be operation-specific. Do not unlock Mint/Burn/Pause/Distribution suites. Do not add mainnet, backend private-key custody, fake transaction hashes, fake event logs, or broad SCP redesign.
+Scope:
+1. Add shared lifecycle state/read model support for:
+   - investor registry entries;
+   - subscription parameters;
+   - redemption parameters;
+   - maturity parameters.
+2. Implement the Investor Registry tab as the first functional tab beyond Overview:
+   - up to 50 investor wallet addresses;
+   - wallet address validation;
+   - status per entry: draft, ready to whitelist, whitelisted local-session-only;
+   - no real-world investor names required;
+   - no KYC/investor eligibility claim.
+3. Keep tabs visual-only. The Engineering Bot and all tabs must read the same shared lifecycle state.
+4. Do not add Allocation/Mint yet.
+5. Do not add subscription/redemption execution yet.
+6. Do not add persistence unless explicitly scoped.
 
-Acceptance criteria:
-- Record NAV Event is blocked unless wallet is connected, chain is Sepolia, deployment evidence is confirmed from receipt, and contract address is receipt-returned.
-- User wallet signs the operation in browser.
-- Backend never holds private keys.
-- Operation transaction hash appears only after provider response.
-- Receipt/event evidence appears only after receipt/log response.
-- SCP operations remain gated; only Record NAV Event is introduced.
-- Tests pass.
+Acceptance:
+- Existing tests continue passing.
+- Add focused tests for investor registry state and UI.
+- Right rail remains passive.
+- SCP remains the only home for wallet-signed contract operations.
+- No internal track numbers appear in user-facing UI.
 ```
+
+## Following Prompt: Subscription + Redemption Template Parameters
+
+After the investor registry foundation is clean, implement parameter capture for the subscription-redemption template:
+
+- permitted stablecoins;
+- subscription window;
+- minimum subscription amount;
+- payment wallet/contract address;
+- payment per token;
+- redemption window/date;
+- redemption delay unit and duration;
+- redemption wallet;
+- stablecoin payout asset;
+- payout per token.
+
+This should still be parameter/spec work, not live stablecoin execution.
+
+## Later Prompt: Allocation/Mint
+
+Add Allocation/Mint only after:
+
+- investor registry state exists;
+- subscription parameters exist;
+- smart-contract spec can consume those parameters;
+- wallet/deployment/operation evidence gates remain stable.
+
+Allocation/Mint must remain wallet-signed, Sepolia-only, operation-specific, and evidence-linked. It must not unlock broad operations.

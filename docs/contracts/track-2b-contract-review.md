@@ -11,7 +11,7 @@ This checkpoint reviews whether the planned backend/API contracts are stable eno
 - `WalletSignedDeploymentRequest`: planned unsigned transaction intent prepared by backend and signed by the user's wallet.
 - `DeploymentTransactionStatus`: planned status record for submitted testnet deployment transactions.
 - `InvestorWalletRecord`: planned off-chain investor name and wallet mapping.
-- `AllocationPlan`: planned allocation percentages and validation state for up to 20 wallets.
+- `AllocationPlan`: planned allocation/mint inputs derived from approved investor registry and subscription state for up to 50 wallets.
 - `ValuationUploadSummary`: planned validated summary of uploaded valuation/performance data.
 - `PortfolioPerformanceUpdate`: planned token-holder-visible performance update, likely through dashboard display and/or on-chain event emission later.
 

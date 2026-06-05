@@ -37,7 +37,7 @@ The reviewer executes phases in order. Each phase contains specific checks. Ever
 **Phase execution rules:**
 - **Full review (track/PR):** Phases 0–8, applicable Phase 9 sections, then Phase 10 report
 - **Quick review (PR):** Phases 0–3, plus lessons pattern scan for all CRITICAL patterns on the diff
-- **Architecture-only review:** Phase 3, applicable Phase 9 sections (e.g. 9.4 for Cockpit2), Phase 5–6 as needed for structure
+- **Architecture-only review:** Phase 3, applicable Phase 9 sections (e.g. 9.4 for lifecycle workspace/SCP), Phase 5–6 as needed for structure
 - **Pre-milestone audit:** Phases 0–9 (all applicable), Phase 10 report, plus brittleness and rigidity heat maps (format in skill file)
 
 ---
@@ -104,9 +104,9 @@ Verify these labels appear where applicable. Flag missing labels as **HIGH — M
 - [ ] "Mainnet disabled" — near any chain/network reference
 - [ ] "No transaction hash" — before any deployment execution
 - [ ] "No contract address" — before any deployment confirmation
-- [ ] "Smart Contract Operations: Locked" — in SCP before operation tracks
-- [ ] "Record NAV gated; other Smart Contract Operations locked" — after Track 15A confirmed deployment evidence
-- [ ] "Other Smart Contract Operations: Locked" — after a single operation-specific SCP track unlocks
+- [ ] "Smart Contract Operations: Locked" — in SCP before operation-specific gates
+- [ ] "Record NAV gated; other Smart Contract Operations locked" — after confirmed deployment evidence where only Record NAV is available
+- [ ] "Other Smart Contract Operations: Locked" — after operation-specific SCP controls unlock
 - [ ] "Audit not performed" — where audit status is shown
 - [ ] "User wallet signing required later" — in signing context before implementation
 - [ ] "Deployment status is held in this local session" — if deployment state is local-only
@@ -227,7 +227,7 @@ Search for these variable names in any scope wider than a 3-line lambda. Flag ea
   - "Wallet Signing Intent" — not WalletSignReady, SigningCheck
   - "Smart Contract Control Panel" / "SCP" — consistent abbreviation
   - "Engineering Bot" — not EngineerBot, EngBot
-  - "Cockpit2" — consistent capitalization
+  - "Lifecycle workspace" — not legacy cockpit labels in new user-facing or current architecture language
 - [ ] No synonyms for the same concept across files
 - [ ] Flag inconsistency as **MEDIUM — Domain Name Inconsistency**
 
@@ -454,12 +454,13 @@ These checks apply based on the type of code being reviewed. Execute the relevan
 - [ ] No secrets in LLM prompt logs
 - [ ] Flag violations per severity in the check
 
-### 9.4 — UI / Cockpit2 Tracks (if applicable)
+### 9.4 — UI / Lifecycle Workspace Tracks (if applicable)
 - [ ] Engineering Bot is the single workflow decision surface
 - [ ] Right rail contains no action buttons
 - [ ] SCP shows only status/evidence/boundary (pre-deployment) or approved operations (post-deployment)
 - [ ] New UI actions use typed `CockpitAction` pattern
-- [ ] No workflow buttons in right rail or SCP
+- [ ] Visual tabs share lifecycle state and do not create per-tab state silos
+- [ ] No workflow buttons in the right rail
 - [ ] Flag violations per severity in the check
 
 ---
@@ -512,7 +513,7 @@ The report must include:
 | MILA26-003 | 0.4 | Scope creep (HIGH) |
 | MILA26-021 | 0.1–0.3 | Scope violation (CRITICAL) |
 | MILA26-004 | 4 | Generic naming |
-| MILA26-005, 006, 008, 015 | 3, 9.4 | Cockpit2 / SCP / context / domain in UI |
+| MILA26-005, 006, 008, 015 | 3, 9.4 | Lifecycle workspace / SCP / context / domain in UI |
 | MILA26-007 | 3, 9.3 | Frontend LLM / secrets |
 | MILA26-009 | 6 | Premature abstraction |
 | MILA26-010, 019 | 5 | Silent swallow, stale closure |

@@ -198,9 +198,9 @@ const gateReadiness = assessGateReadiness(deploymentStatus);
 **Name:** Right rail workflow button  
 **Category:** Architecture  
 **Severity:** HIGH  
-**First caught:** 2026-05-31 (seeded from Cockpit2 architecture review)  
+**First caught:** 2026-05-31 (seeded from lifecycle workspace architecture review)
 **Catch count:** 0  
-**Description:** A workflow/action button appearing in the right rail instead of the central Engineering Bot surface. The right rail must remain passive status-only. Buttons like "Deploy," "Approve," "Sign," or "Generate" in the right rail violate the Cockpit2 architecture where Engineering Bot is the sole lifecycle workflow decision orchestrator. Operation-specific SCP controls are only acceptable after the corresponding operation track approves and gates them.  
+**Description:** A workflow/action button appearing in the right rail instead of the central Engineering Bot surface. The right rail must remain passive status-only. Buttons like "Deploy," "Approve," "Sign," or "Generate" in the right rail violate the lifecycle workspace architecture where Engineering Bot is the sole lifecycle workflow decision orchestrator. Operation-specific SCP controls are only acceptable after the corresponding operation track approves and gates them.
 **Detection:** Check right-rail component JSX for `<button>`, `<Button>`, or any element with `onClick` that triggers a workflow action (not UI toggles like show/hide panels). UI toggles for panel visibility are acceptable.  
 **Example:**
 
@@ -216,7 +216,7 @@ const gateReadiness = assessGateReadiness(deploymentStatus);
 </div>
 ```
 
-**Occurrences:** None yet — seeded from Cockpit2 architecture review
+**Occurrences:** None yet — seeded from lifecycle workspace architecture review
 
 ---
 

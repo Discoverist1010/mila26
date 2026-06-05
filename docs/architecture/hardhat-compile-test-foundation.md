@@ -103,7 +103,7 @@ It preserves the distinction between:
 
 Passing local compile/test results still do not mean deployed, wallet signed, audited, verified, production ready, legally approved, or mainnet enabled.
 
-## Track 10C Cockpit/SCP Surfacing
+## Track 10C Workspace/SCP Surfacing
 
 Track 10C surfaces the known local Track 10A compile/test baseline in the cockpit and SCP after Smart Contract Spec and Artifact Preview generation succeeds.
 

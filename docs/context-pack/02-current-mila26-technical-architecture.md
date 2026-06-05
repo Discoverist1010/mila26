@@ -10,9 +10,9 @@
 
 ## Application Shape
 
-`src/App.tsx` currently owns local React state for the cockpit flow. This is intentional until persistence is explicitly approved.
+`src/App.tsx` currently owns local React state for the lifecycle workspace flow. This is intentional until persistence is explicitly approved.
 
-The app composes pure read models and API clients rather than a global lifecycle context:
+The app composes pure read models, API clients, wallet adapters, and a shared workspace presentation model rather than a per-tab state model:
 
 - Project Closure Read Model.
 - Project Lifecycle Read Model.
@@ -21,8 +21,13 @@ The app composes pure read models and API clients rather than a global lifecycle
 - Deployment Gate Read Model.
 - Wallet Signing Intent Read Model.
 - Wallet Connection Read Model.
+- Deployment Transaction Intent Read Model.
+- Deployment Evidence Read Model.
+- Record NAV Operation Read Model.
+- Wallet Whitelist Operation Read Model.
+- Workspace Presentation Model.
 
-The right rail is passive. The central Engineering Bot surface owns workflow decisions. SCP remains a status/evidence/boundary/health surface and locked operations area until real deployment exists.
+The right rail is passive. The central Engineering Bot surface owns workflow decisions. SCP owns operation controls only after explicit wallet-signed gates are satisfied.
 
 ## Backend Routes
 
@@ -64,7 +69,7 @@ Current contract path:
 - Track 9B creates deterministic preview-only `artifactPackage`, `checkResult`, and `evidenceLite`.
 - Track 10A adds local Hardhat compile/test foundation for `Mila26RestrictedFundToken`.
 - Track 10B represents local compile/test outcomes in a typed adapter.
-- Track 10C surfaces known local compile/test status in the cockpit/SCP.
+- Track 10C surfaces known local compile/test status in the workspace/SCP.
 
 Current limitations:
 
@@ -88,17 +93,20 @@ Current wallet/deployment path:
 - Track 14A defines unsigned deployment intent without requesting a signature or submitting a transaction.
 - Track 14B implements frontend-only wallet-signed Sepolia deployment.
 - Track 14C derives local-session deployment evidence/readiness from provider transaction hash and receipt-confirmed contract address.
+- Track 15A implements Record NAV Event as a wallet-signed SCP operation.
+- Track 15B implements Whitelist Wallet as a wallet-signed SCP operation.
+- The lifecycle workspace update removes internal track labels from user-facing UI and uses shared presentation state for visual tabs/status surfaces.
 
 ## Current Guardrails
 
 - Backend never holds private keys.
-- User wallet signs deployment and future operations.
+- User wallet signs deployment and operations.
 - Sepolia/testnet only for alpha.
 - Mainnet disabled.
 - Wallet address appears only after real wallet connection.
 - Contract address appears only after real deployment.
 - Transaction hash appears only after real transaction submission.
-- SCP operations remain locked until wallet-signed deployment evidence and operation authorization gates exist.
+- SCP operations remain locked unless each operation has wallet-signed deployment evidence and operation-specific authorization gates.
 - No audited, verified, live, production-ready, or mainnet-ready claim appears before real approval tracks.
 
 ## Validation Baseline
@@ -112,22 +120,23 @@ npm run contracts:build -- --force
 npm run test:contracts
 ```
 
-Recent Track 13A validation passed:
+Recent lifecycle workspace validation passed:
 
-- `npm run test -- tests/wallet-connection-read-model.test.ts`
 - `npm run test -- tests/app-chat-panel.test.tsx`
-- `npm run check`
+- `npm run build`
+- `npm run test`
 - `npm run test:e2e`
 
 ## Still Not Implemented
 
-- Wallet runtime connection.
-- Signing request.
-- Deployment transaction preparation.
-- Transaction submission.
-- Transaction receipt tracking.
-- Contract address persistence/display.
-- SCP contract operations.
+- Durable lifecycle state persistence.
+- Full Investor Registry tab data model for up to 50 whitelisted wallets.
+- Subscription parameter capture.
+- Redemption delay and payout parameter capture.
+- Subscription-redemption smart-contract template handoff.
+- Allocation/Mint.
+- Maturity closeout.
+- Broad SCP contract operations beyond the approved deployment, Record NAV, and Whitelist Wallet paths.
 - Database/persistence.
 - Auth/payments.
 - Mainnet.

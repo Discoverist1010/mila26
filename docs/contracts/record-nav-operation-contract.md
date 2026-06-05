@@ -1,6 +1,6 @@
 # Record NAV Operation Contract
 
-Track 15A adds the first wallet-signed SCP operation for the blockchain-functional alpha: `Record NAV Event`.
+Record NAV Event is the first wallet-signed SCP operation for the blockchain-functional alpha.
 
 ## Scope
 
@@ -56,9 +56,9 @@ Transaction hash appears only after the provider returns it. Receipt status appe
 - Sepolia only.
 - Mainnet disabled.
 - Operation evidence is local-session-only.
-- No durable evidence storage or operation history exists in Track 15A.
+- No durable evidence storage or operation history exists yet.
 - No audit, security approval, production readiness, or legal/compliance approval is claimed.
 
-## Future Tracks
+## Future Work
 
-If Track 15A reveals event decoding or SCP gating issues, use a short Track 15A.1 hardening track. If clean, proceed to Track 15B: Whitelist + Allocation/Mint Operation.
+Future work should keep Record NAV operation-specific. Broader asset servicing may add investor updates, corporate-action notices, and durable evidence only after shared lifecycle state and Evidence Vault persistence are designed.

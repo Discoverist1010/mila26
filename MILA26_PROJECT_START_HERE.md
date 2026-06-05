@@ -2,21 +2,31 @@
 
 ## What MILA26 Is
 
-MILA26 is a non-throwaway, funding-demo-ready MVP foundation for an AI + blockchain tokenisation project workspace for asset managers.
+MILA26 is an AI tokenisation workspace for asset managers who want to turn a financial product into a testnet-ready tokenised product without knowing the full smart-contract path upfront.
 
-It helps an asset manager move from a plain-language tokenisation intent into structured requirements, ERC-20/ERC-721 guidance, generated technical artifacts, QA/security review, evidence packs, and later wallet-signed Ethereum testnet deployment flows.
+The current product direction is a guided lifecycle workspace: the user explains the product and intended investor flows in plain language, the Engineering Bot structures the requirements across the full lifecycle, and the app turns approved parameters into smart-contract artifacts, wallet-signed Sepolia operations, and local-session evidence.
 
-## Current Completed Tracks
+The target product flow is:
 
-- Track 0: context and architecture baseline.
-- Track 1 / 1B: contract fixtures, tests, and contract reference docs.
-- Track 2A: MVP journey, scope, and stack docs.
-- Track 2B: backend/API boundary planning.
-- Track 2C / 2C.1: minimal Fastify backend skeleton plus API response/error conventions.
-- Track 3A: Blockchain Engineering Bot chat planning.
-- Track 3B / 3B.1: backend mock chat route plus chat fixtures/tests.
-- UX Track A: UX vision and frontend architecture docs.
-- UX Track B / Track 3C planning: minimal frontend chat integration plan.
+- define the financial product and investor rules.
+- register up to 50 whitelisted investor wallet addresses.
+- configure stablecoin subscription parameters.
+- configure redemption parameters, including a delay between token receipt and stablecoin payout.
+- generate or configure the subscription-redemption smart-contract template.
+- service the asset with NAV and investor update events.
+- redeem outstanding tokens at maturity.
+- preserve wallet-signed evidence without implying production audit, custody, legal approval, or mainnet readiness.
+
+## Current Implemented Capabilities
+
+- Lifecycle workspace UI with MILA26 branding, dark left rail, top project bar, visual stage tabs, large Engineering Bot answer area, next best actions, passive right rail, Product Vault, lifecycle snapshot, and SCP below the AI surface.
+- Shared frontend presentation model in `src/domain/workspacePresentation.ts` so stage status, capability status, vault artifacts, recent activity, and lifecycle snapshot are not hardcoded independently in each visual area.
+- Requirement Brief, Engineering Brief, Smart Contract Artifact Spec, deterministic artifact preview, check result, evidence-lite, and local compile/test read models.
+- MetaMask-first wallet connection and Sepolia verification.
+- User-wallet-signed Sepolia deployment path with real transaction hash and contract address only after real provider execution.
+- Deployment evidence/readiness derived from wallet-signed deployment status.
+- First wallet-signed SCP operation: Record NAV Event.
+- Second wallet-signed SCP operation: Whitelist Wallet.
 
 ## Current Architecture Principles
 
@@ -24,60 +34,63 @@ It helps an asset manager move from a plain-language tokenisation intent into st
 - Minimal necessary complexity.
 - Local Mac laptop MVP first.
 - Backend-only LLM calls and secrets.
-- User wallet signs deployment; backend never holds private keys.
-- Testnet-only MVP.
+- User wallet signs deployment and operations; backend never holds private keys.
+- Sepolia/testnet-only MVP.
+- Lifecycle tabs are visual navigation only. They must not become hard code boundaries or isolated state silos.
+- The Engineering Bot should have cross-stage context and recommend next actions across requirements, investor registry, subscription, smart contract, asset servicing, redemption, maturity, and evidence.
 - Contract changes must update docs, fixtures, schemas/types, runtime consumers/producers, and tests together.
 
 ## Current UX Direction
 
-MILA26 should become a professional AI + blockchain project workspace for asset managers. The target experience is an enhanced ChatGPT-style workspace with visible project context, workflow gates, agent progress, evidence, and later wallet/deployment controls.
+The active UX direction is the lifecycle workspace mockup provided by the user and implemented directionally in the app:
 
-Approved UX mockup: `docs/assets/ux/mila26_dashboard_v2.png`.
+- left rail for project and engineering navigation.
+- top bar for product, network, wallet, guided/expert mode, and safety status.
+- visual tabs for `Overview`, `Requirements`, `Investor Registry`, `Subscription`, `Smart Contract`, `Asset Servicing`, `Redemption`, `Maturity`, and `Evidence`.
+- center column led by the Engineering Bot, with readable AI answers and suggested next actions.
+- right rail limited to passive status, Product Vault, capability status, recent activity, and evidence status.
+- SCP below the Engineering Bot for wallet-signed operations.
 
-This mockup is the canonical near-term UX direction reference, not a pixel-perfect implementation mandate.
-
-Do not redesign the UI during the immediate next step. First prove the existing chat panel can call the backend mock route safely.
+Avoid exposing internal implementation labels such as track numbers to users. Track labels may remain in internal roadmap documents only.
 
 ## Immediate Next Step
 
-Track 3C: minimal frontend chat integration.
+Implement the lifecycle state and Investor Registry foundation before building allocation/mint.
 
-Implement:
+The next coding track should add:
 
-- `src/api/client.ts`.
-- `src/api/blockchainEngineerChat.ts`.
-- `VITE_MILA26_API_BASE_URL`, defaulting to `http://127.0.0.1:5174`.
-- Existing `src/App.tsx` Blockchain Engineering Bot panel connected to `POST /api/chat/blockchain-engineer`.
-- Local loading and safe error states.
-- Blank input guard.
-- Mocked-fetch tests.
-- Light README/doc updates if needed.
-- `npm run check`.
+- a shared lifecycle state/read model consumed by all visual tabs.
+- Investor Registry data for up to 50 whitelisted wallet addresses.
+- validation for wallet address format, duplicate addresses, max investor count, and active/inactive status.
+- UI for the `Investor Registry` tab that uses the shared lifecycle state.
+- Engineering Bot next-action wiring so registry gaps can be surfaced from any tab.
+- Product Vault and lifecycle snapshot updates driven from the same model.
+- focused unit and e2e tests proving cross-tab state is shared rather than duplicated.
+
+After that, build subscription parameters, redemption parameters, template handoff, and only then allocation/mint.
 
 ## Files To Read Next
 
 - `docs/handover/00-mila26-current-checkpoint.md`
-- `docs/handover/01-mila26-project-instructions-for-chatgpt.md`
-- `docs/handover/02-mila26-codex-working-rules.md`
 - `docs/handover/03-mila26-track-status.md`
 - `docs/handover/04-mila26-next-prompts.md`
-- `docs/architecture/frontend-chat-integration.md`
-- `docs/architecture/api-response-conventions.md`
-- `docs/contracts/chat-contract.md`
-- `server/contracts/chat.ts`
-- `server/routes/blockchainEngineerChat.ts`
+- `docs/product/ui-ux-vision.md`
+- `docs/product/mvp-user-journey.md`
+- `docs/product/mvp-screen-flow.md`
+- `docs/architecture/frontend-ux-architecture.md`
+- `docs/architecture/frontend-component-plan.md`
+- `src/domain/workspacePresentation.ts`
 - `src/App.tsx`
+- `src/styles.css`
 
 ## Do Not Do Yet
 
-- No real LLM.
-- No persistence or memory.
-- No wallet/blockchain tooling.
-- No Solidity tooling.
-- No PRD generation.
-- No orchestration.
-- No payments.
-- No auth.
-- No full UI redesign.
-- No global state library.
-- No broad refactor.
+- No mainnet deployment.
+- No backend-held private keys.
+- No custody operations.
+- No production legal, tax, accounting, regulatory, KYC/AML, or audit claims.
+- No durable persistence/evidence storage until the lifecycle state shape is stable.
+- No subscription or redemption transaction execution before the parameter model and template handoff are coherent.
+- No allocation/mint before Investor Registry and subscription parameters are implemented.
+- No per-tab state silos.
+- No broad UI redesign that reduces Engineering Bot readability or moves workflow decisions into the passive right rail.

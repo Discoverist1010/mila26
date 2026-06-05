@@ -2,23 +2,33 @@
 
 ## One-Page Summary
 
-MILA26 is a blockchain-functional alpha foundation for an AI + blockchain tokenisation workspace for asset managers.
+MILA26 is a blockchain-functional alpha foundation for an AI tokenisation workspace for asset managers.
 
-The current app can guide a project from a plain-language requirement through Engineering Brief, closure readiness, Smart Contract Artifact Spec, deterministic artifact preview, check/evidence-lite, local compile/test representation, Deployment Gate, Wallet Signing Intent, Wallet Connection Readiness, Unsigned Deployment Intent, a wallet-signed Sepolia deployment path, local-session deployment evidence/readiness, and two wallet-signed SCP operations: Record NAV Event and Whitelist Wallet. Other Smart Contract Operations remain locked.
+The current app can guide a project from plain-language intent through Requirement Brief, Engineering Brief, closure readiness, Smart Contract Artifact Spec, deterministic artifact preview, check/evidence-lite, local compile/test representation, Deployment Gate, Wallet Signing Intent, wallet connection, unsigned deployment intent, wallet-signed Sepolia deployment, local-session deployment evidence/readiness, and two wallet-signed SCP operations: Record NAV Event and Whitelist Wallet.
 
-The next implementation step is Track 15C Allocation/Mint Operation if Track 15B remains clean. If Track 15B exposes operation-foundation fragility, run a short hardening-only track first.
+The current UI is the MILA26 lifecycle workspace. It uses visual lifecycle tabs, a large Engineering Bot answer surface, suggested next actions, passive right rail, Product Vault, lifecycle snapshot, and a scroll-down Smart Contract Control Panel.
+
+The next implementation step should follow the new tab-aligned roadmap, not the old dashboard flow:
+
+1. shared lifecycle state hardening;
+2. Investor Registry tab functionality;
+3. Subscription template parameter capture;
+4. Redemption template parameter capture;
+5. Allocation/Mint only after registry/subscription parameters are coherent;
+6. Evidence persistence and maturity closeout later.
 
 ## Current Product Direction
 
-- Build a professional AI + blockchain workspace, not a crypto trading dashboard.
-- Current alpha path: restricted ERC-20-compatible fund units for a tokenised income/fund product.
-- Start with one local Mac laptop alpha for one asset manager and up to 20 investor wallets.
+- Build a professional AI tokenisation workspace, not a crypto trading dashboard.
+- Current alpha path: restricted ERC-20-compatible fund units for a tokenised financial product.
+- Target product constraint: up to 50 investor wallets.
 - Keep execution Ethereum Sepolia/testnet-only.
-- Use Engineering Bot as the lifecycle decision surface.
+- Use Engineering Bot as the cross-stage lifecycle decision surface.
+- Treat tabs as visual structure only; do not segregate state by tab.
 - Keep the right rail passive.
-- Keep SCP as status/evidence/boundary/health; operation controls stay locked until operation authorization and evidence logging exist.
+- Keep SCP as status/evidence/boundary/health plus operation-specific controls.
 - Backend never holds private keys.
-- User wallet signs future deployment and operations.
+- User wallet signs deployment and operations.
 
 ## Current Architecture
 
@@ -29,15 +39,16 @@ The next implementation step is Track 15C Allocation/Mint Operation if Track 15B
 - LLM boundary: backend-only; deterministic mock remains supported; OpenAI mode requires explicit backend config.
 - Smart contract tooling: local Hardhat/OpenZeppelin fixture exists for compile/test only.
 - Wallet boundary: MetaMask-first EIP-1193 connection and Sepolia readiness are implemented frontend-only.
-- Unsigned deployment intent boundary: review-only domain model exists.
-- Wallet-signed deployment boundary: frontend-only Sepolia deployment exists.
-- Deployment evidence boundary: provider transaction hash and receipt-confirmed contract address are represented as local-session evidence/readiness only.
-- Persistence, auth, payments, durable Evidence Pack storage, broad SCP operations, and mainnet are not implemented.
+- Deployment boundary: wallet-signed Sepolia deployment exists, with local-session provider/receipt evidence only.
+- Operation boundary: Record NAV Event and Whitelist Wallet exist as operation-specific wallet-signed SCP controls.
+- Persistence, auth, payments, durable Evidence Vault storage, subscription/redemption templates, allocation/mint, maturity closeout, and mainnet are not implemented.
 
 ## Current Repo Capabilities
 
-- Cockpit2 guided lifecycle UI.
-- Passive right rail and collapsible Brief Preview.
+- MILA26 lifecycle workspace UI.
+- Visual tabs: Overview, Requirements, Investor Registry, Subscription, Smart Contract, Asset Servicing, Redemption, Maturity, Evidence.
+- Shared workspace presentation model: `src/domain/workspacePresentation.ts`.
+- Passive right rail and Product Vault.
 - Backend chat route: `POST /api/chat/blockchain-engineer`.
 - Backend Engineering Brief route: `POST /api/prd/engineering-brief`.
 - Backend Smart Contract Artifact Spec route: `POST /api/smart-contract/artifact-spec`.
@@ -49,80 +60,72 @@ The next implementation step is Track 15C Allocation/Mint Operation if Track 15B
   - `contracts/Mila26RestrictedFundToken.sol`
   - `npm run contracts:build`
   - `npm run test:contracts`
-- Compile/test result adapter.
 - Deployment Gate read model and UI surface.
 - Wallet Signing Intent read model and UI surface.
-- Smart Contract Operations locked state.
-- Golden-flow guardrails against fake deployment/signing/address/hash claims.
 - Wallet Connection Read Model and frontend-only EIP-1193 adapter.
 - Unsigned Deployment Intent Read Model.
 - Wallet-signed Sepolia deployment adapter and local-session deployment state.
 - Deployment Evidence Read Model and passive UI/SCP evidence surface.
 - Record NAV and Wallet Whitelist operation adapters/read models with local-session-only operation evidence.
 
-## Completed Recent Tracks
+## Completed Recent Work
 
-- Track 7A: Project Closure Ledger contract.
-- Track 7B: Closure read model and passive cockpit wiring.
-- Track 7C: structured Engineering Bot response rendering.
-- Track 8A: thin Project Lifecycle Read Model.
-- Track 8B: Cockpit Action Registry and primary action wiring.
-- Track 8C: SCP deterministic view model.
-- Track 9A: Smart Contract Artifact Spec contract and backend route.
-- Track 9B: deterministic artifact package, check result, and evidence-lite route.
-- Track 9C: cockpit/SCP smart-contract preparation flow.
-- Track 9D: demo-readiness polish.
-- Track 9B.2: Solidity compile/test toolchain decision ADR.
-- Track 10A: minimal Hardhat compile/test foundation.
-- Track 10B: compile/test result adapter.
-- Track 10C: local compile/test status surfaced in cockpit/SCP.
-- Track 11A: Deployment Gate read model.
-- Track 11B: Deployment Gate view-only cockpit/SCP wiring.
-- Track 12A: Wallet Signing Intent read model.
-- Track 12B: Wallet Signing Intent view-only cockpit/SCP wiring and operations locked state.
-- Track 12C: lifecycle golden-flow hardening.
-- Track 13A: MetaMask-first wallet adapter and Sepolia signing design plus pure wallet connection read model.
-- Track 13B: frontend-only EIP-1193 wallet connection and Sepolia verification.
-- Track 14A: unsigned deployment intent read model.
-- Track 14B: wallet-signed Sepolia deployment through browser wallet.
-- Track 14C: deployment evidence/readiness local-session surface.
-- Track 15A: first wallet-signed SCP operation, Record NAV Event.
-- Track 15B: targeted operation hardening and Wallet Whitelist operation.
+- Requirement Brief, Engineering Brief, backend-only LLM boundary, deterministic and optional OpenAI-assisted backend paths.
+- Smart Contract Artifact Spec, deterministic artifact preview, spec-consistency check result, and Evidence-Lite.
+- Local Hardhat compile/test foundation and compile/test result adapter.
+- Deployment Gate, Wallet Signing Intent, Wallet Connection, Unsigned Deployment Intent, wallet-signed Sepolia deployment, and deployment evidence.
+- Record NAV Event operation.
+- Whitelist Wallet operation.
+- Lifecycle workspace UX implementation:
+  - dark left navigation rail;
+  - top project/network/wallet/safety bar;
+  - visual lifecycle tabs;
+  - AI-first center workspace;
+  - suggested next actions;
+  - passive right rail;
+  - Product Vault and Recent Activity;
+  - product-facing copy with no internal track labels.
 
 ## Current Next Step
 
-Track 15C: Allocation/Mint Operation, unless a short hardening-only track is needed first.
+Recommended next coding sequence:
 
-Track 15C should:
-
-- consume confirmed deployment evidence/readiness.
-- consume operation-foundation lessons from Record NAV and Whitelist Wallet.
-- add one allocation/mint operation only after explicit operation gates.
-- request a user wallet-signed contract operation only after wallet/chain/deployment/authorization gates pass.
-- link operation transaction/receipt result into evidence.
-- keep backend private-key custody impossible.
-- remain Sepolia-only.
+1. Add shared lifecycle data structures for investor registry, subscription parameters, redemption parameters, and maturity settings.
+2. Implement the Investor Registry tab UI and state for up to 50 wallet addresses.
+3. Implement Subscription tab parameter capture:
+   - permitted stablecoins;
+   - subscription window;
+   - minimum subscription;
+   - payment wallet/contract;
+   - payment per token.
+4. Implement Redemption tab parameter capture:
+   - redemption window/date;
+   - redemption wallet;
+   - delay unit/duration;
+   - payout per token;
+   - permitted stablecoin payout asset.
+5. Prepare the subscription-redemption smart-contract template spec.
+6. Only then add Allocation/Mint.
 
 ## Code Review (Agent / PR)
 
-For structured reviews, use the **Code Reviewer trio** (keep severities aligned with the checklist):
+For structured reviews, use the Code Reviewer trio:
 
-1. `docs/handover/05-code-reviewer-skill.md` — how to review and report
-2. `docs/contracts/code-reviewer-checklist.md` — executable phases (PASS/FAIL authority)
-3. `docs/handover/06-code-reviewer-lessons.md` — pattern memory; scan before checklist
+1. `docs/handover/05-code-reviewer-skill.md`
+2. `docs/contracts/code-reviewer-checklist.md`
+3. `docs/handover/06-code-reviewer-lessons.md`
 
 Activation before commit/push is governed by:
 
-4. `docs/handover/07-code-review-activation-rules.md` — classify diffs as diff-check only, quick review, or full audit
-
-Read this checkpoint first. Guardrails here and in `docs/architecture/architecture-guardrails.md` must match Phase 1–2 of the checklist.
+4. `docs/handover/07-code-review-activation-rules.md`
 
 ## What Must Not Be Done Yet
 
-- No broad operation suite yet.
+- No broad operation suite.
 - No mainnet.
 - No backend private-key custody.
-- No persistence/database.
+- No production persistence/database until data shape is settled.
 - No auth/payments.
-- No broad Cockpit2 redesign.
-- No monolithic lifecycle context.
+- No per-tab state silos.
+- No durable evidence claim until persistence exists.
+- No investor eligibility/KYC/legal/audit approval claim.

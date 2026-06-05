@@ -8,7 +8,7 @@ They document the contract spine that currently connects user inputs, requiremen
 
 ## Protected Journey
 
-Fund setup -> Requirement Brief / PRD -> module/protocol selection -> bot orchestration -> generated artifacts -> Security Review -> Evidence Pack -> later testnet deployment/mint/distribution.
+Fund/product setup -> Requirement Brief -> Engineering Brief -> Smart Contract Artifact Spec -> deterministic artifact/check/evidence-lite -> local compile/test representation -> wallet connection -> wallet-signed Sepolia deployment -> local-session deployment evidence -> operation-specific SCP controls.
 
 ## Contract Fixtures
 
@@ -81,15 +81,15 @@ Track 14A adds the unsigned deployment intent read-model foundation:
 - [`deployment-transaction-intent-contract.md`](deployment-transaction-intent-contract.md): review-only unsigned Sepolia deployment intent semantics that consume deployment gate, wallet signing intent, wallet connection, compiled artifact reference, and local compile/test readiness without signing, deployment, transaction submission, transaction hashes, contract addresses, receipts, or backend private-key custody.
 - [`../architecture/wallet-signed-deployment.md`](../architecture/wallet-signed-deployment.md): frontend-only wallet-signed Sepolia deployment boundary, real provider-returned transaction hash and receipt-confirmed contract address rules, and local-session-only deployment evidence/readiness boundaries.
 
-Track 14C adds the deployment evidence/readiness surface:
+Deployment evidence/readiness surface:
 
 - [`deployment-evidence-contract.md`](deployment-evidence-contract.md): pure local-session deployment evidence read model with explicit transaction-hash source, contract-address source, evidence strength, and local-session-only persistence boundary.
 
-Track 15A adds the first wallet-signed SCP operation:
+First wallet-signed SCP operation:
 
 - [`record-nav-operation-contract.md`](record-nav-operation-contract.md): narrow Sepolia `recordValuation(uint256,string)` operation contract, provider-returned operation transaction hash rules, receipt/event evidence provenance, and local-session-only operation evidence boundary.
 
-Track 15B adds targeted wallet-operation hardening and the second wallet-signed SCP operation:
+Second wallet-signed SCP operation and targeted wallet-operation hardening:
 
 - [`wallet-whitelist-operation-contract.md`](wallet-whitelist-operation-contract.md): narrow Sepolia `setWalletAllowed(address,bool)` operation contract with `allowed = true`, explicit target-wallet validation, provider-returned transaction hash rules, receipt/event evidence provenance, on-chain authorization honesty, and local-session-only operation evidence boundary.
 

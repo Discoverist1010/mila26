@@ -73,8 +73,8 @@ Before every review, read these files in order:
 ### When reviewing smart contract / blockchain code:
 9. `docs/contracts/` — typed contracts for the domain (`deployment-gate-contract.md`, `wallet-signing-intent-contract.md`, etc.)
 
-### When reviewing UI / Cockpit2 code:
-10. Cockpit2 rules in checkpoint + Phase 3 / 9.4 of the checklist (Engineering Bot centrality, right rail passivity, SCP role)
+### When reviewing UI / lifecycle workspace code:
+10. Lifecycle workspace rules in checkpoint + Phase 3 / 9.4 of the checklist (Engineering Bot centrality, right rail passivity, SCP role, visual tabs sharing lifecycle state)
 
 ---
 

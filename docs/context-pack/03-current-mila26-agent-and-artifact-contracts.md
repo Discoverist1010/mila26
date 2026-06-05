@@ -4,7 +4,7 @@
 
 MILA26 protects workflow progress with typed artifacts, pure read models, deterministic mappers, and focused tests.
 
-Do not replace this with a monolithic lifecycle context. New tracks should either add a separate artifact contract or a thin read model derived from existing artifacts.
+Do not replace this with a monolithic opaque lifecycle object. New tracks should either add a typed artifact contract, a focused read model, or an explicit shared lifecycle state model when multiple visual tabs need the same data.
 
 ## Active Artifact And Read-Model Spine
 
@@ -25,6 +25,12 @@ Current spine:
 13. Deployment Gate Read Model.
 14. Wallet Signing Intent Read Model.
 15. Wallet Connection Read Model.
+16. Deployment Transaction Intent Read Model.
+17. Deployment Transaction Adapter Result.
+18. Deployment Evidence Read Model.
+19. Record NAV Operation Read Model.
+20. Wallet Whitelist Operation Read Model.
+21. Workspace Presentation Model.
 
 ## Backend Routes And Contracts
 
@@ -35,13 +41,13 @@ Current product routes:
 - `POST /api/smart-contract/artifact-spec`
 - `POST /api/smart-contract/artifact`
 
-The backend does not expose routes for wallet connection, signing, deployment, or runtime Hardhat execution.
+The backend does not expose routes for wallet connection, signing, deployment, operation execution, or runtime Hardhat execution.
 
 ## Engineering Bot
 
 The Engineering Bot is the visible workflow decision orchestrator. It surfaces the primary lifecycle action and structured guidance. It should remain the only active workflow-decision surface.
 
-Right rail remains passive. SCP remains status/evidence/boundary/health before deployment.
+Right rail remains passive. SCP remains status/evidence/boundary/health plus operation controls only after operation-specific wallet gates are satisfied.
 
 ## Smart Contract Artifacts
 
@@ -74,10 +80,18 @@ Track 12A/12B:
 
 Track 13A:
 
-- `WalletConnectionReadModel` defines provider/account/chain readiness for the future MetaMask/Sepolia implementation.
+- `WalletConnectionReadModel` defines provider/account/chain readiness for the MetaMask/Sepolia implementation.
 - It does not access `window.ethereum`.
 - It does not connect a wallet.
 - It does not request signatures.
+
+Tracks 13B through 15B:
+
+- The frontend-only EIP-1193 wallet adapter connects to the browser wallet and verifies Sepolia.
+- The deployment adapter requests a real wallet-signed Sepolia deployment and displays transaction hash/contract address only from provider/receipt responses.
+- Deployment evidence is local-session-only and derived from provider-returned transaction/receipt data.
+- Record NAV Event and Whitelist Wallet are the only implemented wallet-signed SCP operations.
+- Allocation/Mint, burn, pause, distribution, transfer, role-admin, subscription execution, redemption execution, and maturity closeout remain locked or unimplemented.
 - It does not model transactions.
 
 ## Naming And Status Rules
@@ -113,10 +127,8 @@ Avoid introducing duplicate or misleading names:
 - `production_ready`
 - `mainnet_ready`
 
-Those belong only in later explicitly approved wallet/deployment tracks, and only after real execution exists.
+Those labels are allowed only where backed by explicit provider/receipt provenance or an explicitly approved future implementation track.
 
 ## Next Contract Boundary
 
-Track 13B added runtime wallet connection adapter behavior while continuing to feed `WalletConnectionReadModel`.
-
-Next contract work should define unsigned deployment intent without mutating the signing intent, wallet connection, or deployment gate semantics.
+Next contract work should define shared lifecycle state and Investor Registry semantics without mutating existing deployment, wallet, Record NAV, or Whitelist Wallet evidence contracts.

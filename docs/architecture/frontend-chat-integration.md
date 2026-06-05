@@ -1,6 +1,6 @@
 # Frontend Chat Integration Plan
 
-Status: historical. The frontend-to-backend chat path has already been implemented. Do not treat this file as the current next prompt; use `docs/handover/04-mila26-next-prompts.md` for the active Track 13B wallet/Sepolia prompt.
+Status: historical. The frontend-to-backend chat path has already been implemented. Do not treat this file as the current next prompt; use `docs/handover/04-mila26-next-prompts.md` for the active lifecycle state and Investor Registry prompt.
 
 This plan defines the smallest safe path for connecting the current frontend Blockchain Engineering Bot panel to the backend mock chat route. It does not implement the integration.
 
@@ -9,7 +9,7 @@ This plan defines the smallest safe path for connecting the current frontend Blo
 - Connect the existing frontend Blockchain Engineering Bot panel to the backend mock route.
 - Prove the frontend-to-backend chat path before real LLM integration.
 - Preserve the current UI and beta product behavior as much as possible.
-- Keep chat integration separate from the future dark dashboard shell, requirement cards, wallet flows, PRD generation, and orchestration.
+- Keep chat integration separate from lifecycle state, wallet flows, template parameter capture, PRD generation, and orchestration.
 
 ## Current Frontend Behavior
 
@@ -25,7 +25,7 @@ Current deterministic logic:
 - It handles broad topics such as deployment, audit/security, NAV/valuation, and default Requirement Brief guidance.
 - It runs entirely in the browser bundle today.
 
-Future Track 3C should replace or wrap the `engineerAnswer` path with backend response state. Keep the old deterministic helper as a fallback only if useful for local/offline development; do not remove it as part of the first integration unless tests prove parity.
+Track 3C replaced the early deterministic-only path with backend response state. Keep this note only as historical context for why the chat client exists.
 
 ## Backend Route To Call
 
@@ -72,7 +72,7 @@ Source contract: `server/contracts/chat.ts`.
 
 ## Frontend API Client Plan
 
-Add a small client later:
+Implemented client shape:
 
 ```text
 src/api/client.ts
@@ -111,9 +111,9 @@ VITE_MILA26_API_BASE_URL=http://127.0.0.1:5174
 
 Vite proxy can be reconsidered if multiple frontend routes need backend access and local development becomes noisy.
 
-## UI State Plan
+## Historical UI State Plan
 
-Track 3C implementation should keep state local in `App.tsx` or a small chat feature module:
+The Track 3C implementation kept state local in `App.tsx` or a small chat feature module:
 
 - `isBotReplyLoading`.
 - `botChatError`.
@@ -122,17 +122,17 @@ Track 3C implementation should keep state local in `App.tsx` or a small chat fea
 
 Add a client-side blank input guard before calling the backend. Keep the existing textarea and response area initially.
 
-Do not introduce React Context, Zustand, Redux, XState, or a global store for this step.
+For the current lifecycle workspace, introduce shared lifecycle state deliberately when it removes duplication across tabs. Do not create separate per-tab state silos.
 
 ## Response Rendering
 
-For Track 3C:
+For the historical Track 3C:
 
 - Display `response.content` as the assistant answer.
 - Keep rendering as plain text.
 - Defer rich rendering of `suggestedRequirementUpdates`, `openQuestions`, `protocolComparison`, and `riskNotes` unless it is trivial and tested.
 - Do not implement requirement cards yet.
-- Do not implement the new dark dashboard shell yet.
+- Do not implement the dark dashboard shell yet.
 
 Structured response fields should be saved in local state only if the current UI needs them.
 
@@ -152,7 +152,7 @@ Display safe messages only:
 - No backend internals.
 - No secrets.
 
-## Testing Plan For Track 3C
+## Historical Testing Plan For Track 3C
 
 Recommended tests:
 
@@ -169,14 +169,14 @@ Avoid brittle long-copy assertions. Prefer structural checks such as:
 - ERC query shows `ERC-20` and `ERC-721`.
 - validation/network errors show a safe message.
 
-## What Track 3C Must Not Do
+## Historical Track 3C Non-Goals
 
 - No real LLM.
 - No persistence or memory.
 - No streaming.
 - No PRD generation.
 - No orchestration.
-- No wallet/blockchain tooling.
-- No full UI redesign.
+- No wallet/blockchain tooling in that track.
+- No full UI redesign in that track.
 - No global state library.
 - No requirement cards or drawer implementation.

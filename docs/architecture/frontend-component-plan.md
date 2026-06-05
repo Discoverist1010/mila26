@@ -1,108 +1,123 @@
 # Frontend Component Plan
 
-This is a practical roadmap for future UI implementation. It does not require immediate refactoring.
+This is the practical roadmap for evolving the current `App.tsx` lifecycle workspace into smaller components. Do not split files just for neatness; split when a component boundary supports upcoming tab functionality or testing.
 
-Approved near-term UX direction reference: `docs/assets/ux/mila26_dashboard_v2.png`.
+## 1. Shell Components
 
-Use the mockup as the canonical direction for component hierarchy and visual tone. It is not a pixel-perfect implementation mandate.
+Future components:
 
-## 1. App Shell Components
+- `LifecycleWorkspaceShell`
+- `LeftNavigationRail`
+- `ProjectTopBar`
+- `LifecycleTabs`
+- `RightStatusRail`
+- `RailToggle`
 
-Components:
+Purpose: preserve the current MILA26 shell while making the visual tabs and rails easier to test.
 
-- `AppShell`.
-- `Sidebar`.
-- `TopProjectBar`.
-- `RightProjectPanel`.
-- `CollapseRail`.
+Current source: `src/App.tsx`, `src/styles.css`, `src/domain/workspacePresentation.ts`.
 
-Purpose: establish the enhanced ChatGPT-style workspace with project folders, current project context, visible status, and collapsible side panels.
+## 2. Engineering Bot Components
 
-Likely data needed: current project name, route/view state, protocol, network, wallet status, active services/cart status, panel collapsed state.
+Future components:
 
-Backend/API dependency: project summary later; none required for initial static shell.
+- `EngineeringBotWorkspace`
+- `ConversationHistory`
+- `EngineerResponseView`
+- `NextBestActionPanel`
+- `SuggestedActionRow`
+- `ChatComposer`
 
-Implementation timing: UX Track C.
+Purpose: keep the AI answer readable and central.
 
-What not to overbuild: no full router/sidebar permission model before project state exists.
+Do not add streaming, persistence, markdown rendering, or multi-agent panes until needed.
 
-## 2. Chat Components
+## 3. Lifecycle Tab Components
 
-Components:
+Future components:
 
-- `ChatWorkspace`.
-- `ChatMessageList`.
-- `ChatInput`.
-- `ChatErrorBanner`.
-- `ChatLoadingState`.
+- `OverviewTab`
+- `RequirementsTab`
+- `InvestorRegistryTab`
+- `SubscriptionTab`
+- `SmartContractTab`
+- `AssetServicingTab`
+- `RedemptionTab`
+- `MaturityTab`
+- `EvidenceTab`
 
-Purpose: connect the user to the Blockchain Engineering Bot and render safe conversation turns.
+Purpose: make each visual tab functional while reading from shared lifecycle state.
 
-Likely data needed: chat messages, pending state, validation errors, current project/run IDs, request focus, nearby requirement/action-card summaries.
+First implementation target: `InvestorRegistryTab`.
 
-Backend/API dependency: `POST /api/chat/blockchain-engineer`; `ChatMessage`, `BlockchainEngineerChatRequest`, `BlockchainEngineerChatResponse`.
+## 4. Investor Registry Components
 
-Implementation timing: UX Track B / Track 3C frontend integration.
+Future components:
 
-What not to overbuild: no streaming, persistence, markdown renderer, or multi-agent chat UI until needed.
+- `InvestorRegistryTable`
+- `InvestorWalletRow`
+- `InvestorWalletEditor`
+- `WalletAddressValidationMessage`
+- `WhitelistStatusBadge`
 
-## 3. Requirement Components
+Purpose: support up to 50 wallet addresses and bridge registry state to the existing Whitelist Wallet SCP operation.
 
-Components:
+Do not claim KYC, investor eligibility, or legal approval.
 
-- `RequirementCards`.
-- `RequirementCard`.
-- `RequirementDrawer`.
-- `ProtocolChoicePanel`.
-- `WhitelistPanel`.
-- `AllocationRulePanel`.
-- `ValuationUpdatePanel`.
+## 5. Subscription / Redemption Components
 
-Purpose: turn chat outputs into structured, reviewable requirements and focused editing flows.
+Future components:
 
-Likely data needed: suggested requirement updates, selected protocol, whitelist count, allocation rule, valuation update requirement, confidence/rationale.
+- `SubscriptionParametersForm`
+- `StablecoinSelector`
+- `SubscriptionWindowFields`
+- `PaymentPerTokenField`
+- `RedemptionParametersForm`
+- `RedemptionDelayFields`
+- `RedemptionWalletField`
 
-Backend/API dependency: chat suggested updates now; PRD/requirement update routes later.
+Purpose: capture parameters for a predefined subscription-redemption smart-contract template.
 
-Implementation timing: UX Track D.
+Do not execute stablecoin transfers or redemption payouts yet.
 
-What not to overbuild: no generic form-builder or rules engine.
+## 6. Product Vault / Evidence Components
 
-## 4. Project Status Components
+Future components:
 
-Components:
+- `ProductVault`
+- `ProductVaultItem`
+- `RecentActivityList`
+- `EvidenceSummary`
+- `LocalSessionEvidenceBadge`
 
-- `ProjectStatusTimeline`.
-- `AgentProgressPanel`.
-- `DeploymentGateCard`.
-- `NextActionCard`.
+Purpose: show generated artifacts and evidence without turning the right rail into an action surface.
 
-Purpose: show workflow position, active gates, worker progress, and the next recommended action.
+## 7. Smart Contract Control Panel Components
 
-Likely data needed: PRD approval state, task statuses, security/QA status, deployment readiness, evidence readiness.
+Future components:
 
-Backend/API dependency: later orchestration, security, deployment, and evidence routes.
+- `SmartContractControlPanel`
+- `ContractOverview`
+- `DeploymentEvidenceSection`
+- `WalletSigningReadinessSection`
+- `ScpOperationControls`
+- `RecordNavOperationControl`
+- `WhitelistWalletOperationControl`
 
-Implementation timing: UX Track E.
+Purpose: isolate wallet-signed operation controls and evidence views.
 
-What not to overbuild: no queue monitor or production observability UI before backend runs exist.
+Do not move wallet-signed operations into the right rail or tab headers.
 
-## 5. Future Components
+## 8. State/Model Roadmap
 
-Components:
+Add domain/read-model support in this order:
 
-- `WalletStatusBadge`.
-- `ServicesCartIcon`.
-- `EvidencePackPanel`.
-- `ValuationUploadPanel`.
-- `InvestorAllocationTable`.
+1. investor registry;
+2. subscription parameters;
+3. redemption parameters;
+4. maturity parameters;
+5. template parameter handoff into smart-contract spec;
+6. allocation/mint operation state;
+7. durable evidence persistence.
 
-Purpose: support wallet-signed testnet flows, future services, evidence export, valuation upload, and investor allocation.
-
-Likely data needed: wallet connection state, service selections, evidence pack, valuation summary, investor wallet records, allocation percentages.
-
-Backend/API dependency: wallet/testnet integration, evidence, valuation, and allocation routes later.
-
-Implementation timing: UX Track F and UX Track G.
-
-What not to overbuild: no payment logic, custody, mainnet controls, investor portal, or production audit workflow yet.
+Avoid Redux/XState for now. Use local React state plus pure domain/read-model functions until complexity justifies a shared store.

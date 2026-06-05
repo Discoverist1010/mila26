@@ -236,7 +236,7 @@ Expected deliverables:
 
 What not to overbuild:
 
-- No allocation/mint until Track 15C.
+- No allocation/mint until investor registry and subscription parameters are coherent.
 - No generic operation registry or command bus.
 - No backend operation route.
 - No persistence or durable operation history.
@@ -244,10 +244,14 @@ What not to overbuild:
 
 ## Later Tracks
 
-After 15B:
+After the lifecycle workspace update:
 
-- Track 15C: Allocation/Mint Operation, if Track 15B remains clean.
-- Short hardening-only track first if operation-foundation fragility appears.
+- Shared lifecycle state for Investor Registry, Subscription, Redemption, and Maturity.
+- Investor Registry tab functionality for up to 50 wallet addresses.
+- Subscription parameter capture.
+- Redemption parameter capture.
+- Subscription-redemption template handoff.
+- Allocation/Mint Operation only after registry/subscription state is coherent.
 - Distribution operation tracks.
 - Valuation file ingest and validation.
 - Evidence Pack expansion.

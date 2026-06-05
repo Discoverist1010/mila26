@@ -47,11 +47,15 @@ Stores:
 
 - Asset manager project profile.
 - Chosen ERC protocol.
-- Up to 20 investor wallet addresses.
+- Up to 50 whitelisted investor wallet addresses.
 - Off-chain real-world investor names.
-- Allocation percentages.
+- Investor wallet status and subscription eligibility.
+- Subscription parameters such as permitted stablecoins, subscription window, minimum amount, payment wallet or contract address, and payment per token.
+- Redemption parameters such as redemption window, redemption wallet, payment-per-token amount, allowed payout stablecoin, and configured delay before stablecoin payout.
+- Allocation/mint state once registry and subscription parameters are coherent.
 - Testnet contract address after deployment.
 - Valuation upload summaries.
+- Asset servicing updates such as NAV events, information notices, corporate actions, and maturity events.
 
 Supports:
 
@@ -90,7 +94,9 @@ When persistence is introduced, SQLite should store:
 - Generated artifacts and evidence packs.
 - Security/QA findings.
 - Project wallet list and off-chain investor names.
-- Allocation state.
+- Investor registry state.
+- Subscription and redemption parameter versions.
+- Allocation state after allocation/mint is implemented.
 - Valuation upload metadata and summaries.
 - Testnet deployment transaction hashes/statuses.
 
