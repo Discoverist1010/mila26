@@ -71,6 +71,7 @@ After that, build subscription parameters, redemption parameters, template hando
 
 ## Files To Read Next
 
+- `AGENTS.md`
 - `docs/handover/00-mila26-current-checkpoint.md`
 - `docs/handover/03-mila26-track-status.md`
 - `docs/handover/04-mila26-next-prompts.md`

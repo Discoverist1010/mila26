@@ -96,6 +96,7 @@ npm run test:e2e
 
 ## Architecture and Rewrite Guidance
 
+- Agent operating rules: [`AGENTS.md`](AGENTS.md)
 - MVP user journey: [`docs/product/mvp-user-journey.md`](docs/product/mvp-user-journey.md)
 - MVP scope: [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)
 - UI/UX vision: [`docs/product/ui-ux-vision.md`](docs/product/ui-ux-vision.md)

@@ -17,6 +17,8 @@ The next implementation step should follow the new tab-aligned roadmap, not the 
 5. Allocation/Mint only after registry/subscription parameters are coherent;
 6. Evidence persistence and maturity closeout later.
 
+For coding execution, read root `AGENTS.md` first. It defines the Lead Implementer role, active debugging loop, quality refactor triggers, dynamic skill/MCP acquisition policy, and review gates.
+
 ## Current Product Direction
 
 - Build a professional AI tokenisation workspace, not a crypto trading dashboard.
