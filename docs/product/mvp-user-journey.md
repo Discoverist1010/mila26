@@ -179,7 +179,7 @@ Current output:
 
 The UI intentionally shows these as parameters needed or locked for later:
 
-- investor registry import/export and durable registry persistence;
+- Sepolia funding helper and durable investor registry persistence;
 - subscription-redemption smart-contract template implementation beyond local-session handoff;
 - live stablecoin subscription execution;
 - live redemption wallet receipt and payout workflow;

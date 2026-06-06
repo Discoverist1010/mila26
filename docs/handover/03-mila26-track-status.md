@@ -37,12 +37,14 @@ This file is the current handover index. Older planning docs may still describe 
 | Sprint Track 1 | Complete | Added typed shared lifecycle state for investor registry, subscription, redemption, and maturity placeholders; implemented the Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, status rows, lifecycle snapshot/vault wiring, and SCP whitelist handoff. | `src/domain/lifecycleState.ts`, `src/domain/workspacePresentation.ts`, `src/App.tsx`, `src/styles.css`, `tests/lifecycle-state.test.ts`, `tests/app-chat-panel.test.tsx` | Follow-on sprint implemented Subscription/Redemption parameter capture and template handoff readiness. |
 | Sprint Track 2 | Complete | Implemented Subscription and Redemption parameter capture as working local-session prototype functionality, including validation, Product Vault/lifecycle snapshot/status updates, Engineering Bot next actions, and subscription-redemption template handoff readiness/draft status. | `src/domain/lifecycleState.ts`, `src/domain/workspacePresentation.ts`, `src/App.tsx`, `src/styles.css`, `tests/lifecycle-state.test.ts`, `tests/app-chat-panel.test.tsx` | Follow-on sprint added Allocation/Mint readiness, not execution. |
 | Sprint Track 3 | Complete | Implemented Allocation/Mint readiness as shared lifecycle state. Investor Registry can hand off a wallet to the Smart Contract tab; the Smart Contract tab validates target wallet, token amount, and Subscription readiness; right rail/vault/snapshot update from the same read model while live Mint remains locked. | `src/domain/lifecycleState.ts`, `src/domain/workspacePresentation.ts`, `src/App.tsx`, `src/styles.css`, `tests/lifecycle-state.test.ts`, `tests/app-chat-panel.test.tsx`, `tests/e2e/mila26.spec.ts` | Next: browser screenshot polish and a wallet-signed Allocation/Mint operation contract before execution. |
+| Sprint Track 4 | Complete | Added Test Wallet Lab as a working prototype feature. MILA26 can generate up to 50 labelled test investor wallets, populate the Investor Registry with public addresses, keep private keys out of normal lifecycle read models, prepare an explicit test-only export, and use generated investors as Allocation/Mint readiness targets. | `src/domain/testWalletLab.ts`, `src/domain/lifecycleState.ts`, `src/App.tsx`, `src/styles.css`, `tests/test-wallet-lab.test.ts`, `tests/app-chat-panel.test.tsx`, `tests/e2e/mila26.spec.ts` | Next: Sepolia funding helper design/implementation and wallet-signed Allocation/Mint operation contract. |
 
 ## Current Validation Baseline
 
-Recent validation after Sprint Track 3:
+Recent validation after Sprint Track 4:
 
 - `npm run test -- tests/lifecycle-state.test.ts tests/app-chat-panel.test.tsx`
+- `npm run test -- tests/test-wallet-lab.test.ts tests/lifecycle-state.test.ts tests/app-chat-panel.test.tsx`
 - `npm run test:e2e`
 - `npm run check`
 - `npm run test -- tests/deployment-evidence-read-model.test.ts`

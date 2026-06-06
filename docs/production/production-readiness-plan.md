@@ -61,7 +61,7 @@ Already implemented or documented:
 - local-session deployment evidence;
 - wallet-signed Record NAV Event operation;
 - wallet-signed Whitelist Wallet operation;
-- Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, and SCP handoff;
+- Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, generated test investor wallet packs, local-session whitelist status, SCP handoff, and Allocation/Mint handoff;
 - Subscription tab parameter capture with permitted stablecoins, subscription window, minimum subscription amount, payment address, and payment per token;
 - Redemption tab parameter capture with redemption window/date, payout stablecoin, payout per token, redemption wallet, and delay unit/duration;
 - shared lifecycle validation and subscription-redemption template handoff status across the Engineering Bot, Product Vault, lifecycle snapshot, and tabs;
@@ -69,8 +69,8 @@ Already implemented or documented:
 
 Immediate implementation gap:
 
-- E2E hardening for the full investor registry to subscription-redemption template handoff path.
-- Allocation/Mint operation after parameter coherence.
+- Sepolia funding helper for generated demo wallets.
+- Wallet-signed Allocation/Mint operation after parameter coherence.
 - Durable persistence/evidence storage.
 - Website/login path.
 - Production readiness controls.

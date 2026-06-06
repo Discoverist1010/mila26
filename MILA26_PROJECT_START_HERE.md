@@ -27,8 +27,9 @@ The target product flow is:
 - Deployment evidence/readiness derived from wallet-signed deployment status.
 - First wallet-signed SCP operation: Record NAV Event.
 - Second wallet-signed SCP operation: Whitelist Wallet.
-- Shared lifecycle state for investor registry, subscription, redemption, and maturity placeholders.
-- Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, and SCP whitelist target handoff.
+- Shared lifecycle state for investor registry, subscription, redemption, allocation/mint readiness, and maturity placeholders.
+- Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, SCP whitelist target handoff, and Allocation/Mint handoff.
+- Test Wallet Lab prototype for generating up to 50 labelled test investor wallets, populating the Investor Registry, and explicitly preparing a test-only private-key export for selected MetaMask demo actors.
 - Subscription tab for permitted stablecoins, subscription window, minimum subscription, payment wallet/contract address, and payment per token with shared lifecycle validation.
 - Redemption tab for redemption window/date, redemption wallet, payout stablecoin, payout per token, and delay unit/duration with shared lifecycle validation.
 - Subscription-redemption template handoff surface that derives draft/ready status from current subscription and redemption parameters.

@@ -436,3 +436,47 @@ test('allocation mint readiness uses shared investor registry and subscription s
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Smart Contract/ }).click();
   await expect(allocationMint.getByText('Complete Subscription parameters before Allocation / Mint.')).toBeVisible();
 });
+
+test('test wallet lab generates investor wallets for allocation mint prototype demos', async ({ page }) => {
+  const paymentWallet = '0x4444444444444444444444444444444444444444';
+
+  await page.goto('/');
+
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Investor Registry/ }).click();
+  const registry = page.getByLabel('Investor Registry workspace');
+  const walletLab = registry.getByLabel('Test Wallet Lab');
+
+  await expect(walletLab.getByText(/separate test-only MetaMask profile/i)).toBeVisible();
+  await expect(walletLab.getByText(/Private keys hidden until explicit export/i)).toBeVisible();
+  await expect(page.getByText(/privateKey/i)).toHaveCount(0);
+
+  await walletLab.getByRole('button', { name: 'Generate test wallet pack' }).click();
+
+  await expect(registry.getByText('50/50')).toBeVisible();
+  await expect(walletLab.getByText('50 generated test investor wallet(s) added to Investor Registry.')).toBeVisible();
+  await expect(
+    registry.getByRole('table', { name: 'Investor wallet entries' }).getByText('Investor 01', { exact: true }),
+  ).toBeVisible();
+  await expect(registry.getByText('Generated test wallet').first()).toBeVisible();
+  await expect(page.getByText(/privateKey/i)).toHaveCount(0);
+
+  await walletLab.getByRole('button', { name: 'Prepare test-only export' }).click();
+  await expect(page.getByLabel('Test-only wallet export')).toHaveValue(/privateKey/);
+
+  await registry.getByRole('button', { name: 'Use for Allocation / Mint' }).first().click();
+  const allocationMint = page.getByLabel('Allocation Mint workspace');
+  await expect(allocationMint.getByLabel('Allocation target wallet')).toHaveValue(/^0x[a-fA-F0-9]{40}$/);
+
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
+  const subscription = page.getByLabel('Subscription workspace');
+  await subscription.getByLabel('Permitted stablecoins').fill('usdc');
+  await subscription.getByLabel('Subscription window').fill('Monthly: first five business days');
+  await subscription.getByLabel('Minimum subscription amount').fill('25000');
+  await subscription.getByLabel('Payment wallet / contract address').fill(paymentWallet);
+  await subscription.getByLabel('Payment per token').fill('1.025');
+
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Smart Contract/ }).click();
+  await allocationMint.getByLabel('Token allocation amount').fill('1000');
+  await expect(allocationMint.getByText('Allocation / Mint parameters are ready for review.')).toBeVisible();
+  await expect(page.getByTestId('smart-contract-control').getByRole('button', { name: 'Mint' })).toBeDisabled();
+});

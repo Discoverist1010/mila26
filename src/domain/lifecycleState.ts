@@ -3,11 +3,14 @@ import { isValidNonZeroEvmAddress } from './recordNavOperationReadModel';
 export const MAX_INVESTOR_REGISTRY_ENTRIES = 50;
 
 export type InvestorRegistryEntryStatus = 'draft' | 'ready_to_whitelist' | 'whitelisted_local_session_only';
+export type InvestorRegistryEntrySource = 'manual' | 'generated_test_wallet';
 
 export type InvestorRegistryEntry = {
   id: string;
+  label?: string;
   walletAddress: string;
   status: InvestorRegistryEntryStatus;
+  source?: InvestorRegistryEntrySource;
 };
 
 export type SubscriptionParameters = {
@@ -47,6 +50,9 @@ export type Mila26LifecycleState = {
 
 export type InvestorRegistryReadModelEntry = InvestorRegistryEntry & {
   normalizedWalletAddress?: string;
+  displayLabel: string;
+  sourceLabel: string;
+  activityStatusLabel: string;
   statusLabel: string;
   validationStatus: 'valid' | 'invalid' | 'duplicate';
   validationMessages: string[];
@@ -151,7 +157,9 @@ export function normalizeInvestorWalletAddress(walletAddress: string): string {
 
 export function createInvestorRegistryEntry(input: {
   id: string;
+  label?: string;
   walletAddress: string;
+  source?: InvestorRegistryEntrySource;
   existingEntries?: InvestorRegistryEntry[];
 }): InvestorRegistryEntry {
   const walletAddress = normalizeInvestorWalletAddress(input.walletAddress);
@@ -159,8 +167,10 @@ export function createInvestorRegistryEntry(input: {
 
   return {
     id: input.id,
+    label: input.label?.trim() || undefined,
     walletAddress,
     status: isValidNonZeroEvmAddress(walletAddress) && !isDuplicate ? 'ready_to_whitelist' : 'draft',
+    source: input.source ?? 'manual',
   };
 }
 
@@ -493,6 +503,9 @@ function toInvestorRegistryReadModel(entries: InvestorRegistryEntry[]): Investor
     return {
       ...entry,
       normalizedWalletAddress: normalizedWalletAddress || undefined,
+      displayLabel: entry.label?.trim() || 'Manual investor',
+      sourceLabel: investorRegistrySourceLabel(entry.source),
+      activityStatusLabel: investorActivityStatusLabel(entry.status),
       statusLabel: investorRegistryEntryStatusLabel(entry.status, validationStatus),
       validationStatus,
       validationMessages,
@@ -562,6 +575,17 @@ function investorRegistryEntryStatusLabel(
   if (status === 'ready_to_whitelist') return 'Ready to whitelist';
   if (status === 'whitelisted_local_session_only') return 'Whitelisted locally';
   return 'Draft';
+}
+
+function investorRegistrySourceLabel(source: InvestorRegistryEntrySource | undefined): string {
+  if (source === 'generated_test_wallet') return 'Generated test wallet';
+  return 'Manual entry';
+}
+
+function investorActivityStatusLabel(status: InvestorRegistryEntryStatus): string {
+  if (status === 'whitelisted_local_session_only') return 'Whitelist done; subscription, redemption, notices planned';
+  if (status === 'ready_to_whitelist') return 'Ready for whitelist; subscription, redemption, notices planned';
+  return 'Resolve wallet before activity';
 }
 
 function investorRegistryStatusLabel(status: InvestorRegistryReadModel['status']): string {

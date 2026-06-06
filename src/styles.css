@@ -1636,6 +1636,85 @@ summary {
   padding-left: 20px;
 }
 
+.test-wallet-lab {
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #f8fbff;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.test-wallet-lab-copy {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.test-wallet-lab h4 {
+  color: #0f172a;
+  font-size: 16px;
+  margin: 0 0 4px;
+}
+
+.test-wallet-lab p {
+  color: #475569;
+  margin: 0;
+}
+
+.test-wallet-controls {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(120px, 0.45fr) minmax(180px, 0.8fr) minmax(180px, 0.8fr);
+}
+
+.test-wallet-guidance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.test-wallet-guidance span {
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+.test-wallet-message,
+.test-wallet-preview {
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.test-wallet-preview {
+  display: grid;
+  gap: 4px;
+}
+
+.test-wallet-preview p {
+  overflow-wrap: anywhere;
+}
+
+.test-wallet-export {
+  display: grid;
+  gap: 6px;
+}
+
+.test-wallet-export textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  min-height: 150px;
+}
+
 .allocation-context {
   display: grid;
   gap: 12px;
@@ -1744,7 +1823,7 @@ summary {
   border-top: 1px solid #e2e8f0;
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(230px, 1.2fr) minmax(130px, 0.65fr) minmax(220px, 1fr) minmax(210px, 0.8fr);
+  grid-template-columns: minmax(140px, 0.75fr) minmax(220px, 1.1fr) minmax(130px, 0.6fr) minmax(220px, 1fr) minmax(210px, 0.8fr);
   padding: 10px 12px;
 }
 
@@ -1760,6 +1839,13 @@ summary {
   color: #334155;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.registry-row small {
+  color: #64748b;
+  display: block;
+  font-size: 12px;
+  margin-top: 3px;
 }
 
 .registry-row .workflow-button {
@@ -1975,8 +2061,12 @@ summary {
     grid-template-columns: 1fr;
   }
 
+  .test-wallet-controls {
+    grid-template-columns: 1fr;
+  }
+
   .registry-row {
-    grid-template-columns: minmax(220px, 1fr) minmax(130px, 0.55fr) minmax(180px, 0.9fr) minmax(180px, 0.65fr);
+    grid-template-columns: minmax(130px, 0.7fr) minmax(200px, 1fr) minmax(130px, 0.55fr) minmax(180px, 0.9fr) minmax(180px, 0.65fr);
   }
 }
 

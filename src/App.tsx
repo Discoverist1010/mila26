@@ -53,6 +53,13 @@ import {
   type ProductCapabilityStatus,
   type WorkspaceTabId,
 } from './domain/workspacePresentation';
+import {
+  createTestInvestorWalletPack,
+  createTestInvestorWalletPackExport,
+  toInvestorRegistryEntriesFromTestWalletPack,
+  toTestInvestorWalletPublicRecords,
+  type TestInvestorWalletPack,
+} from './domain/testWalletLab';
 import { mila26RestrictedFundTokenDeploymentArtifact } from './contracts/mila26RestrictedFundTokenDeploymentArtifact';
 import {
   createMila26DeploymentConstructorParameters,
@@ -418,6 +425,10 @@ export function App() {
   const [walletWhitelistTargetWallet, setWalletWhitelistTargetWallet] = useState('');
   const [lifecycleState, setLifecycleState] = useState<Mila26LifecycleState>(() => createInitialMila26LifecycleState());
   const [investorRegistryDraftWallet, setInvestorRegistryDraftWallet] = useState('');
+  const [testWalletCountInput, setTestWalletCountInput] = useState('50');
+  const [testInvestorWalletPack, setTestInvestorWalletPack] = useState<TestInvestorWalletPack | undefined>();
+  const [testWalletLabMessage, setTestWalletLabMessage] = useState<string | undefined>();
+  const [testWalletExportContent, setTestWalletExportContent] = useState<string | undefined>();
   const [permittedStablecoinsInput, setPermittedStablecoinsInput] = useState('');
   const [investorRegistryError, setInvestorRegistryError] = useState<string | undefined>();
   const [smartContractGenerationStatus, setSmartContractGenerationStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -615,6 +626,10 @@ export function App() {
     ],
   );
   const lifecycleReadModel = useMemo(() => toMila26LifecycleReadModel(lifecycleState), [lifecycleState]);
+  const testInvestorWalletPublicRecords = useMemo(
+    () => (testInvestorWalletPack ? toTestInvestorWalletPublicRecords(testInvestorWalletPack) : []),
+    [testInvestorWalletPack],
+  );
 
   useEffect(() => {
     if (walletWhitelistOperationState.operationStatus !== 'confirmed') return;
@@ -1081,6 +1096,49 @@ export function App() {
     }));
     setInvestorRegistryDraftWallet('');
     setInvestorRegistryError(undefined);
+  }
+
+  function generateTestInvestorWalletPackForRegistry() {
+    const pack = createTestInvestorWalletPack({
+      requestedCount: Number(testWalletCountInput),
+      existingEntries: lifecycleState.investorRegistryEntries,
+    });
+    const entries = toInvestorRegistryEntriesFromTestWalletPack({
+      pack,
+      existingEntries: lifecycleState.investorRegistryEntries,
+      startingSequence: investorRegistrySequenceRef.current + 1,
+    });
+
+    if (entries.length === 0) {
+      setTestInvestorWalletPack(pack);
+      setTestWalletExportContent(undefined);
+      setTestWalletLabMessage(pack.warnings[0] ?? 'No new test investor wallets were generated.');
+      return;
+    }
+
+    investorRegistrySequenceRef.current += entries.length;
+    setLifecycleState((current) => ({
+      ...current,
+      investorRegistryEntries: [...current.investorRegistryEntries, ...entries],
+    }));
+    setTestInvestorWalletPack(pack);
+    setTestWalletExportContent(undefined);
+    setInvestorRegistryError(undefined);
+    setTestWalletLabMessage(
+      pack.warnings.length > 0
+        ? `${entries.length} generated test investor wallet(s) added. ${pack.warnings.join(' ')}`
+        : `${entries.length} generated test investor wallet(s) added to Investor Registry.`,
+    );
+  }
+
+  function prepareTestWalletExport() {
+    if (!testInvestorWalletPack) {
+      setTestWalletLabMessage('Generate a test investor wallet pack before preparing the export file.');
+      return;
+    }
+
+    setTestWalletExportContent(createTestInvestorWalletPackExport(testInvestorWalletPack));
+    setTestWalletLabMessage('Test-only export prepared. Import selected demo actor wallets into a separate MetaMask profile.');
   }
 
   function updateSubscriptionParameters(nextParameters: Partial<Mila26LifecycleState['subscriptionParameters']>) {
@@ -1597,6 +1655,75 @@ export function App() {
                   </article>
                 </div>
 
+                <section className="test-wallet-lab" aria-label="Test Wallet Lab">
+                  <div className="test-wallet-lab-copy">
+                    <div>
+                      <h4>Test Wallet Lab</h4>
+                      <p>
+                        Generate test-only investor wallets for prototype demos. Use a separate MetaMask profile and import only
+                        selected demo actor wallets; MILA26 remains the console for all 50 investors.
+                      </p>
+                    </div>
+                    <span className="gate-badge draft">Testnet only</span>
+                  </div>
+
+                  <div className="test-wallet-controls">
+                    <label htmlFor="test-wallet-count">
+                      Test investors
+                      <input
+                        id="test-wallet-count"
+                        value={testWalletCountInput}
+                        onChange={(event) => setTestWalletCountInput(event.target.value)}
+                        inputMode="numeric"
+                        placeholder="50"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="workflow-button primary-action"
+                      onClick={generateTestInvestorWalletPackForRegistry}
+                      disabled={!lifecycleReadModel.investorRegistry.canAddEntry}
+                    >
+                      Generate test wallet pack
+                    </button>
+                    <button
+                      type="button"
+                      className="workflow-button"
+                      onClick={prepareTestWalletExport}
+                      disabled={!testInvestorWalletPack}
+                    >
+                      Prepare test-only export
+                    </button>
+                  </div>
+
+                  <div className="test-wallet-guidance">
+                    <span>Separate test-only MetaMask profile</span>
+                    <span>Import 3-5 demo actors, not all 50 by default</span>
+                    <span>Private keys hidden until explicit export</span>
+                  </div>
+
+                  {testWalletLabMessage && <p className="test-wallet-message">{testWalletLabMessage}</p>}
+
+                  {testInvestorWalletPublicRecords.length > 0 && (
+                    <div className="test-wallet-preview" aria-label="Generated test wallet public preview">
+                      <strong>{testInvestorWalletPublicRecords.length} generated test wallet(s)</strong>
+                      <p>
+                        {testInvestorWalletPublicRecords
+                          .slice(0, 3)
+                          .map((wallet) => `${wallet.label}: ${wallet.walletAddress}`)
+                          .join(' | ')}
+                      </p>
+                    </div>
+                  )}
+
+                  {testWalletExportContent && (
+                    <label className="test-wallet-export" htmlFor="test-wallet-export">
+                      Test-only wallet export
+                      <textarea id="test-wallet-export" readOnly value={testWalletExportContent} rows={6} />
+                    </label>
+                  )}
+                </section>
+
                 <div className="registry-form">
                   <label htmlFor="investor-registry-wallet">
                     Investor wallet address
@@ -1634,9 +1761,10 @@ export function App() {
 
                 <div className="registry-table" role="table" aria-label="Investor wallet entries">
                   <div className="registry-row registry-header" role="row">
+                    <span role="columnheader">Investor</span>
                     <span role="columnheader">Wallet</span>
                     <span role="columnheader">Registry status</span>
-                    <span role="columnheader">Validation</span>
+                    <span role="columnheader">Activity console</span>
                     <span role="columnheader">Handoffs</span>
                   </div>
                   {lifecycleReadModel.investorRegistry.entries.length === 0 ? (
@@ -1644,10 +1772,21 @@ export function App() {
                   ) : (
                     lifecycleReadModel.investorRegistry.entries.map((entry) => (
                       <div className="registry-row" role="row" key={entry.id}>
+                        <span role="cell">
+                          <strong>{entry.displayLabel}</strong>
+                          <small>{entry.sourceLabel}</small>
+                        </span>
                         <span role="cell">{entry.walletAddress || 'Wallet address missing'}</span>
                         <span role="cell">{entry.statusLabel}</span>
                         <span role="cell">
-                          {entry.validationMessages.length > 0 ? entry.validationMessages.join(' ') : 'Valid wallet address'}
+                          {entry.validationMessages.length > 0 ? (
+                            entry.validationMessages.join(' ')
+                          ) : (
+                            <>
+                              Valid wallet address
+                              <small>{entry.activityStatusLabel}</small>
+                            </>
+                          )}
                         </span>
                         <span role="cell" className="registry-actions">
                           <button

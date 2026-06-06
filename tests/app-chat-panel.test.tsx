@@ -435,6 +435,53 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Investor Registry blocking items')).toHaveTextContent('Resolve invalid wallet addresses.');
   });
 
+  it('generates a test investor wallet pack and uses generated wallets for Allocation / Mint readiness', () => {
+    const paymentWallet = '0x4444444444444444444444444444444444444444';
+    render(<App />);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+    const registry = screen.getByLabelText('Investor Registry workspace');
+    const walletLab = within(registry).getByLabelText('Test Wallet Lab');
+
+    expect(within(walletLab).getByText(/separate test-only MetaMask profile/i)).toBeVisible();
+    expect(within(walletLab).getByText(/Private keys hidden until explicit export/i)).toBeVisible();
+    expect(screen.queryByText(/privateKey/i)).not.toBeInTheDocument();
+
+    fireEvent.click(within(walletLab).getByRole('button', { name: 'Generate test wallet pack' }));
+
+    expect(within(registry).getByText('50/50')).toBeVisible();
+    expect(within(walletLab).getByText('50 generated test investor wallet(s) added to Investor Registry.')).toBeVisible();
+    expect(within(registry).getByText('Investor 01')).toBeVisible();
+    expect(within(registry).getAllByText('Generated test wallet').length).toBeGreaterThan(0);
+    expect(within(registry).getAllByText(/Ready for whitelist; subscription, redemption, notices planned/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/privateKey/i)).not.toBeInTheDocument();
+
+    fireEvent.click(within(walletLab).getByRole('button', { name: 'Prepare test-only export' }));
+    expect((screen.getByLabelText('Test-only wallet export') as HTMLTextAreaElement).value).toContain('privateKey');
+
+    const generatedWallet = within(registry).getAllByRole('button', { name: 'Use for Allocation / Mint' })[0];
+    fireEvent.click(generatedWallet);
+    const allocationMintPanel = screen.getByLabelText('Allocation Mint workspace');
+    const allocationTarget = within(allocationMintPanel).getByLabelText('Allocation target wallet') as HTMLSelectElement;
+    expect(allocationTarget.value).toMatch(/^0x[a-fA-F0-9]{40}$/);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
+    const subscription = screen.getByLabelText('Subscription workspace');
+    fireEvent.change(within(subscription).getByLabelText('Permitted stablecoins'), { target: { value: 'usdc' } });
+    fireEvent.change(within(subscription).getByLabelText('Subscription window'), { target: { value: 'Monthly: first five business days' } });
+    fireEvent.change(within(subscription).getByLabelText('Minimum subscription amount'), { target: { value: '25000' } });
+    fireEvent.change(within(subscription).getByLabelText('Payment wallet / contract address'), { target: { value: paymentWallet } });
+    fireEvent.change(within(subscription).getByLabelText('Payment per token'), { target: { value: '1.025' } });
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Smart Contract/ }));
+    fireEvent.change(within(screen.getByLabelText('Allocation Mint workspace')).getByLabelText('Token allocation amount'), {
+      target: { value: '1000' },
+    });
+
+    expect(screen.getByLabelText('Allocation Mint workspace')).toHaveTextContent('Allocation / Mint parameters are ready for review.');
+    expect(within(screen.getByTestId('smart-contract-control')).queryByRole('button', { name: /Mint/i })).toBeDisabled();
+  });
+
   it('captures subscription and redemption parameters as working shared lifecycle state', () => {
     const investorWallet = '0x3333333333333333333333333333333333333333';
     const paymentWallet = '0x4444444444444444444444444444444444444444';

@@ -22,10 +22,10 @@ Prototype screens must be functional where shown as implemented. A tab is not co
 
 ## 3. Investor Registry
 
-- User goal: define up to 50 investor wallet addresses that can be whitelisted.
-- Primary UI: Investor Registry tab with wallet rows, validation, duplicate detection, local-session whitelist status, and SCP handoff.
-- Current status: implemented for manual entry and SCP Whitelist Wallet handoff.
-- Gap: no import/export, off-chain investor profile fields, or durable registry persistence yet.
+- User goal: define or generate up to 50 investor wallet addresses that can be whitelisted and used for prototype investor activity.
+- Primary UI: Investor Registry tab with Test Wallet Lab, wallet rows, validation, duplicate detection, local-session whitelist status, activity-console placeholders, SCP handoff, and Allocation/Mint handoff.
+- Current status: implemented for manual entry, generated test investor wallet packs, explicit test-only export preparation, SCP Whitelist Wallet handoff, and Allocation/Mint readiness handoff.
+- Gap: no Sepolia funding helper, CSV/import/export beyond the explicit test-only wallet export, off-chain investor profile fields, or durable registry persistence yet.
 
 ## 4. Subscription
 
