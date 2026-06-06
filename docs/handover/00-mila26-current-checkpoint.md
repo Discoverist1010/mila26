@@ -10,7 +10,7 @@ The current UI is the MILA26 lifecycle workspace. It uses visual lifecycle tabs,
 
 The next implementation step should follow the tab-aligned roadmap, not the old dashboard flow:
 
-1. website/access first slice without duplicating app lifecycle state;
+1. backend persistence adapter foundation behind the SQLite/local-MVP boundary;
 2. durable lifecycle and Investor Registry persistence after local-session state shape is stable;
 3. durable Evidence Vault persistence after local-session evidence shape is stable;
 4. subscription-redemption execution design with explicit adapter/evidence contracts;
@@ -75,6 +75,8 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Deployment Evidence Read Model and passive UI/SCP evidence surface.
 - Record NAV, Wallet Whitelist, and Allocation / Mint operation adapters/read models with local-session-only operation evidence.
 - Sepolia funding helper targets for issuer/admin signer, generated investor wallet pack, payment destination, and redemption wallet, with copyable public addresses.
+- Benefit-led website first slice that explains AI tokenisation, blockchain execution, distribution/post-trade servicing, user meaning, and quality boundaries.
+- Persistence boundary decision: active app state remains session-owned now; durable project/lifecycle/evidence records should move behind a backend SQLite boundary later.
 
 ## Completed Recent Work
 
@@ -89,6 +91,7 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Sprint Track 3 shared Allocation/Mint readiness, Investor Registry handoff, and Smart Contract tab validation.
 - Sprint Track 5 Sepolia demo wallet readiness plus wallet-signed Allocation / Mint execution behind explicit wallet, deployment, whitelist, ABI, parameter, duplicate-attempt, and evidence gates.
 - Sprint Track 6 demo hardening: Sepolia funding-helper targets, repeated investor whitelist/mint regression coverage, and 50-investor product-boundary cleanup in chat mocks/fixtures.
+- Sprint Track 7/8 website and persistence decision: benefit-led website messaging plus backend/SQLite persistence boundary decision, without browser-storage persistence or durable evidence claims.
 - Lifecycle workspace UX implementation:
   - dark left navigation rail;
   - top project/network/wallet/safety bar;
@@ -103,7 +106,7 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 
 Recommended next coding sequence:
 
-1. Continue website/access work from `docs/product/website-mvp-brief.md` without duplicating app lifecycle state.
+1. Implement the backend persistence adapter foundation from `docs/architecture/persistence-boundary-decision.md`.
 2. Add durable lifecycle and Investor Registry persistence after confirming the state schema.
 3. Add durable Evidence Vault persistence after the local-session evidence shape is stable.
 4. Design subscription-redemption execution adapters and evidence contracts before live stablecoin movement.

@@ -108,6 +108,7 @@ The app currently supports:
 - Subscription tab parameter capture for permitted stablecoins, subscription window, minimum subscription amount, payment address, and payment per token.
 - Redemption tab parameter capture for redemption window/date, redemption wallet, payout stablecoin, payout per token, and configurable delay.
 - Subscription-redemption smart-contract template handoff readiness/draft status from shared lifecycle state.
+- company/product website first slice at `/site`.
 
 The app does not yet support:
 
@@ -119,8 +120,16 @@ The app does not yet support:
 - maturity closeout flow.
 - durable Evidence Pack storage for deployment evidence.
 - persistence.
-- company/product website and controlled access/login.
+- controlled access/login.
 - production observability, support, and release operations.
+
+## Persistence Decision
+
+Sprint 8 records the persistence boundary in `docs/architecture/persistence-boundary-decision.md`.
+
+The current decision is to keep active lifecycle state in the app during the session and introduce durable persistence later behind a backend SQLite boundary. Browser storage is not the production path for lifecycle state, wallet evidence, transaction hashes, contract addresses, private keys, generated artifacts, or investor registry records.
+
+This matters because MILA26 should reduce throwaway effort without overstating evidence maturity. Requirements, parameters, wallet rules, artifacts, and evidence should become reusable project records later, but deployment/operation evidence remains local-session-only until the durable Evidence Vault exists.
 
 ## Funding-Demo Success Criteria
 

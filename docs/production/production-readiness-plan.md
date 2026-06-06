@@ -221,13 +221,15 @@ Owner lens: Frontend/UX Reviewer, Release Engineer.
 
 Must deliver before beta:
 
-- company/product intro website;
+- company/product intro website with benefit-led technical storytelling;
 - controlled access/login path;
 - product positioning without legal/KYC/advice/audit overclaims;
 - link from website to app;
 - onboarding copy for asset-manager user intent.
 
-Use `docs/product/website-mvp-brief.md` as the first website implementation brief. The website must route into the app without duplicating project lifecycle state.
+Use `docs/product/website-mvp-brief.md` as the website implementation brief. The website must route into the app without duplicating project lifecycle state.
+
+Persistence planning is recorded in `docs/architecture/persistence-boundary-decision.md`. Durable lifecycle/evidence records should start behind a backend SQLite boundary, not browser storage.
 
 ### Security And Compliance Boundaries
 

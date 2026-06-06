@@ -1,44 +1,71 @@
 const domainItems = [
   {
-    title: 'AI Copilot',
+    title: 'AI turns intent into a buildable workflow',
+    proof: 'Engineering Bot, Requirement Brief, Engineering Brief, and cross-stage next actions.',
     description:
-      'Captures product intent, asks missing lifecycle questions, and keeps requirements, parameters, evidence, and next actions aligned.',
+      'The asset manager explains the product once. MILA26 structures the lifecycle questions, parameters, documents, and next steps.',
   },
   {
-    title: 'Blockchain Engineering',
+    title: 'Blockchain actions stay gated and wallet-signed',
+    proof: 'MetaMask/EIP-1193, Sepolia-only checks, deployment evidence, NAV, whitelist, and Allocation/Mint operations.',
     description:
-      'Structures wallet whitelisting, subscription-redemption parameters, smart-contract handoff, and wallet-signed Sepolia evidence.',
+      'Users can prove the testnet path without giving MILA26 private keys or accepting fake transaction evidence.',
   },
   {
-    title: 'Distribution & Asset Servicing Ops',
+    title: 'Distribution and servicing are designed in from the start',
+    proof: 'Investor registry, subscription/redemption parameters, NAV events, servicing tabs, maturity planning, and evidence surfaces.',
     description:
-      'Supports investor registry, subscription and redemption workflows, NAV updates, notices, corporate actions, maturity planning, and evidence surfaces.',
+      'Tokenisation is treated as an operating lifecycle, not just a contract-generation exercise.',
   },
 ];
 
 const lifecycleItems = [
   {
-    title: 'Guided lifecycle workspace',
-    description: 'One place to define requirements, investors, subscription, redemption, servicing, maturity, and evidence.',
+    title: 'Know the next step without knowing every blockchain step',
+    description: 'One guided workspace covers requirements, investors, subscription, redemption, servicing, maturity, and evidence.',
   },
   {
-    title: 'Investor wallet registry for up to 50 wallets',
-    description: 'Keeps distribution constrained to registered wallet addresses for the MVP workflow.',
+    title: 'Keep distribution tied to named wallet rules',
+    description: 'The MVP registry supports up to 50 wallet addresses with validation, whitelist handoff, and demo wallet setup.',
   },
   {
-    title: 'Subscription and redemption parameter capture',
-    description: 'Captures permitted stablecoins, payment-per-token, redemption wallet, payout asset, and delay settings.',
+    title: 'Define cash-flow rules before coding them',
+    description: 'Subscription and redemption inputs capture permitted stablecoins, payment-per-token, redemption wallet, payout asset, and delay settings.',
   },
   {
-    title: 'Sepolia wallet-signed evidence path',
-    description: 'Shows wallet-signed testnet operations and evidence without backend private-key custody.',
+    title: 'Show technical progress with evidence',
+    description: 'Wallet-signed Sepolia operations produce provider-returned hashes, receipt-derived addresses, and local-session evidence surfaces.',
+  },
+];
+
+const userMeaningItems = [
+  {
+    title: 'Less coordination burden',
+    description:
+      'MILA26 brings AI workflow support, blockchain execution planning, and servicing operations into one workspace so fewer details fall between teams.',
+  },
+  {
+    title: 'Safer technical path',
+    description:
+      'The app keeps mainnet, custody, audit, legal, and advice claims out of the MVP while real wallet actions remain user-signed on Sepolia.',
+  },
+  {
+    title: 'Less throwaway effort',
+    description:
+      'Requirements, parameters, wallet rules, artifacts, and evidence are structured as reusable project work, not a one-off demo script. Production deployment still requires later review gates.',
+  },
+  {
+    title: 'Clearer proof for stakeholders',
+    description:
+      'The workspace produces requirement, engineering, contract, and evidence surfaces that can support investor, auditor, and internal review conversations.',
   },
 ];
 
 const qaItems = [
-  'Code, UX, security, Solidity, and release review gates',
-  'Tests for shared lifecycle state and wallet boundaries',
-  'No mainnet, custody, audit, legal, or advice overclaims',
+  'Code, UX, security, Solidity, state/performance, and release review gates reduce brittle implementation risk.',
+  'Regression and e2e tests check shared lifecycle state, wallet boundaries, and no-overclaim rules.',
+  'Evidence labels distinguish local-session, provider-returned, and receipt-confirmed data.',
+  'No mainnet, custody, audit, legal, KYC, or investment-advice claim is made by the MVP.',
 ];
 
 export function WebsiteLanding() {
@@ -51,11 +78,10 @@ export function WebsiteLanding() {
             MILA26
           </a>
           <p className="eyebrow">AI tokenisation copilot</p>
-          <h1>AI, blockchain, and asset servicing for tokenised investment products.</h1>
+          <h1>Tokenise an investment product without building the full technical team first.</h1>
           <p className="website-lede">
-            MILA26 helps asset managers turn investment strategies into structured tokenisation workflows. It coordinates
-            AI guidance, blockchain execution planning, and distribution/post-trade servicing so the manager can focus on
-            portfolio decisions.
+            MILA26 helps asset managers turn a product idea into requirements, investor-wallet rules, smart-contract
+            parameters, Sepolia wallet actions, servicing workflows, and evidence in one guided workspace.
           </p>
           <div className="website-actions" aria-label="Website access actions">
             <a className="primary-link" href="/">
@@ -66,6 +92,11 @@ export function WebsiteLanding() {
             </a>
           </div>
           <p className="website-boundary">Controlled MVP access. Ethereum Sepolia/testnet only. User wallet signs.</p>
+          <div className="website-proof-strip" aria-label="Hero proof points">
+            <span>AI structures the work</span>
+            <span>User wallet signs</span>
+            <span>Evidence stays reviewable</span>
+          </div>
         </div>
         <figure className="website-product-preview">
           <img src="/mila26-product-preview.png" alt="MILA26 lifecycle workspace showing redemption parameters and template handoff" />
@@ -73,13 +104,33 @@ export function WebsiteLanding() {
         </figure>
       </section>
 
+      <section className="website-section" aria-label="What MILA26 means for users">
+        <div>
+          <p className="eyebrow">User outcome</p>
+          <h2>Less uncertainty between product idea and technical proof.</h2>
+          <p className="website-section-copy">
+            Tokenising a product creates practical questions about code safety, effort reuse, investor communications,
+            redemption mechanics, and review evidence. MILA26 makes those questions visible before they become expensive.
+          </p>
+        </div>
+        <div className="website-card-grid">
+          {userMeaningItems.map((item) => (
+            <article key={item.title}>
+              <strong>{item.title}</strong>
+              <p>{item.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="website-section" aria-label="Three domain workstreams">
         <div>
           <p className="eyebrow">Operating model</p>
-          <h2>Three specialist workstreams in one workspace.</h2>
+          <h2>AI, blockchain, and post-trade operations stay connected.</h2>
           <p className="website-section-copy">
             A tokenised product usually needs blockchain engineering, investor distribution operations, post-trade
-            servicing, and AI-enabled workflow support. MILA26 brings those workstreams into one guided product workspace.
+            servicing, and AI-enabled workflow support. MILA26 connects those workstreams so the asset manager can focus
+            on investment decisions.
           </p>
         </div>
         <div className="website-card-grid three-domain-grid">
@@ -87,6 +138,7 @@ export function WebsiteLanding() {
             <article key={item.title}>
               <strong>{item.title}</strong>
               <p>{item.description}</p>
+              <small>{item.proof}</small>
             </article>
           ))}
         </div>
@@ -107,10 +159,44 @@ export function WebsiteLanding() {
         </div>
       </section>
 
+      <section className="website-section" aria-label="Persistence and evidence direction">
+        <div>
+          <p className="eyebrow">From demo to durable work</p>
+          <h2>Designed so useful work does not have to be thrown away.</h2>
+        </div>
+        <div className="website-proof-list">
+          <article>
+            <strong>Current MVP boundary</strong>
+            <p>
+              The app runs as a working local/Sepolia prototype. Wallet and operation evidence is clearly labelled as
+              local-session-only until durable storage is implemented.
+            </p>
+          </article>
+          <article>
+            <strong>Persistence decision</strong>
+            <p>
+              Project, lifecycle, investor registry, artifact, and evidence records should move behind a backend storage
+              boundary first, with SQLite as the local MVP starting point.
+            </p>
+          </article>
+          <article>
+            <strong>User meaning</strong>
+            <p>
+              Requirements, parameters, smart-contract artifacts, and evidence can become a reviewable project record
+              later, instead of remaining screenshots or scattered demo notes.
+            </p>
+          </article>
+        </div>
+      </section>
+
       <section className="website-section muted-band" aria-label="Quality assurance">
         <div>
           <p className="eyebrow">Quality Assurance</p>
-          <h2>Built with explicit review gates and no-overclaim rules.</h2>
+          <h2>Built to reduce brittle code and unsupported claims.</h2>
+          <p className="website-section-copy">
+            MILA26 uses review gates and drift checks because asset managers, investors, and auditors need to know what
+            is implemented, what is evidence-backed, and what still requires approval.
+          </p>
         </div>
         <ul className="website-checklist">
           {qaItems.map((item) => (
@@ -124,8 +210,8 @@ export function WebsiteLanding() {
           <p className="eyebrow">Access</p>
           <h2>Private MVP path for invited users and beta testers.</h2>
           <p>
-            Start in the app workspace for local/Sepolia testing. Website access does not store project lifecycle data or
-            replace the app workspace.
+            Start in the app workspace for local/Sepolia testing. The website does not store lifecycle data or replace
+            the app workspace as the source of truth.
           </p>
         </div>
         <a className="primary-link" href="/">

@@ -43,6 +43,12 @@ Reasoning:
 - It is enough for one asset manager, one project, and small run history.
 - It avoids production database overhead before MVP validation.
 
+Current boundary:
+
+- See `persistence-boundary-decision.md`.
+- Browser storage is not the production path for lifecycle state, wallet evidence, transaction hashes, contract addresses, private keys, generated artifacts, or investor registry records.
+- Active app lifecycle state remains session-owned until backend persistence is implemented.
+
 Revisit if:
 
 - Multi-user access, hosted beta, collaboration, or concurrent writes become real requirements.

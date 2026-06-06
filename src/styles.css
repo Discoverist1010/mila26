@@ -980,6 +980,23 @@ summary {
   font-weight: 750;
 }
 
+.website-proof-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.website-proof-strip span {
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.08);
+  color: #d9e5f7;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 8px 11px;
+}
+
 .website-product-preview {
   margin: 0;
 }
@@ -1059,6 +1076,41 @@ summary {
 
 .website-card-grid p {
   color: #536176;
+  margin: 0;
+}
+
+.website-card-grid small {
+  border-top: 1px solid #e8eef5;
+  color: #66758a;
+  display: block;
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.45;
+  margin-top: 14px;
+  padding-top: 12px;
+}
+
+.website-proof-list {
+  display: grid;
+  gap: 12px;
+}
+
+.website-proof-list article {
+  border-left: 3px solid #0b65d8;
+  background: #ffffff;
+  padding: 18px 18px 18px 20px;
+}
+
+.website-proof-list strong {
+  color: #111827;
+  display: block;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.website-proof-list p {
+  color: #536176;
+  line-height: 1.6;
   margin: 0;
 }
 

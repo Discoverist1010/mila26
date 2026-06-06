@@ -125,9 +125,9 @@ Acceptance:
 - No internal track numbers appear in user-facing UI.
 ```
 
-## Next Codex Prompt: Website Access + Persistence Decision
+## Completed Prompt: Website Access + Persistence Decision
 
-Use this prompt for the next implementation turn:
+This prompt has been implemented. Keep it here as completion context:
 
 ```text
 You are working inside the MILA26 repository:
@@ -155,6 +155,46 @@ Acceptance:
 - Website/access copy accurately states the three MILA26 capability domains: AI tokenisation, blockchain execution, and distribution/post-trade asset servicing.
 - App lifecycle state remains the source of truth for tabs, Engineering Bot, Product Vault, and SCP.
 - No internal track numbers appear in user-facing UI.
+- No fake transaction hash, contract address, investor eligibility, investment advice, mainnet, audit, or production-ready claim is introduced.
+```
+
+## Next Codex Prompt: Backend Persistence Adapter Foundation
+
+Use this prompt for the next implementation turn:
+
+```text
+You are working inside the MILA26 repository:
+
+/Users/macbookpro18/Desktop/CODE/active/mila26
+
+Start from main. Before editing, read:
+
+- `AGENTS.md`
+- `docs/architecture/persistence-boundary-decision.md`
+- `docs/architecture/mvp-stack-decisions.md`
+- `docs/architecture/memory-design-mvp.md`
+
+Then run:
+
+git status --short --branch
+npm run test -- tests/app-chat-panel.test.tsx tests/e2e/mila26.spec.ts
+
+Goal:
+Implement the smallest backend persistence adapter foundation without changing the app lifecycle source of truth or claiming durable Evidence Vault support.
+
+Scope:
+1. Add SQLite schema/repository boundaries for projects and lifecycle snapshots first.
+2. Keep active React lifecycle state as the source of truth for the current session.
+3. Do not persist private keys, wallet signatures, generated test wallet private keys, or raw unvalidated model output.
+4. Do not label deployment/operation evidence as durable until Evidence Vault storage and retrieval are implemented.
+5. Add tests for schema/repository behavior and stale-state guardrails.
+6. Do not add live stablecoin subscription/redemption execution.
+
+Acceptance:
+- Existing tests continue passing.
+- Persistence code is behind backend/storage adapters, not website state or browser storage.
+- Website access does not become a second lifecycle state model.
+- Freshness/provenance labels remain explicit: local-session, provider-returned, receipt-confirmed, durable only when implemented.
 - No fake transaction hash, contract address, investor eligibility, investment advice, mainnet, audit, or production-ready claim is introduced.
 ```
 

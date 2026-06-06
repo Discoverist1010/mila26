@@ -23,6 +23,7 @@ Must include:
 
 - MILA26 name and product category: AI tokenisation copilot;
 - plain-language outcome: structure a financial product into a testnet-ready tokenisation workflow;
+- user meaning: less coordination burden, safer code path, less throwaway effort, and clearer evidence for investor/auditor review conversations;
 - controlled MVP boundary: Sepolia/testnet and wallet-signed operations only;
 - primary action: request access or log in;
 - secondary action: view product overview or quality assurance.
@@ -45,6 +46,7 @@ Must include:
 - subscription and redemption parameter capture;
 - subscription-redemption smart-contract template handoff;
 - asset servicing and evidence surfaces;
+- a clear explanation that current local/Sepolia work is structured so it can become durable project records later, while durable Evidence Vault persistence remains a future implementation;
 - clear labels for currently working MVP functions versus unavailable capabilities that still need explicit implementation gates.
 
 ### Quality Assurance
@@ -108,6 +110,7 @@ The first feasible website coding slice should deliver:
 ## Acceptance Criteria
 
 - Website copy is specific to MILA26 and tokenisation, not generic SaaS filler.
+- Website copy translates technical features into practical user meaning.
 - Website does not expose internal track labels.
 - Website does not make legal, audit, investment-advice, custody, production, or mainnet claims.
 - Access flow clearly routes into the app.
