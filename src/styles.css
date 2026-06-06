@@ -1018,6 +1018,14 @@ summary {
   margin: 0;
 }
 
+.website-section-copy {
+  color: #536176;
+  font-size: 17px;
+  line-height: 1.6;
+  margin-bottom: 0;
+  max-width: 720px;
+}
+
 .website-access p {
   color: #536176;
   font-size: 17px;
@@ -1029,6 +1037,10 @@ summary {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.three-domain-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .website-card-grid article {

@@ -1,8 +1,38 @@
+const domainItems = [
+  {
+    title: 'AI Copilot',
+    description:
+      'Captures product intent, asks missing lifecycle questions, and keeps requirements, parameters, evidence, and next actions aligned.',
+  },
+  {
+    title: 'Blockchain Engineering',
+    description:
+      'Structures wallet whitelisting, subscription-redemption parameters, smart-contract handoff, and wallet-signed Sepolia evidence.',
+  },
+  {
+    title: 'Distribution & Asset Servicing Ops',
+    description:
+      'Supports investor registry, subscription and redemption workflows, NAV updates, notices, corporate actions, maturity planning, and evidence surfaces.',
+  },
+];
+
 const lifecycleItems = [
-  'Guided lifecycle workspace',
-  'Investor wallet registry for up to 50 wallets',
-  'Subscription and redemption parameter capture',
-  'Sepolia wallet-signed evidence path',
+  {
+    title: 'Guided lifecycle workspace',
+    description: 'One place to define requirements, investors, subscription, redemption, servicing, maturity, and evidence.',
+  },
+  {
+    title: 'Investor wallet registry for up to 50 wallets',
+    description: 'Keeps distribution constrained to registered wallet addresses for the MVP workflow.',
+  },
+  {
+    title: 'Subscription and redemption parameter capture',
+    description: 'Captures permitted stablecoins, payment-per-token, redemption wallet, payout asset, and delay settings.',
+  },
+  {
+    title: 'Sepolia wallet-signed evidence path',
+    description: 'Shows wallet-signed testnet operations and evidence without backend private-key custody.',
+  },
 ];
 
 const qaItems = [
@@ -21,10 +51,11 @@ export function WebsiteLanding() {
             MILA26
           </a>
           <p className="eyebrow">AI tokenisation copilot</p>
-          <h1>Turn a financial product into a structured tokenisation workflow.</h1>
+          <h1>AI, blockchain, and asset servicing for tokenised investment products.</h1>
           <p className="website-lede">
-            MILA26 helps an asset manager define product requirements, investor wallet rules, subscription and redemption
-            parameters, smart-contract handoff, and Sepolia evidence from one guided workspace.
+            MILA26 helps asset managers turn investment strategies into structured tokenisation workflows. It coordinates
+            AI guidance, blockchain execution planning, and distribution/post-trade servicing so the manager can focus on
+            portfolio decisions.
           </p>
           <div className="website-actions" aria-label="Website access actions">
             <a className="primary-link" href="/">
@@ -42,6 +73,25 @@ export function WebsiteLanding() {
         </figure>
       </section>
 
+      <section className="website-section" aria-label="Three domain workstreams">
+        <div>
+          <p className="eyebrow">Operating model</p>
+          <h2>Three specialist workstreams in one workspace.</h2>
+          <p className="website-section-copy">
+            A tokenised product usually needs blockchain engineering, investor distribution operations, post-trade
+            servicing, and AI-enabled workflow support. MILA26 brings those workstreams into one guided product workspace.
+          </p>
+        </div>
+        <div className="website-card-grid three-domain-grid">
+          {domainItems.map((item) => (
+            <article key={item.title}>
+              <strong>{item.title}</strong>
+              <p>{item.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="website-section" aria-label="Product overview">
         <div>
           <p className="eyebrow">Product</p>
@@ -49,9 +99,9 @@ export function WebsiteLanding() {
         </div>
         <div className="website-card-grid">
           {lifecycleItems.map((item) => (
-            <article key={item}>
-              <strong>{item}</strong>
-              <p>Designed as shared product state, not separate tab silos.</p>
+            <article key={item.title}>
+              <strong>{item.title}</strong>
+              <p>{item.description}</p>
             </article>
           ))}
         </div>

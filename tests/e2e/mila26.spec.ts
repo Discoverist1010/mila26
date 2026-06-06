@@ -4,10 +4,18 @@ test('website intro routes to app access without overclaiming production readine
   await page.goto('/site');
 
   await expect(page.getByLabel('MILA26 company and product website')).toBeVisible();
-  await expect(page.getByRole('heading', { name: /Turn a financial product into a structured tokenisation workflow/i })).toBeVisible();
+  await expect(
+    page.getByRole('heading', {
+      name: /AI, blockchain, and asset servicing for tokenised investment products/i,
+    }),
+  ).toBeVisible();
   await expect(page.getByRole('img', { name: /MILA26 lifecycle workspace/i })).toBeVisible();
   await expect(page.getByText('Controlled MVP access. Ethereum Sepolia/testnet only. User wallet signs.')).toBeVisible();
+  await expect(page.getByLabel('Three domain workstreams')).toContainText('AI Copilot');
+  await expect(page.getByLabel('Three domain workstreams')).toContainText('Blockchain Engineering');
+  await expect(page.getByLabel('Three domain workstreams')).toContainText('Distribution & Asset Servicing Ops');
   await expect(page.getByLabel('Product overview')).toContainText('Investor wallet registry for up to 50 wallets');
+  await expect(page.getByLabel('Product overview')).toContainText('wallet-signed testnet operations');
   await expect(page.getByLabel('Quality assurance')).toContainText('No mainnet, custody, audit, legal, or advice overclaims');
   await expect(page.getByLabel('Access path')).toContainText('Website access does not store project lifecycle data');
   await expect(page.getByRole('link', { name: 'Open app workspace' })).toHaveAttribute('href', '/');
