@@ -72,7 +72,7 @@ The next coding track should add:
 
 - full guided-flow e2e coverage from investor registry through subscription/redemption template handoff.
 - UX polish for parameter panels, edit states, and validation messages based on browser screenshots.
-- Allocation/Mint scope design after investor registry and subscription parameters are coherent.
+- Allocation/Mint scope design from `docs/product/allocation-mint-scope.md` after investor registry and subscription parameters are coherent.
 - persistence/access design so website/login work does not create a second lifecycle state model.
 - website first implementation slice from `docs/product/website-mvp-brief.md`.
 
@@ -89,6 +89,7 @@ Do not build Allocation/Mint execution before the subscription-redemption templa
 - `docs/handover/08-delivery-role-skills.md`
 - `docs/product/ui-ux-vision.md`
 - `docs/product/mvp-user-journey.md`
+- `docs/product/allocation-mint-scope.md`
 - `docs/product/mvp-screen-flow.md`
 - `docs/product/quality-assurance.md`
 - `docs/product/website-mvp-brief.md`

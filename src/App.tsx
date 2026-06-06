@@ -727,6 +727,7 @@ export function App() {
   );
   const activeWorkspaceTab =
     workspacePresentation.tabs.find((tab) => tab.id === selectedWorkspaceTab) ?? workspacePresentation.tabs[0];
+  const shouldShowSmartContractControl = ['overview', 'smart_contract', 'evidence'].includes(activeWorkspaceTab.id);
   const subscriptionRedemptionTemplate = lifecycleReadModel.subscriptionRedemptionTemplate;
   const hasSubscriptionRedemptionTemplateInput = subscriptionRedemptionTemplate.status !== 'needs_parameters';
   const selectedProject = demoProjectFolders.find((project) => project.id === selectedProjectId);
@@ -2248,6 +2249,7 @@ export function App() {
           )}
       </section>
 
+      {shouldShowSmartContractControl && (
       <section className="smart-contract-panel" id="smart-contract-control" data-testid="smart-contract-control">
         <div className="smart-contract-heading">
           <div>
@@ -2539,6 +2541,7 @@ export function App() {
           </section>
         </div>
       </section>
+      )}
     </main>
   );
 }

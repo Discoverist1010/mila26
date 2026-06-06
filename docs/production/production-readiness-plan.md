@@ -309,7 +309,7 @@ Resolve before beta:
 
 ## Immediate Next Coding Track
 
-Harden the investor registry, Subscription, Redemption, and subscription-redemption template handoff flow with e2e coverage and browser review. Start the website/access first slice only if it remains cleanly separated from app lifecycle state.
+Harden the investor registry, Subscription, Redemption, and subscription-redemption template handoff flow with e2e coverage and browser review. Start the website/access first slice only if it remains cleanly separated from app lifecycle state. Use `docs/product/allocation-mint-scope.md` before implementing Allocation/Mint execution.
 
 Do this before:
 

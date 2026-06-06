@@ -1,5 +1,20 @@
 import { expect, test } from '@playwright/test';
 
+test('website intro routes to app access without overclaiming production readiness', async ({ page }) => {
+  await page.goto('/site');
+
+  await expect(page.getByLabel('MILA26 company and product website')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Turn a financial product into a structured tokenisation workflow/i })).toBeVisible();
+  await expect(page.getByRole('img', { name: /MILA26 lifecycle workspace/i })).toBeVisible();
+  await expect(page.getByText('Controlled MVP access. Ethereum Sepolia/testnet only. User wallet signs.')).toBeVisible();
+  await expect(page.getByLabel('Product overview')).toContainText('Investor wallet registry for up to 50 wallets');
+  await expect(page.getByLabel('Quality assurance')).toContainText('No mainnet, custody, audit, legal, or advice overclaims');
+  await expect(page.getByLabel('Access path')).toContainText('Website access does not store project lifecycle data');
+  await expect(page.getByRole('link', { name: 'Open app workspace' })).toHaveAttribute('href', '/');
+  await expect(page.getByText(/Track 15|Track 16|15B|15C/i)).toHaveCount(0);
+  await expect(page.getByText(/production ready|mainnet ready|audit passed|investment advice/i)).toHaveCount(0);
+});
+
 test('guided beta journey creates requirements and exposes Engineering Brief action', async ({ page }) => {
   const engineeringBrief = {
     id: 'engineering-brief-e2e',
@@ -360,6 +375,7 @@ test('subscription redemption parameters update shared lifecycle state and templ
   await expect(handoff.getByText('14 days')).toBeVisible();
   await expect(page.getByLabel('Project status')).toContainText('Contract Template (Sub-Redemption)');
   await expect(page.getByLabel('Project status')).toContainText('Available');
+  await expect(page.getByTestId('smart-contract-control')).toHaveCount(0);
 
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
   await page.getByLabel('Subscription workspace').getByLabel('Payment per token').fill('');
