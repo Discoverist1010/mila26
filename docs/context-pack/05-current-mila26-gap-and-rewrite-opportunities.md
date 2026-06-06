@@ -6,10 +6,10 @@ MILA26 now has a blockchain-functional alpha foundation and a lifecycle workspac
 
 | Area | Current state | Gap | Next opportunity | Risk if rushed |
 |---|---|---|---|---|
-| Shared lifecycle state | Typed lifecycle state/read models now back investor registry, subscription, redemption, and maturity placeholders. | Subscription, redemption, and maturity still need parameter edit flows. | Build parameter capture on the shared lifecycle state instead of per-tab local state. | Per-tab state silos and inconsistent Engineering Bot context. |
+| Shared lifecycle state | Typed lifecycle state/read models now back investor registry, subscription, redemption, and maturity placeholders; Subscription/Redemption now have editable parameter flows. | Maturity still needs a real closeout model, and e2e coverage must prove cross-tab state remains coherent. | Harden shared lifecycle e2e tests before adding Allocation/Mint or persistence. | Per-tab state silos and inconsistent Engineering Bot context. |
 | Investor Registry | Investor Registry tab supports up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, and SCP handoff. | No CSV/import/export, durable persistence, or KYC/eligibility workflow. | Use the registry as the allocation/mint dependency after subscription parameters exist. | Mistaking wallet whitelisting for KYC/investor eligibility approval. |
-| Subscription | UI shows subscription parameters needed. | No permitted stablecoin/payment-per-token template parameter capture. | Add subscription template parameter UI and read model. | Premature stablecoin transfer execution. |
-| Redemption | UI shows redemption parameters needed. | No redemption delay, redemption wallet, or payout-per-token parameter capture. | Add redemption template parameter UI and read model. | Misleading investors into thinking redemption payout execution exists. |
+| Subscription | Subscription tab captures permitted stablecoins, subscription window, minimum subscription amount, payment address, and payment per token with validation. | No live stablecoin execution, durable persistence, import/export, or Allocation/Mint use yet. | Use the validated subscription state as an Allocation/Mint input after e2e hardening. | Premature stablecoin transfer execution. |
+| Redemption | Redemption tab captures redemption window/date, redemption delay, redemption wallet, payout stablecoin, and payout per token with validation. | No live redemption wallet receipt/payout execution or maturity closeout yet. | Use the validated redemption state in the subscription-redemption template handoff and later contract mapping. | Misleading investors into thinking redemption payout execution exists. |
 | Asset Servicing | Record NAV Event exists. | Broader investor updates/corporate-action pushes are not implemented. | Add asset-servicing event/update specs after subscription/redemption parameters stabilize. | Advice/notification claims without delivery/evidence model. |
 | Allocation/Mint | Locked for later. | No allocation/mint operation. | Add only after investor registry and subscription parameters are coherent. | Minting against incomplete investor/payment state. |
 | Evidence | Local-session evidence exists for deployment and two operations. | No durable Evidence Vault persistence. | Add persistence after local-session evidence shape is stable. | Treating local-session evidence as durable records. |
@@ -17,13 +17,12 @@ MILA26 now has a blockchain-functional alpha foundation and a lifecycle workspac
 
 ## Recommended Next Sequence
 
-1. Subscription parameter capture.
-2. Redemption parameter capture, including delay unit/duration.
-3. Smart-contract template parameter handoff for subscription-redemption.
-4. Allocation/Mint operation using Investor Registry and Subscription state.
-5. Investor Registry import/export and persistence.
-6. Durable Evidence Vault persistence.
-7. Maturity closeout.
+1. E2E/screenshot hardening for investor registry, subscription, redemption, and template handoff.
+2. Allocation/Mint scope and operation using Investor Registry and Subscription state.
+3. Website/access first slice that routes into the app without duplicating lifecycle state.
+4. Investor Registry import/export and persistence.
+5. Durable Evidence Vault persistence.
+6. Maturity closeout.
 
 ## Guardrails For All Future Work
 

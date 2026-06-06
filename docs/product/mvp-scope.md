@@ -32,6 +32,24 @@ ERC-721 remains useful for comparison and later product variants, but it is not 
 - Ethereum Sepolia/testnet only.
 - Funding-demo-ready, not production mainnet.
 
+## MVP Scope Clarification
+
+The MVP scope includes the latest mockup-driven lifecycle workspace and the full user-stated product journey:
+
+- company and product intro website;
+- access/login path for controlled users;
+- AI-first lifecycle workspace;
+- investor registry for up to 50 wallets;
+- permitted stablecoin subscription parameters;
+- redemption parameters, including configurable delay before payout;
+- subscription-redemption smart-contract template handoff;
+- Sepolia wallet-signed deployment and operation evidence;
+- asset servicing updates such as NAV, valuation, notices, corporate actions, and maturity events;
+- evidence surfaces and future durable Evidence Vault;
+- reviewer and production-readiness gates.
+
+These are MVP roadmap commitments, not claims that every item is already implemented.
+
 ## In Scope For Blockchain-Functional Alpha
 
 - Turn-based Engineering Bot guidance.
@@ -52,6 +70,7 @@ ERC-721 remains useful for comparison and later product variants, but it is not 
 - wallet-signed SCP operation for Record NAV Event.
 - wallet-signed SCP operation for Whitelist Wallet.
 - visual lifecycle workspace tabs for overview, requirements, investor registry, subscription, smart contract, asset servicing, redemption, maturity, and evidence.
+- production-readiness plan covering prototype, beta, and GTM gates.
 
 ## Out Of Scope For Current Alpha
 
@@ -85,27 +104,34 @@ The app currently supports:
 - Record NAV Event as a wallet-signed SCP operation.
 - Whitelist Wallet as a wallet-signed SCP operation.
 - Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, and SCP handoff.
+- Subscription tab parameter capture for permitted stablecoins, subscription window, minimum subscription amount, payment address, and payment per token.
+- Redemption tab parameter capture for redemption window/date, redemption wallet, payout stablecoin, payout per token, and configurable delay.
+- Subscription-redemption smart-contract template handoff readiness/draft status from shared lifecycle state.
 
 The app does not yet support:
 
 - durable project/lifecycle state persistence.
 - Investor Registry import/export, KYC/eligibility workflow, or durable registry persistence.
-- stablecoin subscription parameter capture.
-- redemption delay and payout parameter capture.
-- subscription-redemption smart-contract template parameter handoff.
+- live stablecoin subscription execution.
+- live redemption wallet receipt and stablecoin payout execution.
+- Solidity implementation/execution of the subscription-redemption smart-contract template.
 - maturity closeout flow.
 - durable Evidence Pack storage for deployment evidence.
 - persistence.
+- company/product website and controlled access/login.
+- production observability, support, and release operations.
 
 ## Funding-Demo Success Criteria
 
 - The demo tells a clear story from asset-manager intent to smart-contract readiness and wallet/testnet boundary.
+- The prototype is working software, not a static mockup: user inputs must validate, update shared lifecycle state, propagate across tabs, and drive scoped artifacts/statuses.
 - The app remains runnable on a local Mac laptop.
 - The interface feels like a professional AI + blockchain project workspace for asset managers.
 - The user can see current project context, next action, workflow gates, and safety boundaries without hunting through chat history.
 - The wallet-signed model is clear: user wallet signs, backend never holds private keys.
 - Sepolia/testnet-only boundary is visible.
 - No fake deployment, fake transaction hash, fake contract address, fake audit, or fake production-ready claim appears.
+- Implemented flows have focused tests; locked or future flows are visibly locked and not disguised as working execution.
 
 ## Risks And Assumptions
 

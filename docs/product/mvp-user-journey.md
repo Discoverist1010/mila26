@@ -21,6 +21,8 @@ The user wants to:
 - redeem outstanding tokens at maturity;
 - keep evidence of wallet-signed actions.
 
+This full user intent, together with the latest mockup-driven lifecycle workspace, is MVP scope. MVP implementation may stage the work through parameter capture, template handoff, wallet-signed Sepolia operations, and locked future states, but the product architecture must support the complete lifecycle.
+
 ## Core UX Thesis
 
 MILA26 uses a three-region workspace with a top lifecycle tab strip.
@@ -178,10 +180,9 @@ Current output:
 The UI intentionally shows these as parameters needed or locked for later:
 
 - investor registry import/export and durable registry persistence;
-- subscription smart-contract template;
-- permitted stablecoins and payment-per-token parameter capture;
-- redemption template with configurable delay;
-- redemption wallet and payout workflow;
+- subscription-redemption smart-contract template implementation beyond local-session handoff;
+- live stablecoin subscription execution;
+- live redemption wallet receipt and payout workflow;
 - allocation/mint operation;
 - investor communication/asset-servicing update push;
 - maturity closeout;
@@ -191,13 +192,13 @@ The UI intentionally shows these as parameters needed or locked for later:
 
 Prefer this sequence before broadening operations:
 
-1. Add subscription parameter capture to the shared lifecycle state.
-2. Add subscription template parameter capture.
-3. Add redemption template parameter capture, including delay unit/duration and payout-per-token configuration.
-4. Add subscription-redemption smart-contract template handoff.
-5. Add allocation/mint only after investor registry and subscription parameters are coherent.
-6. Add durable evidence persistence after the local-session evidence shape is stable.
-7. Add maturity closeout once subscription/redemption/mint flows are proven.
+1. Add e2e and screenshot hardening for the working investor registry, subscription, redemption, and template handoff flow.
+2. Add allocation/mint only after investor registry and subscription parameters are coherent.
+3. Start website/access work without duplicating app lifecycle state.
+4. Add durable evidence persistence after the local-session evidence shape is stable.
+5. Add maturity closeout once subscription/redemption/mint flows are proven.
+
+Production-readiness planning for website, login, beta operations, persistence, security, observability, and release gates is tracked in `docs/production/production-readiness-plan.md`.
 
 ## User Experience Rules
 

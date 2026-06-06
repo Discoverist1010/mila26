@@ -42,7 +42,7 @@ Acceptance:
 - No internal track numbers appear in user-facing UI.
 ```
 
-## Next Codex Prompt: Subscription + Redemption Template Parameters
+## Next Codex Prompt: Prototype Hardening + Website Start
 
 Use this prompt for the next implementation turn:
 
@@ -57,30 +57,28 @@ git status --short --branch
 npm run test -- tests/lifecycle-state.test.ts tests/app-chat-panel.test.tsx
 
 Goal:
-Implement Subscription and Redemption parameter capture for the predefined subscription-redemption smart-contract template.
+Harden the working investor registry -> subscription -> redemption -> subscription-redemption template handoff path, then start the website/access first slice where feasible.
 
 Scope:
-1. Extend the shared lifecycle state/read model for:
-   - permitted stablecoins;
-   - subscription window;
-   - minimum subscription amount;
-   - payment wallet/contract address;
-   - payment per token;
-   - redemption window/date;
-   - redemption delay unit and duration;
-   - redemption wallet;
-   - stablecoin payout asset;
-   - payout per token.
-2. Implement the Subscription tab UI as parameter capture only.
-3. Implement the Redemption tab UI as parameter capture only.
-4. Keep tabs visual-only. Engineering Bot, lifecycle snapshot, Product Vault, and status panels must read the same shared lifecycle state.
+1. Add e2e coverage for:
+   - add a valid investor wallet;
+   - configure Subscription parameters;
+   - configure Redemption parameters and delay;
+   - verify Engineering Bot next action, lifecycle snapshot, Product Vault, and template handoff update from shared lifecycle state;
+   - edit a previously valid value and verify draft/blocked status returns without stale readiness.
+2. Run browser screenshot review for Overview, Investor Registry, Subscription, Redemption, and Smart Contract surfaces.
+3. Fix only UX or state issues found by the review; avoid broad redesign.
+4. Create the first website/access implementation slice from `docs/product/website-mvp-brief.md` only if it can be kept separate from app lifecycle state.
 5. Do not add live stablecoin execution.
-6. Do not add Allocation/Mint yet.
-7. Do not add persistence unless explicitly scoped.
+6. Do not add Allocation/Mint execution yet.
+7. Do not add durable persistence unless explicitly scoped.
 
 Acceptance:
 - Existing tests continue passing.
-- Add focused tests for subscription/redemption read-model validation and UI.
+- E2E proves the prototype workflow is working software, not a click-through mockup.
+- User-entered subscription/redemption values persist in app state during the session and remain editable.
+- Engineering Bot, lifecycle snapshot, Product Vault, status panels, Subscription tab, Redemption tab, and template handoff all reflect the same shared lifecycle state.
+- Invalid, incomplete, and edited values update validation/status without stale summaries.
 - Right rail remains passive.
 - SCP remains the only home for wallet-signed contract operations.
 - No internal track numbers appear in user-facing UI.
@@ -88,6 +86,20 @@ Acceptance:
 ```
 
 This should still be parameter/spec work, not live stablecoin execution.
+
+## Prototype Sprint Target
+
+The two-week prototype target is tracked in `docs/production/production-readiness-plan.md`.
+
+For the next sprint, keep the goal narrow:
+
+1. Add e2e and screenshot hardening for the working Subscription/Redemption flow.
+2. Keep all tabs connected to shared lifecycle state.
+3. Make Engineering Bot next actions reflect the next missing lifecycle dependency.
+4. Start website/access only after the app flow remains stable.
+5. Do not add live stablecoin execution or Allocation/Mint execution in the same track.
+
+The result must be working software, not a visual placeholder. If a field, button, status, or artifact is shown as active, it must be wired to state, validation, and tests.
 
 ## Reminder: Independent External Reviewer
 

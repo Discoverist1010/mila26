@@ -29,6 +29,9 @@ The target product flow is:
 - Second wallet-signed SCP operation: Whitelist Wallet.
 - Shared lifecycle state for investor registry, subscription, redemption, and maturity placeholders.
 - Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, and SCP whitelist target handoff.
+- Subscription tab for permitted stablecoins, subscription window, minimum subscription, payment wallet/contract address, and payment per token with shared lifecycle validation.
+- Redemption tab for redemption window/date, redemption wallet, payout stablecoin, payout per token, and delay unit/duration with shared lifecycle validation.
+- Subscription-redemption template handoff surface that derives draft/ready status from current subscription and redemption parameters.
 
 ## Current Architecture Principles
 
@@ -55,20 +58,27 @@ The active UX direction is the lifecycle workspace mockup provided by the user a
 
 Avoid exposing internal implementation labels such as track numbers to users. Track labels may remain in internal roadmap documents only.
 
+## MVP Scope Direction
+
+The latest mockup direction and the user-stated lifecycle intent are within MVP scope. This includes the company/product intro website, controlled access/login path, guided lifecycle workspace, investor registry, subscription/redemption parameter capture, subscription-redemption template handoff, Sepolia wallet-signed workflow, asset servicing, maturity/evidence surfaces, and production-readiness gates.
+
+MVP scope does not mean every item is already implemented. It means new coding tracks must preserve a coherent path toward these flows rather than treating them as optional later product ideas.
+
 ## Immediate Next Step
 
-Implement Subscription and Redemption parameter capture before building allocation/mint.
+Harden the working Subscription/Redemption prototype flow, then plan Allocation/Mint and website/access slices.
 
 The next coding track should add:
 
-- permitted stablecoin parameter capture.
-- subscription window, minimum subscription amount, payment wallet/contract address, and payment per token.
-- redemption window/date, redemption wallet, payout stablecoin, payout per token, and redemption delay unit/duration.
-- shared lifecycle read-model validation for subscription and redemption parameters.
-- Product Vault, lifecycle snapshot, and Engineering Bot next-action updates from the same shared lifecycle state.
-- focused tests proving subscription/redemption data is parameter/spec work only, not live stablecoin execution.
+- full guided-flow e2e coverage from investor registry through subscription/redemption template handoff.
+- UX polish for parameter panels, edit states, and validation messages based on browser screenshots.
+- Allocation/Mint scope design after investor registry and subscription parameters are coherent.
+- persistence/access design so website/login work does not create a second lifecycle state model.
+- website first implementation slice from `docs/product/website-mvp-brief.md`.
 
-After that, build subscription-redemption template handoff and only then allocation/mint.
+The two-week prototype target is a working local/Sepolia prototype, not a static mockup. Implemented screens must validate inputs, persist state during the session, update dependent tabs/statuses/artifacts, and pass focused tests.
+
+Do not build Allocation/Mint execution before the subscription-redemption template handoff and wallet-signed boundary have e2e coverage.
 
 ## Files To Read Next
 
@@ -81,6 +91,8 @@ After that, build subscription-redemption template handoff and only then allocat
 - `docs/product/mvp-user-journey.md`
 - `docs/product/mvp-screen-flow.md`
 - `docs/product/quality-assurance.md`
+- `docs/product/website-mvp-brief.md`
+- `docs/production/production-readiness-plan.md`
 - `docs/architecture/frontend-ux-architecture.md`
 - `docs/architecture/frontend-component-plan.md`
 - `src/domain/workspacePresentation.ts`

@@ -155,6 +155,9 @@ function status(input: WorkspacePresentationInput): ProductCapabilityRow[] {
 
 export function toWorkspacePresentation(input: WorkspacePresentationInput): WorkspacePresentation {
   const investorRegistry = input.lifecycle.investorRegistry;
+  const subscription = input.lifecycle.subscription;
+  const redemption = input.lifecycle.redemption;
+  const template = input.lifecycle.subscriptionRedemptionTemplate;
 
   return {
     tabs: workspaceTabsForLifecycle(input.lifecycle),
@@ -164,8 +167,8 @@ export function toWorkspacePresentation(input: WorkspacePresentationInput): Work
       { label: 'NAV recording', status: input.isNavRecordingAvailable ? 'available' : 'locked_for_later' },
       { label: 'Allocation / Mint', status: 'locked_for_later' },
       { label: 'Investor registry', status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'active' : 'needs_parameters' },
-      { label: 'Subscription template', status: parameterStatusToCapabilityStatus(input.lifecycle.subscriptionStatus) },
-      { label: 'Redemption template', status: parameterStatusToCapabilityStatus(input.lifecycle.redemptionStatus) },
+      { label: 'Subscription template', status: parameterStatusToCapabilityStatus(subscription.status) },
+      { label: 'Redemption template', status: parameterStatusToCapabilityStatus(redemption.status) },
       { label: 'Maturity closeout', status: parameterStatusToCapabilityStatus(input.lifecycle.maturityStatus) },
     ],
     productSetup: [
@@ -188,20 +191,28 @@ export function toWorkspacePresentation(input: WorkspacePresentationInput): Work
             : 'Wallets needed',
         status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'ready' : 'wallet_needed',
       },
-      { label: 'Subscription Template', detail: parameterStatusDetail(input.lifecycle.subscriptionStatus), status: input.lifecycle.subscriptionStatus === 'ready' ? 'ready' : 'needs_parameters' },
-      { label: 'Redemption Template', detail: parameterStatusDetail(input.lifecycle.redemptionStatus), status: input.lifecycle.redemptionStatus === 'ready' ? 'ready' : 'needs_parameters' },
+      {
+        label: 'Subscription Template',
+        detail: subscription.status === 'ready' ? subscription.statusDetail : parameterStatusDetail(subscription.status),
+        status: subscription.status === 'ready' ? 'ready' : 'needs_parameters',
+      },
+      {
+        label: 'Redemption Template',
+        detail: redemption.status === 'ready' ? redemption.statusDetail : parameterStatusDetail(redemption.status),
+        status: redemption.status === 'ready' ? 'ready' : 'needs_parameters',
+      },
     ],
     productVault: [
       { label: 'Requirement Brief', status: input.hasRequirementBrief ? 'Draft' : 'Pending' },
       { label: 'Engineering Brief', status: input.hasEngineeringBrief ? 'Draft' : 'Pending' },
       { label: 'Smart Contract Spec', status: input.hasSmartContractSpec ? 'Draft' : 'Pending' },
-      { label: 'Contract Template (Sub-Redemption)', status: 'Draft' },
+      { label: 'Contract Template (Sub-Redemption)', status: template.status === 'ready' ? 'Available' : template.status === 'draft' ? 'Draft' : 'Pending' },
       { label: 'Investor Registry', status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'Active' : 'Pending' },
     ],
     openItems: [
       { label: 'Open questions', status: input.hasRequirementBrief ? 'draft' : 'needs_parameters' },
-      { label: 'Subscription parameters', status: parameterStatusToCapabilityStatus(input.lifecycle.subscriptionStatus) },
-      { label: 'Redemption parameters', status: parameterStatusToCapabilityStatus(input.lifecycle.redemptionStatus) },
+      { label: 'Subscription parameters', status: parameterStatusToCapabilityStatus(subscription.status) },
+      { label: 'Redemption parameters', status: parameterStatusToCapabilityStatus(redemption.status) },
       { label: 'Maturity parameters', status: parameterStatusToCapabilityStatus(input.lifecycle.maturityStatus) },
       {
         label: 'Investor registry gaps',

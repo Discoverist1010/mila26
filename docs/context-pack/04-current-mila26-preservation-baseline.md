@@ -47,10 +47,10 @@ Preserve these boundaries while moving toward blockchain-functional alpha.
 
 ## Safe To Improve Now
 
-- Define shared lifecycle state for visual tabs.
-- Implement Investor Registry data and UI for up to 50 whitelisted wallets.
-- Add subscription and redemption parameter capture.
-- Prepare subscription-redemption template parameter handoff.
+- Harden shared lifecycle state for visual tabs with e2e coverage.
+- Improve Investor Registry data and UI for up to 50 whitelisted wallets without implying KYC or eligibility approval.
+- Refine subscription and redemption parameter capture where tests or browser review show friction.
+- Map subscription-redemption template handoff into the next smart-contract template design.
 - Update docs when track status changes.
 - Keep wallet and operation copy clear about provider-returned hashes, receipt-confirmed addresses, and local-session evidence.
 

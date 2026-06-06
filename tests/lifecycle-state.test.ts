@@ -4,6 +4,7 @@ import {
   createInvestorRegistryEntry,
   markInvestorWalletWhitelisted,
   MAX_INVESTOR_REGISTRY_ENTRIES,
+  parsePermittedStablecoins,
   toMila26LifecycleReadModel,
   type InvestorRegistryEntry,
 } from '../src/domain/lifecycleState';
@@ -143,5 +144,137 @@ describe('MILA26 lifecycle state', () => {
     expect(readModel.investorRegistry.blockingReasons).toEqual(
       expect.arrayContaining(['Resolve invalid wallet addresses.', 'Investor registry is at the 50 wallet limit.']),
     );
+  });
+
+  it('normalizes permitted stablecoins and reports draft subscription parameters until every required field is valid', () => {
+    expect(parsePermittedStablecoins(' usdc, USDT, usdc ,, dai ')).toEqual(['USDC', 'USDT', 'DAI']);
+
+    const readModel = toMila26LifecycleReadModel({
+      ...createInitialMila26LifecycleState(),
+      subscriptionParameters: {
+        permittedStablecoins: ['usdc', 'USDC'],
+        subscriptionWindow: '2026-07-01 to 2026-07-15',
+        minimumSubscriptionAmount: '1000',
+        paymentAddress: '0x1234',
+        paymentPerToken: '',
+      },
+    });
+
+    expect(readModel.subscription.status).toBe('draft');
+    expect(readModel.subscriptionStatus).toBe('draft');
+    expect(readModel.subscription.normalizedPermittedStablecoins).toEqual(['USDC']);
+    expect(readModel.subscription.validationMessages).toEqual(
+      expect.arrayContaining([
+        'Payment wallet or contract address must be a valid non-zero EVM address.',
+        'Payment per token must be greater than zero.',
+      ]),
+    );
+    expect(readModel.subscriptionRedemptionTemplate.canGenerateTemplateParameters).toBe(false);
+  });
+
+  it('marks subscription parameters ready when stablecoin, window, payment address, and token price are valid', () => {
+    const readModel = toMila26LifecycleReadModel({
+      ...createInitialMila26LifecycleState(),
+      subscriptionParameters: {
+        permittedStablecoins: ['USDC', 'USDT'],
+        subscriptionWindow: 'Monthly window: first five business days',
+        minimumSubscriptionAmount: '25000',
+        paymentAddress: firstWallet,
+        paymentPerToken: '1.025',
+      },
+    });
+
+    expect(readModel.subscription.status).toBe('ready');
+    expect(readModel.subscription.statusLabel).toBe('Subscription: Ready for template');
+    expect(readModel.subscription.validationMessages).toEqual([]);
+    expect(readModel.subscription.normalizedPermittedStablecoins).toEqual(['USDC', 'USDT']);
+  });
+
+  it('marks redemption parameters ready only after delay, wallet, payout asset, and payout price are valid', () => {
+    const draftReadModel = toMila26LifecycleReadModel({
+      ...createInitialMila26LifecycleState(),
+      redemptionParameters: {
+        redemptionWindow: 'Quarterly redemption date',
+        redemptionDelayUnit: 'days',
+        redemptionDelayValue: 0,
+        redemptionWalletAddress: secondWallet,
+        payoutStablecoin: 'USDC',
+        payoutPerToken: '1.03',
+      },
+    });
+
+    expect(draftReadModel.redemption.status).toBe('draft');
+    expect(draftReadModel.redemption.validationMessages).toContain('Redemption delay duration must be greater than zero.');
+
+    const readyReadModel = toMila26LifecycleReadModel({
+      ...createInitialMila26LifecycleState(),
+      redemptionParameters: {
+        redemptionWindow: 'Quarterly redemption date',
+        redemptionDelayUnit: 'days',
+        redemptionDelayValue: 14,
+        redemptionWalletAddress: secondWallet,
+        payoutStablecoin: 'usdc',
+        payoutPerToken: '1.03',
+      },
+    });
+
+    expect(readyReadModel.redemption.status).toBe('ready');
+    expect(readyReadModel.redemption.statusDetail).toBe('Redemption delay configured: 14 days.');
+    expect(readyReadModel.redemption.validationMessages).toEqual([]);
+  });
+
+  it('creates a ready subscription-redemption template handoff only from current valid lifecycle state', () => {
+    const readModel = toMila26LifecycleReadModel({
+      ...createInitialMila26LifecycleState(),
+      subscriptionParameters: {
+        permittedStablecoins: ['USDC'],
+        subscriptionWindow: 'Monthly subscriptions',
+        minimumSubscriptionAmount: '10000',
+        paymentAddress: firstWallet,
+        paymentPerToken: '1.02',
+      },
+      redemptionParameters: {
+        redemptionWindow: 'Quarterly redemptions',
+        redemptionDelayUnit: 'hours',
+        redemptionDelayValue: 72,
+        redemptionWalletAddress: secondWallet,
+        payoutStablecoin: 'usdc',
+        payoutPerToken: '1.01',
+      },
+    });
+
+    expect(readModel.subscriptionRedemptionTemplate.status).toBe('ready');
+    expect(readModel.subscriptionRedemptionTemplate.canGenerateTemplateParameters).toBe(true);
+    expect(readModel.subscriptionRedemptionTemplate.parameterSummary).toMatchObject({
+      permittedStablecoins: ['USDC'],
+      subscriptionWindow: 'Monthly subscriptions',
+      minimumSubscriptionAmount: '10000',
+      paymentAddress: firstWallet,
+      paymentPerToken: '1.02',
+      redemptionWindow: 'Quarterly redemptions',
+      redemptionDelay: '72 hours',
+      redemptionWalletAddress: secondWallet,
+      payoutStablecoin: 'USDC',
+      payoutPerToken: '1.01',
+    });
+
+    const editedReadModel = toMila26LifecycleReadModel({
+      ...createInitialMila26LifecycleState(),
+      subscriptionParameters: {
+        ...createInitialMila26LifecycleState().subscriptionParameters,
+        permittedStablecoins: ['USDC'],
+      },
+      redemptionParameters: {
+        redemptionWindow: 'Quarterly redemptions',
+        redemptionDelayUnit: 'hours',
+        redemptionDelayValue: 72,
+        redemptionWalletAddress: secondWallet,
+        payoutStablecoin: 'USDC',
+        payoutPerToken: '1.01',
+      },
+    });
+
+    expect(editedReadModel.subscriptionRedemptionTemplate.status).toBe('draft');
+    expect(editedReadModel.subscriptionRedemptionTemplate.canGenerateTemplateParameters).toBe(false);
   });
 });

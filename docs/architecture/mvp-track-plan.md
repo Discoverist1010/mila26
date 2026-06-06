@@ -246,10 +246,9 @@ What not to overbuild:
 
 After the lifecycle workspace update:
 
-- Subscription parameter capture.
-- Redemption parameter capture.
-- Subscription-redemption template handoff.
+- E2E hardening for Subscription/Redemption parameter capture and subscription-redemption template handoff.
 - Allocation/Mint Operation only after registry/subscription state is coherent.
+- Website/access first slice without duplicating app lifecycle state.
 - Investor Registry import/export and durable persistence.
 - Distribution operation tracks.
 - Valuation file ingest and validation.

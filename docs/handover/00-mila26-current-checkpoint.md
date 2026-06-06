@@ -10,13 +10,15 @@ The current UI is the MILA26 lifecycle workspace. It uses visual lifecycle tabs,
 
 The next implementation step should follow the new tab-aligned roadmap, not the old dashboard flow:
 
-1. Subscription template parameter capture;
-2. Redemption template parameter capture;
-3. subscription-redemption template handoff;
-4. Allocation/Mint only after registry/subscription parameters are coherent;
-5. Evidence persistence and maturity closeout later.
+1. e2e hardening for investor registry, subscription, redemption, and subscription-redemption template handoff;
+2. Allocation/Mint only after registry/subscription parameters are coherent;
+3. website/access first slice without duplicating app lifecycle state;
+4. durable Evidence Vault persistence after local-session evidence shape is stable;
+5. maturity closeout later.
 
 For coding execution, read root `AGENTS.md` first. It defines the Lead Implementer role, active debugging loop, quality refactor triggers, dynamic skill/MCP acquisition policy, and review gates.
+
+Production readiness, beta preparation, website/login, and GTM gates are tracked in `docs/production/production-readiness-plan.md`.
 
 ## Current Product Direction
 
@@ -42,7 +44,7 @@ For coding execution, read root `AGENTS.md` first. It defines the Lead Implement
 - Wallet boundary: MetaMask-first EIP-1193 connection and Sepolia readiness are implemented frontend-only.
 - Deployment boundary: wallet-signed Sepolia deployment exists, with local-session provider/receipt evidence only.
 - Operation boundary: Record NAV Event and Whitelist Wallet exist as operation-specific wallet-signed SCP controls.
-- Persistence, auth, payments, durable Evidence Vault storage, subscription/redemption templates, allocation/mint, maturity closeout, and mainnet are not implemented.
+- Persistence, auth, payments, durable Evidence Vault storage, live subscription/redemption execution, allocation/mint, maturity closeout, and mainnet are not implemented.
 
 ## Current Repo Capabilities
 
@@ -51,6 +53,7 @@ For coding execution, read root `AGENTS.md` first. It defines the Lead Implement
 - Shared workspace presentation model: `src/domain/workspacePresentation.ts`.
 - Shared lifecycle state/read model: `src/domain/lifecycleState.ts`.
 - Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, and SCP whitelist target handoff.
+- Subscription and Redemption tabs for local-session parameter capture, validation, lifecycle snapshot/vault/status updates, and subscription-redemption template handoff input.
 - Passive right rail and Product Vault.
 - Backend chat route: `POST /api/chat/blockchain-engineer`.
 - Backend Engineering Brief route: `POST /api/prd/engineering-brief`.
@@ -80,6 +83,7 @@ For coding execution, read root `AGENTS.md` first. It defines the Lead Implement
 - Record NAV Event operation.
 - Whitelist Wallet operation.
 - Sprint Track 1 shared lifecycle state and Investor Registry functionality.
+- Sprint Track 2 shared Subscription/Redemption parameter capture and template handoff readiness.
 - Lifecycle workspace UX implementation:
   - dark left navigation rail;
   - top project/network/wallet/safety bar;
@@ -94,20 +98,11 @@ For coding execution, read root `AGENTS.md` first. It defines the Lead Implement
 
 Recommended next coding sequence:
 
-1. Implement Subscription tab parameter capture:
-   - permitted stablecoins;
-   - subscription window;
-   - minimum subscription;
-   - payment wallet/contract;
-   - payment per token.
-2. Implement Redemption tab parameter capture:
-   - redemption window/date;
-   - redemption wallet;
-   - delay unit/duration;
-   - payout per token;
-   - permitted stablecoin payout asset.
-3. Prepare the subscription-redemption smart-contract template spec.
-4. Only then add Allocation/Mint.
+1. Add e2e/smoke coverage and screenshot review for the full investor registry to subscription-redemption handoff path.
+2. Tighten Subscription/Redemption UX where browser review shows clutter, unclear validation, or editing friction.
+3. Prepare the Allocation/Mint scope and smart-contract template mapping from the current registry/subscription state.
+4. Start the website/access first slice from `docs/product/website-mvp-brief.md`.
+5. Defer durable persistence until the lifecycle state and evidence shape are stable.
 
 ## Code Review (Agent / PR)
 

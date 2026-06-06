@@ -130,10 +130,10 @@ Recent lifecycle workspace validation passed:
 ## Still Not Implemented
 
 - Durable lifecycle state persistence.
-- Full Investor Registry tab data model for up to 50 whitelisted wallets.
-- Subscription parameter capture.
-- Redemption delay and payout parameter capture.
-- Subscription-redemption smart-contract template handoff.
+- Investor Registry import/export and durable registry persistence.
+- Live stablecoin subscription execution.
+- Live redemption wallet receipt and payout execution.
+- Solidity implementation of the subscription-redemption smart-contract template.
 - Allocation/Mint.
 - Maturity closeout.
 - Broad SCP contract operations beyond the approved deployment, Record NAV, and Whitelist Wallet paths.

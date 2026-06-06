@@ -435,6 +435,70 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Investor Registry blocking items')).toHaveTextContent('Resolve invalid wallet addresses.');
   });
 
+  it('captures subscription and redemption parameters as working shared lifecycle state', () => {
+    const investorWallet = '0x3333333333333333333333333333333333333333';
+    const paymentWallet = '0x4444444444444444444444444444444444444444';
+    const redemptionWallet = '0x5555555555555555555555555555555555555555';
+    render(<App />);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+    const registry = screen.getByLabelText('Investor Registry workspace');
+    fireEvent.change(within(registry).getByLabelText('Investor wallet address'), { target: { value: investorWallet } });
+    fireEvent.click(within(registry).getByRole('button', { name: 'Add wallet' }));
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
+    const subscription = screen.getByLabelText('Subscription workspace');
+
+    expect(within(subscription).getByText(/This does not move stablecoins/i)).toBeVisible();
+    expect(within(subscription).getByText('Add at least one permitted stablecoin.')).toBeVisible();
+    expect(screen.getByLabelText('Project status')).toHaveTextContent('Subscription template');
+    expect(screen.getByLabelText('Project status')).toHaveTextContent('Needs parameters');
+
+    fireEvent.change(within(subscription).getByLabelText('Permitted stablecoins'), { target: { value: 'usdc, usdt, usdc' } });
+    fireEvent.change(within(subscription).getByLabelText('Subscription window'), { target: { value: 'Monthly: first five business days' } });
+    fireEvent.change(within(subscription).getByLabelText('Minimum subscription amount'), { target: { value: '25000' } });
+    fireEvent.change(within(subscription).getByLabelText('Payment wallet / contract address'), { target: { value: paymentWallet } });
+    fireEvent.change(within(subscription).getByLabelText('Payment per token'), { target: { value: '1.025' } });
+
+    expect(within(subscription).getByText('Subscription parameters are ready for template handoff.')).toBeVisible();
+    expect(screen.getAllByText('2 permitted stablecoin(s) configured for subscription.').length).toBeGreaterThan(1);
+    expect(screen.getByText(/Define redemption parameters so the template can capture/i)).toBeVisible();
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Redemption/ }));
+    const redemption = screen.getByLabelText('Redemption workspace');
+
+    expect(within(redemption).getByText(/This is parameter capture only/i)).toBeVisible();
+    fireEvent.change(within(redemption).getByLabelText('Redemption window / date'), { target: { value: 'Quarterly redemption date' } });
+    fireEvent.change(within(redemption).getByLabelText('Redemption delay unit'), { target: { value: 'days' } });
+    fireEvent.change(within(redemption).getByLabelText('Redemption delay duration'), { target: { value: '14' } });
+    fireEvent.change(within(redemption).getByLabelText('Redemption wallet address'), { target: { value: redemptionWallet } });
+    fireEvent.change(within(redemption).getByLabelText('Payout stablecoin'), { target: { value: 'usdc' } });
+    fireEvent.change(within(redemption).getByLabelText('Payout per token'), { target: { value: '1.01' } });
+
+    expect(within(redemption).getByText('Redemption parameters are ready for template handoff.')).toBeVisible();
+    expect(within(redemption).getByText('Redemption delay configured: 14 days.')).toBeVisible();
+    expect(screen.getByText(/Review the subscription-redemption template handoff/i)).toBeVisible();
+
+    const handoff = screen.getByLabelText('Subscription redemption template handoff');
+    expect(within(handoff).getByRole('heading', { name: 'Subscription-Redemption Template Handoff' })).toBeVisible();
+    expect(within(handoff).getByText('Template handoff ready')).toBeVisible();
+    expect(within(handoff).getByText('USDC, USDT')).toBeVisible();
+    expect(within(handoff).getByText(paymentWallet)).toBeVisible();
+    expect(within(handoff).getByText(redemptionWallet)).toBeVisible();
+    expect(within(handoff).getByText('14 days')).toBeVisible();
+    expect(screen.getByLabelText('Project status')).toHaveTextContent('Contract Template (Sub-Redemption)');
+    expect(screen.getByLabelText('Project status')).toHaveTextContent('Available');
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
+    fireEvent.change(screen.getByLabelText('Payment per token'), { target: { value: '' } });
+
+    expect(screen.getByText('Payment per token must be greater than zero.')).toBeVisible();
+    expect(screen.getByLabelText('Template handoff blocking items')).toHaveTextContent(
+      'Subscription: Payment per token must be greater than zero.',
+    );
+    expect(screen.getByLabelText('Project status')).toHaveTextContent('Draft');
+  });
+
   it('completes the golden lifecycle flow into wallet-intent review and locked operations without execution claims', async () => {
     let resolveArtifactSpec: (value: Response) => void = () => undefined;
     const smartContractArtifactSpec = {

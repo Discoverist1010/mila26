@@ -310,3 +310,62 @@ test('dashboard shell remains usable on a narrow viewport', async ({ page }) => 
   const askButtonBox = await page.getByRole('button', { name: 'Send' }).boundingBox();
   expect(askButtonBox?.height).toBeLessThan(80);
 });
+
+test('subscription redemption parameters update shared lifecycle state and template handoff', async ({ page }) => {
+  const investorWallet = '0x3333333333333333333333333333333333333333';
+  const paymentWallet = '0x4444444444444444444444444444444444444444';
+  const redemptionWallet = '0x5555555555555555555555555555555555555555';
+
+  await page.goto('/');
+
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Investor Registry/ }).click();
+  const registry = page.getByLabel('Investor Registry workspace');
+  await registry.getByLabel('Investor wallet address').fill(investorWallet);
+  await registry.getByRole('button', { name: 'Add wallet' }).click();
+  await expect(registry.getByText('1/50')).toBeVisible();
+
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
+  const subscription = page.getByLabel('Subscription workspace');
+  await expect(subscription.getByText(/This does not move stablecoins/i)).toBeVisible();
+  await subscription.getByLabel('Permitted stablecoins').fill('usdc, usdt, usdc');
+  await subscription.getByLabel('Subscription window').fill('Monthly: first five business days');
+  await subscription.getByLabel('Minimum subscription amount').fill('25000');
+  await subscription.getByLabel('Payment wallet / contract address').fill(paymentWallet);
+  await subscription.getByLabel('Payment per token').fill('1.025');
+  await expect(subscription.getByText('Subscription parameters are ready for template handoff.')).toBeVisible();
+  await expect(page.getByText(
+    'Define redemption parameters so the template can capture the redemption wallet, payout stablecoin, payout-per-token amount, and delay.',
+  )).toBeVisible();
+
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Redemption/ }).click();
+  const redemption = page.getByLabel('Redemption workspace');
+  await expect(redemption.getByText(/This is parameter capture only/i)).toBeVisible();
+  await redemption.getByLabel('Redemption window / date').fill('Quarterly redemption date');
+  await redemption.getByLabel('Redemption delay unit').selectOption('days');
+  await redemption.getByLabel('Redemption delay duration').fill('14');
+  await redemption.getByLabel('Redemption wallet address').fill(redemptionWallet);
+  await redemption.getByLabel('Payout stablecoin').fill('usdc');
+  await redemption.getByLabel('Payout per token').fill('1.01');
+  await expect(redemption.getByText('Redemption parameters are ready for template handoff.')).toBeVisible();
+  await expect(page.getByText(
+    'Review the subscription-redemption template handoff generated from the current shared lifecycle state.',
+  )).toBeVisible();
+
+  const handoff = page.getByLabel('Subscription redemption template handoff');
+  await expect(handoff.getByRole('heading', { name: 'Subscription-Redemption Template Handoff' })).toBeVisible();
+  await expect(handoff.getByText('Template handoff ready')).toBeVisible();
+  await expect(handoff.getByText('USDC, USDT')).toBeVisible();
+  await expect(handoff.getByText(paymentWallet)).toBeVisible();
+  await expect(handoff.getByText(redemptionWallet)).toBeVisible();
+  await expect(handoff.getByText('14 days')).toBeVisible();
+  await expect(page.getByLabel('Project status')).toContainText('Contract Template (Sub-Redemption)');
+  await expect(page.getByLabel('Project status')).toContainText('Available');
+
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
+  await page.getByLabel('Subscription workspace').getByLabel('Payment per token').fill('');
+  await expect(subscription.getByText('Payment per token must be greater than zero.')).toBeVisible();
+  await expect(page.getByLabel('Template handoff blocking items')).toContainText(
+    'Subscription: Payment per token must be greater than zero.',
+  );
+  await expect(page.getByLabel('Project status')).toContainText('Draft');
+});

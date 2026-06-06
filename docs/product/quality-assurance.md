@@ -187,4 +187,5 @@ The website-facing QA story is backed by these internal docs:
 - `docs/handover/06-code-reviewer-lessons.md`
 - `docs/handover/07-code-review-activation-rules.md`
 - `docs/handover/08-delivery-role-skills.md`
+- `docs/production/production-readiness-plan.md`
 - `AGENTS.md`

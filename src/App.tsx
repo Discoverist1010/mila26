@@ -16,8 +16,10 @@ import {
   createInvestorRegistryEntry,
   markInvestorWalletWhitelisted,
   MAX_INVESTOR_REGISTRY_ENTRIES,
+  parsePermittedStablecoins,
   toMila26LifecycleReadModel,
   type Mila26LifecycleState,
+  type RedemptionParameters,
 } from './domain/lifecycleState';
 import { createDemoProjectClosureLedger } from './domain/projectClosureLedger';
 import { toProjectClosureReadModel } from './domain/projectClosureReadModel';
@@ -415,6 +417,7 @@ export function App() {
   const [walletWhitelistTargetWallet, setWalletWhitelistTargetWallet] = useState('');
   const [lifecycleState, setLifecycleState] = useState<Mila26LifecycleState>(() => createInitialMila26LifecycleState());
   const [investorRegistryDraftWallet, setInvestorRegistryDraftWallet] = useState('');
+  const [permittedStablecoinsInput, setPermittedStablecoinsInput] = useState('');
   const [investorRegistryError, setInvestorRegistryError] = useState<string | undefined>();
   const [smartContractGenerationStatus, setSmartContractGenerationStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [smartContractGenerationError, setSmartContractGenerationError] = useState<string | undefined>();
@@ -724,12 +727,22 @@ export function App() {
   );
   const activeWorkspaceTab =
     workspacePresentation.tabs.find((tab) => tab.id === selectedWorkspaceTab) ?? workspacePresentation.tabs[0];
+  const subscriptionRedemptionTemplate = lifecycleReadModel.subscriptionRedemptionTemplate;
+  const hasSubscriptionRedemptionTemplateInput = subscriptionRedemptionTemplate.status !== 'needs_parameters';
   const selectedProject = demoProjectFolders.find((project) => project.id === selectedProjectId);
   const activeProjectTitle = selectedProject?.title ?? 'All Projects';
   const tokenModelSummary =
     requirementBriefContract?.tokenModel.assumption ?? 'Token model will be confirmed in the Requirement Brief.';
   const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
   const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
+  const nextBestActionText =
+    lifecycleReadModel.investorRegistry.entryCount === 0
+      ? 'Start by registering investor wallet addresses so subscription, whitelisting, servicing, and evidence can use the same lifecycle state.'
+      : lifecycleReadModel.subscription.status !== 'ready'
+        ? 'Define subscription parameters so the subscription-redemption template can use permitted stablecoins, payment address, and payment-per-token terms.'
+        : lifecycleReadModel.redemption.status !== 'ready'
+          ? 'Define redemption parameters so the template can capture the redemption wallet, payout stablecoin, payout-per-token amount, and delay.'
+          : 'Review the subscription-redemption template handoff generated from the current shared lifecycle state.';
   const isWalletConnectionComplete =
     walletConnectionReadModel.walletConnectionStatus === 'connected' && walletConnectionReadModel.chainStatus === 'sepolia';
   const canRequestSepoliaDeployment =
@@ -1065,6 +1078,26 @@ export function App() {
     }));
     setInvestorRegistryDraftWallet('');
     setInvestorRegistryError(undefined);
+  }
+
+  function updateSubscriptionParameters(nextParameters: Partial<Mila26LifecycleState['subscriptionParameters']>) {
+    setLifecycleState((current) => ({
+      ...current,
+      subscriptionParameters: {
+        ...current.subscriptionParameters,
+        ...nextParameters,
+      },
+    }));
+  }
+
+  function updateRedemptionParameters(nextParameters: Partial<RedemptionParameters>) {
+    setLifecycleState((current) => ({
+      ...current,
+      redemptionParameters: {
+        ...current.redemptionParameters,
+        ...nextParameters,
+      },
+    }));
   }
 
   function updateWalletWhitelistTargetWallet(walletAddress: string) {
@@ -1615,6 +1648,197 @@ export function App() {
               </section>
             )}
 
+            {activeWorkspaceTab.id === 'subscription' && (
+              <section className="parameter-panel" aria-label="Subscription workspace">
+                <div className="registry-panel-heading">
+                  <div>
+                    <h3>Subscription parameters</h3>
+                    <p>
+                      Configure the permitted stablecoins, subscription window, payment destination, and payment-per-token terms
+                      for the subscription-redemption smart-contract template. This does not move stablecoins.
+                    </p>
+                  </div>
+                  <span className={`gate-badge ${lifecycleReadModel.subscription.status === 'ready' ? 'ready' : 'draft'}`}>
+                    {lifecycleReadModel.subscription.statusLabel}
+                  </span>
+                </div>
+
+                <div className="parameter-grid">
+                  <label htmlFor="subscription-stablecoins">
+                    Permitted stablecoins
+                    <input
+                      id="subscription-stablecoins"
+                      value={permittedStablecoinsInput}
+                      onChange={(event) => {
+                        setPermittedStablecoinsInput(event.target.value);
+                        updateSubscriptionParameters({
+                          permittedStablecoins: parsePermittedStablecoins(event.target.value),
+                        });
+                      }}
+                      placeholder="USDC, USDT"
+                      autoComplete="off"
+                    />
+                  </label>
+                  <label htmlFor="subscription-window">
+                    Subscription window
+                    <input
+                      id="subscription-window"
+                      value={lifecycleState.subscriptionParameters.subscriptionWindow ?? ''}
+                      onChange={(event) => updateSubscriptionParameters({ subscriptionWindow: event.target.value })}
+                      placeholder="e.g. Monthly, first 5 business days"
+                    />
+                  </label>
+                  <label htmlFor="minimum-subscription">
+                    Minimum subscription amount
+                    <input
+                      id="minimum-subscription"
+                      value={lifecycleState.subscriptionParameters.minimumSubscriptionAmount ?? ''}
+                      onChange={(event) => updateSubscriptionParameters({ minimumSubscriptionAmount: event.target.value })}
+                      inputMode="decimal"
+                      placeholder="25000"
+                    />
+                  </label>
+                  <label htmlFor="subscription-payment-address">
+                    Payment wallet / contract address
+                    <input
+                      id="subscription-payment-address"
+                      value={lifecycleState.subscriptionParameters.paymentAddress ?? ''}
+                      onChange={(event) => updateSubscriptionParameters({ paymentAddress: event.target.value })}
+                      placeholder="0x..."
+                      autoComplete="off"
+                    />
+                  </label>
+                  <label htmlFor="payment-per-token">
+                    Payment per token
+                    <input
+                      id="payment-per-token"
+                      value={lifecycleState.subscriptionParameters.paymentPerToken ?? ''}
+                      onChange={(event) => updateSubscriptionParameters({ paymentPerToken: event.target.value })}
+                      inputMode="decimal"
+                      placeholder="1.025"
+                    />
+                  </label>
+                </div>
+
+                <div className="parameter-status" aria-label="Subscription validation status">
+                  <p>{lifecycleReadModel.subscription.statusDetail}</p>
+                  {lifecycleReadModel.subscription.validationMessages.length > 0 ? (
+                    <ul>
+                      {lifecycleReadModel.subscription.validationMessages.map((message) => (
+                        <li key={message}>{message}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>Subscription parameters are ready for template handoff.</p>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {activeWorkspaceTab.id === 'redemption' && (
+              <section className="parameter-panel" aria-label="Redemption workspace">
+                <div className="registry-panel-heading">
+                  <div>
+                    <h3>Redemption parameters</h3>
+                    <p>
+                      Configure the redemption window, redemption wallet, payout stablecoin, payout-per-token amount, and
+                      liquidation delay before stablecoin payout. This is parameter capture only.
+                    </p>
+                  </div>
+                  <span className={`gate-badge ${lifecycleReadModel.redemption.status === 'ready' ? 'ready' : 'draft'}`}>
+                    {lifecycleReadModel.redemption.statusLabel}
+                  </span>
+                </div>
+
+                <div className="parameter-grid">
+                  <label htmlFor="redemption-window">
+                    Redemption window / date
+                    <input
+                      id="redemption-window"
+                      value={lifecycleState.redemptionParameters.redemptionWindow ?? ''}
+                      onChange={(event) => updateRedemptionParameters({ redemptionWindow: event.target.value })}
+                      placeholder="e.g. Quarterly redemption date"
+                    />
+                  </label>
+                  <label htmlFor="redemption-delay-unit">
+                    Redemption delay unit
+                    <select
+                      id="redemption-delay-unit"
+                      value={lifecycleState.redemptionParameters.redemptionDelayUnit ?? ''}
+                      onChange={(event) =>
+                        updateRedemptionParameters({
+                          redemptionDelayUnit: event.target.value
+                            ? (event.target.value as RedemptionParameters['redemptionDelayUnit'])
+                            : undefined,
+                        })
+                      }
+                    >
+                      <option value="">Choose unit</option>
+                      <option value="minutes">Minutes</option>
+                      <option value="hours">Hours</option>
+                      <option value="days">Days</option>
+                    </select>
+                  </label>
+                  <label htmlFor="redemption-delay-value">
+                    Redemption delay duration
+                    <input
+                      id="redemption-delay-value"
+                      value={lifecycleState.redemptionParameters.redemptionDelayValue ?? ''}
+                      onChange={(event) =>
+                        updateRedemptionParameters({
+                          redemptionDelayValue: event.target.value ? Number(event.target.value) : undefined,
+                        })
+                      }
+                      inputMode="numeric"
+                      placeholder="14"
+                    />
+                  </label>
+                  <label htmlFor="redemption-wallet">
+                    Redemption wallet address
+                    <input
+                      id="redemption-wallet"
+                      value={lifecycleState.redemptionParameters.redemptionWalletAddress ?? ''}
+                      onChange={(event) => updateRedemptionParameters({ redemptionWalletAddress: event.target.value })}
+                      placeholder="0x..."
+                      autoComplete="off"
+                    />
+                  </label>
+                  <label htmlFor="payout-stablecoin">
+                    Payout stablecoin
+                    <input
+                      id="payout-stablecoin"
+                      value={lifecycleState.redemptionParameters.payoutStablecoin ?? ''}
+                      onChange={(event) => updateRedemptionParameters({ payoutStablecoin: event.target.value })}
+                      placeholder="USDC"
+                    />
+                  </label>
+                  <label htmlFor="payout-per-token">
+                    Payout per token
+                    <input
+                      id="payout-per-token"
+                      value={lifecycleState.redemptionParameters.payoutPerToken ?? ''}
+                      onChange={(event) => updateRedemptionParameters({ payoutPerToken: event.target.value })}
+                      inputMode="decimal"
+                      placeholder="1.01"
+                    />
+                  </label>
+                </div>
+
+                <div className="parameter-status" aria-label="Redemption validation status">
+                  <p>{lifecycleReadModel.redemption.statusDetail}</p>
+                  {lifecycleReadModel.redemption.validationMessages.length > 0 ? (
+                    <ul>
+                      {lifecycleReadModel.redemption.validationMessages.map((message) => (
+                        <li key={message}>{message}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>Redemption parameters are ready for template handoff.</p>
+                  )}
+                </div>
+              </section>
+            )}
+
             <section className="bot-workspace ai-workspace" aria-label="Engineering Bot workspace">
               <div className="bot-title-row">
                 <div className="bot-identity">
@@ -1657,13 +1881,7 @@ export function App() {
 
               <section className="next-action-panel" aria-label="Next suggested action">
                 <h3>Next best action</h3>
-                <p>
-                  {lifecycleReadModel.investorRegistry.entryCount === 0
-                    ? 'Start by registering investor wallet addresses so subscription, whitelisting, servicing, and evidence can use the same lifecycle state.'
-                    : brief
-                    ? 'Continue refining the shared lifecycle inputs, then prepare the next contract parameter set from the same workspace state.'
-                    : 'Create the Requirement Brief so MILA26 can structure subscription, redemption, investor whitelist, servicing, and maturity parameters together.'}
-                </p>
+                <p>{nextBestActionText}</p>
                 <div className="suggested-action-row">
                   <button
                     type="button"
@@ -1792,8 +2010,60 @@ export function App() {
               </div>
             </section>
 
-            {(smartContractGenerationStatus === 'ready' || engineeringBrief) && (
+            {(smartContractGenerationStatus === 'ready' || engineeringBrief || hasSubscriptionRedemptionTemplateInput) && (
               <section className="artifact-panel compact-artifact-panel" aria-label="Workspace artifacts">
+                {hasSubscriptionRedemptionTemplateInput && (
+                  <div className="generated-artifacts" aria-label="Subscription redemption template handoff">
+                    <div className="generated-artifacts-heading">
+                      <div>
+                        <h3>Subscription-Redemption Template Handoff</h3>
+                        <p className="muted">
+                          Generated from current subscription and redemption lifecycle parameters. This is not live stablecoin execution.
+                        </p>
+                      </div>
+                      <span className={`gate-badge ${subscriptionRedemptionTemplate.status === 'ready' ? 'ready' : 'draft'}`}>
+                        {subscriptionRedemptionTemplate.statusLabel}
+                      </span>
+                    </div>
+                    <div className="generated-artifact-grid">
+                      <article>
+                        <span>Permitted stablecoins</span>
+                        <strong>
+                          {subscriptionRedemptionTemplate.parameterSummary.permittedStablecoins.length > 0
+                            ? subscriptionRedemptionTemplate.parameterSummary.permittedStablecoins.join(', ')
+                            : 'Not set'}
+                        </strong>
+                        <p>Subscription payment assets allowed by the template parameters.</p>
+                        <small>Shared lifecycle state</small>
+                      </article>
+                      <article>
+                        <span>Subscription payment</span>
+                        <strong>{subscriptionRedemptionTemplate.parameterSummary.paymentPerToken ?? 'Not set'}</strong>
+                        <p>{subscriptionRedemptionTemplate.parameterSummary.paymentAddress ?? 'Payment address not set.'}</p>
+                        <small>{subscriptionRedemptionTemplate.parameterSummary.subscriptionWindow ?? 'Subscription window not set.'}</small>
+                      </article>
+                      <article>
+                        <span>Redemption payout</span>
+                        <strong>{subscriptionRedemptionTemplate.parameterSummary.payoutPerToken ?? 'Not set'}</strong>
+                        <p>{subscriptionRedemptionTemplate.parameterSummary.redemptionWalletAddress ?? 'Redemption wallet not set.'}</p>
+                        <small>{subscriptionRedemptionTemplate.parameterSummary.payoutStablecoin ?? 'Payout stablecoin not set.'}</small>
+                      </article>
+                      <article>
+                        <span>Redemption delay</span>
+                        <strong>{subscriptionRedemptionTemplate.parameterSummary.redemptionDelay ?? 'Not set'}</strong>
+                        <p>{subscriptionRedemptionTemplate.parameterSummary.redemptionWindow ?? 'Redemption window not set.'}</p>
+                        <small>Delay before stablecoin payout after token receipt.</small>
+                      </article>
+                    </div>
+                    {subscriptionRedemptionTemplate.validationMessages.length > 0 && (
+                      <ul className="registry-warnings" aria-label="Template handoff blocking items">
+                        {subscriptionRedemptionTemplate.validationMessages.map((message) => (
+                          <li key={message}>{message}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
                 {smartContractGenerationStatus === 'ready' && (
                   <div className="generated-artifacts" aria-label="Generated smart contract artifacts">
                     <div className="generated-artifacts-heading">

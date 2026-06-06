@@ -2,6 +2,10 @@
 
 The current implemented screen is the MILA26 lifecycle workspace. It is aligned to the latest mockup direction but is not intended to be pixel-perfect.
 
+The mockup-driven lifecycle workspace and all user-stated lifecycle flows are in MVP scope. Some screens are implemented, some are parameter/template-only next steps, and some remain locked roadmap surfaces until their code and review gates are complete.
+
+Prototype screens must be functional where shown as implemented. A tab is not complete merely because it looks correct; it must read/write shared lifecycle state, validate user input, update dependent workspace surfaces, and have focused test coverage.
+
 ## 1. Workspace Overview
 
 - User goal: start or continue a tokenised financial product workspace.
@@ -19,15 +23,15 @@ The current implemented screen is the MILA26 lifecycle workspace. It is aligned 
 ## 3. Investor Registry
 
 - User goal: define up to 50 investor wallet addresses that can be whitelisted.
-- Primary UI: visual tab and suggested action today; wallet whitelist operation exists in SCP after deployment evidence.
-- Current status: partially implemented through Whitelist Wallet operation and read models.
-- Gap: no full investor registry CRUD or import/export table yet.
+- Primary UI: Investor Registry tab with wallet rows, validation, duplicate detection, local-session whitelist status, and SCP handoff.
+- Current status: implemented for manual entry and SCP Whitelist Wallet handoff.
+- Gap: no import/export, off-chain investor profile fields, or durable registry persistence yet.
 
 ## 4. Subscription
 
 - User goal: define permitted stablecoins, subscription window, minimum subscription, payment wallet/contract address, and payment per token.
-- Primary UI: visual tab and suggested action today.
-- Current status: future parameter/template flow.
+- Primary UI: Subscription tab parameter panel, validation status, lifecycle snapshot, Product Vault status, and Engineering Bot next action.
+- Current status: implemented for local-session parameter capture and subscription-redemption template handoff input.
 - Guardrail: no subscription smart-contract template execution yet.
 
 ## 5. Smart Contract
@@ -49,8 +53,8 @@ The current implemented screen is the MILA26 lifecycle workspace. It is aligned 
 ## 7. Redemption
 
 - User goal: configure redemption dates/windows, redemption delay, redemption wallet, and stablecoin payout mechanics.
-- Primary UI: visual tab and suggested action today.
-- Current status: future subscription-redemption template parameters.
+- Primary UI: Redemption tab parameter panel, validation status, lifecycle snapshot, Product Vault status, and Engineering Bot next action.
+- Current status: implemented for local-session parameter capture and subscription-redemption template handoff input.
 - Guardrail: no redemption wallet payout execution exists yet.
 
 ## 8. Maturity

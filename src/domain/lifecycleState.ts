@@ -65,8 +65,48 @@ export type InvestorRegistryReadModel = {
 
 export type LifecycleParameterStatus = 'needs_parameters' | 'draft' | 'ready' | 'locked_for_later';
 
+export type SubscriptionParametersReadModel = {
+  status: LifecycleParameterStatus;
+  statusLabel: string;
+  statusDetail: string;
+  normalizedPermittedStablecoins: string[];
+  validationMessages: string[];
+  isReadyForTemplate: boolean;
+};
+
+export type RedemptionParametersReadModel = {
+  status: LifecycleParameterStatus;
+  statusLabel: string;
+  statusDetail: string;
+  validationMessages: string[];
+  isReadyForTemplate: boolean;
+};
+
+export type SubscriptionRedemptionTemplateReadModel = {
+  status: LifecycleParameterStatus;
+  statusLabel: string;
+  statusDetail: string;
+  validationMessages: string[];
+  canGenerateTemplateParameters: boolean;
+  parameterSummary: {
+    permittedStablecoins: string[];
+    subscriptionWindow?: string;
+    minimumSubscriptionAmount?: string;
+    paymentAddress?: string;
+    paymentPerToken?: string;
+    redemptionWindow?: string;
+    redemptionDelay?: string;
+    redemptionWalletAddress?: string;
+    payoutStablecoin?: string;
+    payoutPerToken?: string;
+  };
+};
+
 export type Mila26LifecycleReadModel = {
   investorRegistry: InvestorRegistryReadModel;
+  subscription: SubscriptionParametersReadModel;
+  redemption: RedemptionParametersReadModel;
+  subscriptionRedemptionTemplate: SubscriptionRedemptionTemplateReadModel;
   subscriptionStatus: LifecycleParameterStatus;
   redemptionStatus: LifecycleParameterStatus;
   maturityStatus: LifecycleParameterStatus;
@@ -134,16 +174,187 @@ export function markInvestorWalletWhitelisted(
 
 export function toMila26LifecycleReadModel(state: Mila26LifecycleState): Mila26LifecycleReadModel {
   const investorRegistry = toInvestorRegistryReadModel(state.investorRegistryEntries);
+  const subscription = toSubscriptionParametersReadModel(state.subscriptionParameters);
+  const redemption = toRedemptionParametersReadModel(state.redemptionParameters);
+  const subscriptionRedemptionTemplate = toSubscriptionRedemptionTemplateReadModel(
+    state.subscriptionParameters,
+    state.redemptionParameters,
+    subscription,
+    redemption,
+  );
 
   return {
     investorRegistry,
-    subscriptionStatus: state.subscriptionParameters.permittedStablecoins.length > 0 ? 'draft' : 'needs_parameters',
-    redemptionStatus:
-      state.redemptionParameters.redemptionDelayUnit && state.redemptionParameters.redemptionDelayValue
-        ? 'draft'
-        : 'needs_parameters',
+    subscription,
+    redemption,
+    subscriptionRedemptionTemplate,
+    subscriptionStatus: subscription.status,
+    redemptionStatus: redemption.status,
     maturityStatus: state.maturityParameters.maturityDate ? 'draft' : 'locked_for_later',
   };
+}
+
+export function parsePermittedStablecoins(value: string): string[] {
+  return value
+    .split(',')
+    .map((stablecoin) => stablecoin.trim().toUpperCase())
+    .filter(Boolean)
+    .filter((stablecoin, index, stablecoins) => stablecoins.indexOf(stablecoin) === index);
+}
+
+function toSubscriptionParametersReadModel(parameters: SubscriptionParameters): SubscriptionParametersReadModel {
+  const normalizedPermittedStablecoins = parameters.permittedStablecoins
+    .map((stablecoin) => stablecoin.trim().toUpperCase())
+    .filter(Boolean)
+    .filter((stablecoin, index, stablecoins) => stablecoins.indexOf(stablecoin) === index);
+  const validationMessages: string[] = [];
+  const hasAnyInput =
+    normalizedPermittedStablecoins.length > 0 ||
+    Boolean(parameters.subscriptionWindow?.trim()) ||
+    Boolean(parameters.minimumSubscriptionAmount?.trim()) ||
+    Boolean(parameters.paymentAddress?.trim()) ||
+    Boolean(parameters.paymentPerToken?.trim());
+
+  if (normalizedPermittedStablecoins.length === 0) validationMessages.push('Add at least one permitted stablecoin.');
+  if (!parameters.subscriptionWindow?.trim()) validationMessages.push('Add a subscription window.');
+  if (!isPositiveNumericString(parameters.minimumSubscriptionAmount)) validationMessages.push('Minimum subscription amount must be greater than zero.');
+  if (!isValidNonZeroEvmAddress(parameters.paymentAddress?.trim() ?? '')) validationMessages.push('Payment wallet or contract address must be a valid non-zero EVM address.');
+  if (!isPositiveNumericString(parameters.paymentPerToken)) validationMessages.push('Payment per token must be greater than zero.');
+
+  const status: LifecycleParameterStatus = validationMessages.length === 0 ? 'ready' : hasAnyInput ? 'draft' : 'needs_parameters';
+
+  return {
+    status,
+    statusLabel: subscriptionStatusLabel(status),
+    statusDetail: subscriptionStatusDetail(status, normalizedPermittedStablecoins.length, validationMessages.length),
+    normalizedPermittedStablecoins,
+    validationMessages,
+    isReadyForTemplate: status === 'ready',
+  };
+}
+
+function toRedemptionParametersReadModel(parameters: RedemptionParameters): RedemptionParametersReadModel {
+  const validationMessages: string[] = [];
+  const hasAnyInput =
+    Boolean(parameters.redemptionWindow?.trim()) ||
+    Boolean(parameters.redemptionDelayUnit) ||
+    Boolean(parameters.redemptionDelayValue) ||
+    Boolean(parameters.redemptionWalletAddress?.trim()) ||
+    Boolean(parameters.payoutStablecoin?.trim()) ||
+    Boolean(parameters.payoutPerToken?.trim());
+
+  if (!parameters.redemptionWindow?.trim()) validationMessages.push('Add a redemption window or date.');
+  if (!parameters.redemptionDelayUnit) validationMessages.push('Choose a redemption delay unit.');
+  if (!Number.isFinite(parameters.redemptionDelayValue) || (parameters.redemptionDelayValue ?? 0) <= 0) {
+    validationMessages.push('Redemption delay duration must be greater than zero.');
+  }
+  if (!isValidNonZeroEvmAddress(parameters.redemptionWalletAddress?.trim() ?? '')) {
+    validationMessages.push('Redemption wallet address must be a valid non-zero EVM address.');
+  }
+  if (!parameters.payoutStablecoin?.trim()) validationMessages.push('Add a stablecoin payout asset.');
+  if (!isPositiveNumericString(parameters.payoutPerToken)) validationMessages.push('Payout per token must be greater than zero.');
+
+  const status: LifecycleParameterStatus = validationMessages.length === 0 ? 'ready' : hasAnyInput ? 'draft' : 'needs_parameters';
+
+  return {
+    status,
+    statusLabel: redemptionStatusLabel(status),
+    statusDetail: redemptionStatusDetail(status, parameters.redemptionDelayValue, parameters.redemptionDelayUnit, validationMessages.length),
+    validationMessages,
+    isReadyForTemplate: status === 'ready',
+  };
+}
+
+function toSubscriptionRedemptionTemplateReadModel(
+  subscriptionParameters: SubscriptionParameters,
+  redemptionParameters: RedemptionParameters,
+  subscription: SubscriptionParametersReadModel,
+  redemption: RedemptionParametersReadModel,
+): SubscriptionRedemptionTemplateReadModel {
+  const validationMessages = [
+    ...subscription.validationMessages.map((message) => `Subscription: ${message}`),
+    ...redemption.validationMessages.map((message) => `Redemption: ${message}`),
+  ];
+  const status: LifecycleParameterStatus =
+    subscription.status === 'ready' && redemption.status === 'ready'
+      ? 'ready'
+      : subscription.status === 'needs_parameters' && redemption.status === 'needs_parameters'
+        ? 'needs_parameters'
+        : 'draft';
+
+  return {
+    status,
+    statusLabel: templateStatusLabel(status),
+    statusDetail:
+      status === 'ready'
+        ? 'Subscription-redemption template parameters are ready for smart contract handoff.'
+        : status === 'draft'
+          ? 'Complete remaining subscription and redemption parameters before template handoff.'
+          : 'Add subscription and redemption parameters to prepare the template handoff.',
+    validationMessages,
+    canGenerateTemplateParameters: status === 'ready',
+    parameterSummary: {
+      permittedStablecoins: subscription.normalizedPermittedStablecoins,
+      subscriptionWindow: normalizedOptional(subscriptionParameters.subscriptionWindow),
+      minimumSubscriptionAmount: normalizedOptional(subscriptionParameters.minimumSubscriptionAmount),
+      paymentAddress: normalizedOptional(subscriptionParameters.paymentAddress),
+      paymentPerToken: normalizedOptional(subscriptionParameters.paymentPerToken),
+      redemptionWindow: normalizedOptional(redemptionParameters.redemptionWindow),
+      redemptionDelay:
+        redemptionParameters.redemptionDelayValue && redemptionParameters.redemptionDelayUnit
+          ? `${redemptionParameters.redemptionDelayValue} ${redemptionParameters.redemptionDelayUnit}`
+          : undefined,
+      redemptionWalletAddress: normalizedOptional(redemptionParameters.redemptionWalletAddress),
+      payoutStablecoin: normalizedOptional(redemptionParameters.payoutStablecoin)?.toUpperCase(),
+      payoutPerToken: normalizedOptional(redemptionParameters.payoutPerToken),
+    },
+  };
+}
+
+function normalizedOptional(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized || undefined;
+}
+
+function isPositiveNumericString(value: string | undefined): boolean {
+  if (!value?.trim()) return false;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0;
+}
+
+function subscriptionStatusLabel(status: LifecycleParameterStatus): string {
+  if (status === 'ready') return 'Subscription: Ready for template';
+  if (status === 'draft') return 'Subscription: Needs review';
+  return 'Subscription: Parameters needed';
+}
+
+function subscriptionStatusDetail(status: LifecycleParameterStatus, stablecoinCount: number, validationCount: number): string {
+  if (status === 'ready') return `${stablecoinCount} permitted stablecoin(s) configured for subscription.`;
+  if (status === 'draft') return `${validationCount} subscription parameter item(s) still need attention.`;
+  return 'Define stablecoins, subscription window, payment address, and payment per token.';
+}
+
+function redemptionStatusLabel(status: LifecycleParameterStatus): string {
+  if (status === 'ready') return 'Redemption: Ready for template';
+  if (status === 'draft') return 'Redemption: Needs review';
+  return 'Redemption: Parameters needed';
+}
+
+function redemptionStatusDetail(
+  status: LifecycleParameterStatus,
+  delayValue: number | undefined,
+  delayUnit: RedemptionParameters['redemptionDelayUnit'],
+  validationCount: number,
+): string {
+  if (status === 'ready') return `Redemption delay configured: ${delayValue} ${delayUnit}.`;
+  if (status === 'draft') return `${validationCount} redemption parameter item(s) still need attention.`;
+  return 'Define redemption window, wallet, payout stablecoin, payout per token, and delay.';
+}
+
+function templateStatusLabel(status: LifecycleParameterStatus): string {
+  if (status === 'ready') return 'Template handoff ready';
+  if (status === 'draft') return 'Template handoff needs parameters';
+  return 'Template handoff not started';
 }
 
 function toInvestorRegistryReadModel(entries: InvestorRegistryEntry[]): InvestorRegistryReadModel {

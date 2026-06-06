@@ -20,6 +20,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -41,6 +42,7 @@ button:disabled {
 }
 
 input,
+select,
 textarea {
   width: 100%;
   border: 1px solid #cad5df;
@@ -51,6 +53,7 @@ textarea {
 }
 
 input:focus,
+select:focus,
 textarea:focus {
   border-color: #329e91;
   outline: 3px solid rgb(50 158 145 / 0.18);
@@ -1369,6 +1372,40 @@ summary {
   padding: 18px;
 }
 
+.parameter-panel {
+  border: 1px solid #dce5f0;
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.parameter-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.parameter-status {
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #334155;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.parameter-status p,
+.parameter-status ul {
+  margin: 0;
+}
+
+.parameter-status ul {
+  padding-left: 20px;
+}
+
 .registry-panel-heading {
   align-items: flex-start;
   display: flex;
@@ -1664,6 +1701,10 @@ summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .parameter-grid {
+    grid-template-columns: 1fr;
+  }
+
   .registry-row {
     grid-template-columns: minmax(220px, 1fr) minmax(130px, 0.55fr) minmax(180px, 0.9fr) minmax(150px, 0.65fr);
   }
@@ -1721,6 +1762,7 @@ summary {
   .generated-artifact-grid,
   .artifact-grid,
   .registry-summary,
+  .parameter-grid,
   .registry-form,
   .registry-row {
     grid-template-columns: 1fr;
