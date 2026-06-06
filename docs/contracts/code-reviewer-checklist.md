@@ -1,7 +1,7 @@
 # Code Reviewer Checklist — MILA26
 
 ## Status: ACTIVE
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Last updated:** 2026-06-06
 **Applies to:** MILA26 repository
 **File path:** `docs/contracts/code-reviewer-checklist.md`
@@ -197,6 +197,7 @@ MILA26's architecture uses typed artifacts, thin derived read models, and explic
 - [ ] New domain concepts use typed artifacts (not ad-hoc objects)
 - [ ] Read models are pure derivations (not stateful)
 - [ ] No introduction of alternative patterns that conflict with existing architecture
+- [ ] Cache, memory, and persistence boundaries do not bypass typed lifecycle/read-model ownership
 - [ ] Flag any violation as **MEDIUM — Pattern Inconsistency**
 
 ---
@@ -297,7 +298,14 @@ Brittle code breaks when something unrelated changes. Find the fractures waiting
 - [ ] `setTimeout` used as a "wait for it" hack instead of proper async coordination
 - [ ] Flag as **MEDIUM — Timing Assumption**
 
-### 5.8 — Regex Without Tests
+### 5.8 — Stale Cache Or Memory
+- [ ] Cached, memoized, persisted, or remembered output reused after an input affecting it has changed
+- [ ] Cache key omits lifecycle inputs, wallet account/chain, contract address, artifact version, safety status, prompt/model, schema version, or evidence source
+- [ ] Cached NAV/valuation, wallet, deployment, redemption, or evidence state displayed without freshness/provenance
+- [ ] Generated artifacts or contract parameters derived from cache/memory instead of the current approved lifecycle read model
+- [ ] Flag as **HIGH — Stale Cache/Memory Risk**, or **CRITICAL** if stale values can trigger wallet execution, evidence claims, private-key/signature caching, or false transaction/address/valuation status
+
+### 5.9 — Regex Without Tests
 - [ ] Regular expressions used for parsing/validation without documented examples
 - [ ] No test cases showing what the regex matches and doesn't match
 - [ ] Flag as **MEDIUM — Untested Regex**
@@ -474,6 +482,15 @@ These checks apply based on the type of code being reviewed. Execute the relevan
 - [ ] Maturity closeout copy does not imply all outstanding tokens are redeemed unless the corresponding operation/evidence path exists — flag as **HIGH**, or **CRITICAL** if it claims completed redemption
 - [ ] Flag misleading financial-product claims as **HIGH** or **CRITICAL** when they create a false execution, legal, compliance, or advice claim
 
+### 9.6 — State / Memory / Performance Tracks (if applicable)
+- [ ] Apply when the diff touches shared lifecycle state, cache, memoization, persistence, browser storage, SQLite/project memory, run memory, chat memory, local-session evidence, async orchestration, LLM calls, expensive validation, evidence export, or slow UI flows
+- [ ] One source of truth owns each lifecycle value; tabs, Engineering Bot, Product Vault, lifecycle snapshot, SCP, and contract handoff do not keep independent stale copies — flag as **HIGH**
+- [ ] Cache keys include every field that affects output and have explicit invalidation rules — flag as **HIGH**
+- [ ] Freshness/provenance is visible for local-session, cached, provider-returned, receipt-confirmed, NAV/valuation, wallet, deployment, operation, and evidence states — flag as **HIGH**, or **CRITICAL** for false execution/evidence claims
+- [ ] Sensitive data, wallet signatures, private keys, raw model output, unsafe artifacts, and blocked outputs are not cached as approved state — flag as **CRITICAL**
+- [ ] Slow paths provide progress/error/retry behavior and do not block local validation or basic tab navigation — flag as **MEDIUM**, or **HIGH** if the user cannot recover
+- [ ] Repeated expensive LLM/compile/test/evidence work is avoided only where deterministic cache reuse is safe and traceable — flag as **MEDIUM** for missed safe optimization, **HIGH** for unsafe optimization
+
 ---
 
 ## PHASE 10: COMPLETION REPORT
@@ -505,7 +522,7 @@ The report must include:
 | 2 — Blockchain Safety | All checks | — | — | — |
 | 3 — Architecture | Critical violations | UI architecture, layer isolation | Pattern inconsistency | — |
 | 4 — Naming | — | — | Generic names, domain inconsistency, function naming | Boolean, collection, abbreviation |
-| 5 — Brittleness | — | Ordering, data shape, error swallow, unhandled state | Magic strings, index access, timing, regex | — |
+| 5 — Brittleness | Stale execution/evidence/private cache | Ordering, data shape, error swallow, unhandled state, stale cache/memory | Magic strings, index access, timing, regex | — |
 | 6 — Rigidity | — | — | Abstraction, boolean trap, duplication, god object, scattered, nesting | Indirection |
 | 7 — Tests | — | Coverage, regression, guardrail assertions | Test quality, mock usage | — |
 | 8 — Documentation | — | — | Handover, contracts, complex logic | README, comments, `.env.example` |
@@ -525,6 +542,7 @@ The report must include:
 | MILA26-021 | 0.1–0.3 | Scope violation (CRITICAL) |
 | MILA26-004 | 4 | Generic naming |
 | MILA26-005, 006, 008, 015, 022, 023 | 3, 5, 7, 9.4 | Lifecycle workspace / SCP / context / domain in UI |
+| MILA26-024 | 3, 5, 9.6 | State / memory / cache freshness |
 | MILA26-007 | 3, 9.3 | Frontend LLM / secrets |
 | MILA26-009 | 6 | Premature abstraction |
 | MILA26-010, 019 | 5 | Silent swallow, stale closure |
@@ -540,6 +558,7 @@ The report must include:
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 1.2.0 | 2026-06-06 | Added State / Memory / Performance checks and stale cache/memory pattern mapping | Codex |
 | 1.1.0 | 2026-06-06 | Added lifecycle source-of-truth, Investor Registry/SCP gate, multi-item flow, internal-track-label, and financial-product wording checks | Codex |
 | 1.0.2 | 2026-05-31 | Aligned Phase 1/3 with Track 15A source-sensitive submitted/confirmed labels and SCP operation-specific controls | AI Bot Factory |
 | 1.0.1 | 2026-05-31 | Aligned trio: lessons pre-scan, phase 0–10, split 2.4 severities, pattern map, 8.6 | AI Bot Factory |

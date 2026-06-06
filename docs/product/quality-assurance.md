@@ -37,10 +37,12 @@ MILA26 uses a reviewer system with defined roles:
 | Quality Architect / Refactorer | Looks for brittleness, duplicated rules, source-of-truth drift, hardcoding, and weak module boundaries. |
 | Security Reviewer | Reviews wallet safety, secrets, auth, API boundaries, private-key custody, LLM provider exposure, and sensitive data handling. |
 | Solidity Reviewer | Reviews smart-contract invariants, ABI/artifact consistency, access control, events, revert paths, and testnet boundaries. |
-| Frontend/UX Reviewer | Reviews Engineering Bot readability, lifecycle tab coherence, right-rail passivity, responsive behavior, and user-facing claims. |
+| Frontend/UX Reviewer | Reviews Engineering Bot readability, lifecycle tab coherence, right-rail passivity, responsive behavior, user-facing claims, and whether the lifecycle flow is understandable from the user's point of view. |
 | Release Engineer | Reviews build status, environment configuration, reviewer gates, commit/push readiness, and release risk. |
 
 One person or agent may perform more than one role in a small track, but the role checks remain explicit.
+
+MILA26 also uses triggered review lenses when the changed surface warrants deeper scrutiny. The main example is the **State / Memory / Performance Lens**, which is applied when work touches shared lifecycle state, caching, persistence, chat/project/run memory, async orchestration, evidence exports, LLM calls, or speed-sensitive flows. This keeps the core reviewer list lean while still checking stale-data, cache-invalidation, retention, and latency risks.
 
 ---
 
@@ -50,6 +52,8 @@ Reviewer checks focus on the failure modes most likely to matter for MILA26:
 
 - lifecycle tabs must remain visual navigation only, not separate code silos;
 - shared lifecycle state must feed tabs, Engineering Bot prompts, Product Vault, SCP gates, and evidence surfaces where applicable;
+- users must be able to understand the current stage, next best action, missing inputs, and locked/available capability states without knowing the smart-contract implementation;
+- cache, memory, and persistence must not create stale lifecycle state, stale NAV/valuation status, stale wallet/chain status, or inconsistent smart-contract parameters;
 - investor wallet registry data must remain the whitelist source of truth;
 - wallet operations must remain user-signed and Sepolia/testnet-only;
 - backend code must never hold private keys;

@@ -1,7 +1,7 @@
 # Code Review Activation Rules — MILA26
 
 ## Status: ACTIVE
-**Version:** 1.1.1
+**Version:** 1.2.0
 **Last updated:** 2026-06-06
 **Applies to:** MILA26 repository
 **File path:** `docs/handover/07-code-review-activation-rules.md`
@@ -61,6 +61,7 @@ Use for:
 - docs that change guardrails, contracts, roadmap, handover, or code-review rules
 - small domain/read-model changes
 - small UI/status/readiness surface changes
+- small cache, memoization, loading-state, or deterministic fast-path changes
 - test-only changes
 - cleanup that changes behavior-adjacent wording
 
@@ -85,6 +86,8 @@ Use for any diff that touches:
 - lifecycle source-of-truth gates, Investor Registry/SCP handoffs, or cross-tab lifecycle state
 - backend routes or API contracts
 - persistence, storage, database, or evidence storage
+- cache invalidation, project/run/chat memory, local-session evidence retention, or state freshness boundaries
+- async orchestration, expensive validation, LLM calls, evidence export, or other speed-sensitive flows
 - user-visible lifecycle labels
 - smart-contract operation execution
 - LLM provider behavior or secrets
@@ -129,6 +132,7 @@ The lead may refactor touched modules when necessary to remove:
 - hardcoded config, chain IDs, addresses, URLs, timeouts, model names, or feature flags outside config/test fixtures;
 - mixed-responsibility god objects;
 - scattered validation or evidence logic;
+- unclear cache keys, invalidation rules, freshness labels, retention boundaries, or async progress states;
 - swallowed errors or misleading success states;
 - tests that assert implementation details while missing behavior.
 
@@ -161,6 +165,8 @@ If the user explicitly asks to skip review, report that the reviewer gate was sk
 | Investor Registry/SCP handoff or shared lifecycle gate | Level 2 |
 | Backend route | Level 2 |
 | Persistence/evidence storage | Level 2 |
+| Cache invalidation or project/run/chat memory | Level 2 |
+| Async orchestration, LLM, evidence export, or expensive validation | Level 2 |
 
 ---
 
@@ -176,6 +182,7 @@ This file only decides which review pass to run. The checklist remains the autho
 
 | Version | Date | Change |
 |---|---|---|
+| 1.2.0 | 2026-06-06 | Added State / Memory / Performance review lens triggers. |
 | 1.1.1 | 2026-06-06 | Added lifecycle source-of-truth and Investor Registry/SCP handoff changes to Level 2 review triggers. |
 | 1.1.0 | 2026-06-05 | Added Lead Implementer ownership, active failure loop, and quality refactor authority. |
 | 1.0.0 | 2026-05-31 | Initial review activation rules. |

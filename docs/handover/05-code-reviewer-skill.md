@@ -1,7 +1,7 @@
 # Code Reviewer Skill — MILA26
 
 ## Status: ACTIVE SKILL
-**Version:** 1.1.0
+**Version:** 1.2.1
 **Last updated:** 2026-06-06
 **Applies to:** MILA26 repository
 **File path:** `docs/handover/05-code-reviewer-skill.md`
@@ -81,11 +81,22 @@ Before every review, read these files in order:
 11. Investor Registry/SCP handoff rules in Phase 9.4 (registry as wallet whitelist source of truth)
 12. Financial-product wording rules in Phase 9.5 when copy touches investors, stablecoins, NAV, redemption, maturity, or advice
 
+### When reviewing state, memory, cache, or performance-sensitive code:
+13. State / Memory / Performance review lens in `docs/handover/08-delivery-role-skills.md`
+14. Phase 9.6 of the checklist for cache keys, invalidation, freshness, retention, async progress, and latency
+15. `docs/architecture/memory-design-mvp.md` and `docs/architecture/latency-and-orchestration-principles.md`
+
 ---
 
 ## REVIEW PRINCIPLES
 
 These principles guide every review. They are ordered by priority.
+
+---
+
+### Cross-Lens Rule
+
+Do not review through one concern only. After the primary checklist phase, scan for adjacent risk: safety, lifecycle state, user-facing clarity, cache/memory freshness, performance, tests, and release readiness. A specialist finding should still explain the wider user/system impact.
 
 ---
 
@@ -217,7 +228,31 @@ MILA26's tabs are a UX structure, not code ownership boundaries. The reviewer mu
 
 ---
 
-### Principle 6: Financial Product Claims Must Stay Honest
+### Principle 6: Memory And Cache Must Preserve Truth
+
+MILA26 should use memory and caching to improve continuity and speed, not to hide decisions, leak sensitive data, or show stale lifecycle facts as current.
+
+**What to flag as HIGH:**
+- Cached or remembered lifecycle state used after the user changes investor registry, subscription, redemption, NAV/valuation, wallet/chain, deployment, or evidence inputs
+- Cache keys that omit any input affecting the output, such as investor list, stablecoin, redemption delay, payment-per-token, wallet account/chain, contract address, artifact version, safety status, prompt/model, or schema version
+- Generated artifacts, evidence, or smart-contract parameters derived from stale cache/memory rather than the approved current lifecycle state
+- Slow LLM, compile/test, audit, evidence, or blockchain flows that freeze the Engineering Bot or tab navigation without progress/error/retry behavior
+
+**What to flag as CRITICAL:**
+- Wallet signatures, private keys, raw unvalidated LLM output, unsafe artifacts, or blocked outputs cached as approved state
+- Stale transaction hash, contract address, NAV/valuation, wallet status, or evidence shown as current without provenance/freshness
+
+**What to require in tests:**
+- Cache invalidation when lifecycle inputs change
+- Freshness/provenance labels for local-session or cached outputs
+- Slow/error path behavior for expensive operations
+- Regression coverage proving UI surfaces and contract handoff consume the same current read model
+
+**Why this matters:** Cache and memory bugs create a dangerous form of brittleness: the UI looks fast and coherent while silently using the wrong facts.
+
+---
+
+### Principle 7: Financial Product Claims Must Stay Honest
 
 MILA26 is dealing with tokenised financial products. Review UI copy, chat output, API responses, docs, and status labels for accidental regulated claims.
 
@@ -232,7 +267,7 @@ MILA26 is dealing with tokenised financial products. Review UI copy, chat output
 
 ---
 
-### Principle 7: Naming Discipline Matters
+### Principle 8: Naming Discipline Matters
 
 Names are the primary user interface of code. MILA26 has a rich domain language — names must reflect it.
 
@@ -251,7 +286,7 @@ Names are the primary user interface of code. MILA26 has a rich domain language 
 
 ---
 
-### Principle 8: Tests Are Part of the Contract
+### Principle 9: Tests Are Part of the Contract
 
 Every MILA26 track specifies required test categories. Missing tests are not optional — they are incomplete implementation.
 
@@ -268,7 +303,7 @@ Every MILA26 track specifies required test categories. Missing tests are not opt
 
 ---
 
-### Principle 9: The Review Teaches, Not Just Criticizes
+### Principle 10: The Review Teaches, Not Just Criticizes
 
 Every issue you flag should include:
 1. **What** the code does now (file:line)
@@ -387,6 +422,8 @@ Always produce a review in this exact structure. This ensures every review is co
 | Backend-only LLM calls | PASS / FAIL | |
 | No VITE_*LLM* variables | PASS / FAIL | |
 | Typed artifacts used for new domain concepts | PASS / FAIL | |
+| Cache/memory does not override current lifecycle state | PASS / FAIL | |
+| Persistence/freshness boundary is explicit where applicable | PASS / FAIL | |
 
 ---
 
@@ -396,6 +433,8 @@ Always produce a review in this exact structure. This ensures every review is co
 **Coupling Concerns:** [Which module pairs are too tightly coupled, if any?]
 **Happy Path Visibility:** [Is the main flow easy to follow or buried under edge cases?]
 **Error Handling Adequacy:** [Are errors handled at the right level? Any silent swallows?]
+**State/Memory/Freshness Risk:** [Does any cache, memory, persistence, or local-session state risk stale or inconsistent behavior?]
+**Latency/Responsiveness Risk:** [Could any slow path freeze the user flow or repeat expensive work unnecessarily?]
 
 ---
 
@@ -476,7 +515,7 @@ Rate each module or directory **1–10** (1 = supple, 10 = extremely rigid). One
 **Lines Reviewed (approx):** [count]
 **Phases Executed:** [e.g. 0–8, 9.2, 10]
 **Lessons patterns scanned:** [all CRITICAL / catch≥2 / full library]
-**Reviewer Version:** 1.1.0
+**Reviewer Version:** 1.2.1
 
 ---
 ```
@@ -535,6 +574,8 @@ Conflict resolution rule: A lower-tier concern never overrides a higher-tier con
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 1.2.1 | 2026-06-06 | Added cross-lens rule to reduce tunnel-vision reviews. | Codex |
+| 1.2.0 | 2026-06-06 | Added State / Memory / Performance review lens guidance. | Codex |
 | 1.1.0 | 2026-06-06 | Added lifecycle source-of-truth and financial-product wording review principles | Codex |
 | 1.0.2 | 2026-05-31 | Source-sensitive submitted/confirmed labels and Track 15A SCP operation-specific control boundary | AI Bot Factory |
 | 1.0.1 | 2026-05-31 | Trio alignment: load order, scope severities, 2.4 HIGH/CRITICAL split, pattern IDs, heat maps | AI Bot Factory |

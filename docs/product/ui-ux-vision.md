@@ -115,12 +115,27 @@ The SCP remains the place for executable wallet-signed contract operations once 
 
 - The Engineering Bot should have cross-stage context at all times.
 - Use tabs to guide the user, not to fragment state.
+- The user should always understand where they are in the lifecycle, what has been captured, what is missing, and what MILA26 recommends next.
 - Keep AI answers readable with normal body text, short sections, and clear next actions.
 - Show one next best action, then optional supporting actions.
 - Keep the right rail passive.
 - Keep financial-product wording user-facing; do not expose internal track numbers in the app UI.
 - Avoid in-app legal/tax/accounting disclaimer clutter unless required for a specific flow.
 - Preserve explicit blockchain safety boundaries: Sepolia only, user wallet signs, backend never holds private keys, local-session evidence only where applicable.
+
+## User-Perspective Lifecycle Review
+
+Every meaningful UI or lifecycle-flow change should be reviewed from the point of view of an asset manager who wants to tokenise and distribute a financial product but does not know the blockchain implementation steps.
+
+The reviewer should ask:
+
+- Does the screen make the next best action obvious?
+- Does the Engineering Bot explain the outcome in user language before smart-contract language?
+- Do locked, available, draft, completed, and needs-parameter states explain what the user can do next?
+- Do the tabs feel like one connected lifecycle rather than disconnected tools?
+- Do subscription, investor registry, redemption, asset servicing, maturity, and evidence states remain consistent with one another?
+- Can the user recover from missing or invalid inputs without needing implementation knowledge?
+- Is the center AI surface still the primary place for understanding and decision-making?
 
 ## Current Product Gaps Shown By The UI
 

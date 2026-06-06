@@ -1,7 +1,7 @@
 # Delivery Role Skills - MILA26
 
 ## Status: ACTIVE
-**Version:** 1.1.0
+**Version:** 1.3.1
 **Last updated:** 2026-06-06
 **Applies to:** MILA26 delivery roles in `AGENTS.md`
 **File path:** `docs/handover/08-delivery-role-skills.md`
@@ -20,6 +20,7 @@ Use this file when spawning or simulating a specialist role:
 - Solidity Reviewer
 - Frontend/UX Reviewer
 - Release Engineer
+- State / Memory / Performance review lens, when triggered by the changed surface
 
 The Lead Implementer remains accountable for integration, debugging, final test interpretation, commit readiness, and push readiness.
 
@@ -32,6 +33,7 @@ Every specialist role must:
 - stay within the assigned scope and files;
 - report findings before summaries;
 - identify the broken user/system flow, not only the symptom;
+- avoid tunnel vision: after checking the specialist concern, scan adjacent impacts on state, UX, security, tests, performance, and release readiness;
 - recommend a focused fix and regression test;
 - avoid rewriting unrelated code;
 - avoid adding dependencies, tools, MCPs, scanners, or frameworks without explicit approval;
@@ -47,7 +49,7 @@ Drift means the product, code, docs, tests, UI labels, contract artifacts, or ro
 
 ### Drift Owners
 
-- **Quality Architect / Refactorer:** source-of-truth drift, duplicated domain rules, brittle read models, per-tab state silos, and incomplete data flow.
+- **Quality Architect / Refactorer:** source-of-truth drift, duplicated domain rules, brittle read models, per-tab state silos, incomplete data flow, and state/cache/memory drift.
 - **Code Reviewer:** guardrail drift, architecture drift, roadmap/scope drift, user-facing claim drift, and missed lesson patterns.
 - **Test Engineer:** test drift where assertions no longer cover current behavior, risk, or regression classes.
 - **Frontend/UX Reviewer:** UI flow drift, lifecycle tab drift, copy/status drift, and right-rail action drift.
@@ -61,6 +63,7 @@ Drift means the product, code, docs, tests, UI labels, contract artifacts, or ro
 - lifecycle read models still feed every tab that needs the data;
 - user-facing labels do not expose internal track names or overclaim capability;
 - Product Vault, right rail, Engineering Bot, SCP, and tabs derive status from the same source where applicable;
+- cached, persisted, or remembered values do not override fresher lifecycle, wallet, NAV, subscription, redemption, or evidence state;
 - tests cover the current behavior rather than obsolete UI copy or implementation details;
 - smart-contract specs, ABI/artifacts, parameter cards, and operation gates agree;
 - environment docs and examples do not imply mainnet, production readiness, private-key custody, audit completion, KYC approval, or legal/investment advice.
@@ -168,6 +171,50 @@ Reviewers detect drift and recommend corrections. The Lead Implementer owns the 
 
 ---
 
+## State / Memory / Performance Review Lens
+
+This is a triggered lens, not a separate always-on reviewer. Apply it inside Quality Architect, Code Reviewer, Test Engineer, Security Reviewer, or Release Engineer work when the changed surface touches state, cache, memory, persistence, async orchestration, LLM calls, expensive validation, evidence exports, or perceived speed.
+
+### Use When
+
+- shared lifecycle state, read models, Product Vault status, lifecycle snapshot, SCP gates, or Engineering Bot context changes;
+- local React state, local-session evidence, browser storage, SQLite/project memory, run memory, chat memory, or evidence persistence changes;
+- caching or memoization is added, removed, or used for generated artifacts, validation results, LLM responses, evidence exports, NAV/valuation data, wallet status, or contract parameters;
+- a flow may become slow because of LLM calls, blockchain calls, contract compilation/tests, file parsing, audits, evidence export, or multi-agent orchestration;
+- UI responsiveness, loading states, retry behavior, or progress reporting changes.
+
+### Must Check
+
+- one source of truth owns each lifecycle value; tabs must not cache independent copies of cross-stage data;
+- cache keys are deterministic and include every input that affects the output;
+- invalidation is explicit for investor registry, subscription, redemption, NAV/valuation, wallet/chain, deployment, operation evidence, and smart-contract parameters;
+- stale data cannot be displayed as current or used to generate contract artifacts, execute wallet operations, or produce evidence;
+- sensitive values are not cached without an explicit retention boundary;
+- raw model output, unsafe artifacts, wallet signatures, private keys, and unreviewed blocked outputs are never cached as approved state;
+- memory improves continuity without hiding user approval, provenance, or evidence traceability;
+- slow paths show responsive progress and do not block local validation or basic navigation;
+- repeated LLM, compile, test, or evidence work is avoided when deterministic cached outputs are safe and keyed correctly.
+
+### Expected Output
+
+- source-of-truth map for touched state;
+- cache/memory/persistence boundary summary;
+- stale-data and invalidation risks;
+- latency risks and whether async progress, retry, cancellation, or deterministic fast paths are needed;
+- regression tests for cache invalidation, stale state, and slow/error paths.
+
+### Anti-Patterns To Flag
+
+- UI reads a stale cached value while the shared lifecycle state has changed;
+- cache keys omit investor list, stablecoin, delay, payment-per-token, wallet chain/account, contract address, artifact version, or safety status;
+- memoized/read-model output is reused after direct user edits;
+- raw LLM output or generated artifacts are treated as approved from cache;
+- NAV, valuation, wallet, deployment, redemption, or evidence status appears current without freshness/provenance;
+- expensive async work freezes the Engineering Bot or tab navigation;
+- persistence is added before retention, deletion, privacy, and evidence traceability are clear.
+
+---
+
 ## Security Reviewer Skill
 
 ### Use When
@@ -247,11 +294,15 @@ Reviewers detect drift and recommend corrections. The Lead Implementer owns the 
 ### Use When
 
 - user-visible UI, lifecycle tabs, Engineering Bot area, right rail, SCP controls, responsive layout, or copy changes.
+- any change affects how a user moves through requirements, investor registry, subscription, smart contract, asset servicing, redemption, maturity, or evidence.
 
 ### Must Check
 
 - Engineering Bot answer area remains readable and central;
 - tabs orient the user but do not imply code segregation;
+- the user can understand the current stage, what has already been captured, what is missing, and what happens next;
+- lifecycle flow feels continuous from the user's perspective even when implementation spans multiple modules;
+- suggested next actions match the user's stated intent and the actual capability gaps;
 - right rail remains passive;
 - next actions match current lifecycle gaps;
 - user-facing copy avoids internal track labels;
@@ -262,6 +313,7 @@ Reviewers detect drift and recommend corrections. The Lead Implementer owns the 
 ### Expected Output
 
 - UX findings ordered by user impact;
+- user-journey findings for friendliness, continuity, consistency, and recoverability;
 - screenshots or Playwright recommendation if visual risk is meaningful;
 - specific copy/interaction fix;
 - accessibility or responsive risks.
@@ -272,6 +324,9 @@ Reviewers detect drift and recommend corrections. The Lead Implementer owns the 
 - workflow buttons in passive status panels;
 - disabled buttons without clear reason;
 - visual tabs that hide cross-stage dependencies;
+- technically correct screens that leave a non-technical asset manager unsure what to do next;
+- locked, draft, available, or completed states that do not explain their user meaning;
+- repeated or conflicting next actions across the Engineering Bot, tab content, lifecycle snapshot, Product Vault, or SCP;
 - generic dashboard cards that do not support the user's current job.
 
 ---
@@ -369,5 +424,8 @@ Claude, or another independent external model reviewer, should be added only whe
 
 | Version | Date | Change | Author |
 |---|---|---|---|
+| 1.3.1 | 2026-06-06 | Added universal anti-tunnel-vision review rule. | Codex |
+| 1.3.0 | 2026-06-06 | Added State / Memory / Performance as a triggered review lens. | Codex |
+| 1.2.0 | 2026-06-06 | Added explicit user-perspective lifecycle UX review checks. | Codex |
 | 1.1.0 | 2026-06-06 | Added drift detection/correction ownership and external model reviewer reminder. | Codex |
 | 1.0.0 | 2026-06-06 | Added specialist delivery-role skills for Test, Quality, Security, Solidity, Frontend/UX, and Release roles. | Codex |

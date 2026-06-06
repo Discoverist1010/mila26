@@ -40,10 +40,16 @@ These are delivery roles for the engineering process, not MILA26 product bots.
 - **Code Reviewer:** applies `docs/handover/05-code-reviewer-skill.md`, `docs/contracts/code-reviewer-checklist.md`, and `docs/handover/06-code-reviewer-lessons.md`; blocks unresolved Critical/High findings.
 - **Security Reviewer:** applies `docs/handover/08-delivery-role-skills.md`; reviews auth, secrets, private-key custody, wallet safety, OWASP issues, and sensitive data handling.
 - **Solidity Reviewer:** applies `docs/handover/08-delivery-role-skills.md`; reviews Solidity, Hardhat, OpenZeppelin, viem, Sepolia-only constraints, and contract tests.
-- **Frontend/UX Reviewer:** applies `docs/handover/08-delivery-role-skills.md`; reviews responsiveness, readability, accessibility, visual hierarchy, and lifecycle tab coherence.
+- **Frontend/UX Reviewer:** applies `docs/handover/08-delivery-role-skills.md`; reviews responsiveness, readability, accessibility, visual hierarchy, lifecycle tab coherence, and the user-perspective lifecycle flow.
 - **Release Engineer:** applies `docs/handover/08-delivery-role-skills.md`; reviews build, environment config, hosted app behavior, deployment readiness, and rollback concerns.
 
 One person/agent may perform multiple roles, but the lead remains accountable for final integration.
+
+## Triggered Review Lenses
+
+These are not extra always-on bots. Apply them inside the relevant reviewer pass when the changed surface warrants it.
+
+- **State / Memory / Performance Lens:** apply under Quality Architect, Code Reviewer, or Test Engineer when work touches shared lifecycle state, caching, persistence, chat/project/run memory, async orchestration, LLM calls, expensive validation, evidence exports, or speed-sensitive UI flows. It checks source-of-truth ownership, cache invalidation, stale-data risk, privacy-safe retention, deterministic keys, and responsive progress behavior.
 
 ## Dynamic Skills And MCPs
 
@@ -90,6 +96,8 @@ Reviewer passes must explicitly check MILA26 lifecycle invariants:
 - multi-item flows still work after the first successful operation;
 - read-model counts derive from effective eligibility, not stale stored labels;
 - user UI does not leak internal track labels;
+- the user can understand the current stage, next best action, locked/available states, and cross-stage dependencies without knowing blockchain implementation details;
+- cache, memory, and persistence do not create stale lifecycle state, stale valuation/NAV status, stale wallet/chain status, or inconsistent smart-contract parameters;
 - wallet whitelisting is not described as KYC, investor eligibility, legal, compliance, or investment-advice approval;
 - docs, prompts, UI labels, tests, lifecycle read models, Product Vault status, SCP gates, and contract artifacts do not drift away from the same source of truth.
 
@@ -102,6 +110,7 @@ Pause feature work and refactor or propose a stabilization track when any of the
 - `App.tsx` or another module becoming a mixed-responsibility god object;
 - hardcoded chain IDs, addresses, URLs, model names, timeouts, or feature flags outside config/test fixtures;
 - smart-contract parameters manually reconstructed in UI instead of derived from typed state;
+- cached or persisted values used without a clear key, invalidation rule, freshness label, or retention boundary;
 - error states swallowed or converted into vague success;
 - wallet account/chain state not rechecked before transaction submission;
 - tests that only verify copy or implementation details while missing behavior.

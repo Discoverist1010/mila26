@@ -133,6 +133,20 @@ Memory should reduce repeated work, not hide decision-making. Orchestration shou
 
 Avoid memory designs that make the demo harder to explain, harder to debug, or dependent on heavyweight retrieval.
 
+## Review Lens
+
+Apply the State / Memory / Performance review lens when a track touches shared lifecycle state, caching, persistence, chat/project/run memory, local-session evidence, async orchestration, LLM calls, expensive validation, evidence exports, or speed-sensitive UI flows.
+
+The reviewer should confirm:
+
+- the authoritative source of each lifecycle value is clear;
+- tabs, Engineering Bot, Product Vault, lifecycle snapshot, SCP, and contract handoff do not keep independent stale copies;
+- cache keys include every input affecting the output;
+- invalidation rules cover investor registry, subscription, redemption, NAV/valuation, wallet/chain, deployment, operation evidence, and smart-contract parameters;
+- freshness and provenance are visible for local-session, cached, provider-returned, and receipt-confirmed data;
+- retention and deletion boundaries are explicit before sensitive persistence is introduced;
+- slow operations use progress/error/retry behavior instead of freezing the AI workspace.
+
 ## Deferred
 
 - Vector memory.

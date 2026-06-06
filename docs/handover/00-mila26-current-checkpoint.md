@@ -125,7 +125,7 @@ Other delivery roles use:
 
 5. `docs/handover/08-delivery-role-skills.md`
 
-Use it for Test Engineer, Quality Architect / Refactorer, Security Reviewer, Solidity Reviewer, Frontend/UX Reviewer, and Release Engineer checks. These roles improve specialist coverage, but the Lead Implementer remains accountable for final integration and active debugging.
+Use it for Test Engineer, Quality Architect / Refactorer, Security Reviewer, Solidity Reviewer, Frontend/UX Reviewer, and Release Engineer checks. It also defines triggered review lenses, including State / Memory / Performance for cache, persistence, lifecycle state, async orchestration, and speed-sensitive changes. These roles and lenses improve specialist coverage, but the Lead Implementer remains accountable for final integration and active debugging.
 
 ## What Must Not Be Done Yet
 

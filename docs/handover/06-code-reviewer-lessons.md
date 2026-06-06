@@ -2,7 +2,7 @@
 
 ## Status: ACTIVE — GROWS WITH EACH REVIEW
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Last updated:** 2026-06-06
 **Applies to:** MILA26 repository  
 **File path:** `docs/handover/06-code-reviewer-lessons.md`
@@ -707,6 +707,36 @@ const readyToWhitelistCount = readModelEntries.filter((entry) => entry.canUseFor
 
 ---
 
+### Pattern ID: MILA26-024
+
+**Name:** Stale cache or memory presented as current state
+**Category:** State / Memory / Performance
+**Severity:** HIGH
+**First caught:** 2026-06-06 (seeded from State / Memory / Performance reviewer design)
+**Catch count:** 0
+**Checklist:** Phase 3.4, 5.8, 9.6
+**Description:** Cached, memoized, persisted, or remembered data is reused after a lifecycle input changes, or is displayed without freshness/provenance. This can make the workspace look consistent while silently using outdated investor registry, subscription, redemption, NAV/valuation, wallet, deployment, operation, evidence, or contract-parameter state.
+**Detection:** For any cache, memo, persistence, browser storage, project memory, run memory, chat memory, or local-session evidence change, identify the cache key, invalidation rule, freshness label, and source of truth. Verify every input affecting the output is part of the key or invalidation path. Check that wallet signatures, private keys, raw model output, unsafe artifacts, and blocked outputs cannot be cached as approved state.
+**Example:**
+
+```typescript
+// FLAGGED - cache key ignores redemption delay and wallet state.
+const cacheKey = productId;
+const params = cachedContractParameters.get(cacheKey);
+
+// CORRECT - derived from current approved lifecycle state, with explicit freshness.
+const params = deriveSubscriptionRedemptionParameters(currentLifecycleReadModel);
+const freshness = {
+  source: 'current_lifecycle_read_model',
+  generatedAt: new Date().toISOString(),
+};
+```
+
+**Occurrences:**
+- None yet - seeded proactively for future persistence/cache work.
+
+---
+
 ## REVIEW SESSION LOG
 
 | Date | Track/Branch | Issues Found (C/H/M/L) | Patterns Triggered | New Patterns Added | Reviewer Version |
@@ -744,6 +774,7 @@ const readyToWhitelistCount = readModelEntries.filter((entry) => entry.canUseFor
 | MILA26-021 | Scope violation (CRITICAL) | 0 | CRITICAL | — |
 | MILA26-022 | Operation bypasses lifecycle source of truth | 1 | HIGH | 2026-06-06 |
 | MILA26-023 | Readiness count derived from stale stored status | 1 | MEDIUM | 2026-06-06 |
+| MILA26-024 | Stale cache or memory presented as current state | 0 | HIGH | — |
 
 ---
 
@@ -752,7 +783,7 @@ const readyToWhitelistCount = readModelEntries.filter((entry) => entry.canUseFor
 | Severity | Count | Pattern IDs |
 |----------|-------|-------------|
 | CRITICAL | 7 | 001, 002, 006, 007, 011, 014, 021 |
-| HIGH | 10 | 003, 005, 008, 010, 012, 013, 015, 018, 019, 022 |
+| HIGH | 11 | 003, 005, 008, 010, 012, 013, 015, 018, 019, 022, 024 |
 | MEDIUM | 5 | 004, 009, 016, 017, 023 |
 | LOW | 1 | 020 |
 
@@ -798,6 +829,7 @@ Then:
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 1.2.0 | 2026-06-06 | Added stale cache/memory reviewer pattern | Codex |
 | 1.1.0 | 2026-06-06 | Added lifecycle source-of-truth and stale-readiness-count patterns from Sprint Track 1 review | Codex |
 | 1.0.2 | 2026-05-31 | Aligned unsafe-label and SCP-control lessons with source-sensitive execution evidence and Track 15A operation-specific controls | AI Bot Factory |
 | 1.0.1 | 2026-05-31 | Trio alignment: MILA26-021 scope violation; MILA26-003 scope creep only; checklist phase map | AI Bot Factory |
