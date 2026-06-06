@@ -89,6 +89,11 @@ First wallet-signed SCP operation:
 
 - [`record-nav-operation-contract.md`](record-nav-operation-contract.md): narrow Sepolia `recordValuation(uint256,string)` operation contract, provider-returned operation transaction hash rules, receipt/event evidence provenance, and local-session-only operation evidence boundary.
 
+Wallet-signed investor operations:
+
+- [`wallet-whitelist-operation-contract.md`](wallet-whitelist-operation-contract.md): narrow Sepolia `setWalletAllowed(address,bool)` operation contract, target-wallet validation, ABI gate, receipt/event evidence provenance, and local-session-only operation evidence boundary.
+- [`allocation-mint-operation-contract.md`](allocation-mint-operation-contract.md): narrow Sepolia `mintAllocation(address,uint256)` operation contract for a selected whitelisted investor wallet, with wallet/deployment/ABI/parameter/evidence gates and no stablecoin-settlement or eligibility claims.
+
 Second wallet-signed SCP operation and targeted wallet-operation hardening:
 
 - [`wallet-whitelist-operation-contract.md`](wallet-whitelist-operation-contract.md): narrow Sepolia `setWalletAllowed(address,bool)` operation contract with `allowed = true`, explicit target-wallet validation, provider-returned transaction hash rules, receipt/event evidence provenance, on-chain authorization honesty, and local-session-only operation evidence boundary.

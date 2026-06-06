@@ -4,6 +4,10 @@ import {
   type BlockchainEngineerChatRequest,
   type BlockchainEngineerChatResponse,
 } from '../contracts/chat';
+import {
+  buildBudgetedChatPromptMessages,
+  toPromptBudgetMetadata,
+} from '../llm/promptBudget';
 import type { Mila26LlmMessage, Mila26LlmProvider } from '../llm/types';
 
 const agentId = 'blockchain-engineer' as const;
@@ -24,26 +28,16 @@ function createMessageId(): string {
   return `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function toLlmMessages(request: BlockchainEngineerChatRequest): Mila26LlmMessage[] {
-  const history = request.conversationHistory
+export function toBlockchainEngineerHistoryMessages(request: BlockchainEngineerChatRequest): Mila26LlmMessage[] {
+  return (
+    request.conversationHistory
     ?.filter((message) => message.role === 'user' || message.role === 'assistant')
     .slice(-6)
     .map((message) => ({
       role: message.role,
       content: message.content,
-    }));
-
-  return [
-    {
-      role: 'system',
-      content: blockchainEngineerSystemInstruction,
-    },
-    ...(history || []),
-    {
-      role: 'user',
-      content: request.userMessage,
-    },
-  ];
+    })) ?? []
+  );
 }
 
 function toLlmResponse(
@@ -82,9 +76,19 @@ export async function answerWithBlockchainEngineerLlm(
   }
 
   try {
+    const promptMessages = buildBudgetedChatPromptMessages({
+      systemInstruction: blockchainEngineerSystemInstruction,
+      historyMessages: toBlockchainEngineerHistoryMessages(request),
+      userMessage: request.userMessage,
+    });
+
+    if (!promptMessages.ok) {
+      return answerWithBlockchainEngineerMock(request);
+    }
+
     const llmResponse = await provider.complete({
       purpose: 'blockchain_engineer_chat',
-      messages: toLlmMessages(request),
+      messages: promptMessages.messages,
       maxOutputTokens: 500,
       reasoningEffort: 'minimal',
       metadata: {
@@ -92,6 +96,7 @@ export async function answerWithBlockchainEngineerLlm(
         projectIdPresent: Boolean(request.projectId),
         runIdPresent: Boolean(request.runId),
         requestedFocus: request.requestedFocus || 'none',
+        ...toPromptBudgetMetadata(promptMessages.diagnostics),
       },
     });
 

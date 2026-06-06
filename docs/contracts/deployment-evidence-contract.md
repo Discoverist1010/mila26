@@ -12,7 +12,7 @@ The read model answers:
 - whether evidence strength is none, provider transaction hash, or confirmed receipt.
 - whether transaction hash came from the provider or is absent.
 - whether contract address came from a successful receipt or is absent.
-- whether Smart Contract Operations remain locked.
+- which Smart Contract Operations are unavailable until operation-specific gates exist.
 
 ## Provenance Rules
 
@@ -31,7 +31,7 @@ Deployment evidence is an evidence/readiness linkage surface only. It is not dur
 
 SCP may passively show deployment evidence status, evidence strength, provider-returned transaction hash, receipt-returned contract address, Sepolia network, and local-session persistence.
 
-SCP operations remain locked until each operation has its own authorization/evidence gate.
+SCP operations remain unavailable until each operation has its own adapter, authorization gate, ABI gate, and evidence path.
 
 ## Non-Goals
 

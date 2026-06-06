@@ -234,15 +234,19 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(generatedArtifacts.getByText('Wallet Signing Intent', { exact: true })).toBeVisible();
   await expect(
     generatedArtifacts.getByText(
-      'Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys.',
+      'Wallet-signed deployment and selected Sepolia operations use the user wallet. Backend never holds private keys.',
     ),
   ).toBeVisible();
   await expect(generatedArtifacts.getByText('Wallet Connection', { exact: true })).toBeVisible();
   await expect(generatedArtifacts.getByText('Not detected', { exact: true })).toBeVisible();
   await expect(generatedArtifacts.getByText('Wallet chain: Unknown. No wallet address. Connection only; no signing or deployment.')).toBeVisible();
   await expect(generatedArtifacts.getByText('Smart Contract Operations', { exact: true })).toBeVisible();
-  await expect(generatedArtifacts.getByText('Locked', { exact: true })).toBeVisible();
-  await expect(generatedArtifacts.getByText(/SCP exposes at most Record NAV Event and Whitelist Wallet after confirmed deployment evidence/i)).toBeVisible();
+  await expect(generatedArtifacts.getByText('Waiting for deployment evidence')).toBeVisible();
+  await expect(
+    generatedArtifacts.getByText(
+      /SCP exposes Record NAV Event, Whitelist Wallet, and Allocation \/ Mint when their wallet, deployment, ABI, parameter, and evidence gates are satisfied/i,
+    ),
+  ).toBeVisible();
   await expect(generatedArtifacts.getByText('Sepolia Deployment', { exact: true })).toBeVisible();
   await expect(generatedArtifacts.getByText('Deployment execution not started')).toBeVisible();
   await expect(generatedArtifacts.getByText('No transaction hash. No contract address. Deployment state is local-session-only.')).toBeVisible();
@@ -253,7 +257,7 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(generatedArtifacts.getByText(/Contract address source: Absent/).first()).toBeVisible();
   await expect(generatedArtifacts.getByText('Record NAV Operation', { exact: true })).toBeVisible();
   await expect(generatedArtifacts.getByText('Record NAV operation not started')).toBeVisible();
-  await expect(generatedArtifacts.getByText('Not audited. No production approval. Wallet connection alone does not execute deployment. Smart Contract Operations remain locked.')).toBeVisible();
+  await expect(generatedArtifacts.getByText('Not audited. No production approval. Wallet connection alone does not execute deployment or operations.')).toBeVisible();
   await expect(page.getByTestId('engineer-answer')).toContainText('Smart contract preparation is complete for demo review');
   await expect(page.getByTestId('engineer-answer')).toContainText('known local compile/test foundation as passed');
   await expect(page.getByText('Backend artifacts generated.')).toBeVisible();
@@ -284,9 +288,9 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(scp.getByText('Evidence persistence: Local session only').first()).toBeVisible();
   await expect(scp.getByText('Transaction hash source: Absent').first()).toBeVisible();
   await expect(scp.getByText('Contract address source: Absent').first()).toBeVisible();
-  await expect(scp.getByText('Smart Contract Operations: Locked until deployment evidence is confirmed').first()).toBeVisible();
-  await expect(scp.getByText('Smart Contract Operations: Locked').first()).toBeVisible();
-  await expect(scp.getByText('Reason: operation-specific authorization and evidence logging are not implemented').first()).toBeVisible();
+  await expect(scp.getByText('Smart Contract Operations: Released operation-by-operation').first()).toBeVisible();
+  await expect(scp.getByText('Operations after deployment: Waiting for deployment evidence').first()).toBeVisible();
+  await expect(scp.getByText('Other Smart Contract Operations: Require explicit adapters and evidence paths before release').first()).toBeVisible();
   await expect(scp.getByText('Wallet signing not implemented: Not implemented')).toBeVisible();
   await expect(scp.getByText('User wallet signing required later: Required')).toBeVisible();
   await expect(scp.getByText('Wallet connection: Not detected').first()).toBeVisible();
@@ -410,8 +414,8 @@ test('allocation mint readiness uses shared investor registry and subscription s
   await expect(allocationMint.getByRole('heading', { name: 'Allocation / Mint readiness' })).toBeVisible();
   await expect(allocationMint.getByLabel('Allocation target wallet')).toHaveValue(investorWallet);
   await expect(allocationMint.getByText('Complete Subscription parameters before Allocation / Mint.')).toBeVisible();
-  await expect(allocationMint.getByText(/No live mint transaction is prepared here/i)).toBeVisible();
-  await expect(page.getByLabel('Project status')).toContainText('Locked until required setup is complete');
+  await expect(allocationMint.getByText(/SCP can submit a wallet-signed Sepolia mint/i)).toBeVisible();
+  await expect(page.getByLabel('Project status')).toContainText('Allocation setup needs review');
 
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
   const subscription = page.getByLabel('Subscription workspace');

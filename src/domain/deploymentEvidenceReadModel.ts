@@ -115,7 +115,7 @@ function statusDetail(status: DeploymentEvidenceStatus): string {
     return 'The provider returned a Sepolia transaction hash. Contract address remains absent until a successful receipt confirms contract creation.';
   }
   if (status === 'confirmed') {
-    return 'Sepolia deployment is confirmed from a successful receipt. Record NAV can be gated by deployment evidence; other Smart Contract Operations remain locked.';
+    return 'Sepolia deployment is confirmed from a successful receipt. Record NAV, Wallet Whitelist, and Allocation / Mint can be gated by deployment evidence; other operations require explicit adapters before release.';
   }
   if (status === 'rejected') {
     return 'Deployment was rejected in the wallet. No confirmed deployment evidence exists.';
@@ -163,8 +163,8 @@ function evidenceItems(input: {
     {
       id: 'operations-locked',
       label: 'Smart Contract Operations',
-      status: 'blocked',
-      detail: 'Other Smart Contract Operations: Locked.',
+      status: 'available',
+      detail: 'Released operations are gated by wallet, deployment, ABI, parameter, and evidence prerequisites.',
     },
   ];
 
@@ -212,8 +212,8 @@ function boundaryItems(): DeploymentEvidenceBoundaryItem[] {
     {
       id: 'operations-locked',
       label: 'Smart Contract Operations',
-      status: 'locked',
-      detail: 'Other Smart Contract Operations: Locked.',
+      status: 'enforced',
+      detail: 'Other Smart Contract Operations require explicit adapters and evidence paths before release.',
     },
   ];
 }

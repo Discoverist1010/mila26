@@ -26,7 +26,7 @@ Track 14B implements the first real blockchain execution step:
 - transaction hash appears only after the provider returns it.
 - contract address appears only after a successful receipt includes `contractAddress`.
 - deployment evidence remains local-session-only until a later persistence/evidence track.
-- SCP operations remain locked.
+- SCP operations remain unavailable until operation-specific adapters and evidence gates are implemented.
 
 ## Backend Responsibilities
 

@@ -5,6 +5,11 @@ import {
   type EngineeringBrief,
   type EngineeringBriefRequirementBrief,
 } from '../contracts/engineeringBrief';
+import {
+  checkPromptBudget,
+  promptBudgets,
+  toPromptBudgetMetadata,
+} from '../llm/promptBudget';
 import type { Mila26LlmMessage, Mila26LlmProvider } from '../llm/types';
 
 const llmEngineeringBriefOverlaySchema = z
@@ -41,7 +46,7 @@ const engineeringBriefSystemInstruction = [
   'Return JSON only with concise strings and the requested keys. Do not include markdown or code fences.',
 ].join(' ');
 
-function toLlmMessages(requirementBrief: EngineeringBriefRequirementBrief): Mila26LlmMessage[] {
+export function toEngineeringBriefLlmMessages(requirementBrief: EngineeringBriefRequirementBrief): Mila26LlmMessage[] {
   return [
     {
       role: 'system',
@@ -113,15 +118,26 @@ export async function generateEngineeringBriefWithLlm(
   }
 
   try {
+    const messages = toEngineeringBriefLlmMessages(requirementBrief);
+    const promptBudget = checkPromptBudget({
+      budget: promptBudgets.engineeringBriefGeneration,
+      messages,
+    });
+
+    if (!promptBudget.ok) {
+      return base;
+    }
+
     const llmResponse = await provider.complete({
       purpose: 'engineering_brief_generation',
-      messages: toLlmMessages(requirementBrief),
+      messages,
       maxOutputTokens: 1100,
       reasoningEffort: 'minimal',
       metadata: {
         route: 'prd-engineering-brief',
         sourceRequirementBriefId: requirementBrief.sourceBriefId,
         approvalStatus: requirementBrief.approvalStatus,
+        ...toPromptBudgetMetadata(promptBudget.diagnostics),
       },
     });
 

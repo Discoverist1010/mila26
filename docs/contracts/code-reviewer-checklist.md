@@ -104,11 +104,11 @@ Verify these labels appear where applicable. Flag missing labels as **HIGH — M
 - [ ] "Mainnet disabled" — near any chain/network reference
 - [ ] "No transaction hash" — before any deployment execution
 - [ ] "No contract address" — before any deployment confirmation
-- [ ] "Smart Contract Operations: Locked" — in SCP before operation-specific gates
-- [ ] "Record NAV gated; other Smart Contract Operations locked" — after confirmed deployment evidence where only Record NAV is available
-- [ ] "Other Smart Contract Operations: Locked" — after operation-specific SCP controls unlock
+- [ ] "Smart Contract Operations: Released operation-by-operation" — where SCP operation availability is summarized
+- [ ] "Other Smart Contract Operations: Require explicit adapters and evidence paths before release" — after implemented operation-specific SCP controls appear
+- [ ] Specific disabled reasons for unavailable operations — no vague "locked for later" label without a missing prerequisite
 - [ ] "Audit not performed" — where audit status is shown
-- [ ] "User wallet signing required later" — in signing context before implementation
+- [ ] "User wallet signing required for each transaction" — in signing context after wallet-signed operations exist
 - [ ] "Deployment status is held in this local session" — if deployment state is local-only
 
 ### 1.3 — Fake Data Detection

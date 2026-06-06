@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import ReactDOM from 'react-dom/client';
-import { App } from './App';
-import { WebsiteLanding } from './website/WebsiteLanding';
 import './styles.css';
 
+const App = lazy(() => import('./App').then((module) => ({ default: module.App })));
+const WebsiteLanding = lazy(() =>
+  import('./website/WebsiteLanding').then((module) => ({ default: module.WebsiteLanding })),
+);
+
 export function Root() {
-  if (window.location.pathname === '/site') return <WebsiteLanding />;
-  return <App />;
+  const route = window.location.pathname === '/site' ? <WebsiteLanding /> : <App />;
+
+  return <Suspense fallback={<main aria-label="MILA26 loading">Loading MILA26...</main>}>{route}</Suspense>;
 }
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

@@ -85,13 +85,13 @@ Track 13A:
 - It does not connect a wallet.
 - It does not request signatures.
 
-Tracks 13B through 15B:
+Tracks 13B through Sprint Track 5:
 
 - The frontend-only EIP-1193 wallet adapter connects to the browser wallet and verifies Sepolia.
 - The deployment adapter requests a real wallet-signed Sepolia deployment and displays transaction hash/contract address only from provider/receipt responses.
 - Deployment evidence is local-session-only and derived from provider-returned transaction/receipt data.
-- Record NAV Event and Whitelist Wallet are the only implemented wallet-signed SCP operations.
-- Allocation/Mint, burn, pause, distribution, transfer, role-admin, subscription execution, redemption execution, and maturity closeout remain locked or unimplemented.
+- Record NAV Event, Whitelist Wallet, and Allocation / Mint are the implemented wallet-signed SCP operations.
+- Burn, pause, distribution, transfer, role-admin, subscription execution, redemption execution, batch allocation/mint, and maturity closeout remain unavailable until each has its own adapter, authorization gate, ABI gate, and evidence path.
 - It does not model transactions.
 
 ## Naming And Status Rules

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Allocation / Mint is the next smart-contract operation after Investor Registry and Subscription parameters are coherent. The current implemented slice prepares and validates single-investor allocation parameters from shared lifecycle state. A later slice should let the issuer request a wallet-signed mint/allocation operation on Sepolia.
+Allocation / Mint is the smart-contract operation after Investor Registry, Wallet Whitelist, and Subscription parameters are coherent. The current implemented slice prepares and validates single-investor allocation parameters from shared lifecycle state and lets the issuer request a wallet-signed `mintAllocation(address,uint256)` operation on Sepolia after explicit gates pass.
 
 This is not live investor subscription settlement. It must not imply stablecoins have been received, KYC/AML is complete, or investors are eligible.
 
@@ -28,7 +28,7 @@ Allocation / Mint can only be designed against shared lifecycle state:
 
 ## MVP Operation Shape
 
-The first Allocation / Mint slice is parameter and intent driven:
+The current Allocation / Mint slice is parameter, gate, and wallet-operation driven:
 
 1. Select an investor wallet from the registry.
 2. Enter token allocation amount.
@@ -38,13 +38,15 @@ The first Allocation / Mint slice is parameter and intent driven:
    - token amount is greater than zero;
    - subscription parameters are ready;
    - wallet/deployment gates are satisfied before signing.
-5. Keep live mint execution locked while readiness is being reviewed.
-6. Prepare a wallet-signed Sepolia operation only in a later execution slice after explicit user action.
-7. Record local-session evidence only after provider transaction/receipt responses.
+5. Require confirmed Sepolia deployment evidence and a receipt-returned contract address.
+6. Require the selected investor wallet to be whitelisted in local-session operation state.
+7. Require the generated/deployed ABI to expose `mintAllocation(address,uint256)`.
+8. Prepare and submit a wallet-signed Sepolia operation only after explicit user action.
+9. Record local-session evidence only after provider transaction/receipt responses.
 
 ## UI Placement
 
-- The Smart Contract tab owns Allocation / Mint readiness and will later own action controls.
+- The Smart Contract tab owns Allocation / Mint readiness and action controls.
 - The Investor Registry tab provides a handoff action: `Use for Allocation / Mint`.
 - The Subscription tab should remain parameter capture only.
 - The right rail should stay passive and show readiness, not execution controls.
@@ -57,13 +59,13 @@ The first Allocation / Mint slice is parameter and intent driven:
 - No KYC/AML or investor eligibility approval.
 - No backend-held private keys.
 - No mainnet.
-- No batch mint before single-wallet operation is tested.
+- No batch mint before the single-wallet operation has real Sepolia demo evidence and broader tests.
 - No durable evidence storage until the local evidence shape is stable.
 
-## Acceptance Criteria For First Coding Slice
+## Acceptance Criteria For Current Coding Slice
 
-- Allocation/Mint readiness remains locked until Investor Registry and Subscription are ready.
-- UI explains the exact missing dependency when locked.
+- Allocation/Mint shows missing prerequisites as needs-parameters or needs-review states, not as arbitrary future locks.
 - Single-wallet allocation amount validates before any wallet action appears.
+- Wallet-signed submission is gated by Sepolia wallet readiness, confirmed deployment evidence, ABI support, whitelisted target wallet, coherent subscription parameters, and token amount.
 - No transaction hash, contract address, or confirmed status appears before provider evidence.
-- Tests cover valid, invalid, locked, and edited lifecycle states. Wallet-rejected states remain for the later execution slice.
+- Tests cover valid, invalid, missing-prerequisite, edited lifecycle, wrong-chain, rejected-wallet, submitted, failed, and confirmed operation states.

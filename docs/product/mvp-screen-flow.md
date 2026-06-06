@@ -2,7 +2,7 @@
 
 The current implemented screen is the MILA26 lifecycle workspace. It is aligned to the latest mockup direction but is not intended to be pixel-perfect.
 
-The mockup-driven lifecycle workspace and all user-stated lifecycle flows are in MVP scope. Some screens are implemented, some are parameter/template-only next steps, and some remain locked roadmap surfaces until their code and review gates are complete.
+The mockup-driven lifecycle workspace and all user-stated lifecycle flows are in MVP scope. Some screens are implemented, some are parameter/template-only next steps, and some remain unavailable until their code, adapter, authorization, and evidence gates are complete.
 
 Prototype screens must be functional where shown as implemented. A tab is not complete merely because it looks correct; it must read/write shared lifecycle state, validate user input, update dependent workspace surfaces, and have focused test coverage.
 
@@ -24,7 +24,7 @@ Prototype screens must be functional where shown as implemented. A tab is not co
 
 - User goal: define or generate up to 50 investor wallet addresses that can be whitelisted and used for prototype investor activity.
 - Primary UI: Investor Registry tab with Test Wallet Lab, wallet rows, validation, duplicate detection, local-session whitelist status, activity-console placeholders, SCP handoff, and Allocation/Mint handoff.
-- Current status: implemented for manual entry, generated test investor wallet packs, explicit test-only export preparation, SCP Whitelist Wallet handoff, and Allocation/Mint readiness handoff.
+- Current status: implemented for manual entry, generated test investor wallet packs, explicit test-only export preparation, SCP Whitelist Wallet handoff, and Allocation/Mint handoff.
 - Gap: no Sepolia funding helper, CSV/import/export beyond the explicit test-only wallet export, off-chain investor profile fields, or durable registry persistence yet.
 
 ## 4. Subscription
@@ -68,7 +68,7 @@ Prototype screens must be functional where shown as implemented. A tab is not co
 
 - User goal: inspect local-session evidence and generated artifacts.
 - Primary UI: Product Vault, Recent Activity, generated artifacts, SCP evidence sections.
-- Current status: local-session evidence implemented for deployment, Record NAV, and Whitelist Wallet.
+- Current status: local-session evidence implemented for deployment, Record NAV, Whitelist Wallet, and Allocation / Mint.
 - Gap: durable Evidence Vault persistence remains future.
 
 ## Current Wallet/Blockchain Execution Flow
@@ -82,6 +82,7 @@ Prototype screens must be functional where shown as implemented. A tab is not co
 7. Derive local-session deployment evidence.
 8. Unlock only operation-specific SCP controls:
    - Record NAV Event;
-   - Whitelist Wallet.
+   - Whitelist Wallet;
+   - Allocation / Mint after the selected investor wallet is whitelisted and allocation parameters are coherent.
 
-All other operations remain locked until explicitly implemented and tested.
+All other operations remain unavailable until explicitly implemented, gated, and tested.

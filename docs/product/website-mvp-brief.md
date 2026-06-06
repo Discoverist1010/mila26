@@ -45,7 +45,7 @@ Must include:
 - subscription and redemption parameter capture;
 - subscription-redemption smart-contract template handoff;
 - asset servicing and evidence surfaces;
-- clear labels for currently working MVP functions versus locked future capabilities.
+- clear labels for currently working MVP functions versus unavailable capabilities that still need explicit implementation gates.
 
 ### Quality Assurance
 
@@ -114,4 +114,3 @@ The first feasible website coding slice should deliver:
 - Website and app do not duplicate lifecycle state.
 - Responsive layout works on desktop and mobile.
 - Tests or smoke checks cover the main route and access link.
-

@@ -86,7 +86,7 @@ Current wallet/deployment path:
 - Track 11A defines Deployment Gate readiness.
 - Track 11B surfaces Deployment Gate as view-only status.
 - Track 12A defines Wallet Signing Intent.
-- Track 12B surfaces Wallet Signing Intent and operations locked state.
+- Track 12B surfaces Wallet Signing Intent and operation-specific safety boundaries.
 - Track 12C hardens the golden flow and no-fake-execution guardrails.
 - Track 13A defines MetaMask-first wallet adapter/Sepolia design and a pure Wallet Connection Read Model.
 - Track 13B implements frontend-only EIP-1193 wallet connection and Sepolia verification.
@@ -96,6 +96,7 @@ Current wallet/deployment path:
 - Track 15A implements Record NAV Event as a wallet-signed SCP operation.
 - Track 15B implements Whitelist Wallet as a wallet-signed SCP operation.
 - The lifecycle workspace update removes internal track labels from user-facing UI and uses shared presentation state for visual tabs/status surfaces.
+- Sprint Track 5 implements Sepolia demo wallet readiness and wallet-signed Allocation / Mint behind wallet, deployment, ABI, whitelist, parameter, duplicate-attempt, and evidence gates.
 
 ## Current Guardrails
 
@@ -106,7 +107,7 @@ Current wallet/deployment path:
 - Wallet address appears only after real wallet connection.
 - Contract address appears only after real deployment.
 - Transaction hash appears only after real transaction submission.
-- SCP operations remain locked unless each operation has wallet-signed deployment evidence and operation-specific authorization gates.
+- SCP operations remain unavailable unless each operation has wallet-signed deployment evidence, an ABI-supported adapter, operation-specific authorization gates, and evidence handling.
 - No audited, verified, live, production-ready, or mainnet-ready claim appears before real approval tracks.
 
 ## Validation Baseline
@@ -119,6 +120,8 @@ npm run test:e2e
 npm run contracts:build -- --force
 npm run test:contracts
 ```
+
+`npm run check` includes lint, unit/app tests, production build, and the JS bundle-size guard.
 
 Recent lifecycle workspace validation passed:
 

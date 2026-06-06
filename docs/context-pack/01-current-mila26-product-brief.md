@@ -96,7 +96,7 @@ The current alpha contract direction is:
 - distribution event.
 - transfer restrictions.
 
-The current smart-contract product direction is a predefined subscription-redemption template with configurable stablecoins, subscription window, redemption window, redemption wallet, payout-per-token amount, and redemption delay. Local-session parameter capture, template handoff readiness, and Allocation/Mint readiness now exist. Browser hardening and an operation-specific wallet-signed contract should come before allocation/mint execution.
+The current smart-contract product direction is a predefined subscription-redemption template with configurable stablecoins, subscription window, redemption window, redemption wallet, payout-per-token amount, and redemption delay. Local-session parameter capture, template handoff readiness, Allocation/Mint readiness, and wallet-signed single-investor Allocation/Mint execution now exist behind explicit gates.
 
 ## Current Wallet/Testnet Direction
 
@@ -104,7 +104,7 @@ MILA26 uses a MetaMask-first wallet connection path through a minimal EIP-1193 b
 
 The app can request wallet-signed Sepolia deployment from the reviewed unsigned deployment intent. Transaction hash appears only after provider return, and contract address appears only after receipt-confirmed contract creation.
 
-The app can request Record NAV Event and Whitelist Wallet operations only after confirmed deployment evidence, Sepolia wallet readiness, valid contract address checks, ABI inspection, and operation-specific input validation.
+The app can request Record NAV Event, Whitelist Wallet, and Allocation / Mint operations only after confirmed deployment evidence, Sepolia wallet readiness, valid contract address checks, ABI inspection, and operation-specific input validation.
 
 ## Guardrails
 
@@ -127,6 +127,6 @@ The app can request Record NAV Event and Whitelist Wallet operations only after 
 - Shared lifecycle state instead of per-tab state silos.
 - Separate typed artifacts and focused read models.
 - Passive right rail.
-- SCP honesty about locked/not-executed states.
+- SCP honesty about needs-parameter, gated, unavailable, and not-executed states.
 - Provider/receipt provenance for hashes and addresses.
 - Backend-only LLM and private-key boundaries.

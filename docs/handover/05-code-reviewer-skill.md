@@ -128,11 +128,11 @@ The project checkpoint defines explicit safe labels and unsafe labels. These are
 - "Mainnet disabled"
 - "No transaction hash"
 - "No contract address"
-- "Smart Contract Operations: Locked"
-- "Record NAV gated; other Smart Contract Operations locked"
-- "Other Smart Contract Operations: Locked"
+- "Smart Contract Operations: Released operation-by-operation"
+- "Other Smart Contract Operations: Require explicit adapters and evidence paths before release"
+- specific disabled reasons for unavailable operations
 - "Audit not performed"
-- "User wallet signing required later"
+- "User wallet signing required for each transaction"
 - "Deployment status is held in this local session"
 - "Operation evidence: Local session only"
 
@@ -393,7 +393,7 @@ Always produce a review in this exact structure. This ensures every review is co
 | No fake address/hash/status | PASS / FAIL | [If FAIL, location] |
 | Safe labels used correctly | PASS / FAIL | [If FAIL, which labels missing] |
 | Unsafe labels absent | PASS / FAIL | [If FAIL, which unsafe labels found] |
-| SCP operations remain locked (pre-deployment tracks) | PASS / FAIL | [If FAIL, which operations] |
+| SCP operations are released only behind explicit gates | PASS / FAIL | [If FAIL, which operations] |
 | Backend no private keys | PASS / FAIL | [If FAIL, location] |
 | Mainnet disabled | PASS / FAIL | [If FAIL, location] |
 | Local-session boundary clear (if applicable) | PASS / FAIL | [If FAIL, what's unclear] |

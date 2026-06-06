@@ -61,6 +61,7 @@ Already implemented or documented:
 - local-session deployment evidence;
 - wallet-signed Record NAV Event operation;
 - wallet-signed Whitelist Wallet operation;
+- wallet-signed Allocation/Mint operation for a selected whitelisted investor wallet after coherent registry/subscription/allocation parameters;
 - Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, generated test investor wallet packs, local-session whitelist status, SCP handoff, and Allocation/Mint handoff;
 - Subscription tab parameter capture with permitted stablecoins, subscription window, minimum subscription amount, payment address, and payment per token;
 - Redemption tab parameter capture with redemption window/date, payout stablecoin, payout per token, redemption wallet, and delay unit/duration;
@@ -70,7 +71,7 @@ Already implemented or documented:
 Immediate implementation gap:
 
 - Sepolia funding helper for generated demo wallets.
-- Wallet-signed Allocation/Mint operation after parameter coherence.
+- Browser/screenshot hardening for the wallet-signed Allocation/Mint path.
 - Durable persistence/evidence storage.
 - Website/login path.
 - Production readiness controls.
@@ -81,8 +82,8 @@ Immediate implementation gap:
 
 | Level | Target Date | Meaning | Required Before Advancing |
 |---|---:|---|---|
-| Prototype | 2026-06-20 | Working local/Sepolia product prototype, not a static mockup. It must let a user enter, edit, validate, and reuse lifecycle data across tabs, generate/review artifacts where scoped, and demonstrate real wallet-signed Sepolia paths already implemented. | Subscription/Redemption capture, coherent lifecycle state, working validation, artifact/status handoff, mockup-aligned UX, clear locked states, passing tests. |
-| Internal Alpha | 2026-07-31 | Team-usable build with stable flows, stronger validation, and repeatable Sepolia demos. | Template handoff, Allocation/Mint plan or implementation, persistence decision, QA gates, security threat model. |
+| Prototype | 2026-06-20 | Working local/Sepolia product prototype, not a static mockup. It must let a user enter, edit, validate, and reuse lifecycle data across tabs, generate/review artifacts where scoped, and demonstrate real wallet-signed Sepolia paths already implemented. | Subscription/Redemption capture, coherent lifecycle state, working validation, artifact/status handoff, mockup-aligned UX, explicit gate states, passing tests. |
+| Internal Alpha | 2026-07-31 | Team-usable build with stable flows, stronger validation, and repeatable Sepolia demos. | Template handoff, Allocation/Mint operation hardening, persistence decision, QA gates, security threat model. |
 | Private Beta | 2026-09-01 | Controlled external users can test without handholding. | Website/login, hosted or scripted access, telemetry, feedback loop, security review, beta scripts. |
 | GTM Candidate | 2026-10-15 | Product, website, docs, QA, and release posture are ready for launch decisions. | Release runbook, regression suite, external review where useful, issue burn-down, launch copy approved. |
 | GTM Live | 2026-11-01 | Public-facing company/product launch with a controlled MVP path. | No unresolved Critical/High launch blockers, deployment checklist complete, rollback/support plan ready. |
@@ -128,7 +129,7 @@ Current status: the Week 1 Subscription/Redemption parameter capture and shared 
    - generate/review template handoff;
    - connect wallet and show Sepolia boundary;
    - show existing deployment/NAV/whitelist evidence path;
-   - explain Allocation/Mint readiness, locked live Mint execution, durable Evidence Vault, and Maturity closeout.
+   - explain Allocation/Mint execution gates, durable Evidence Vault, and Maturity closeout.
 
 Prototype success means the user can complete a working local workflow:
 
@@ -138,8 +139,8 @@ Prototype success means the user can complete a working local workflow:
 4. configure redemption parameters and delay;
 5. see those values reflected across Engineering Bot guidance, tabs, lifecycle snapshot, Product Vault, and template handoff;
 6. generate or review scoped artifacts/statuses from current lifecycle state;
-7. connect a wallet and demonstrate the existing real Sepolia deployment/NAV/whitelist foundations where available;
-8. see locked future actions with clear reasons.
+7. connect a wallet and demonstrate the existing real Sepolia deployment/NAV/whitelist/allocation foundations where available;
+8. see unavailable future actions with clear reasons.
 
 It does not require live stablecoin subscription/redemption execution, but any parameter/template flow that is shown as implemented must be functional and test-protected.
 
@@ -186,6 +187,7 @@ Must deliver:
 - no frontend secrets;
 - deterministic fallback where practical;
 - compact prompts;
+- prompt budget guards that preserve required context and fall back instead of sending partial facts;
 - typed run/project/chat context boundaries.
 
 ### Smart Contracts And Wallet
@@ -309,11 +311,11 @@ Resolve before beta:
 
 ## Immediate Next Coding Track
 
-Harden the investor registry, Subscription, Redemption, subscription-redemption template handoff, and Allocation/Mint readiness flow with e2e coverage and browser review. Continue website/access work only if it remains cleanly separated from app lifecycle state. Use `docs/product/allocation-mint-scope.md` before implementing Allocation/Mint execution.
+Harden the investor registry, Subscription, Redemption, subscription-redemption template handoff, Sepolia readiness, and Allocation/Mint execution flow with e2e coverage and browser review. Continue website/access work only if it remains cleanly separated from app lifecycle state. Use `docs/product/allocation-mint-scope.md` and `docs/contracts/allocation-mint-operation-contract.md` before changing Allocation/Mint behavior.
 
 Do this before:
 
-- Allocation/Mint execution;
+- broad/batch Allocation/Mint execution;
 - durable Evidence Vault;
 - maturity closeout;
 - investor update automation;

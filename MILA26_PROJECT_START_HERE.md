@@ -27,6 +27,7 @@ The target product flow is:
 - Deployment evidence/readiness derived from wallet-signed deployment status.
 - First wallet-signed SCP operation: Record NAV Event.
 - Second wallet-signed SCP operation: Whitelist Wallet.
+- Third wallet-signed SCP operation: Allocation / Mint for a selected whitelisted investor wallet after coherent registry/subscription/allocation parameters.
 - Shared lifecycle state for investor registry, subscription, redemption, allocation/mint readiness, and maturity placeholders.
 - Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, SCP whitelist target handoff, and Allocation/Mint handoff.
 - Test Wallet Lab prototype for generating up to 50 labelled test investor wallets, populating the Investor Registry, and explicitly preparing a test-only private-key export for selected MetaMask demo actors.
@@ -67,19 +68,19 @@ MVP scope does not mean every item is already implemented. It means new coding t
 
 ## Immediate Next Step
 
-Harden the working Allocation/Mint readiness prototype, then implement the next wallet-signed operation slice only after the review surface remains stable.
+Harden the working Sepolia operation surfaces, then implement the next operation slice only after the review surface remains stable.
 
 The next coding track should add:
 
-- browser/screenshot polish for Investor Registry, Subscription, Redemption, Allocation/Mint readiness, and the Smart Contract tab.
-- Allocation/Mint execution scope that maps the ready parameter state to a wallet-signed Sepolia operation without broadening SCP controls.
+- browser/screenshot polish for Investor Registry, Subscription, Redemption, Allocation/Mint execution, and the Smart Contract tab.
+- the next wallet-signed operation scope without broadening SCP controls before its adapter, ABI gate, authorization gate, and evidence path exist.
 - UX polish for parameter panels, edit states, and validation messages based on browser screenshots.
 - persistence/access design so website/login work does not create a second lifecycle state model.
 - website/access continuation from `docs/product/website-mvp-brief.md`.
 
 The two-week prototype target is a working local/Sepolia prototype, not a static mockup. Implemented screens must validate inputs, persist state during the session, update dependent tabs/statuses/artifacts, and pass focused tests.
 
-Do not build Allocation/Mint execution before the current readiness panel has browser coverage, screenshots, and a wallet-signed operation contract.
+Do not build broad SCP execution before each operation has browser coverage, focused tests, a wallet adapter, an ABI gate, authorization checks, and an evidence contract.
 
 ## Files To Read Next
 
@@ -109,6 +110,6 @@ Do not build Allocation/Mint execution before the current readiness panel has br
 - No production legal, tax, accounting, regulatory, KYC/AML, or audit claims.
 - No durable persistence/evidence storage until the lifecycle state shape is stable.
 - No subscription or redemption transaction execution before the parameter model and template handoff are coherent.
-- No allocation/mint execution before Investor Registry, Subscription, and Allocation/Mint readiness parameters are coherent.
+- No batch allocation/mint, subscription execution, or redemption execution before the single-operation gates and evidence path are proven.
 - No per-tab state silos.
 - No broad UI redesign that reduces Engineering Bot readability or moves workflow decisions into the passive right rail.

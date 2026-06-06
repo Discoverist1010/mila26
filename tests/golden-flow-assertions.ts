@@ -18,7 +18,7 @@ const unsafePreExecutionClaimPatterns = [
   /minted today/i,
   /burned today/i,
   /transfer status open/i,
-  /Sepolia operation/i,
+  /Sepolia operation (submitted|confirmed|executed)/i,
 ];
 
 export function expectNoPrematureBlockchainExecutionClaims(text: string) {
@@ -26,4 +26,3 @@ export function expectNoPrematureBlockchainExecutionClaims(text: string) {
     expect(text).not.toMatch(pattern);
   }
 }
-

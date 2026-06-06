@@ -205,7 +205,7 @@ Current sequence:
 - user wallet signs/submits Sepolia deployment;
 - transaction hash and contract address appear only from real provider/receipt responses and remain local-session-only;
 - derive local-session deployment evidence/readiness from deployment status, transaction hash, contract address, chain, receipt, and artifact;
-- expose only operation-specific SCP controls: Record NAV Event and Whitelist Wallet.
+- expose only operation-specific SCP controls: Record NAV Event, Whitelist Wallet, and Allocation / Mint.
 
 ## UI Placement
 
@@ -213,7 +213,7 @@ Future wallet workflow controls belong in the central Engineering Bot workflow s
 
 Right rail remains passive status and safety.
 
-SCP remains status, evidence, boundary, health, and operation-specific controls. Future broad operations stay locked until individually implemented.
+SCP remains status, evidence, boundary, health, and operation-specific controls. Future broad operations stay unavailable until individually implemented with adapters, gates, and evidence paths.
 
 After wallet-signed deployment evidence linkage exists, SCP may expose gated contract-operation controls that are backed by the real deployed contract, operation authorization, and evidence logging.
 
@@ -249,7 +249,7 @@ Track 14B keeps wallet deployment frontend-only:
 - contract address appears only after `eth_getTransactionReceipt` returns a successful contract-creation receipt.
 - receipt polling is bounded and stale results are ignored.
 - deployment evidence remains local-session-only until a later persistence/evidence track.
-- SCP operations remain locked.
+- SCP operations remain unavailable until operation-specific adapters and evidence gates are implemented.
 
 ## Risks and Deferred Decisions
 

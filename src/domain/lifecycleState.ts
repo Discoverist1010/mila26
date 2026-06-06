@@ -396,7 +396,9 @@ function toAllocationMintReadModel(
   const hasAnyInput = Boolean(targetWalletAddress || tokenAmount);
   const status: LifecycleParameterStatus =
     blockingReasons.length > 0
-      ? 'locked_for_later'
+      ? hasAnyInput
+        ? 'draft'
+        : 'needs_parameters'
       : validationMessages.length === 0
         ? 'ready'
         : hasAnyInput
@@ -460,7 +462,7 @@ function templateStatusLabel(status: LifecycleParameterStatus): string {
 function allocationMintStatusLabel(status: LifecycleParameterStatus): string {
   if (status === 'ready') return 'Allocation / Mint: Ready for review';
   if (status === 'draft') return 'Allocation / Mint: Needs review';
-  if (status === 'locked_for_later') return 'Allocation / Mint: Locked';
+  if (status === 'locked_for_later') return 'Allocation / Mint: Needs prerequisites';
   return 'Allocation / Mint: Parameters needed';
 }
 
@@ -473,7 +475,7 @@ function allocationMintStatusDetail(
 ): string {
   if (status === 'ready') return `Allocation ready for ${tokenAmount} token(s) to ${targetWalletAddress}.`;
   if (status === 'locked_for_later') return blockingReasons[0] ?? 'Complete required setup before Allocation / Mint.';
-  if (status === 'draft') return validationMessages[0] ?? 'Review Allocation / Mint parameters.';
+  if (status === 'draft') return blockingReasons[0] ?? validationMessages[0] ?? 'Review Allocation / Mint parameters.';
   return 'Select a registered investor wallet and token allocation amount.';
 }
 

@@ -21,7 +21,8 @@ Requirement Brief
 -> Deployment Evidence local-session surface
 -> Record NAV Event wallet-signed SCP operation
 -> Wallet Whitelist wallet-signed SCP operation
--> Other Smart Contract Operations locked
+-> Allocation / Mint wallet-signed SCP operation
+-> Other Smart Contract Operations unavailable until adapter/gate/evidence work exists
 
 ## Completed Foundation
 
@@ -67,7 +68,7 @@ Acceptance criteria:
 - Wallet connection readiness remains separate from Wallet Signing Intent.
 - Wallet execution remains not implemented.
 - Right rail remains passive.
-- SCP operations remain locked.
+- SCP operations remain unavailable until operation-specific adapters and evidence gates are implemented.
 - No fake wallet/contract/tx values are introduced.
 - `npm run check` and `npm run test:e2e` pass.
 
@@ -135,7 +136,7 @@ Expected deliverables:
 - Provider-returned operation transaction hash only after submission.
 - Provider receipt/event evidence only after receipt/log response.
 - Local-session-only operation evidence.
-- SCP exposes only the Record NAV Event operation; all other operations remain locked.
+- SCP exposes only operation-specific controls that have adapters, ABI gates, authorization gates, and evidence paths.
 
 What not to overbuild:
 

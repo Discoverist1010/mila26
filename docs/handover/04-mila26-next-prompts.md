@@ -87,7 +87,7 @@ Acceptance:
 
 This should still be parameter/spec work, not live stablecoin execution.
 
-## Next Codex Prompt: Allocation/Mint Browser Hardening + Operation Contract
+## Next Codex Prompt: Operation Hardening + Sepolia Funding Helper
 
 Use this prompt for the next implementation turn:
 
@@ -103,23 +103,22 @@ npm run test -- tests/lifecycle-state.test.ts tests/app-chat-panel.test.tsx
 npm run test:e2e
 
 Goal:
-Harden the working Allocation/Mint readiness surface and design the wallet-signed Allocation/Mint operation contract without enabling live execution yet.
+Harden the working wallet-signed operation surfaces and add the Sepolia funding-helper UX for generated demo wallets without broadening SCP controls.
 
 Scope:
-1. Run browser/screenshot review for Overview, Investor Registry, Subscription, Smart Contract, Allocation/Mint readiness, and right rail status.
+1. Run browser/screenshot review for Overview, Investor Registry, Subscription, Smart Contract, Sepolia readiness, Allocation/Mint execution, and right rail status.
 2. Fix only UX/state issues found by the review; avoid broad redesign.
-3. Add or update a contract/read-model spec for the later wallet-signed Allocation/Mint operation:
-   - selected wallet must come from Investor Registry;
-   - token amount must be greater than zero;
-   - Subscription must be ready;
-   - deployment evidence, Sepolia wallet, and contract address gates must stay operation-specific;
-   - no stablecoin receipt or KYC/eligibility claim.
-4. Keep the SCP Mint button locked until the execution slice is explicitly implemented.
+3. Add Sepolia funding-helper UX for generated/manual demo wallets:
+   - show which issuer/admin and investor wallets need Sepolia ETH;
+   - provide copyable public addresses;
+   - keep private keys out of normal lifecycle state;
+   - do not claim automated funding unless a real faucet/provider integration exists.
+4. Preserve Allocation/Mint release gates from `docs/contracts/allocation-mint-operation-contract.md`.
 5. Do not add live stablecoin execution, durable persistence, or mainnet support.
 
 Acceptance:
 - Existing tests continue passing.
-- Browser/e2e coverage proves Allocation/Mint readiness survives cross-tab edits.
+- Browser/e2e coverage proves Allocation/Mint execution gates survive cross-tab edits.
 - The Smart Contract tab remains readable and uncluttered.
 - The right rail remains passive.
 - No transaction hash, contract address, or confirmed mint status appears without provider evidence.
@@ -132,11 +131,11 @@ The two-week prototype target is tracked in `docs/production/production-readines
 
 For the next sprint, keep the goal narrow:
 
-1. Add e2e and screenshot hardening for the working Subscription/Redemption and Allocation/Mint readiness flows.
+1. Add e2e and screenshot hardening for the working Subscription/Redemption and Allocation/Mint execution flows.
 2. Keep all tabs connected to shared lifecycle state.
 3. Make Engineering Bot next actions reflect the next missing lifecycle dependency.
 4. Start website/access only after the app flow remains stable.
-5. Do not add live stablecoin execution or Allocation/Mint execution without a separate operation contract and tests.
+5. Do not add live stablecoin execution or broad/batch Allocation/Mint execution without a separate operation contract and tests.
 
 The result must be working software, not a visual placeholder. If a field, button, status, or artifact is shown as active, it must be wired to state, validation, and tests.
 
@@ -160,14 +159,12 @@ Use it first for bounded independent review only:
 
 The Lead Implementer remains accountable for deciding whether to debug, refactor, defer, or reject findings.
 
-## Later Prompt: Allocation/Mint Execution
+## Later Prompt: Next SCP Operation
 
-Add Allocation/Mint execution only after:
+Add the next SCP operation only after:
 
-- investor registry state exists;
-- subscription parameters exist;
-- Allocation/Mint readiness state exists;
-- smart-contract spec can consume those parameters;
+- the required lifecycle state exists;
+- smart-contract spec and ABI can consume those parameters;
 - wallet/deployment/operation evidence gates remain stable.
 
-Allocation/Mint must remain wallet-signed, Sepolia-only, operation-specific, and evidence-linked. It must not unlock broad operations.
+Any new operation must remain wallet-signed, Sepolia-only, operation-specific, and evidence-linked. It must not unlock broad operations.

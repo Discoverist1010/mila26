@@ -59,7 +59,7 @@ describe('Smart Contract Control Panel view model', () => {
     expect(viewModel.statusLabel).toBe('Blocked before contract specification');
     expect(viewModel.statusDetail).toMatch(/Security Review/i);
     expect(viewModel.overview.contractStatus).toBe('Not deployed');
-    expect(viewModel.recentEvents).toContain('Smart Contract Operations remain locked for MVP');
+    expect(viewModel.recentEvents).toContain('Released operations stay gated by wallet, deployment, ABI, parameter, and evidence prerequisites');
   });
 
   it('derives ready-for-spec state after closure is ready', () => {
@@ -171,7 +171,7 @@ describe('Smart Contract Control Panel view model', () => {
           actionLabel: 'View only',
           enabled: false,
           disabledReason:
-            'Operations locked. Deployment status does not enable contract operations until operation authorization and evidence logging are wired.',
+            'Unavailable until this operation has an explicit contract function, wallet adapter, authorization gate, and evidence path.',
         },
         {
           name: 'ContractPaused',
@@ -179,7 +179,7 @@ describe('Smart Contract Control Panel view model', () => {
           actionLabel: 'Trigger Event',
           enabled: false,
           disabledReason:
-            'Operations locked. Deployment status does not enable contract operations until operation authorization and evidence logging are wired.',
+            'Unavailable until this operation has an explicit contract function, wallet adapter, authorization gate, and evidence path.',
         },
         {
           name: 'ContractUnpaused',
@@ -187,7 +187,7 @@ describe('Smart Contract Control Panel view model', () => {
           actionLabel: 'Trigger Event',
           enabled: false,
           disabledReason:
-            'Operations locked. Deployment status does not enable contract operations until operation authorization and evidence logging are wired.',
+            'Unavailable until this operation has an explicit contract function, wallet adapter, authorization gate, and evidence path.',
         },
       ]),
     );
@@ -235,11 +235,11 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'Wallet connection', value: 'Not connected', status: 'disabled' },
         { label: 'Wallet chain', value: 'Unknown', status: 'disabled' },
         { label: 'Connected wallet', value: 'No wallet address', status: 'disabled' },
-        { label: 'Smart Contract Operations', value: 'Locked', status: 'disabled' },
+        { label: 'Smart Contract Operations', value: 'Released operation-by-operation', status: 'pending' },
         {
           label: 'Operations reason',
-          value: 'Operation-specific authorization and evidence logging are not implemented',
-          status: 'disabled',
+          value: 'Each operation needs authorization, wallet signing, and evidence logging before enablement',
+          status: 'pending',
         },
         {
           label: 'Required before operations',
@@ -411,7 +411,7 @@ describe('Smart Contract Control Panel view model', () => {
     expect(submitted.overview.contractAddress).toBe('No contract address - not deployed');
     expect(submitted.coreActions.every((action) => action.enabled === false)).toBe(true);
 
-    expect(confirmed.overview.contractStatus).toBe('Deployment confirmed on Sepolia - Record NAV and Wallet Whitelist gated');
+    expect(confirmed.overview.contractStatus).toBe('Deployment confirmed on Sepolia - Record NAV, Wallet Whitelist, and Allocation / Mint gated');
     expect(confirmed.overview.contractAddress).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
     expect(confirmed.healthItems).toEqual(
       expect.arrayContaining([
@@ -442,7 +442,7 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'Evidence persistence', value: 'Local session only', status: 'disabled' },
         { label: 'Transaction hash source', value: 'Provider returned', status: 'ready' },
         { label: 'Contract address source', value: 'Receipt returned', status: 'ready' },
-        { label: 'Other Smart Contract Operations', value: 'Locked', status: 'disabled' },
+        { label: 'Other Smart Contract Operations', value: 'Require explicit adapters and evidence paths before release', status: 'disabled' },
       ]),
     );
     expect(confirmed.coreActions.every((action) => action.enabled === false)).toBe(true);
@@ -474,7 +474,7 @@ describe('Smart Contract Control Panel view model', () => {
       actionLabel: 'Trigger Event',
       enabled: false,
       disabledReason:
-        'Operations locked. Deployment status does not enable contract operations until operation authorization and evidence logging are wired.',
+        'Unavailable until this operation has an explicit contract function, wallet adapter, authorization gate, and evidence path.',
     });
   });
 
@@ -532,14 +532,14 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'Operation receipt source', value: 'Provider receipt', status: 'ready' },
         { label: 'ValuationUpdated event evidence', value: 'Decoded from receipt', status: 'ready' },
         { label: 'Operation evidence persistence', value: 'Local session only', status: 'disabled' },
-        { label: 'Other SCP operations', value: 'Locked', status: 'disabled' },
+        { label: 'Other SCP operations', value: 'Require explicit adapters before release', status: 'disabled' },
       ]),
     );
     expect(viewModel.coreActions.every((action) => action.enabled === false)).toBe(true);
     expect(JSON.stringify(viewModel)).not.toMatch(/production ready|mainnet ready|audit passed|verified/i);
   });
 
-  it('represents Wallet Whitelist operation evidence separately while keeping allocation and other operations locked', () => {
+  it('represents Wallet Whitelist operation evidence separately while surfacing Allocation / Mint as the next gated operation', () => {
     const lifecycleReadModel = toProjectLifecycleReadModel({
       hasRequirementBrief: true,
       hasEngineeringBrief: true,
@@ -597,8 +597,8 @@ describe('Smart Contract Control Panel view model', () => {
         { label: 'WalletWhitelisted event evidence', value: 'Decoded from receipt', status: 'ready' },
         { label: 'Whitelist evidence persistence', value: 'Local session only', status: 'disabled' },
         { label: 'Contract authorization', value: 'Enforced on-chain', status: 'disabled' },
-        { label: 'Allocation/Mint', value: 'Locked for later', status: 'disabled' },
-        { label: 'Other Smart Contract Operations', value: 'Locked', status: 'disabled' },
+        { label: 'Allocation/Mint', value: 'Available after investor whitelist and allocation parameters', status: 'ready' },
+        { label: 'Other Smart Contract Operations', value: 'Require explicit adapters and evidence paths before release', status: 'disabled' },
       ]),
     );
     expect(viewModel.coreActions.every((action) => action.enabled === false)).toBe(true);

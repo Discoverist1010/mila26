@@ -124,8 +124,52 @@ describe('PRD Engineering Brief API', () => {
         purpose: 'engineering_brief_generation',
         maxOutputTokens: 1100,
         reasoningEffort: 'minimal',
+        metadata: expect.objectContaining({
+          promptBudgetName: 'engineering_brief_generation',
+          estimatedInputTokens: expect.any(Number),
+          maxEstimatedInputTokens: 8000,
+          promptWithinBudget: true,
+        }),
       }),
     );
+    expect(JSON.stringify(vi.mocked(llmProvider.complete).mock.calls[0]?.[0]?.metadata)).not.toContain(
+      requirementBrief.projectName,
+    );
+  });
+
+  it('falls back without calling the LLM when the full Requirement Brief exceeds prompt budget', async () => {
+    const requirementBrief = {
+      ...createDemoRequirementBriefContract(),
+      selectedServicingModules: Array.from({ length: 180 }, () => ({
+        id: 'erc20-base' as const,
+        enabled: true,
+        rationale:
+          'Large but schema-valid rationale used to prove MILA26 does not truncate structured Requirement Brief context before provider calls. The complete Requirement Brief must either fit the prompt budget or fall back safely without partial facts.',
+      })),
+    };
+    const llmProvider = createFakeLlmProvider(
+      JSON.stringify({
+        summary: 'This provider output should not be used.',
+        functionalRequirements: ['unused'],
+        nonFunctionalRequirements: ['unused'],
+        implementationPlan: ['unused'],
+        testingAndQaPlan: ['unused'],
+        evidencePackPlan: ['unused'],
+        risksAndControls: [{ risk: 'unused', control: 'unused' }],
+        acceptanceCriteria: ['unused'],
+      }),
+    );
+
+    const response = await postEngineeringBrief(
+      { requirementBrief },
+      { engineeringBriefLlmProvider: llmProvider },
+    );
+    const body = response.json();
+
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data).toEqual(generateEngineeringBriefMock(requirementBrief));
+    expect(llmProvider.complete).not.toHaveBeenCalled();
   });
 
   it('falls back to the deterministic Engineering Brief when the provider throws', async () => {

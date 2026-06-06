@@ -99,6 +99,14 @@ Future prompts should be compact and contract-focused:
 
 Long prompts increase cost, latency, and failure surface.
 
+Current prompt guards are fail-soft:
+
+- Current user messages are never truncated.
+- Required structured inputs, such as the full Requirement Brief JSON, are never partially truncated.
+- Optional chat history is dropped oldest-first and only as complete turns.
+- If required context exceeds budget, MILA26 uses deterministic fallback instead of calling the LLM with incomplete context.
+- Prompt metadata may include size diagnostics, but not raw prompt content.
+
 ## Streaming And Async UX
 
 Longer operations should keep the UI responsive:

@@ -141,6 +141,17 @@ describe('blockchain engineer chat api', () => {
         expect(request.temperature).toBeUndefined();
         expect(request.maxOutputTokens).toBe(500);
         expect(request.reasoningEffort).toBe('minimal');
+        expect(request.metadata).toEqual(
+          expect.objectContaining({
+            promptBudgetName: 'blockchain_engineer_chat',
+            estimatedInputTokens: expect.any(Number),
+            maxEstimatedInputTokens: 6000,
+            promptWithinBudget: true,
+            historyTurnsIncluded: 0,
+            historyTurnsOmitted: 0,
+          }),
+        );
+        expect(JSON.stringify(request.metadata)).not.toContain('Can we deploy this tokenized fund?');
 
         return {
           content:
@@ -172,6 +183,87 @@ describe('blockchain engineer chat api', () => {
     expect(body.data.content).toContain('Provider answer');
     expect(JSON.stringify(body)).not.toContain('test-model');
     expect(JSON.stringify(body)).not.toContain('rawProviderDebug');
+  });
+
+  it('omits oldest optional history instead of truncating the current user message', async () => {
+    let capturedMessages: unknown[] = [];
+    const provider: Mila26LlmProvider = {
+      provider: 'openai',
+      model: 'test-model',
+      async complete(request) {
+        capturedMessages = request.messages;
+        expect(request.metadata).toEqual(
+          expect.objectContaining({
+            historyTurnsIncluded: 1,
+            historyTurnsOmitted: 5,
+            promptWithinBudget: true,
+          }),
+        );
+
+        return {
+          content: 'Provider answer with reduced history but intact current user message.',
+          provider: 'openai',
+          model: 'test-model',
+        };
+      },
+    };
+    const app = createApp({ blockchainEngineerLlmProvider: provider });
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/chat/blockchain-engineer',
+      payload: {
+        userMessage: 'Current user message must remain intact.',
+        conversationHistory: Array.from({ length: 6 }, (_, index) => ({
+          messageId: `history-${index}`,
+          role: index === 5 ? 'assistant' : 'user',
+          content: index === 5 ? 'short recent answer' : 'x'.repeat(25_000),
+          createdAt: '2026-06-06T00:00:00.000Z',
+        })),
+      },
+    });
+    await app.close();
+    const body = response.json();
+
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(capturedMessages.at(-1)).toEqual({
+      role: 'user',
+      content: 'Current user message must remain intact.',
+    });
+    expect(capturedMessages).toContainEqual({ role: 'assistant', content: 'short recent answer' });
+    expect(JSON.stringify(capturedMessages)).not.toContain('x'.repeat(200));
+  });
+
+  it('falls back without calling the LLM when the current user message alone exceeds prompt budget', async () => {
+    let providerCalled = false;
+    const provider: Mila26LlmProvider = {
+      provider: 'openai',
+      model: 'test-model',
+      async complete() {
+        providerCalled = true;
+        return {
+          content: 'This should not be used.',
+          provider: 'openai',
+          model: 'test-model',
+        };
+      },
+    };
+    const app = createApp({ blockchainEngineerLlmProvider: provider });
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/chat/blockchain-engineer',
+      payload: {
+        userMessage: `Can we deploy to testnet? ${'x'.repeat(30_000)}`,
+        requestedFocus: 'deployment',
+      },
+    });
+    await app.close();
+    const body = response.json();
+
+    expect(providerCalled).toBe(false);
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.content).toMatch(/Deployment should stay Ethereum testnet-only/i);
   });
 
   it('falls back to deterministic mock behavior when the injected LLM provider fails', async () => {

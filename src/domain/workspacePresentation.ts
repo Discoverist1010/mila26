@@ -150,14 +150,16 @@ function status(input: WorkspacePresentationInput): ProductCapabilityRow[] {
     { label: 'Current capabilities ready', status: 'available' },
     { label: 'Wallet whitelist available', status: input.isWalletWhitelistAvailable ? 'available' : 'locked_for_later' },
     { label: 'NAV recording available', status: input.isNavRecordingAvailable ? 'available' : 'locked_for_later' },
-    { label: 'Next capability: Allocation / Mint', status: allocationMintStatus },
-    {
-      label:
-        allocationMint.status === 'ready'
-          ? 'Allocation parameters ready for review'
-          : 'Locked until required setup is complete',
-      status: allocationMintStatus,
-    },
+      { label: 'Allocation / Mint capability', status: allocationMintStatus },
+      {
+        label:
+          allocationMint.status === 'ready'
+            ? 'Allocation parameters ready for review'
+            : allocationMint.status === 'draft'
+              ? 'Allocation setup needs review'
+              : 'Allocation setup needs parameters',
+        status: allocationMintStatus,
+      },
   ];
 }
 
@@ -260,6 +262,6 @@ function parameterStatusToCapabilityStatus(status: LifecycleParameterStatus): Pr
 function parameterStatusDetail(status: LifecycleParameterStatus): string {
   if (status === 'ready') return 'Ready';
   if (status === 'draft') return 'Draft parameters';
-  if (status === 'locked_for_later') return 'Locked for later';
+  if (status === 'locked_for_later') return 'Needs prerequisites';
   return 'Parameters needed';
 }

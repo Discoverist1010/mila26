@@ -22,6 +22,13 @@ import {
   type Mila26LifecycleState,
   type RedemptionParameters,
 } from './domain/lifecycleState';
+import {
+  formatWalletAllocationMintOperationStatus,
+  initialWalletAllocationMintOperationState,
+  isWalletAllocationMintOperationInFlight,
+  toWalletAllocationMintOperationReadModel,
+  type WalletAllocationMintOperationState,
+} from './domain/walletAllocationMintOperationReadModel';
 import { createDemoProjectClosureLedger } from './domain/projectClosureLedger';
 import { toProjectClosureReadModel } from './domain/projectClosureReadModel';
 import { toProjectLifecycleReadModel, type Mila26UiActionId } from './domain/projectLifecycleReadModel';
@@ -60,6 +67,12 @@ import {
   toTestInvestorWalletPublicRecords,
   type TestInvestorWalletPack,
 } from './domain/testWalletLab';
+import {
+  initialSepoliaDemoWalletReadinessState,
+  isSepoliaDemoWalletReadinessInFlight,
+  toSepoliaDemoWalletReadinessReadModel,
+  type SepoliaDemoWalletReadinessState,
+} from './domain/sepoliaDemoWalletReadiness';
 import { mila26RestrictedFundTokenDeploymentArtifact } from './contracts/mila26RestrictedFundTokenDeploymentArtifact';
 import {
   createMila26DeploymentConstructorParameters,
@@ -93,6 +106,15 @@ import {
   requestWalletSignedWhitelistOperation,
   type SepoliaWalletWhitelistOperationProvider,
 } from './wallet/sepoliaWalletWhitelistOperationAdapter';
+import {
+  hasMintAllocationFunction,
+  requestWalletSignedAllocationMintOperation,
+  type SepoliaAllocationMintOperationProvider,
+} from './wallet/sepoliaAllocationMintOperationAdapter';
+import {
+  checkSepoliaDemoWalletReadiness,
+  type SepoliaDemoWalletReadinessProvider,
+} from './wallet/sepoliaDemoWalletReadinessAdapter';
 import type { BlockchainEngineerChatResponse } from '../server/contracts/chat';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
 import type {
@@ -182,6 +204,7 @@ const uiActions = {
   deployToSepolia: 'deploy_to_sepolia',
   recordNavEvent: 'record_nav_event',
   whitelistWallet: 'whitelist_wallet',
+  allocationMint: 'allocation_mint',
 } as const;
 
 type GeneratedArtifactCard = {
@@ -256,9 +279,9 @@ function createDeploymentResponse(deployment: WalletSignedDeploymentState): Bloc
       deployment.contractAddress ? `Contract address: ${deployment.contractAddress}.` : 'No contract address.',
       'Backend never holds private keys.',
       'Mainnet remains disabled.',
-      'Smart Contract Operations remain locked.',
+      'Smart Contract Operations are individually gated by deployment evidence, wallet connection, ABI support, and operation-specific parameters.',
     ],
-    nextRecommendedAction: 'Next recommended operation is Record NAV Event after deployment evidence is confirmed.',
+    nextRecommendedAction: 'Next recommended operations are Record NAV Event, Wallet Whitelist, then Allocation / Mint when each gate is satisfied.',
     createdAt: new Date(0).toISOString(),
   };
 }
@@ -277,11 +300,11 @@ function createRecordNavOperationResponse(operation: RecordNavOperationState): B
       operation.decodedEvent ? 'ValuationUpdated event decoded from receipt.' : 'ValuationUpdated event not decoded.',
       'Backend never holds private keys.',
       'Mainnet remains disabled.',
-      'Other Smart Contract Operations remain locked.',
+      'Other Smart Contract Operations require their own explicit adapters and evidence paths before release.',
     ],
     nextRecommendedAction:
       operation.operationStatus === 'confirmed'
-        ? 'Next recommended operation is Wallet Whitelist. Allocation/Mint remains locked for a later build.'
+        ? 'Next recommended operation is Wallet Whitelist. Allocation / Mint is available after the selected investor wallet is whitelisted and allocation parameters are ready.'
         : 'Continue only after the wallet-signed Record NAV operation is confirmed or safely retried.',
     createdAt: new Date(0).toISOString(),
   };
@@ -303,13 +326,39 @@ function createWalletWhitelistOperationResponse(operation: WalletWhitelistOperat
       'Contract authorization is enforced on-chain.',
       'Backend never holds private keys.',
       'Mainnet remains disabled.',
-      'Allocation/Mint remains locked for a later build.',
-      'Other Smart Contract Operations remain locked.',
+      'Allocation / Mint is available when the selected whitelisted wallet and token amount pass validation.',
+      'Other Smart Contract Operations require their own explicit adapters and evidence paths before release.',
     ],
     nextRecommendedAction:
       operation.operationStatus === 'confirmed'
         ? 'Next recommended operation is Allocation/Mint after the subscription and investor registry setup is complete.'
         : 'Continue only after the wallet-signed Wallet Whitelist operation is confirmed or safely retried.',
+    createdAt: new Date(0).toISOString(),
+  };
+}
+
+function createAllocationMintOperationResponse(operation: WalletAllocationMintOperationState): BlockchainEngineerChatResponse {
+  const statusLabel = formatWalletAllocationMintOperationStatus(operation.operationStatus);
+
+  return {
+    messageId: 'local-allocation-mint-operation',
+    agentId: 'blockchain-engineer',
+    content:
+      'Allocation / Mint operation status updated. The action is wallet-signed on Sepolia and evidence is derived from local-session provider and receipt responses only.',
+    riskNotes: [
+      `Allocation / Mint operation: ${statusLabel}.`,
+      operation.targetWalletAddress ? `Target wallet: ${operation.targetWalletAddress}.` : 'Target wallet address is required.',
+      operation.tokenAmount ? `Token amount: ${operation.tokenAmount}.` : 'Token allocation amount is required.',
+      operation.operationTransactionHash ? `Allocation / Mint transaction hash: ${operation.operationTransactionHash}.` : 'No Allocation / Mint transaction hash.',
+      operation.decodedEvent ? 'AllocationMinted event decoded from receipt.' : 'AllocationMinted event not decoded.',
+      'Contract authorization is enforced on-chain.',
+      'Backend never holds private keys.',
+      'Mainnet remains disabled.',
+    ],
+    nextRecommendedAction:
+      operation.operationStatus === 'confirmed'
+        ? 'Next recommended step is to review investor activity evidence and continue asset servicing operations.'
+        : 'Continue only after the wallet-signed Allocation / Mint operation is confirmed or safely retried.',
     createdAt: new Date(0).toISOString(),
   };
 }
@@ -347,7 +396,7 @@ function formatWalletChainStatus(status: string) {
 function productCapabilityStatusLabel(status: ProductCapabilityStatus) {
   if (status === 'available') return 'Available';
   if (status === 'needs_parameters') return 'Needs parameters';
-  if (status === 'locked_for_later') return 'Locked for later';
+  if (status === 'locked_for_later') return 'Needs prerequisites';
   if (status === 'local_session_only') return 'Local session only';
   if (status === 'active') return 'Active';
   return 'Draft';
@@ -359,7 +408,7 @@ function tabStatusLabel(status: ReturnType<typeof toWorkspacePresentation>['tabs
   if (status === 'needs_parameters') return 'Needs parameters';
   if (status === 'available') return 'Available';
   if (status === 'local_session_only') return 'Local session only';
-  return 'Locked for later';
+  return 'Needs prerequisites';
 }
 
 function initialWalletConnectionInput(): WalletConnectionReadModelInput {
@@ -422,6 +471,10 @@ export function App() {
   const [walletWhitelistOperationState, setWalletWhitelistOperationState] = useState<WalletWhitelistOperationState>(
     initialWalletWhitelistOperationState,
   );
+  const [walletAllocationMintOperationState, setWalletAllocationMintOperationState] =
+    useState<WalletAllocationMintOperationState>(initialWalletAllocationMintOperationState);
+  const [sepoliaDemoWalletReadinessState, setSepoliaDemoWalletReadinessState] =
+    useState<SepoliaDemoWalletReadinessState>(initialSepoliaDemoWalletReadinessState);
   const [walletWhitelistTargetWallet, setWalletWhitelistTargetWallet] = useState('');
   const [lifecycleState, setLifecycleState] = useState<Mila26LifecycleState>(() => createInitialMila26LifecycleState());
   const [investorRegistryDraftWallet, setInvestorRegistryDraftWallet] = useState('');
@@ -456,6 +509,8 @@ export function App() {
   const recordNavOperationAttemptIdRef = useRef('');
   const walletWhitelistOperationAttemptSequenceRef = useRef(0);
   const walletWhitelistOperationAttemptIdRef = useRef('');
+  const walletAllocationMintOperationAttemptSequenceRef = useRef(0);
+  const walletAllocationMintOperationAttemptIdRef = useRef('');
   const investorRegistrySequenceRef = useRef(0);
   const engineeringBotConversationSequenceRef = useRef(0);
 
@@ -626,6 +681,55 @@ export function App() {
     ],
   );
   const lifecycleReadModel = useMemo(() => toMila26LifecycleReadModel(lifecycleState), [lifecycleState]);
+  const allocationMint = lifecycleReadModel.allocationMint;
+  const selectedAllocationMintRegistryEntry = useMemo(
+    () =>
+      lifecycleReadModel.investorRegistry.entries.find((entry) =>
+        walletWhitelistTargetsMatch(entry.normalizedWalletAddress, allocationMint.targetWalletAddress),
+      ),
+    [lifecycleReadModel.investorRegistry.entries, allocationMint.targetWalletAddress],
+  );
+  const selectedAllocationMintInvestorWhitelisted =
+    selectedAllocationMintRegistryEntry?.status === 'whitelisted_local_session_only';
+  const walletAllocationMintOperationReadModel = useMemo(
+    () =>
+      toWalletAllocationMintOperationReadModel({
+        operationState: walletAllocationMintOperationState,
+        deploymentEvidence: deploymentEvidenceReadModel,
+        walletConnectedOnSepolia:
+          walletConnectionReadModel.walletConnectionStatus === 'connected' && walletConnectionReadModel.chainStatus === 'sepolia',
+        allocationMint,
+        selectedInvestorWhitelisted: selectedAllocationMintInvestorWhitelisted,
+        mintFunctionAvailable: hasMintAllocationFunction(mila26RestrictedFundTokenDeploymentArtifact.abi),
+      }),
+    [
+      walletAllocationMintOperationState,
+      deploymentEvidenceReadModel,
+      walletConnectionReadModel.walletConnectionStatus,
+      walletConnectionReadModel.chainStatus,
+      allocationMint,
+      selectedAllocationMintInvestorWhitelisted,
+    ],
+  );
+  const sepoliaDemoWalletReadinessReadModel = useMemo(
+    () =>
+      toSepoliaDemoWalletReadinessReadModel({
+        state: sepoliaDemoWalletReadinessState,
+        walletConnection: walletConnectionReadModel,
+        investorWalletCount: lifecycleReadModel.investorRegistry.entryCount,
+        paymentAddress: lifecycleState.subscriptionParameters.paymentAddress,
+        redemptionWalletAddress: lifecycleState.redemptionParameters.redemptionWalletAddress,
+        generatedTestWalletCount: testInvestorWalletPack?.createdCount ?? 0,
+      }),
+    [
+      sepoliaDemoWalletReadinessState,
+      walletConnectionReadModel,
+      lifecycleReadModel.investorRegistry.entryCount,
+      lifecycleState.subscriptionParameters.paymentAddress,
+      lifecycleState.redemptionParameters.redemptionWalletAddress,
+      testInvestorWalletPack,
+    ],
+  );
   const testInvestorWalletPublicRecords = useMemo(
     () => (testInvestorWalletPack ? toTestInvestorWalletPublicRecords(testInvestorWalletPack) : []),
     [testInvestorWalletPack],
@@ -703,6 +807,7 @@ export function App() {
         deploymentEvidence: deploymentEvidenceReadModel,
         recordNavOperation: recordNavOperationReadModel,
         walletWhitelistOperation: walletWhitelistOperationReadModel,
+        walletAllocationMintOperation: walletAllocationMintOperationReadModel,
         customEvents: smartContractArtifactSpec?.eventModel?.customEvents,
       }),
     [
@@ -720,6 +825,7 @@ export function App() {
       deploymentEvidenceReadModel,
       recordNavOperationReadModel,
       walletWhitelistOperationReadModel,
+      walletAllocationMintOperationReadModel,
     ],
   );
   const workspacePresentation = useMemo(
@@ -745,7 +851,6 @@ export function App() {
     workspacePresentation.tabs.find((tab) => tab.id === selectedWorkspaceTab) ?? workspacePresentation.tabs[0];
   const shouldShowSmartContractControl = ['overview', 'smart_contract', 'evidence'].includes(activeWorkspaceTab.id);
   const subscriptionRedemptionTemplate = lifecycleReadModel.subscriptionRedemptionTemplate;
-  const allocationMint = lifecycleReadModel.allocationMint;
   const hasSubscriptionRedemptionTemplateInput = subscriptionRedemptionTemplate.status !== 'needs_parameters';
   const selectedProject = demoProjectFolders.find((project) => project.id === selectedProjectId);
   const activeProjectTitle = selectedProject?.title ?? 'All Projects';
@@ -791,6 +896,7 @@ export function App() {
           : 'Record NAV operation is blocked by a precondition.';
   const whitelistTargetIsValid = isValidNonZeroEvmAddress(normalizedWhitelistTargetWallet);
   const whitelistFunctionAvailable = hasSetWalletAllowedFunction(mila26RestrictedFundTokenDeploymentArtifact.abi);
+  const mintFunctionAvailable = hasMintAllocationFunction(mila26RestrictedFundTokenDeploymentArtifact.abi);
   const selectedWhitelistRegistryEntry = lifecycleReadModel.investorRegistry.entries.find((entry) =>
     walletWhitelistTargetsMatch(entry.normalizedWalletAddress, normalizedWhitelistTargetWallet),
   );
@@ -828,6 +934,39 @@ export function App() {
     if (selectedWhitelistTargetAlreadyWhitelisted) return 'Selected wallet is already whitelisted in this local session.';
     if (!selectedWhitelistRegistryEntry.canUseForWhitelist) return 'Resolve this Investor Registry wallet before SCP whitelist.';
     if (!whitelistFunctionAvailable) return 'setWalletAllowed(address,bool) is missing from the deployment artifact ABI.';
+    return 'Contract authorization is enforced on-chain.';
+  })();
+  const selectedAllocationMintAlreadyConfirmed =
+    walletAllocationMintOperationState.operationStatus === 'confirmed' &&
+    walletWhitelistTargetsMatch(walletAllocationMintOperationState.targetWalletAddress, allocationMint.targetWalletAddress) &&
+    walletAllocationMintOperationState.tokenAmount?.trim() === allocationMint.tokenAmount?.trim();
+  const canRequestAllocationMintOperation =
+    smartContractGenerationStatus === 'ready' &&
+    isWalletConnectionComplete &&
+    deploymentEvidenceReadModel.status === 'confirmed' &&
+    deploymentEvidenceReadModel.evidenceStrength === 'confirmed_receipt' &&
+    deploymentEvidenceReadModel.contractAddressSource === 'receipt_returned' &&
+    Boolean(deploymentEvidenceReadModel.contractAddress) &&
+    isValidNonZeroEvmAddress(deploymentEvidenceReadModel.contractAddress) &&
+    mintFunctionAvailable &&
+    allocationMint.canReviewAllocationMint &&
+    selectedAllocationMintInvestorWhitelisted &&
+    !selectedAllocationMintAlreadyConfirmed &&
+    !isWalletAllocationMintOperationInFlight(walletAllocationMintOperationState) &&
+    !walletAllocationMintOperationAttemptIdRef.current;
+  const allocationMintOperationDisabledReason = (() => {
+    if (isWalletAllocationMintOperationInFlight(walletAllocationMintOperationState)) {
+      return 'An Allocation / Mint operation is already awaiting wallet confirmation or receipt.';
+    }
+    if (selectedAllocationMintAlreadyConfirmed) return 'Allocation / Mint is confirmed for this wallet and amount in this local session.';
+    if (deploymentEvidenceReadModel.status !== 'confirmed') {
+      return 'Confirm wallet-signed Sepolia deployment evidence before Allocation / Mint.';
+    }
+    if (!isWalletConnectionComplete) return 'Connect a Sepolia wallet before Allocation / Mint.';
+    if (!mintFunctionAvailable) return 'mintAllocation(address,uint256) is missing from the deployment artifact ABI.';
+    if (!allocationMint.canReviewAllocationMint) return allocationMint.statusDetail;
+    if (!selectedAllocationMintRegistryEntry) return 'Select a registered investor wallet before Allocation / Mint.';
+    if (!selectedAllocationMintInvestorWhitelisted) return 'Whitelist the selected investor wallet before Allocation / Mint.';
     return 'Contract authorization is enforced on-chain.';
   })();
   const generatedArtifactCards = useMemo<GeneratedArtifactCard[]>(
@@ -871,7 +1010,7 @@ export function App() {
               label: 'Wallet Signing Intent',
               status: formatWalletSigningIntentStatus(walletSigningIntentReadModel.intentStatus),
               detail:
-                'Wallet execution: Not implemented. User wallet signing required later. Backend never holds private keys.',
+                'Wallet-signed deployment and selected Sepolia operations use the user wallet. Backend never holds private keys.',
               source: 'Wallet signing intent',
             },
             {
@@ -905,17 +1044,29 @@ export function App() {
               source: 'Wallet-signed operation',
             },
             {
+              label: 'Allocation / Mint Operation Evidence',
+              status: walletAllocationMintOperationReadModel.statusLabel,
+              detail: `Allocation / Mint evidence: ${walletAllocationMintOperationReadModel.operationEvidencePersistenceLabel}. Transaction hash source: ${walletAllocationMintOperationReadModel.operationTransactionHashSourceLabel}. Receipt source: ${walletAllocationMintOperationReadModel.operationReceiptSourceLabel}. AllocationMinted event: ${walletAllocationMintOperationReadModel.eventEvidenceStatusLabel}.`,
+              source: 'Wallet-signed operation',
+            },
+            {
+              label: 'Sepolia Demo Wallet Readiness',
+              status: sepoliaDemoWalletReadinessReadModel.statusLabel,
+              detail: sepoliaDemoWalletReadinessReadModel.statusDetail,
+              source: 'Wallet readiness check',
+            },
+            {
               label: 'Smart Contract Operations',
-              status: deploymentEvidenceReadModel.status === 'confirmed' ? 'Record NAV and Wallet Whitelist gated' : 'Locked',
+              status: deploymentEvidenceReadModel.status === 'confirmed' ? 'Record NAV, Wallet Whitelist, and Allocation / Mint gated' : 'Waiting for deployment evidence',
               detail:
-                'SCP exposes at most Record NAV Event and Whitelist Wallet after confirmed deployment evidence. Allocation/Mint and other Smart Contract Operations remain locked.',
+                'SCP exposes Record NAV Event, Whitelist Wallet, and Allocation / Mint when their wallet, deployment, ABI, parameter, and evidence gates are satisfied. Other operations need explicit adapters before release.',
               source: 'SCP operations boundary',
             },
             {
               label: 'Deployment / Signing / Audit',
               status: walletSignedDeploymentState.deploymentStatus === 'confirmed' ? 'Sepolia deployment confirmed' : 'Not executed',
               detail:
-                'Not audited. No production approval. Wallet connection alone does not execute deployment. Smart Contract Operations remain locked.',
+                'Not audited. No production approval. Wallet connection alone does not execute deployment or operations.',
               source: 'Safety boundary',
             },
           ]
@@ -935,6 +1086,8 @@ export function App() {
       deploymentEvidenceReadModel,
       recordNavOperationReadModel,
       walletWhitelistOperationReadModel,
+      walletAllocationMintOperationReadModel,
+      sepoliaDemoWalletReadinessReadModel,
     ],
   );
 
@@ -1062,6 +1215,8 @@ export function App() {
     recordNavOperationAttemptIdRef.current = '';
     walletWhitelistOperationAttemptSequenceRef.current += 1;
     walletWhitelistOperationAttemptIdRef.current = '';
+    walletAllocationMintOperationAttemptSequenceRef.current += 1;
+    walletAllocationMintOperationAttemptIdRef.current = '';
     setSmartContractArtifactSpec(undefined);
     setSmartContractArtifactPackage(undefined);
     setSmartContractCheckResult(undefined);
@@ -1070,6 +1225,8 @@ export function App() {
     setWalletSignedDeploymentState(initialWalletSignedDeploymentState);
     setRecordNavOperationState(initialRecordNavOperationState);
     setWalletWhitelistOperationState(initialWalletWhitelistOperationState);
+    setWalletAllocationMintOperationState(initialWalletAllocationMintOperationState);
+    setSepoliaDemoWalletReadinessState(initialSepoliaDemoWalletReadinessState);
     setWalletWhitelistTargetWallet('');
     setSmartContractGenerationStatus('idle');
     setSmartContractGenerationError(undefined);
@@ -1162,6 +1319,22 @@ export function App() {
   }
 
   function updateAllocationMintParameters(nextParameters: Partial<AllocationMintParameters>) {
+    const currentTarget = lifecycleState.allocationMintParameters.targetWalletAddress ?? '';
+    const currentAmount = lifecycleState.allocationMintParameters.tokenAmount ?? '';
+    const nextTarget = nextParameters.targetWalletAddress ?? currentTarget;
+    const nextAmount = nextParameters.tokenAmount ?? currentAmount;
+    const targetChanged = !walletWhitelistTargetsMatch(currentTarget, nextTarget);
+    const amountChanged = currentAmount.trim() !== nextAmount.trim();
+    const canResetOperationForInput =
+      walletAllocationMintOperationState.operationStatus !== 'not_started' &&
+      !isWalletAllocationMintOperationInFlight(walletAllocationMintOperationState);
+
+    if ((targetChanged || amountChanged) && canResetOperationForInput) {
+      walletAllocationMintOperationAttemptSequenceRef.current += 1;
+      walletAllocationMintOperationAttemptIdRef.current = '';
+      setWalletAllocationMintOperationState(initialWalletAllocationMintOperationState);
+    }
+
     setLifecycleState((current) => ({
       ...current,
       allocationMintParameters: {
@@ -1264,6 +1437,31 @@ export function App() {
     publishEngineerResponse(createWalletConnectionResponse(nextWalletConnectionReadModel), 'wallet');
   }
 
+  async function checkSepoliaWalletReadiness() {
+    if (isSepoliaDemoWalletReadinessInFlight(sepoliaDemoWalletReadinessState)) return;
+
+    setSepoliaDemoWalletReadinessState({
+      checkStatus: 'checking',
+      checkedWalletAddress: walletConnectionReadModel.connectedWalletAddress,
+      localSessionOnly: true,
+    });
+
+    const result = await checkSepoliaDemoWalletReadiness({
+      provider: getBrowserEthereumProvider() as SepoliaDemoWalletReadinessProvider | undefined,
+      connectedWalletAddress: walletConnectionReadModel.connectedWalletAddress,
+    });
+
+    setSepoliaDemoWalletReadinessState(result);
+    publishEngineerResponse(
+      createLocalEngineerResponse(
+        `${result.checkStatus === 'ready' ? 'Sepolia wallet readiness check passed.' : 'Sepolia wallet readiness check needs attention.'} ${
+          result.signerBalanceWei ? `Signer balance: ${result.signerBalanceWei} wei.` : result.errorMessage ?? ''
+        }`,
+      ),
+      'wallet',
+    );
+  }
+
   async function requestSepoliaDeployment() {
     const provider = getBrowserEthereumProvider();
     const connectedWalletAddress = walletConnectionReadModel.connectedWalletAddress;
@@ -1274,8 +1472,11 @@ export function App() {
     recordNavOperationAttemptIdRef.current = '';
     walletWhitelistOperationAttemptSequenceRef.current += 1;
     walletWhitelistOperationAttemptIdRef.current = '';
+    walletAllocationMintOperationAttemptSequenceRef.current += 1;
+    walletAllocationMintOperationAttemptIdRef.current = '';
     setRecordNavOperationState(initialRecordNavOperationState);
     setWalletWhitelistOperationState(initialWalletWhitelistOperationState);
+    setWalletAllocationMintOperationState(initialWalletAllocationMintOperationState);
 
     const constructorArgs =
       connectedWalletAddress && deploymentConstructorParameters
@@ -1408,6 +1609,59 @@ export function App() {
       setWalletWhitelistOperationState(result);
       publishEngineerResponse(createWalletWhitelistOperationResponse(result), 'wallet');
       walletWhitelistOperationAttemptIdRef.current = '';
+    }
+  }
+
+  async function requestAllocationMintOperation() {
+    if (
+      walletAllocationMintOperationAttemptIdRef.current ||
+      isWalletAllocationMintOperationInFlight(walletAllocationMintOperationState)
+    ) {
+      return;
+    }
+
+    const provider = getBrowserEthereumProvider();
+    const connectedWalletAddress = walletConnectionReadModel.connectedWalletAddress;
+    const attemptId = `allocation-mint-operation-${walletAllocationMintOperationAttemptSequenceRef.current + 1}`;
+    walletAllocationMintOperationAttemptSequenceRef.current += 1;
+    walletAllocationMintOperationAttemptIdRef.current = attemptId;
+
+    const immediateState: WalletAllocationMintOperationState = {
+      operationStatus: 'awaiting_wallet_confirmation',
+      attemptId,
+      contractAddress: deploymentEvidenceReadModel.contractAddress,
+      targetWalletAddress: allocationMint.targetWalletAddress,
+      tokenAmount: allocationMint.tokenAmount,
+      operationReceiptStatus: 'pending',
+      localSessionOnly: true,
+    };
+    setWalletAllocationMintOperationState(immediateState);
+
+    const result = await requestWalletSignedAllocationMintOperation({
+      provider: provider as SepoliaAllocationMintOperationProvider | undefined,
+      connectedWalletAddress,
+      deploymentEvidence: deploymentEvidenceReadModel,
+      contractAbi: mila26RestrictedFundTokenDeploymentArtifact.abi,
+      allocationMint,
+      selectedInvestorWhitelisted: selectedAllocationMintInvestorWhitelisted,
+      currentOperationState: walletAllocationMintOperationState,
+      attemptId,
+      pollOptions: {
+        maxAttempts: 8,
+        intervalMs: 1_500,
+      },
+      shouldContinue: (candidateAttemptId) => walletAllocationMintOperationAttemptIdRef.current === candidateAttemptId,
+      onStateChange: (nextState) => {
+        if (walletAllocationMintOperationAttemptIdRef.current === nextState.attemptId) {
+          setWalletAllocationMintOperationState(nextState);
+        }
+      },
+    });
+
+    if (walletAllocationMintOperationAttemptIdRef.current === attemptId) {
+      setWalletAllocationMintOperationState(result);
+      publishEngineerResponse(createAllocationMintOperationResponse(result), 'wallet');
+      walletAllocationMintOperationAttemptIdRef.current = '';
     }
   }
 
@@ -2010,8 +2264,8 @@ export function App() {
                   <div>
                     <h3>Allocation / Mint readiness</h3>
                     <p>
-                      Prepare single-investor allocation parameters from Investor Registry and Subscription state. This does
-                      not mint tokens or confirm stablecoin receipt.
+                      Prepare single-investor allocation parameters from Investor Registry and Subscription state. SCP can submit
+                      a wallet-signed Sepolia mint after deployment evidence and investor whitelist are confirmed.
                     </p>
                   </div>
                   <span className={`gate-badge ${allocationMint.status === 'ready' ? 'ready' : 'draft'}`}>
@@ -2069,6 +2323,11 @@ export function App() {
                     </strong>
                     <p>Payment per token: {lifecycleState.subscriptionParameters.paymentPerToken ?? 'Not set'}</p>
                   </article>
+                  <article>
+                    <span>Investor whitelist</span>
+                    <strong>{selectedAllocationMintInvestorWhitelisted ? 'Whitelisted locally' : 'Whitelist required'}</strong>
+                    <p>{selectedAllocationMintInvestorWhitelisted ? 'Selected wallet can receive minted allocation.' : 'Use Wallet Whitelist before minting.'}</p>
+                  </article>
                 </div>
 
                 <div className="parameter-status" aria-label="Allocation Mint validation status">
@@ -2084,7 +2343,30 @@ export function App() {
                   ) : (
                     <p>Allocation / Mint parameters are ready for review.</p>
                   )}
-                  <p>No stablecoin receipt check. No live mint transaction is prepared here.</p>
+                  <p>{walletAllocationMintOperationReadModel.statusDetail}</p>
+                </div>
+
+                <div className="parameter-status" aria-label="Sepolia demo wallet readiness">
+                  <div className="status-row">
+                    <p>{sepoliaDemoWalletReadinessReadModel.statusDetail}</p>
+                    <button
+                      type="button"
+                      className="workflow-button"
+                      onClick={() => void checkSepoliaWalletReadiness()}
+                      disabled={!sepoliaDemoWalletReadinessReadModel.canCheckReadiness}
+                      title={sepoliaDemoWalletReadinessReadModel.disabledReason}
+                    >
+                      {sepoliaDemoWalletReadinessState.checkStatus === 'checking' ? 'Checking Sepolia Readiness...' : 'Check Sepolia Readiness'}
+                    </button>
+                  </div>
+                  <div className="readiness-list">
+                    {sepoliaDemoWalletReadinessReadModel.items.map((item) => (
+                      <span key={item.label}>
+                        <strong>{item.label}</strong>
+                        {item.detail}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </section>
             )}
@@ -2549,11 +2831,25 @@ export function App() {
           <section className="contract-section">
             <h3>Core actions</h3>
             <div className="control-actions">
-              {smartContractControlPanel.coreActions.map((action) => (
-                <button key={action.label} disabled={!action.enabled} title={action.disabledReason}>
-                  {action.label}
-                </button>
-              ))}
+              {smartContractControlPanel.coreActions.map((action) => {
+                const isMintAction = action.label === 'Mint';
+                return (
+                  <button
+                    key={action.label}
+                    disabled={isMintAction ? !canRequestAllocationMintOperation : !action.enabled}
+                    title={
+                      isMintAction
+                        ? canRequestAllocationMintOperation
+                          ? undefined
+                          : allocationMintOperationDisabledReason
+                        : action.disabledReason
+                    }
+                    onClick={isMintAction ? () => void requestAllocationMintOperation() : undefined}
+                  >
+                    {action.label}
+                  </button>
+                );
+              })}
             </div>
           </section>
 
@@ -2664,8 +2960,8 @@ export function App() {
               <span>Wallet connection: {formatWalletConnectionStatus(walletConnectionReadModel.walletConnectionStatus)}</span>
               <span>Wallet chain: {formatWalletChainStatus(walletConnectionReadModel.chainStatus)}</span>
               <span>{walletAddressDisplay ? `Connected wallet: ${walletAddressDisplay}` : 'No wallet address'}</span>
-              <span>Wallet execution: Not implemented</span>
-              <span>User wallet signing required later</span>
+              <span>Wallet execution: Deployment, Record NAV, Wallet Whitelist, and Allocation / Mint use wallet-signed Sepolia requests</span>
+              <span>User wallet signing required for each transaction</span>
               <span>Backend never holds private keys</span>
               <span>No signed payload</span>
               <span>{deploymentEvidenceReadModel.transactionHash ? 'Submitted transaction: Submitted to Sepolia' : 'No submitted transaction'}</span>
@@ -2719,9 +3015,21 @@ export function App() {
               )}
               <span>Target wallet: {normalizedWhitelistTargetWallet ?? 'Target wallet address required'}</span>
               <span>allowed: true</span>
+              <span>Allocation / Mint operation: {formatWalletAllocationMintOperationStatus(walletAllocationMintOperationReadModel.operationStatus)}</span>
+              <span>Allocation / Mint evidence: {walletAllocationMintOperationReadModel.operationEvidencePersistenceLabel}</span>
+              <span>Allocation / Mint transaction hash source: {walletAllocationMintOperationReadModel.operationTransactionHashSourceLabel}</span>
+              <span>Allocation / Mint receipt source: {walletAllocationMintOperationReadModel.operationReceiptSourceLabel}</span>
+              <span>AllocationMinted event: {walletAllocationMintOperationReadModel.eventEvidenceStatusLabel}</span>
+              <span>Allocation target wallet: {allocationMint.targetWalletAddress ?? 'Target wallet address required'}</span>
+              <span>Allocation token amount: {allocationMint.tokenAmount ?? 'Token amount required'}</span>
+              {walletAllocationMintOperationReadModel.operationTransactionHash ? (
+                <span>Allocation / Mint transaction hash: {walletAllocationMintOperationReadModel.operationTransactionHash}</span>
+              ) : (
+                <span>No Allocation / Mint transaction hash</span>
+              )}
               <span>Contract authorization is enforced on-chain</span>
-              <span>Allocation/Mint: Locked for later</span>
-              <span>Other Smart Contract Operations: Locked</span>
+              <span>Allocation/Mint: Released behind explicit wallet, deployment, whitelist, ABI, parameter, and evidence gates</span>
+              <span>Other Smart Contract Operations: Require explicit adapters and evidence paths before release</span>
             </div>
             {deploymentEvidenceReadModel.status === 'confirmed' && (
               <div className="operation-controls">
@@ -2766,11 +3074,27 @@ export function App() {
                         ? 'Wallet whitelist confirmed on Sepolia'
                         : 'Whitelist Wallet'}
                 </button>
+                <button
+                  className="workflow-button"
+                  data-action-id={uiActions.allocationMint}
+                  disabled={!canRequestAllocationMintOperation}
+                  onClick={() => void requestAllocationMintOperation()}
+                  title={canRequestAllocationMintOperation ? undefined : allocationMintOperationDisabledReason}
+                >
+                  {walletAllocationMintOperationState.operationStatus === 'awaiting_wallet_confirmation'
+                    ? 'Allocation / Mint awaiting wallet confirmation'
+                    : walletAllocationMintOperationState.operationStatus === 'submitted'
+                      ? 'Allocation / Mint submitted to Sepolia'
+                      : selectedAllocationMintAlreadyConfirmed
+                        ? 'Allocation / Mint confirmed on Sepolia'
+                        : 'Submit Allocation / Mint'}
+                </button>
               </div>
             )}
             <p className="microcopy">
-              SCP exposes at most Record NAV Event and Whitelist Wallet after confirmed deployment evidence. Burn, pause,
-              resume, allocation, mint, transfer, role administration, and distribution controls remain locked.
+              SCP exposes wallet-signed Record NAV Event, Whitelist Wallet, and Allocation / Mint after confirmed deployment
+              evidence and operation-specific prerequisites. Burn, pause, resume, transfer, role administration, and
+              distribution controls need explicit adapters and evidence paths before release.
             </p>
           </section>
 

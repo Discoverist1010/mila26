@@ -21,7 +21,7 @@ describe('MILA26 lifecycle state', () => {
     expect(readModel.investorRegistry.remainingSlots).toBe(MAX_INVESTOR_REGISTRY_ENTRIES);
     expect(readModel.subscriptionStatus).toBe('needs_parameters');
     expect(readModel.redemptionStatus).toBe('needs_parameters');
-    expect(readModel.allocationMintStatus).toBe('locked_for_later');
+    expect(readModel.allocationMintStatus).toBe('needs_parameters');
     expect(readModel.allocationMint.blockingReasons).toContain('Register at least one investor wallet before Allocation / Mint.');
     expect(readModel.maturityStatus).toBe('locked_for_later');
   });
@@ -280,7 +280,7 @@ describe('MILA26 lifecycle state', () => {
     expect(editedReadModel.subscriptionRedemptionTemplate.canGenerateTemplateParameters).toBe(false);
   });
 
-  it('keeps Allocation / Mint locked until Investor Registry and Subscription are coherent', () => {
+  it('keeps Allocation / Mint not reviewable until Investor Registry and Subscription are coherent', () => {
     const readModel = toMila26LifecycleReadModel({
       ...createInitialMila26LifecycleState(),
       investorRegistryEntries: [
@@ -297,7 +297,7 @@ describe('MILA26 lifecycle state', () => {
 
     expect(readModel.investorRegistry.status).toBe('ready');
     expect(readModel.subscription.status).toBe('needs_parameters');
-    expect(readModel.allocationMint.status).toBe('locked_for_later');
+    expect(readModel.allocationMint.status).toBe('draft');
     expect(readModel.allocationMint.canReviewAllocationMint).toBe(false);
     expect(readModel.allocationMint.blockingReasons).toContain('Complete Subscription parameters before Allocation / Mint.');
   });

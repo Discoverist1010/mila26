@@ -49,6 +49,17 @@ Tabs are visual only. They must not create separate state silos.
 - `src/App.tsx`: current integrated shell; split only when component boundaries are stable.
 - Future `src/components/`: layout, tabs, AI workspace, rails, Product Vault, SCP sections.
 
+## Bundle Splitting
+
+The frontend uses route and vendor code splitting before deeper component refactors:
+
+- `/site` lazy-loads the website surface.
+- `/` lazy-loads the MILA26 app workspace.
+- React and wallet/vendor code are split into stable vendor chunks.
+- `npm run check` includes a bundle-size guard after production build.
+
+Do not split lifecycle tabs into separately owned state containers. Component splitting should preserve shared lifecycle state and Engineering Bot cross-stage context.
+
 ## Shared State Approach
 
 Current state can remain local to `App.tsx` while the product is alpha-stage.

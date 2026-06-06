@@ -80,11 +80,12 @@ UI copy must not state:
 
 If the contract rejects the transaction because the connected account lacks authorization, the operation is represented as a failed wallet-signed operation, not as legal/KYC/investor status.
 
-## Locked Operations
+## Other Operations
 
-SCP may expose at most two active wallet-signed operation controls:
+SCP may expose these active wallet-signed operation controls after their operation-specific gates pass:
 
 - Record NAV Event
 - Whitelist Wallet
+- Allocation / Mint
 
-Allocation/Mint readiness now depends on coherent investor registry and subscription parameters, but live Allocation/Mint execution remains deferred. Burn, pause/unpause, transfer, distribution, and role-administration operations remain locked or absent until their own capability work exists.
+Burn, pause/unpause, transfer, distribution, role-administration, subscription execution, redemption execution, batch allocation/mint, and maturity closeout remain unavailable until their own adapter, authorization gate, ABI gate, and evidence path exist.

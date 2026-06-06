@@ -1636,6 +1636,35 @@ summary {
   padding-left: 20px;
 }
 
+.status-row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.readiness-list {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.readiness-list span {
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #475569;
+  display: grid;
+  gap: 4px;
+  min-height: 72px;
+  padding: 10px;
+}
+
+.readiness-list strong {
+  color: #0f172a;
+  font-size: 13px;
+}
+
 .test-wallet-lab {
   border: 1px solid #dbeafe;
   border-radius: 8px;
@@ -1718,7 +1747,7 @@ summary {
 .allocation-context {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
 }
 
 .allocation-context article {
@@ -2113,7 +2142,8 @@ summary {
 
   .topbar-controls,
   .suggested-action-row,
-  .composer-shell {
+  .composer-shell,
+  .status-row {
     align-items: stretch;
     flex-direction: column;
   }

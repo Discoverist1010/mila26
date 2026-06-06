@@ -301,14 +301,14 @@ function boundaryItems(): WalletWhitelistOperationEvidenceItem[] {
     {
       id: 'allocation-mint-locked',
       label: 'Allocation/Mint',
-      status: 'blocked',
-      detail: 'Allocation/Mint: Locked for later.',
+      status: 'available',
+      detail: 'Allocation/Mint: Available after investor whitelist and allocation parameters.',
     },
     {
       id: 'other-operations-locked',
       label: 'Other Smart Contract Operations',
       status: 'blocked',
-      detail: 'Other Smart Contract Operations: Locked.',
+      detail: 'Other Smart Contract Operations require explicit adapters and evidence paths before release.',
     },
   ];
 }

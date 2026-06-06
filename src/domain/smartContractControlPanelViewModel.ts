@@ -1,6 +1,7 @@
 import type { DeploymentEvidenceReadModel } from './deploymentEvidenceReadModel';
 import type { ProjectLifecycleReadModel } from './projectLifecycleReadModel';
 import type { RecordNavOperationReadModel } from './recordNavOperationReadModel';
+import type { WalletAllocationMintOperationReadModel } from './walletAllocationMintOperationReadModel';
 import type { WalletWhitelistOperationReadModel } from './walletWhitelistOperationReadModel';
 
 export type SmartContractControlPanelStatus =
@@ -85,11 +86,12 @@ export type SmartContractControlPanelGeneratedState = {
   deploymentEvidence?: DeploymentEvidenceReadModel;
   recordNavOperation?: RecordNavOperationReadModel;
   walletWhitelistOperation?: WalletWhitelistOperationReadModel;
+  walletAllocationMintOperation?: WalletAllocationMintOperationReadModel;
   customEvents?: string[];
 };
 
 const disabledExecutionReason =
-  'Operations locked. Deployment status does not enable contract operations until operation authorization and evidence logging are wired.';
+  'Unavailable until this operation has an explicit contract function, wallet adapter, authorization gate, and evidence path.';
 
 const coreActionLabels = ['Mint', 'Distribute', 'Burn', 'Pause/Unpause'] as const;
 
@@ -268,11 +270,11 @@ function walletSigningHealthItems(
       status: generatedState.walletSigningIntentStatus === 'review_ready' ? 'ready' : 'blocked',
     },
     { label: 'Wallet execution', value: 'Not implemented', status: 'disabled' },
-    { label: 'Smart Contract Operations', value: 'Locked', status: 'disabled' },
+    { label: 'Smart Contract Operations', value: 'Released operation-by-operation', status: 'pending' },
     {
       label: 'Operations reason',
-      value: 'Operation-specific authorization and evidence logging are not implemented',
-      status: 'disabled',
+      value: 'Each operation needs authorization, wallet signing, and evidence logging before enablement',
+      status: 'pending',
     },
     {
       label: 'Required before operations',
@@ -397,7 +399,10 @@ function deploymentEvidenceHealthItems(
     },
     {
       label: 'Operations after deployment',
-      value: evidence.evidenceStrength === 'confirmed_receipt' ? 'Record NAV gated; other operations locked' : 'Locked until deployment evidence',
+      value:
+        evidence.evidenceStrength === 'confirmed_receipt'
+          ? 'Record NAV, Wallet Whitelist, and Allocation / Mint gated'
+          : 'Waiting for deployment evidence',
       status: 'disabled',
     },
   ];
@@ -444,7 +449,7 @@ function recordNavOperationHealthItems(
     },
     {
       label: 'Other SCP operations',
-      value: 'Locked',
+      value: 'Require explicit adapters before release',
       status: 'disabled',
     },
   ];
@@ -496,12 +501,54 @@ function walletWhitelistOperationHealthItems(
     },
     {
       label: 'Allocation/Mint',
-      value: 'Locked for later',
-      status: 'disabled',
+      value: 'Available after investor whitelist and allocation parameters',
+      status: operation.operationStatus === 'confirmed' ? 'ready' : 'pending',
     },
     {
       label: 'Other Smart Contract Operations',
-      value: 'Locked',
+      value: 'Require explicit adapters and evidence paths before release',
+      status: 'disabled',
+    },
+  ];
+}
+
+function walletAllocationMintOperationHealthItems(
+  generatedState?: SmartContractControlPanelGeneratedState,
+): SmartContractControlPanelHealthItem[] {
+  const operation = generatedState?.walletAllocationMintOperation;
+  if (!operation) return [];
+
+  return [
+    {
+      label: 'Allocation / Mint operation',
+      value: operation.statusLabel.replace('Allocation / Mint ', ''),
+      status:
+        operation.operationStatus === 'confirmed'
+          ? 'ready'
+          : operation.operationStatus === 'failed' || operation.operationStatus === 'rejected' || operation.operationStatus === 'blocked'
+            ? 'blocked'
+            : operation.operationStatus === 'not_started'
+              ? 'disabled'
+              : 'pending',
+    },
+    {
+      label: 'Allocation / Mint transaction hash source',
+      value: operation.operationTransactionHashSourceLabel,
+      status: operation.operationTransactionHashSource === 'provider_returned' ? 'ready' : 'disabled',
+    },
+    {
+      label: 'Allocation / Mint receipt source',
+      value: operation.operationReceiptSourceLabel,
+      status: operation.operationReceiptSource === 'provider_receipt' ? 'ready' : 'disabled',
+    },
+    {
+      label: 'AllocationMinted event evidence',
+      value: operation.eventEvidenceStatusLabel,
+      status: operation.eventEvidenceStatus === 'not_available' ? 'disabled' : 'ready',
+    },
+    {
+      label: 'Allocation / Mint evidence persistence',
+      value: operation.operationEvidencePersistenceLabel,
       status: 'disabled',
     },
   ];
@@ -555,6 +602,7 @@ function healthStatusFor(
       ...deploymentEvidenceHealthItems(generatedState),
       ...recordNavOperationHealthItems(generatedState),
       ...walletWhitelistOperationHealthItems(generatedState),
+      ...walletAllocationMintOperationHealthItems(generatedState),
       { label: 'Deployment', value: walletSignedDeploymentValue(generatedState?.walletSignedDeploymentStatus), status: generatedState?.walletSignedDeploymentStatus === 'confirmed' ? 'ready' : 'disabled' },
       { label: 'Wallet signing', value: 'Not started', status: 'disabled' },
       { label: 'Audit', value: 'Not audited', status: 'disabled' },
@@ -618,10 +666,10 @@ function statusDetail(
   if (status === 'artifact_preview_ready') {
     if (generatedState?.localCompileTestStatus === 'passed') {
       if (generatedState.walletSignedDeploymentStatus === 'confirmed') {
-        return 'Smart Contract Spec, artifact preview, evidence-lite, local compile/test, and wallet-signed Sepolia deployment evidence are available. Evidence persistence is local session only. Record NAV and Wallet Whitelist are gated SCP operations; Allocation/Mint and other Smart Contract Operations remain locked.';
+        return 'Smart Contract Spec, artifact preview, evidence-lite, local compile/test, and wallet-signed Sepolia deployment evidence are available. Evidence persistence is local session only. Record NAV, Wallet Whitelist, and Allocation / Mint are gated SCP operations; other operations require explicit adapters before release.';
       }
 
-      return 'Smart Contract Spec, artifact preview, spec-consistency check result, evidence-lite, and local compile/test representation are available. Wallet-signed Sepolia deployment may be requested after wallet connection. This is not audited and Smart Contract Operations remain locked.';
+      return 'Smart Contract Spec, artifact preview, spec-consistency check result, evidence-lite, and local compile/test representation are available. Wallet-signed Sepolia deployment may be requested after wallet connection. This is not audited; operations require deployment evidence and operation-specific gates.';
     }
 
     return 'Smart Contract Spec, artifact preview, spec-consistency check result, and evidence-lite are available. This is not compiled, deployed, audited, signed, or connected to a wallet.';
@@ -644,6 +692,7 @@ function boundaryItems(generatedState?: SmartContractControlPanelGeneratedState)
   const evidence = generatedState?.deploymentEvidence;
   const recordNavOperation = generatedState?.recordNavOperation;
   const walletWhitelistOperation = generatedState?.walletWhitelistOperation;
+  const walletAllocationMintOperation = generatedState?.walletAllocationMintOperation;
 
   return [
     { label: 'Ethereum testnet', value: 'Only', status: 'ready' },
@@ -690,9 +739,11 @@ function boundaryItems(generatedState?: SmartContractControlPanelGeneratedState)
     { label: 'Operation evidence persistence', value: recordNavOperation?.operationEvidencePersistenceLabel ?? 'Local session only', status: 'disabled' },
     { label: 'Wallet Whitelist operation', value: walletWhitelistOperation?.statusLabel ?? 'Wallet whitelist not started', status: walletWhitelistOperation?.operationStatus === 'confirmed' ? 'ready' : 'disabled' },
     { label: 'Whitelist evidence persistence', value: walletWhitelistOperation?.operationEvidencePersistenceLabel ?? 'Local session only', status: 'disabled' },
+    { label: 'Allocation / Mint operation', value: walletAllocationMintOperation?.statusLabel ?? 'Allocation / Mint not started', status: walletAllocationMintOperation?.operationStatus === 'confirmed' ? 'ready' : 'disabled' },
+    { label: 'Allocation / Mint evidence persistence', value: walletAllocationMintOperation?.operationEvidencePersistenceLabel ?? 'Local session only', status: 'disabled' },
     { label: 'Contract authorization', value: 'Enforced on-chain', status: 'disabled' },
-    { label: 'Allocation/Mint', value: 'Locked for later', status: 'disabled' },
-    { label: 'Other Smart Contract Operations', value: 'Locked', status: 'disabled' },
+    { label: 'Allocation/Mint', value: 'Released behind wallet, deployment, whitelist, ABI, parameter, and evidence gates', status: 'pending' },
+    { label: 'Other Smart Contract Operations', value: 'Require explicit adapters and evidence paths before release', status: 'disabled' },
     { label: 'Audit', value: 'Not performed', status: 'disabled' },
   ];
 }
@@ -710,7 +761,7 @@ export function toSmartContractControlPanelViewModel(
     overview: {
       contractStatus:
         generatedState?.walletSignedDeploymentStatus === 'confirmed'
-          ? 'Deployment confirmed on Sepolia - Record NAV and Wallet Whitelist gated'
+          ? 'Deployment confirmed on Sepolia - Record NAV, Wallet Whitelist, and Allocation / Mint gated'
           : status === 'artifact_preview_ready'
             ? 'Artifact preview generated - not deployed'
             : 'Not deployed',
@@ -738,11 +789,13 @@ export function toSmartContractControlPanelViewModel(
       ...(generatedState?.recordNavOperation?.operationStatus === 'confirmed' ? ['Record NAV receipt confirmed'] : []),
       ...(generatedState?.walletWhitelistOperation?.operationTransactionHash ? ['Wallet whitelist submitted to Sepolia'] : []),
       ...(generatedState?.walletWhitelistOperation?.operationStatus === 'confirmed' ? ['Wallet whitelist receipt confirmed'] : []),
+      ...(generatedState?.walletAllocationMintOperation?.operationTransactionHash ? ['Allocation / Mint submitted to Sepolia'] : []),
+      ...(generatedState?.walletAllocationMintOperation?.operationStatus === 'confirmed' ? ['Allocation / Mint receipt confirmed'] : []),
       ...(status === 'artifact_preview_ready'
         ? ['Smart Contract Spec generated', 'Artifact preview generated', 'Evidence-lite available']
         : []),
       lifecycleReadModel.readinessLabel,
-      'Smart Contract Operations remain locked for MVP',
+      'Released operations stay gated by wallet, deployment, ABI, parameter, and evidence prerequisites',
     ],
     healthItems: healthStatusFor(status, generatedState),
     boundaryItems: boundaryItems(generatedState),

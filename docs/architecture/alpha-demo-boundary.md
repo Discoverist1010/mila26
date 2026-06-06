@@ -46,8 +46,8 @@ Future blockchain-functional alpha tracks must preserve these rules:
 - user wallet signs any deployment transaction in the browser.
 - Ethereum testnet remains the only allowed execution target until explicitly changed.
 - mainnet remains disabled.
-- only operation-specific SCP controls may unlock; Record NAV Event and Whitelist Wallet unlock only after confirmed deployment evidence and operation-specific gates.
-- Mint/allocation, burn, pause, transfer, role administration, and distribution controls remain locked until their own capability work exists.
+- only operation-specific SCP controls may unlock; Record NAV Event, Whitelist Wallet, and Allocation / Mint unlock only after confirmed deployment evidence and operation-specific gates.
+- Burn, pause, transfer, role administration, distribution, subscription execution, redemption execution, batch allocation/mint, and maturity controls remain unavailable until their own adapter, authorization gate, ABI gate, and evidence path exist.
 - contract address and transaction hash appear only after real wallet-signed testnet execution.
 - Deployment and operation evidence are local-session-only; a later persistence/evidence capability owns durable storage.
 - local compile/test status must not be presented as runtime app-triggered compilation, audit approval, deployment readiness, or production readiness.
