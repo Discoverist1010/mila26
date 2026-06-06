@@ -24,8 +24,8 @@ Prototype screens must be functional where shown as implemented. A tab is not co
 
 - User goal: define or generate up to 50 investor wallet addresses that can be whitelisted and used for prototype investor activity.
 - Primary UI: Investor Registry tab with Test Wallet Lab, wallet rows, validation, duplicate detection, local-session whitelist status, activity-console placeholders, SCP handoff, and Allocation/Mint handoff.
-- Current status: implemented for manual entry, generated test investor wallet packs, explicit test-only export preparation, SCP Whitelist Wallet handoff, and Allocation/Mint handoff.
-- Gap: no Sepolia funding helper, CSV/import/export beyond the explicit test-only wallet export, off-chain investor profile fields, or durable registry persistence yet.
+- Current status: implemented for manual entry, generated test investor wallet packs, explicit test-only export preparation, SCP Whitelist Wallet handoff, Allocation/Mint handoff, and Smart Contract tab funding-helper targets.
+- Gap: no CSV/import/export beyond the explicit test-only wallet export, off-chain investor profile fields, or durable registry persistence yet.
 
 ## 4. Subscription
 
@@ -84,5 +84,6 @@ Prototype screens must be functional where shown as implemented. A tab is not co
    - Record NAV Event;
    - Whitelist Wallet;
    - Allocation / Mint after the selected investor wallet is whitelisted and allocation parameters are coherent.
+9. Use the Sepolia funding helper to copy issuer/admin, generated investor, payment, and redemption addresses for manual test funding/setup.
 
 All other operations remain unavailable until explicitly implemented, gated, and tested.

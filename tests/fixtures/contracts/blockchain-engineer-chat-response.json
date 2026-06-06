@@ -1,18 +1,18 @@
 {
   "messageId": "chat-fixture-001",
   "agentId": "blockchain-engineer",
-  "content": "For a tokenized portfolio with many investors holding proportional exposure, ERC-20 is usually the simpler fit. ERC-721 is better when each token represents a unique asset or investor position. The PRD should also capture the 20-wallet whitelist, allocation validation, valuation/performance update requirements, and testnet-only wallet-signed deployment gate.",
+  "content": "For a tokenized portfolio with many investors holding proportional exposure, ERC-20 is usually the simpler fit. ERC-721 is better when each token represents a unique asset or investor position. The PRD should also capture the 50-wallet whitelist, allocation validation, valuation/performance update requirements, and testnet-only wallet-signed deployment gate.",
   "suggestedRequirementUpdates": [
     {
       "field": "selectedProtocol",
       "proposedValue": "ERC-20 preferred unless unique investor positions are required",
-      "rationale": "The MVP describes proportional portfolio exposure and distribution to up to 20 wallets.",
+      "rationale": "The MVP describes proportional portfolio exposure and distribution to up to 50 wallets.",
       "confidence": 0.82
     },
     {
       "field": "walletWhitelistRequirement",
-      "proposedValue": "up to 20 whitelisted investor wallet addresses",
-      "rationale": "The current MVP scale is one asset manager and up to 20 investor wallets.",
+      "proposedValue": "up to 50 whitelisted investor wallet addresses",
+      "rationale": "The current MVP scale is one asset manager and up to 50 investor wallets.",
       "confidence": 0.9
     }
   ],

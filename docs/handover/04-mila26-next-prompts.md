@@ -87,9 +87,9 @@ Acceptance:
 
 This should still be parameter/spec work, not live stablecoin execution.
 
-## Next Codex Prompt: Operation Hardening + Sepolia Funding Helper
+## Completed Prompt: Operation Hardening + Sepolia Funding Helper
 
-Use this prompt for the next implementation turn:
+This prompt has been implemented. Keep it here as completion context:
 
 ```text
 You are working inside the MILA26 repository:
@@ -123,6 +123,39 @@ Acceptance:
 - The right rail remains passive.
 - No transaction hash, contract address, or confirmed mint status appears without provider evidence.
 - No internal track numbers appear in user-facing UI.
+```
+
+## Next Codex Prompt: Website Access + Persistence Decision
+
+Use this prompt for the next implementation turn:
+
+```text
+You are working inside the MILA26 repository:
+
+/Users/macbookpro18/Desktop/CODE/active/mila26
+
+Start from main. Before editing, read `AGENTS.md`, then run:
+
+git status --short --branch
+npm run test -- tests/app-chat-panel.test.tsx tests/e2e/mila26.spec.ts
+
+Goal:
+Build the next prototype slice around website/access and make the persistence decision without duplicating app lifecycle state.
+
+Scope:
+1. Continue the website/access first slice from `docs/product/website-mvp-brief.md`.
+2. Route serious users from website intro to the working MILA26 app without creating a separate lifecycle state model.
+3. Define the persistence boundary for project, lifecycle, investor registry, wallet-operation evidence, and generated artifacts.
+4. Implement only the lowest-risk persistence foundation if the schema is clear; otherwise produce the schema/adapter contract first.
+5. Keep Sepolia-only, wallet-signed, local-session evidence boundaries until durable evidence storage is explicitly implemented.
+6. Do not add live stablecoin subscription/redemption execution in this sprint.
+
+Acceptance:
+- Existing tests continue passing.
+- Website/access copy accurately states the three MILA26 capability domains: AI tokenisation, blockchain execution, and distribution/post-trade asset servicing.
+- App lifecycle state remains the source of truth for tabs, Engineering Bot, Product Vault, and SCP.
+- No internal track numbers appear in user-facing UI.
+- No fake transaction hash, contract address, investor eligibility, investment advice, mainnet, audit, or production-ready claim is introduced.
 ```
 
 ## Prototype Sprint Target

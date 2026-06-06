@@ -70,8 +70,7 @@ Already implemented or documented:
 
 Immediate implementation gap:
 
-- Sepolia funding helper for generated demo wallets.
-- Browser/screenshot hardening for the wallet-signed Allocation/Mint path.
+- Browser/screenshot hardening remains part of the validation loop for every new working path.
 - Durable persistence/evidence storage.
 - Website/login path.
 - Production readiness controls.

@@ -7,7 +7,7 @@ MILA26 now has a blockchain-functional alpha foundation and a lifecycle workspac
 | Area | Current state | Gap | Next opportunity | Risk if rushed |
 |---|---|---|---|---|
 | Shared lifecycle state | Typed lifecycle state/read models now back investor registry, subscription, redemption, allocation/mint readiness, and maturity placeholders. | Maturity still needs a real closeout model, and browser coverage should keep proving cross-tab state coherence. | Harden shared lifecycle browser/screenshot tests before persistence or new operation slices. | Per-tab state silos and inconsistent Engineering Bot context. |
-| Investor Registry | Investor Registry tab supports up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, SCP whitelist handoff, Allocation/Mint handoff, and generated test investor wallet packs. | No Sepolia funding helper, durable persistence, off-chain investor profile fields, or KYC/eligibility workflow. | Use the generated/manual registry as the target-wallet source for demo investor activities and future persistence. | Mistaking generated test wallets or wallet whitelisting for KYC/investor eligibility approval. |
+| Investor Registry | Investor Registry tab supports up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, SCP whitelist handoff, Allocation/Mint handoff, generated test investor wallet packs, and Smart Contract tab funding-helper targets. | No durable persistence, off-chain investor profile fields, CSV import/export, or KYC/eligibility workflow. | Use the generated/manual registry as the target-wallet source for demo investor activities and future persistence. | Mistaking generated test wallets, Sepolia funding, or wallet whitelisting for KYC/investor eligibility approval. |
 | Subscription | Subscription tab captures permitted stablecoins, subscription window, minimum subscription amount, payment address, and payment per token with validation. | No live stablecoin execution, durable persistence, import/export, or receipt reconciliation. | Use the validated subscription state as the pricing/payment context for subscription execution design. | Premature stablecoin transfer execution. |
 | Redemption | Redemption tab captures redemption window/date, redemption delay, redemption wallet, payout stablecoin, and payout per token with validation. | No live redemption wallet receipt/payout execution or maturity closeout yet. | Use the validated redemption state in the subscription-redemption template handoff and later contract mapping. | Misleading investors into thinking redemption payout execution exists. |
 | Asset Servicing | Record NAV Event exists. | Broader investor updates/corporate-action pushes are not implemented. | Add asset-servicing event/update specs after subscription/redemption parameters stabilize. | Advice/notification claims without delivery/evidence model. |
@@ -17,12 +17,11 @@ MILA26 now has a blockchain-functional alpha foundation and a lifecycle workspac
 
 ## Recommended Next Sequence
 
-1. E2E/screenshot hardening for investor registry, subscription, redemption, template handoff, Sepolia readiness, and Allocation/Mint execution.
-2. Sepolia funding helper for generated demo wallets.
-3. Website/access first slice that routes into the app without duplicating lifecycle state.
-4. Investor Registry persistence.
-5. Durable Evidence Vault persistence.
-6. Maturity closeout.
+1. Website/access first slice that routes into the app without duplicating lifecycle state.
+2. Investor Registry persistence.
+3. Durable Evidence Vault persistence.
+4. Subscription-redemption execution design and adapter contracts.
+5. Maturity closeout.
 
 ## Guardrails For All Future Work
 

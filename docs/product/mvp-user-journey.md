@@ -179,7 +179,7 @@ Current output:
 
 The UI should show these as parameters needed, needs-review, or unavailable with explicit prerequisites:
 
-- Sepolia funding helper and durable investor registry persistence;
+- durable investor registry persistence;
 - subscription-redemption smart-contract template implementation beyond local-session handoff;
 - live stablecoin subscription execution;
 - live redemption wallet receipt and payout workflow;
@@ -192,10 +192,10 @@ The UI should show these as parameters needed, needs-review, or unavailable with
 
 Prefer this sequence before broadening operations:
 
-1. Add screenshot hardening for the working investor registry, subscription, redemption, template handoff, Sepolia readiness, and Allocation/Mint execution flow.
-2. Add a Sepolia funding helper and clearer demo wallet setup flow.
-3. Start website/access work without duplicating app lifecycle state.
-4. Add durable evidence persistence after the local-session evidence shape is stable.
+1. Start website/access work without duplicating app lifecycle state.
+2. Add durable investor registry and lifecycle persistence after the local-session shape is stable.
+3. Add durable evidence persistence after the local-session evidence shape is stable.
+4. Design subscription-redemption execution adapters and evidence contracts before live stablecoin movement.
 5. Add maturity closeout once subscription/redemption/mint flows are proven.
 
 Production-readiness planning for website, login, beta operations, persistence, security, observability, and release gates is tracked in `docs/production/production-readiness-plan.md`.

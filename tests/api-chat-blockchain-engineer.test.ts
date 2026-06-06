@@ -19,7 +19,7 @@ async function postChat(userMessage: string, requestedFocus?: string) {
 
 describe('blockchain engineer chat api', () => {
   it('returns a schema-shaped response for a valid request', async () => {
-    const response = await postChat('I want to tokenize a portfolio for 20 investors.');
+    const response = await postChat('I want to tokenize a portfolio for 50 investors.');
     const body = response.json();
 
     expect(response.statusCode).toBe(200);
@@ -42,11 +42,11 @@ describe('blockchain engineer chat api', () => {
   });
 
   it('covers whitelist and allocation requirements', async () => {
-    const response = await postChat('We need a whitelist for 20 wallet addresses and allocations.', 'whitelist');
+    const response = await postChat('We need a whitelist for 50 wallet addresses and allocations.', 'whitelist');
     const body = response.json();
 
     expect(body.ok).toBe(true);
-    expect(body.data.content).toMatch(/20/);
+    expect(body.data.content).toMatch(/50/);
     expect(body.data.content).toMatch(/wallet/i);
     expect(body.data.content).toMatch(/100%/);
     expect(body.data.suggestedRequirementUpdates.length).toBeGreaterThan(0);

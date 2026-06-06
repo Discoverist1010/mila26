@@ -15,7 +15,7 @@ describe('blockchain engineer chat contract fixtures', () => {
 
     expect(request.userMessage).toMatch(/ERC-20|ERC-721/);
     expect(request.conversationHistory).toHaveLength(2);
-    expect(request.projectContext?.investorWalletCount).toBe(20);
+    expect(request.projectContext?.investorWalletCount).toBe(50);
     expect(request.requestedFocus).toBe('protocol_choice');
   });
 

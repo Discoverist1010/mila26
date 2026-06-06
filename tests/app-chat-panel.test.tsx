@@ -1183,6 +1183,101 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByText(/production ready|mainnet ready|audit passed|operation suite unlocked/i)).not.toBeInTheDocument();
   });
 
+  it('can whitelist and mint for a second investor after the first investor is confirmed', async () => {
+    const investorOne = '0x3333333333333333333333333333333333333333';
+    const investorTwo = '0x5555555555555555555555555555555555555555';
+    const paymentWallet = '0x4444444444444444444444444444444444444444';
+    const { provider, calls, transactionParams } = createMockWalletProvider({
+      transactionHash: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+    });
+    stubBrowserWallet(provider);
+    stubSmartContractPreparationFetch();
+
+    render(<App />);
+    await completeSmartContractPreparation();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeEnabled();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Deployment confirmed on Sepolia')).toBeVisible();
+    });
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+    const registry = screen.getByLabelText('Investor Registry workspace');
+    fireEvent.change(within(registry).getByLabelText('Investor wallet address'), { target: { value: investorOne } });
+    fireEvent.click(within(registry).getByRole('button', { name: 'Add wallet' }));
+    fireEvent.change(within(registry).getByLabelText('Investor wallet address'), { target: { value: investorTwo } });
+    fireEvent.click(within(registry).getByRole('button', { name: 'Add wallet' }));
+
+    const whitelistButtons = within(registry).getAllByRole('button', { name: 'Use for SCP whitelist' });
+    fireEvent.click(whitelistButtons[0]);
+    await waitFor(() => {
+      expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeEnabled();
+    });
+    fireEvent.click(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' }));
+    await waitFor(() => {
+      expect(screen.getAllByText('Wallet whitelist confirmed on Sepolia').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
+    const subscription = screen.getByLabelText('Subscription workspace');
+    fireEvent.change(within(subscription).getByLabelText('Permitted stablecoins'), { target: { value: 'usdc' } });
+    fireEvent.change(within(subscription).getByLabelText('Subscription window'), { target: { value: 'Monthly: first five business days' } });
+    fireEvent.change(within(subscription).getByLabelText('Minimum subscription amount'), { target: { value: '25000' } });
+    fireEvent.change(within(subscription).getByLabelText('Payment wallet / contract address'), { target: { value: paymentWallet } });
+    fireEvent.change(within(subscription).getByLabelText('Payment per token'), { target: { value: '1.025' } });
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Smart Contract/ }));
+    const allocationMintPanel = screen.getByLabelText('Allocation Mint workspace');
+    fireEvent.change(within(allocationMintPanel).getByLabelText('Allocation target wallet'), { target: { value: investorOne } });
+    fireEvent.change(within(allocationMintPanel).getByLabelText('Token allocation amount'), { target: { value: '1000' } });
+    await waitFor(() => {
+      expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Submit Allocation / Mint' })).toBeEnabled();
+    });
+    fireEvent.click(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Submit Allocation / Mint' }));
+    await waitFor(() => {
+      expect(screen.getAllByText('Allocation / Mint confirmed on Sepolia').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+    fireEvent.click(within(screen.getByLabelText('Investor Registry workspace')).getAllByRole('button', { name: 'Use for SCP whitelist' })[1]);
+    await waitFor(() => {
+      expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeEnabled();
+    });
+    fireEvent.click(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' }));
+    await waitFor(() => {
+      expect(screen.getAllByText('Wallet whitelist confirmed on Sepolia').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Smart Contract/ }));
+    fireEvent.change(within(screen.getByLabelText('Allocation Mint workspace')).getByLabelText('Allocation target wallet'), {
+      target: { value: investorTwo },
+    });
+    fireEvent.change(within(screen.getByLabelText('Allocation Mint workspace')).getByLabelText('Token allocation amount'), {
+      target: { value: '2000' },
+    });
+    await waitFor(() => {
+      expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Submit Allocation / Mint' })).toBeEnabled();
+    });
+    fireEvent.click(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Submit Allocation / Mint' }));
+    await waitFor(() => {
+      expect(calls.filter((method) => method === 'eth_sendTransaction')).toHaveLength(5);
+    });
+
+    const firstMintTransaction = (transactionParams[2] as Array<Record<string, unknown>>)[0];
+    const secondMintTransaction = (transactionParams[4] as Array<Record<string, unknown>>)[0];
+    expect(firstMintTransaction.from).toBe(connectedWalletAddress);
+    expect(secondMintTransaction.from).toBe(connectedWalletAddress);
+    expect(firstMintTransaction.to).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+    expect(secondMintTransaction.to).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+    expect(firstMintTransaction.data).not.toBe(secondMintTransaction.data);
+    expect(screen.queryByText(/production ready|mainnet ready|audit passed|operation suite unlocked/i)).not.toBeInTheDocument();
+  });
+
   it('blocks wallet-signed deployment when the wallet is wrong-chain or rejects submission', async () => {
     const wrongChainWallet = createMockWalletProvider({ chainId: '0x1' });
     stubBrowserWallet(wrongChainWallet.provider);

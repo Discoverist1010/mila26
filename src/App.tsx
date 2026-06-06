@@ -411,6 +411,13 @@ function tabStatusLabel(status: ReturnType<typeof toWorkspacePresentation>['tabs
   return 'Needs prerequisites';
 }
 
+function fundingTargetStatusLabel(status: 'ready' | 'needs_funding' | 'blocked' | 'pending') {
+  if (status === 'ready') return 'Ready';
+  if (status === 'needs_funding') return 'Needs funding';
+  if (status === 'blocked') return 'Needs setup';
+  return 'Check';
+}
+
 function initialWalletConnectionInput(): WalletConnectionReadModelInput {
   return getBrowserEthereumProvider()
     ? {
@@ -482,6 +489,7 @@ export function App() {
   const [testInvestorWalletPack, setTestInvestorWalletPack] = useState<TestInvestorWalletPack | undefined>();
   const [testWalletLabMessage, setTestWalletLabMessage] = useState<string | undefined>();
   const [testWalletExportContent, setTestWalletExportContent] = useState<string | undefined>();
+  const [fundingHelperMessage, setFundingHelperMessage] = useState<string | undefined>();
   const [permittedStablecoinsInput, setPermittedStablecoinsInput] = useState('');
   const [investorRegistryError, setInvestorRegistryError] = useState<string | undefined>();
   const [smartContractGenerationStatus, setSmartContractGenerationStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -711,6 +719,10 @@ export function App() {
       selectedAllocationMintInvestorWhitelisted,
     ],
   );
+  const testInvestorWalletPublicRecords = useMemo(
+    () => (testInvestorWalletPack ? toTestInvestorWalletPublicRecords(testInvestorWalletPack) : []),
+    [testInvestorWalletPack],
+  );
   const sepoliaDemoWalletReadinessReadModel = useMemo(
     () =>
       toSepoliaDemoWalletReadinessReadModel({
@@ -720,6 +732,7 @@ export function App() {
         paymentAddress: lifecycleState.subscriptionParameters.paymentAddress,
         redemptionWalletAddress: lifecycleState.redemptionParameters.redemptionWalletAddress,
         generatedTestWalletCount: testInvestorWalletPack?.createdCount ?? 0,
+        generatedTestInvestorWallets: testInvestorWalletPublicRecords,
       }),
     [
       sepoliaDemoWalletReadinessState,
@@ -728,13 +741,9 @@ export function App() {
       lifecycleState.subscriptionParameters.paymentAddress,
       lifecycleState.redemptionParameters.redemptionWalletAddress,
       testInvestorWalletPack,
+      testInvestorWalletPublicRecords,
     ],
   );
-  const testInvestorWalletPublicRecords = useMemo(
-    () => (testInvestorWalletPack ? toTestInvestorWalletPublicRecords(testInvestorWalletPack) : []),
-    [testInvestorWalletPack],
-  );
-
   useEffect(() => {
     if (walletWhitelistOperationState.operationStatus !== 'confirmed') return;
     setLifecycleState((current) => markInvestorWalletWhitelisted(current, walletWhitelistOperationState.targetWalletAddress));
@@ -1296,6 +1305,22 @@ export function App() {
 
     setTestWalletExportContent(createTestInvestorWalletPackExport(testInvestorWalletPack));
     setTestWalletLabMessage('Test-only export prepared. Import selected demo actor wallets into a separate MetaMask profile.');
+  }
+
+  async function copyFundingTarget(label: string, value?: string) {
+    const normalizedValue = value?.trim();
+    if (!normalizedValue) {
+      setFundingHelperMessage(`${label} is not available yet.`);
+      return;
+    }
+
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable.');
+      await navigator.clipboard.writeText(normalizedValue);
+      setFundingHelperMessage(`${label} copied.`);
+    } catch {
+      setFundingHelperMessage(`Copy unavailable. Select and copy ${label} manually.`);
+    }
   }
 
   function updateSubscriptionParameters(nextParameters: Partial<Mila26LifecycleState['subscriptionParameters']>) {
@@ -2366,6 +2391,39 @@ export function App() {
                         {item.detail}
                       </span>
                     ))}
+                  </div>
+                  <div className="funding-helper" aria-label="Sepolia funding helper">
+                    <div className="funding-helper-heading">
+                      <div>
+                        <strong>Funding helper</strong>
+                        <p>Copy the wallets that need test funds. MILA26 does not auto-fund wallets or hold private keys.</p>
+                      </div>
+                      <span>{sepoliaDemoWalletReadinessReadModel.fundingTargets.length} target(s)</span>
+                    </div>
+                    <div className="funding-target-list">
+                      {sepoliaDemoWalletReadinessReadModel.fundingTargets.map((target) => (
+                        <article className="funding-target" key={target.id}>
+                          <div>
+                            <div className="funding-target-title">
+                              <strong>{target.label}</strong>
+                              <span className={`funding-status ${target.status}`}>{fundingTargetStatusLabel(target.status)}</span>
+                            </div>
+                            <small>{target.role}</small>
+                            <p>{target.detail}</p>
+                            {target.address && <code>{target.address}</code>}
+                          </div>
+                          <button
+                            type="button"
+                            className="workflow-button compact"
+                            onClick={() => void copyFundingTarget(target.label, target.copyValue)}
+                            disabled={!target.copyValue}
+                          >
+                            Copy
+                          </button>
+                        </article>
+                      ))}
+                    </div>
+                    {fundingHelperMessage && <p className="funding-helper-message">{fundingHelperMessage}</p>}
                   </div>
                 </div>
               </section>

@@ -22,6 +22,16 @@ export type SepoliaDemoWalletReadinessItem = {
   detail: string;
 };
 
+export type SepoliaFundingTarget = {
+  id: string;
+  label: string;
+  role: string;
+  status: 'ready' | 'needs_funding' | 'blocked' | 'pending';
+  address?: string;
+  copyValue?: string;
+  detail: string;
+};
+
 export type SepoliaDemoWalletReadinessReadModel = {
   status: SepoliaDemoWalletReadinessStatus;
   statusLabel: string;
@@ -31,6 +41,8 @@ export type SepoliaDemoWalletReadinessReadModel = {
   checkedWalletAddress?: string;
   signerBalanceEth?: string;
   items: SepoliaDemoWalletReadinessItem[];
+  fundingTargets: SepoliaFundingTarget[];
+  copyAllInvestorAddresses?: string;
 };
 
 export const initialSepoliaDemoWalletReadinessState: SepoliaDemoWalletReadinessState = {
@@ -74,6 +86,7 @@ export function toSepoliaDemoWalletReadinessReadModel(input: {
   paymentAddress?: string;
   redemptionWalletAddress?: string;
   generatedTestWalletCount: number;
+  generatedTestInvestorWallets?: Array<{ label: string; walletAddress: string }>;
 }): SepoliaDemoWalletReadinessReadModel {
   const walletConnectedOnSepolia =
     input.walletConnection.walletConnectionStatus === 'connected' && input.walletConnection.chainStatus === 'sepolia';
@@ -81,6 +94,12 @@ export function toSepoliaDemoWalletReadinessReadModel(input: {
   const canCheckReadiness = walletConnectedOnSepolia && !inFlight;
   const signerBalanceEth = formatWeiAsEth(input.state.signerBalanceWei);
   const hasFunding = signerHasMinimumDemoBalance(input.state.signerBalanceWei);
+  const signerAddress = input.state.checkedWalletAddress ?? input.walletConnection.connectedWalletAddress;
+  const generatedInvestorWallets = input.generatedTestInvestorWallets ?? [];
+  const copyAllInvestorAddresses =
+    generatedInvestorWallets.length > 0
+      ? generatedInvestorWallets.map((wallet) => `${wallet.label}: ${wallet.walletAddress}`).join('\n')
+      : undefined;
   const disabledReason = inFlight
     ? 'Sepolia wallet readiness check is already running.'
     : walletConnectedOnSepolia
@@ -91,6 +110,65 @@ export function toSepoliaDemoWalletReadinessReadModel(input: {
     input.state.checkStatus === 'ready' && !hasFunding
       ? 'needs_funding'
       : input.state.checkStatus;
+
+  const fundingTargets: SepoliaFundingTarget[] = [
+    {
+      id: 'issuer-admin-signer',
+      label: 'Issuer/admin signer',
+      role: 'Signs deployment and issuer operations',
+      status: walletConnectedOnSepolia ? (hasFunding ? 'ready' : input.state.checkStatus === 'not_started' ? 'pending' : 'needs_funding') : 'blocked',
+      address: signerAddress,
+      copyValue: signerAddress,
+      detail: walletConnectedOnSepolia
+        ? hasFunding
+          ? `Ready for prototype transactions${signerBalanceEth ? ` with ${signerBalanceEth}` : ''}.`
+          : 'Needs Sepolia ETH for deployment, whitelist, NAV, and Allocation / Mint actions.'
+        : 'Connect the issuer/admin wallet on Sepolia.',
+    },
+    ...(copyAllInvestorAddresses
+      ? [
+          {
+            id: 'all-generated-investors',
+            label: 'All generated investor wallets',
+            role: 'Demo investor address pack',
+            status: 'needs_funding' as const,
+            copyValue: copyAllInvestorAddresses,
+            detail: 'Copy all public addresses for funding or record keeping. Import only selected demo actors into MetaMask.',
+          },
+        ]
+      : []),
+    ...generatedInvestorWallets.slice(0, 5).map((wallet) => ({
+      id: `generated-investor-${wallet.walletAddress.toLowerCase()}`,
+      label: wallet.label,
+      role: 'Demo investor signer',
+      status: 'needs_funding' as const,
+      address: wallet.walletAddress,
+      copyValue: wallet.walletAddress,
+      detail: 'Fund only if this demo actor needs to sign subscription, redemption, or cancel flows.',
+    })),
+    {
+      id: 'payment-destination',
+      label: 'Payment destination',
+      role: 'Receives permitted stablecoins',
+      status: input.paymentAddress ? 'pending' : 'blocked',
+      address: input.paymentAddress,
+      copyValue: input.paymentAddress,
+      detail: input.paymentAddress
+        ? 'Confirm this address can receive the permitted stablecoins used in the prototype.'
+        : 'Add payment wallet / contract address in Subscription.',
+    },
+    {
+      id: 'redemption-wallet',
+      label: 'Redemption wallet',
+      role: 'Receives tokens before delayed payout',
+      status: input.redemptionWalletAddress ? 'pending' : 'blocked',
+      address: input.redemptionWalletAddress,
+      copyValue: input.redemptionWalletAddress,
+      detail: input.redemptionWalletAddress
+        ? 'Confirm this address is the intended token-receiving redemption wallet.'
+        : 'Add redemption wallet in Redemption before redemption testing.',
+    },
+  ];
 
   return {
     status,
@@ -138,6 +216,8 @@ export function toSepoliaDemoWalletReadinessReadModel(input: {
           : 'Fund the signer and selected demo investor wallets with Sepolia ETH before wallet-signed actions.',
       },
     ],
+    fundingTargets,
+    copyAllInvestorAddresses,
   };
 }
 

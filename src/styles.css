@@ -1665,6 +1665,109 @@ summary {
   font-size: 13px;
 }
 
+.funding-helper {
+  border-top: 1px solid #e6edf6;
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+}
+
+.funding-helper-heading {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.funding-helper-heading p,
+.funding-helper-message {
+  color: #617086;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 4px 0 0;
+}
+
+.funding-helper-heading span {
+  border-radius: 999px;
+  background: #eaf2ff;
+  color: #1553a6;
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 8px;
+}
+
+.funding-target-list {
+  display: grid;
+  gap: 8px;
+}
+
+.funding-target {
+  align-items: start;
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 10px;
+}
+
+.funding-target-title {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.funding-target small,
+.funding-target p {
+  color: #617086;
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 3px 0 0;
+}
+
+.funding-target code {
+  background: #f4f7fb;
+  border: 1px solid #e1e9f2;
+  border-radius: 6px;
+  color: #253348;
+  display: block;
+  font-size: 12px;
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+  padding: 6px 8px;
+}
+
+.funding-status {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 850;
+  padding: 4px 7px;
+}
+
+.funding-status.ready {
+  background: #e9f8ee;
+  color: #16723a;
+}
+
+.funding-status.needs_funding,
+.funding-status.pending {
+  background: #fff7e6;
+  color: #9a5b00;
+}
+
+.funding-status.blocked {
+  background: #edf2f7;
+  color: #475569;
+}
+
+.workflow-button.compact {
+  padding: 7px 10px;
+}
+
 .test-wallet-lab {
   border: 1px solid #dbeafe;
   border-radius: 8px;
@@ -2154,7 +2257,8 @@ summary {
   .registry-summary,
   .parameter-grid,
   .registry-form,
-  .registry-row {
+  .registry-row,
+  .funding-target {
     grid-template-columns: 1fr;
   }
 

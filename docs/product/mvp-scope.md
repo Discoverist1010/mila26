@@ -104,6 +104,7 @@ The app currently supports:
 - Record NAV Event as a wallet-signed SCP operation.
 - Whitelist Wallet as a wallet-signed SCP operation.
 - Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, generated test investor wallet packs, explicit test-only export preparation, local-session whitelist status, SCP handoff, and Allocation/Mint handoff.
+- Sepolia funding helper targets for issuer/admin, generated investor wallets, payment destination, and redemption wallet with copyable public addresses.
 - Subscription tab parameter capture for permitted stablecoins, subscription window, minimum subscription amount, payment address, and payment per token.
 - Redemption tab parameter capture for redemption window/date, redemption wallet, payout stablecoin, payout per token, and configurable delay.
 - Subscription-redemption smart-contract template handoff readiness/draft status from shared lifecycle state.
@@ -111,7 +112,7 @@ The app currently supports:
 The app does not yet support:
 
 - durable project/lifecycle state persistence.
-- Sepolia funding helper, KYC/eligibility workflow, or durable registry persistence.
+- KYC/eligibility workflow or durable registry persistence.
 - live stablecoin subscription execution.
 - live redemption wallet receipt and stablecoin payout execution.
 - Solidity implementation/execution of the subscription-redemption smart-contract template.

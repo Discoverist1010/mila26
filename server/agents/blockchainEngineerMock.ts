@@ -42,7 +42,7 @@ export function answerWithBlockchainEngineerMock(
         {
           field: 'selectedProtocol',
           proposedValue: 'ERC-20 preferred unless unique investor positions are required',
-          rationale: 'The MVP describes proportional portfolio exposure and distribution to up to 20 wallets.',
+          rationale: 'The MVP describes proportional portfolio exposure and distribution to up to 50 wallets.',
           confidence: 0.82,
         },
       ],
@@ -52,16 +52,16 @@ export function answerWithBlockchainEngineerMock(
     });
   }
 
-  if (request.requestedFocus === 'whitelist' || includesAny(lower, ['whitelist', 'wallet', '20', 'address'])) {
+  if (request.requestedFocus === 'whitelist' || includesAny(lower, ['whitelist', 'wallet', '20', '50', 'address'])) {
     return BlockchainEngineerChatResponseSchema.parse({
       ...base,
       content:
-        'For the MVP, we can model up to 20 investor wallet addresses as a whitelist requirement. Real-world investor names should stay off-chain by default, while the contract can use wallet addresses and events for token-holder visibility. Allocation percentages should be validated so the total equals 100% before distribution.',
+        'For the MVP, we can model up to 50 investor wallet addresses as a whitelist requirement. Real-world investor names should stay off-chain by default, while the contract can use wallet addresses and events for token-holder visibility. Allocation percentages should be validated so the total equals 100% before distribution.',
       suggestedRequirementUpdates: [
         {
           field: 'walletWhitelistRequirement',
-          proposedValue: 'up to 20 whitelisted investor wallet addresses',
-          rationale: 'The MVP scale is one asset manager and up to 20 investor wallets.',
+          proposedValue: 'up to 50 whitelisted investor wallet addresses',
+          rationale: 'The MVP scale is one asset manager and up to 50 investor wallets.',
           confidence: 0.9,
         },
         {
@@ -143,7 +143,7 @@ export function answerWithBlockchainEngineerMock(
   return BlockchainEngineerChatResponseSchema.parse({
     ...base,
     content:
-      'I can help turn the asset manager intent into concrete tokenization requirements. The next useful decisions are ERC-20 versus ERC-721, whitelist and allocation rules for up to 20 wallets, valuation/performance update shape, and the wallet-signed testnet deployment gate. I will keep recommendations reviewable before PRD approval.',
+      'I can help turn the asset manager intent into concrete tokenization requirements. The next useful decisions are ERC-20 versus ERC-721, whitelist and allocation rules for up to 50 wallets, valuation/performance update shape, and the wallet-signed testnet deployment gate. I will keep recommendations reviewable before PRD approval.',
     openQuestions: [
       'Should token holders receive fungible portfolio shares or unique token positions?',
       'Do you already have the investor wallet addresses and allocation percentages?',

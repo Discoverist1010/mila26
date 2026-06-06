@@ -10,10 +10,10 @@ The current UI is the MILA26 lifecycle workspace. It uses visual lifecycle tabs,
 
 The next implementation step should follow the tab-aligned roadmap, not the old dashboard flow:
 
-1. browser/screenshot hardening for investor registry, subscription, redemption, template handoff, Sepolia readiness, and Allocation/Mint execution;
-2. Sepolia funding helper UX for generated demo wallets;
-3. website/access first slice without duplicating app lifecycle state;
-4. durable Evidence Vault persistence after local-session evidence shape is stable;
+1. website/access first slice without duplicating app lifecycle state;
+2. durable lifecycle and Investor Registry persistence after local-session state shape is stable;
+3. durable Evidence Vault persistence after local-session evidence shape is stable;
+4. subscription-redemption execution design with explicit adapter/evidence contracts;
 5. maturity closeout later.
 
 For coding execution, read root `AGENTS.md` first. It defines the Lead Implementer role, active debugging loop, quality refactor triggers, dynamic skill/MCP acquisition policy, and review gates.
@@ -74,6 +74,7 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Wallet-signed Sepolia deployment adapter and local-session deployment state.
 - Deployment Evidence Read Model and passive UI/SCP evidence surface.
 - Record NAV, Wallet Whitelist, and Allocation / Mint operation adapters/read models with local-session-only operation evidence.
+- Sepolia funding helper targets for issuer/admin signer, generated investor wallet pack, payment destination, and redemption wallet, with copyable public addresses.
 
 ## Completed Recent Work
 
@@ -87,6 +88,7 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Sprint Track 2 shared Subscription/Redemption parameter capture and template handoff readiness.
 - Sprint Track 3 shared Allocation/Mint readiness, Investor Registry handoff, and Smart Contract tab validation.
 - Sprint Track 5 Sepolia demo wallet readiness plus wallet-signed Allocation / Mint execution behind explicit wallet, deployment, whitelist, ABI, parameter, duplicate-attempt, and evidence gates.
+- Sprint Track 6 demo hardening: Sepolia funding-helper targets, repeated investor whitelist/mint regression coverage, and 50-investor product-boundary cleanup in chat mocks/fixtures.
 - Lifecycle workspace UX implementation:
   - dark left navigation rail;
   - top project/network/wallet/safety bar;
@@ -101,11 +103,11 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 
 Recommended next coding sequence:
 
-1. Add screenshot/browser review for Investor Registry, Subscription, Redemption, Smart Contract, Sepolia readiness, and Allocation/Mint execution.
-2. Tighten UX where browser review shows clutter, unclear validation, or editing friction.
-3. Add Sepolia funding helper UX for generated demo wallets.
-4. Continue website/access work from `docs/product/website-mvp-brief.md` without duplicating app lifecycle state.
-5. Defer durable persistence until the lifecycle state and evidence shape are stable.
+1. Continue website/access work from `docs/product/website-mvp-brief.md` without duplicating app lifecycle state.
+2. Add durable lifecycle and Investor Registry persistence after confirming the state schema.
+3. Add durable Evidence Vault persistence after the local-session evidence shape is stable.
+4. Design subscription-redemption execution adapters and evidence contracts before live stablecoin movement.
+5. Keep browser/screenshot review in the validation loop for every newly functional tab.
 
 ## Code Review (Agent / PR)
 
