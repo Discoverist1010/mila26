@@ -9,6 +9,7 @@ Before implementation, read:
 - `docs/handover/03-mila26-track-status.md`
 - `docs/handover/04-mila26-next-prompts.md`
 - `docs/handover/07-code-review-activation-rules.md`
+- `docs/handover/08-delivery-role-skills.md`
 
 Use more specific architecture, product, and contract docs as the track requires.
 
@@ -34,13 +35,13 @@ Stop and ask only when the fix needs credentials, external service setup, destru
 These are delivery roles for the engineering process, not MILA26 product bots.
 
 - **Lead Implementer / Lead Integrator:** main agent; owns correctness and integration.
-- **Test Engineer:** designs and runs Vitest, Playwright, Hardhat, regression, and failure-path tests.
-- **Quality Architect / Refactorer:** removes brittleness, duplicated state, hardcoding, incomplete data flow, and rigid module boundaries.
+- **Test Engineer:** applies `docs/handover/08-delivery-role-skills.md`; designs and runs Vitest, Playwright, Hardhat, regression, and failure-path tests.
+- **Quality Architect / Refactorer:** applies `docs/handover/08-delivery-role-skills.md`; removes brittleness, duplicated state, hardcoding, incomplete data flow, and rigid module boundaries.
 - **Code Reviewer:** applies `docs/handover/05-code-reviewer-skill.md`, `docs/contracts/code-reviewer-checklist.md`, and `docs/handover/06-code-reviewer-lessons.md`; blocks unresolved Critical/High findings.
-- **Security Reviewer:** reviews auth, secrets, private-key custody, wallet safety, OWASP issues, and sensitive data handling.
-- **Solidity Reviewer:** reviews Solidity, Hardhat, OpenZeppelin, viem, Sepolia-only constraints, and contract tests.
-- **Frontend/UX Reviewer:** reviews responsiveness, readability, accessibility, visual hierarchy, and lifecycle tab coherence.
-- **Release Engineer:** reviews build, environment config, hosted app behavior, deployment readiness, and rollback concerns.
+- **Security Reviewer:** applies `docs/handover/08-delivery-role-skills.md`; reviews auth, secrets, private-key custody, wallet safety, OWASP issues, and sensitive data handling.
+- **Solidity Reviewer:** applies `docs/handover/08-delivery-role-skills.md`; reviews Solidity, Hardhat, OpenZeppelin, viem, Sepolia-only constraints, and contract tests.
+- **Frontend/UX Reviewer:** applies `docs/handover/08-delivery-role-skills.md`; reviews responsiveness, readability, accessibility, visual hierarchy, and lifecycle tab coherence.
+- **Release Engineer:** applies `docs/handover/08-delivery-role-skills.md`; reviews build, environment config, hosted app behavior, deployment readiness, and rollback concerns.
 
 One person/agent may perform multiple roles, but the lead remains accountable for final integration.
 
@@ -89,7 +90,8 @@ Reviewer passes must explicitly check MILA26 lifecycle invariants:
 - multi-item flows still work after the first successful operation;
 - read-model counts derive from effective eligibility, not stale stored labels;
 - user UI does not leak internal track labels;
-- wallet whitelisting is not described as KYC, investor eligibility, legal, compliance, or investment-advice approval.
+- wallet whitelisting is not described as KYC, investor eligibility, legal, compliance, or investment-advice approval;
+- docs, prompts, UI labels, tests, lifecycle read models, Product Vault status, SCP gates, and contract artifacts do not drift away from the same source of truth.
 
 ## Refactor Triggers
 
@@ -113,6 +115,8 @@ Use subagents only for bounded parallel work with disjoint ownership. Each subag
 The lead must review and integrate subagent outputs. Subagents cannot approve their own work and do not own final correctness.
 
 Do not run parallel agents against overlapping files unless the lead explicitly sequences the integration.
+
+Claude or another external model reviewer may be introduced only through a backend-only, schema-validated review adapter with cost controls. It is an independent reviewer signal, not an autonomous implementer, committer, deployer, or final authority.
 
 ## Non-Negotiables
 

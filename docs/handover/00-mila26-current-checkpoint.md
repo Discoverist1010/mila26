@@ -121,6 +121,12 @@ Activation before commit/push is governed by:
 
 4. `docs/handover/07-code-review-activation-rules.md`
 
+Other delivery roles use:
+
+5. `docs/handover/08-delivery-role-skills.md`
+
+Use it for Test Engineer, Quality Architect / Refactorer, Security Reviewer, Solidity Reviewer, Frontend/UX Reviewer, and Release Engineer checks. These roles improve specialist coverage, but the Lead Implementer remains accountable for final integration and active debugging.
+
 ## What Must Not Be Done Yet
 
 - No broad operation suite.

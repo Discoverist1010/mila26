@@ -76,6 +76,7 @@ After that, build subscription-redemption template handoff and only then allocat
 - `docs/handover/00-mila26-current-checkpoint.md`
 - `docs/handover/03-mila26-track-status.md`
 - `docs/handover/04-mila26-next-prompts.md`
+- `docs/handover/08-delivery-role-skills.md`
 - `docs/product/ui-ux-vision.md`
 - `docs/product/mvp-user-journey.md`
 - `docs/product/mvp-screen-flow.md`

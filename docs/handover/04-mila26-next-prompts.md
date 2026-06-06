@@ -89,6 +89,26 @@ Acceptance:
 
 This should still be parameter/spec work, not live stablecoin execution.
 
+## Reminder: Independent External Reviewer
+
+After the Subscription + Redemption parameter track and the first smart-contract template handoff, reassess whether to add Claude or another independent external model reviewer.
+
+Do not add it before:
+
+- backend-only model access is designed;
+- review output has a structured finding schema;
+- cost and rate limits are explicit;
+- there is an eval set or known-defect checklist to measure whether the extra reviewer improves catch rate.
+
+Use it first for bounded independent review only:
+
+- security-sensitive wallet/Sepolia changes;
+- Solidity template and contract invariant review;
+- architecture drift review across lifecycle state, tabs, SCP, Product Vault, and Engineering Bot;
+- beta-readiness review before external tester rounds.
+
+The Lead Implementer remains accountable for deciding whether to debug, refactor, defer, or reject findings.
+
 ## Later Prompt: Allocation/Mint
 
 Add Allocation/Mint only after:

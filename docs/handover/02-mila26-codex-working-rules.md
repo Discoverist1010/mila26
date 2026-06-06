@@ -28,6 +28,31 @@ Apply these rules to every Codex task in this repo.
 - Run `npm run check` before finishing unless blocked.
 - If UI behavior changes materially, consider a focused UI or Playwright smoke test if available and in scope.
 
+## Delivery Role Skills
+
+Use `docs/handover/08-delivery-role-skills.md` when a task benefits from specialist checks:
+
+- Test Engineer for focused, regression, e2e, and contract validation.
+- Quality Architect / Refactorer for brittleness, duplicated state, source-of-truth drift, and module-boundary concerns.
+- Security Reviewer for auth, secrets, wallet, LLM, API, evidence, and sensitive-data boundaries.
+- Solidity Reviewer for Solidity, Hardhat, ABI, bytecode, viem, and contract-test changes.
+- Frontend/UX Reviewer for lifecycle tabs, Engineering Bot readability, right-rail passivity, responsive behavior, and user-facing claims.
+- Release Engineer for commit/push readiness, build/env checks, reviewer gates, and release-risk summaries.
+
+The Lead Implementer remains responsible for final integration and active debugging.
+
+## Drift Control
+
+Reviewers must check whether docs, prompts, UI labels, tests, lifecycle read models, Product Vault status, SCP gates, and contract artifacts still describe the same system.
+
+When drift is found:
+
+- identify the authoritative source before editing;
+- fix the source or dependent surface, not both blindly;
+- add the smallest regression or docs check that would catch recurrence;
+- re-run the relevant focused checks;
+- keep the Lead Implementer accountable for final correction and verification.
+
 ## Code Review
 
 When the task is a **review** (not implementation), use the Code Reviewer trio in `docs/handover/00-mila26-current-checkpoint.md` § Code Review. Do not invent severities — follow `docs/contracts/code-reviewer-checklist.md`.

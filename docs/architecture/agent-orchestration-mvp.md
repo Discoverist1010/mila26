@@ -6,6 +6,10 @@ The MVP should demonstrate orchestration and agentic bot characteristics without
 
 ## Agents / Bots
 
+Product/workflow bots below are distinct from the engineering delivery roles in `AGENTS.md` and
+`docs/handover/08-delivery-role-skills.md`. Delivery roles review and harden the codebase; product bots are part of
+the MILA26 user-facing or artifact-generation workflow.
+
 - Blockchain Engineering Bot: chats with the asset manager, explains ERC-20 vs ERC-721, captures requirements, and remains available while workers run.
 - PRD/Requirement Brief Bot or Engineering Bot: turns finalized design into a PRD/enhanced Requirement Brief.
 - Contract Coding Bot: generates Solidity ERC-20/ERC-721 scaffold/artifacts from the approved PRD, defaulting to OpenZeppelin Contracts for ERC-20/ERC-721 and common access-control/security primitives unless the PRD explicitly justifies otherwise.

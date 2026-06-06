@@ -152,12 +152,16 @@ Track 3B.1 adds chat fixtures for the mock backend chat route. Update these deli
 
 ## Code Reviewer Quality Contract
 
-Structured code reviews use three coordinated docs (scan lessons → run checklist → emit skill report):
+Structured code reviews use the Code Reviewer trio (scan lessons -> run checklist -> emit skill report):
 
-- [`code-reviewer-checklist.md`](code-reviewer-checklist.md) — executable phases and severities (v1.0.2)
+- [`code-reviewer-checklist.md`](code-reviewer-checklist.md) — executable phases and severities (v1.1.0)
 - [`../handover/05-code-reviewer-skill.md`](../handover/05-code-reviewer-skill.md) — reviewer principles and report format
 - [`../handover/06-code-reviewer-lessons.md`](../handover/06-code-reviewer-lessons.md) — recurring patterns (`MILA26-XXX`)
+
+Related gates and specialist role guidance:
+
 - [`../handover/07-code-review-activation-rules.md`](../handover/07-code-review-activation-rules.md) — pre-commit review-level classifier
+- [`../handover/08-delivery-role-skills.md`](../handover/08-delivery-role-skills.md) — specialist role skills for Test, Quality, Security, Solidity, Frontend/UX, and Release checks
 
 ## Anti-Overengineering Reminder
 
