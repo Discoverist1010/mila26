@@ -499,6 +499,55 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Project status')).toHaveTextContent('Draft');
   });
 
+  it('prepares Allocation / Mint readiness from Investor Registry and Subscription without live mint execution', () => {
+    const investorWallet = '0x3333333333333333333333333333333333333333';
+    const paymentWallet = '0x4444444444444444444444444444444444444444';
+    render(<App />);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+    const registry = screen.getByLabelText('Investor Registry workspace');
+    fireEvent.change(within(registry).getByLabelText('Investor wallet address'), { target: { value: investorWallet } });
+    fireEvent.click(within(registry).getByRole('button', { name: 'Add wallet' }));
+
+    fireEvent.click(within(registry).getByRole('button', { name: 'Use for Allocation / Mint' }));
+    const allocationMintPanel = screen.getByLabelText('Allocation Mint workspace');
+    expect(within(allocationMintPanel).getByRole('heading', { name: 'Allocation / Mint readiness' })).toBeVisible();
+    expect(within(allocationMintPanel).getByLabelText('Allocation target wallet')).toHaveValue(investorWallet);
+    expect(within(allocationMintPanel).getByText('Complete Subscription parameters before Allocation / Mint.')).toBeVisible();
+    expect(within(allocationMintPanel).getByText(/No live mint transaction is prepared here/i)).toBeVisible();
+    expect(screen.getByLabelText('Project status')).toHaveTextContent('Allocation / Mint');
+    expect(screen.getByLabelText('Project status')).toHaveTextContent('Locked until required setup is complete');
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
+    const subscription = screen.getByLabelText('Subscription workspace');
+    fireEvent.change(within(subscription).getByLabelText('Permitted stablecoins'), { target: { value: 'usdc' } });
+    fireEvent.change(within(subscription).getByLabelText('Subscription window'), { target: { value: 'Monthly: first five business days' } });
+    fireEvent.change(within(subscription).getByLabelText('Minimum subscription amount'), { target: { value: '25000' } });
+    fireEvent.change(within(subscription).getByLabelText('Payment wallet / contract address'), { target: { value: paymentWallet } });
+    fireEvent.change(within(subscription).getByLabelText('Payment per token'), { target: { value: '1.025' } });
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Smart Contract/ }));
+    const readyAllocationMintPanel = screen.getByLabelText('Allocation Mint workspace');
+    fireEvent.change(within(readyAllocationMintPanel).getByLabelText('Token allocation amount'), { target: { value: '1250' } });
+
+    expect(within(readyAllocationMintPanel).getByText('Allocation / Mint parameters are ready for review.')).toBeVisible();
+    expect(within(readyAllocationMintPanel).getByText(`Allocation ready for 1250 token(s) to ${investorWallet}.`)).toBeVisible();
+    expect(screen.getByLabelText('Lifecycle snapshot')).toHaveTextContent('Allocation / Mint');
+    expect(screen.getByLabelText('Lifecycle snapshot')).toHaveTextContent('Ready for review');
+    expect(screen.getByLabelText('Project status')).toHaveTextContent('Allocation / Mint Parameters');
+    expect(screen.getByLabelText('Project status')).toHaveTextContent('Available');
+    expect(within(screen.getByTestId('smart-contract-control')).queryByRole('button', { name: /Mint/i })).toBeDisabled();
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
+    fireEvent.change(screen.getByLabelText('Payment per token'), { target: { value: '' } });
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Smart Contract/ }));
+
+    expect(screen.getByLabelText('Allocation Mint workspace')).toHaveTextContent(
+      'Complete Subscription parameters before Allocation / Mint.',
+    );
+    expect(screen.getByLabelText('Project status')).toHaveTextContent('Locked until required setup is complete');
+  });
+
   it('completes the golden lifecycle flow into wallet-intent review and locked operations without execution claims', async () => {
     let resolveArtifactSpec: (value: Response) => void = () => undefined;
     const smartContractArtifactSpec = {

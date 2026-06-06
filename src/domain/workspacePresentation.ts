@@ -144,12 +144,20 @@ export function workspaceTabsForLifecycle(lifecycle: Mila26LifecycleReadModel): 
 }
 
 function status(input: WorkspacePresentationInput): ProductCapabilityRow[] {
+  const allocationMint = input.lifecycle.allocationMint;
+  const allocationMintStatus = parameterStatusToCapabilityStatus(allocationMint.status);
   return [
     { label: 'Current capabilities ready', status: 'available' },
     { label: 'Wallet whitelist available', status: input.isWalletWhitelistAvailable ? 'available' : 'locked_for_later' },
     { label: 'NAV recording available', status: input.isNavRecordingAvailable ? 'available' : 'locked_for_later' },
-    { label: 'Next capability: Allocation / Mint', status: 'locked_for_later' },
-    { label: 'Locked until required setup is complete', status: 'locked_for_later' },
+    { label: 'Next capability: Allocation / Mint', status: allocationMintStatus },
+    {
+      label:
+        allocationMint.status === 'ready'
+          ? 'Allocation parameters ready for review'
+          : 'Locked until required setup is complete',
+      status: allocationMintStatus,
+    },
   ];
 }
 
@@ -158,6 +166,7 @@ export function toWorkspacePresentation(input: WorkspacePresentationInput): Work
   const subscription = input.lifecycle.subscription;
   const redemption = input.lifecycle.redemption;
   const template = input.lifecycle.subscriptionRedemptionTemplate;
+  const allocationMint = input.lifecycle.allocationMint;
 
   return {
     tabs: workspaceTabsForLifecycle(input.lifecycle),
@@ -165,7 +174,7 @@ export function toWorkspacePresentation(input: WorkspacePresentationInput): Work
     capabilityStatus: [
       { label: 'Wallet whitelist', status: input.isWalletWhitelistAvailable ? 'available' : 'locked_for_later' },
       { label: 'NAV recording', status: input.isNavRecordingAvailable ? 'available' : 'locked_for_later' },
-      { label: 'Allocation / Mint', status: 'locked_for_later' },
+      { label: 'Allocation / Mint', status: parameterStatusToCapabilityStatus(allocationMint.status) },
       { label: 'Investor registry', status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'active' : 'needs_parameters' },
       { label: 'Subscription template', status: parameterStatusToCapabilityStatus(subscription.status) },
       { label: 'Redemption template', status: parameterStatusToCapabilityStatus(redemption.status) },
@@ -201,18 +210,30 @@ export function toWorkspacePresentation(input: WorkspacePresentationInput): Work
         detail: redemption.status === 'ready' ? redemption.statusDetail : parameterStatusDetail(redemption.status),
         status: redemption.status === 'ready' ? 'ready' : 'needs_parameters',
       },
+      {
+        label: 'Allocation / Mint',
+        detail: allocationMint.status === 'ready' ? 'Ready for review' : parameterStatusDetail(allocationMint.status),
+        status:
+          allocationMint.status === 'ready'
+            ? 'ready'
+            : allocationMint.status === 'locked_for_later'
+              ? 'locked'
+              : 'needs_parameters',
+      },
     ],
     productVault: [
       { label: 'Requirement Brief', status: input.hasRequirementBrief ? 'Draft' : 'Pending' },
       { label: 'Engineering Brief', status: input.hasEngineeringBrief ? 'Draft' : 'Pending' },
       { label: 'Smart Contract Spec', status: input.hasSmartContractSpec ? 'Draft' : 'Pending' },
       { label: 'Contract Template (Sub-Redemption)', status: template.status === 'ready' ? 'Available' : template.status === 'draft' ? 'Draft' : 'Pending' },
+      { label: 'Allocation / Mint Parameters', status: allocationMint.status === 'ready' ? 'Available' : allocationMint.status === 'draft' ? 'Draft' : 'Pending' },
       { label: 'Investor Registry', status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'Active' : 'Pending' },
     ],
     openItems: [
       { label: 'Open questions', status: input.hasRequirementBrief ? 'draft' : 'needs_parameters' },
       { label: 'Subscription parameters', status: parameterStatusToCapabilityStatus(subscription.status) },
       { label: 'Redemption parameters', status: parameterStatusToCapabilityStatus(redemption.status) },
+      { label: 'Allocation / Mint parameters', status: parameterStatusToCapabilityStatus(allocationMint.status) },
       { label: 'Maturity parameters', status: parameterStatusToCapabilityStatus(input.lifecycle.maturityStatus) },
       {
         label: 'Investor registry gaps',

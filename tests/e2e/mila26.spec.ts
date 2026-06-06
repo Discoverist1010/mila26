@@ -393,3 +393,46 @@ test('subscription redemption parameters update shared lifecycle state and templ
   );
   await expect(page.getByLabel('Project status')).toContainText('Draft');
 });
+
+test('allocation mint readiness uses shared investor registry and subscription state without execution', async ({ page }) => {
+  const investorWallet = '0x3333333333333333333333333333333333333333';
+  const paymentWallet = '0x4444444444444444444444444444444444444444';
+
+  await page.goto('/');
+
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Investor Registry/ }).click();
+  const registry = page.getByLabel('Investor Registry workspace');
+  await registry.getByLabel('Investor wallet address').fill(investorWallet);
+  await registry.getByRole('button', { name: 'Add wallet' }).click();
+  await registry.getByRole('button', { name: 'Use for Allocation / Mint' }).click();
+
+  const allocationMint = page.getByLabel('Allocation Mint workspace');
+  await expect(allocationMint.getByRole('heading', { name: 'Allocation / Mint readiness' })).toBeVisible();
+  await expect(allocationMint.getByLabel('Allocation target wallet')).toHaveValue(investorWallet);
+  await expect(allocationMint.getByText('Complete Subscription parameters before Allocation / Mint.')).toBeVisible();
+  await expect(allocationMint.getByText(/No live mint transaction is prepared here/i)).toBeVisible();
+  await expect(page.getByLabel('Project status')).toContainText('Locked until required setup is complete');
+
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
+  const subscription = page.getByLabel('Subscription workspace');
+  await subscription.getByLabel('Permitted stablecoins').fill('usdc');
+  await subscription.getByLabel('Subscription window').fill('Monthly: first five business days');
+  await subscription.getByLabel('Minimum subscription amount').fill('25000');
+  await subscription.getByLabel('Payment wallet / contract address').fill(paymentWallet);
+  await subscription.getByLabel('Payment per token').fill('1.025');
+
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Smart Contract/ }).click();
+  await allocationMint.getByLabel('Token allocation amount').fill('1250');
+  await expect(allocationMint.getByText('Allocation / Mint parameters are ready for review.')).toBeVisible();
+  await expect(allocationMint.getByText(`Allocation ready for 1250 token(s) to ${investorWallet}.`)).toBeVisible();
+  await expect(page.getByLabel('Lifecycle snapshot')).toContainText('Allocation / Mint');
+  await expect(page.getByLabel('Lifecycle snapshot')).toContainText('Ready for review');
+  await expect(page.getByLabel('Project status')).toContainText('Allocation / Mint Parameters');
+  await expect(page.getByLabel('Project status')).toContainText('Available');
+  await expect(page.getByTestId('smart-contract-control').getByRole('button', { name: 'Mint' })).toBeDisabled();
+
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
+  await subscription.getByLabel('Payment per token').fill('');
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Smart Contract/ }).click();
+  await expect(allocationMint.getByText('Complete Subscription parameters before Allocation / Mint.')).toBeVisible();
+});

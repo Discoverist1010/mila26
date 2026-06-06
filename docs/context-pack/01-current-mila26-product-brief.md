@@ -96,7 +96,7 @@ The current alpha contract direction is:
 - distribution event.
 - transfer restrictions.
 
-The current smart-contract product direction is a predefined subscription-redemption template with configurable stablecoins, subscription window, redemption window, redemption wallet, payout-per-token amount, and redemption delay. Local-session parameter capture and template handoff readiness now exist; e2e hardening and contract-template mapping should come before allocation/mint execution.
+The current smart-contract product direction is a predefined subscription-redemption template with configurable stablecoins, subscription window, redemption window, redemption wallet, payout-per-token amount, and redemption delay. Local-session parameter capture, template handoff readiness, and Allocation/Mint readiness now exist. Browser hardening and an operation-specific wallet-signed contract should come before allocation/mint execution.
 
 ## Current Wallet/Testnet Direction
 

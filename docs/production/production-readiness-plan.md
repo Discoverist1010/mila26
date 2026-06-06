@@ -128,7 +128,7 @@ Current status: the Week 1 Subscription/Redemption parameter capture and shared 
    - generate/review template handoff;
    - connect wallet and show Sepolia boundary;
    - show existing deployment/NAV/whitelist evidence path;
-   - explain locked Allocation/Mint, durable Evidence Vault, and Maturity closeout.
+   - explain Allocation/Mint readiness, locked live Mint execution, durable Evidence Vault, and Maturity closeout.
 
 Prototype success means the user can complete a working local workflow:
 
@@ -309,11 +309,11 @@ Resolve before beta:
 
 ## Immediate Next Coding Track
 
-Harden the investor registry, Subscription, Redemption, and subscription-redemption template handoff flow with e2e coverage and browser review. Start the website/access first slice only if it remains cleanly separated from app lifecycle state. Use `docs/product/allocation-mint-scope.md` before implementing Allocation/Mint execution.
+Harden the investor registry, Subscription, Redemption, subscription-redemption template handoff, and Allocation/Mint readiness flow with e2e coverage and browser review. Continue website/access work only if it remains cleanly separated from app lifecycle state. Use `docs/product/allocation-mint-scope.md` before implementing Allocation/Mint execution.
 
 Do this before:
 
-- Allocation/Mint;
+- Allocation/Mint execution;
 - durable Evidence Vault;
 - maturity closeout;
 - investor update automation;

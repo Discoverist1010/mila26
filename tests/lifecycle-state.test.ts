@@ -21,6 +21,8 @@ describe('MILA26 lifecycle state', () => {
     expect(readModel.investorRegistry.remainingSlots).toBe(MAX_INVESTOR_REGISTRY_ENTRIES);
     expect(readModel.subscriptionStatus).toBe('needs_parameters');
     expect(readModel.redemptionStatus).toBe('needs_parameters');
+    expect(readModel.allocationMintStatus).toBe('locked_for_later');
+    expect(readModel.allocationMint.blockingReasons).toContain('Register at least one investor wallet before Allocation / Mint.');
     expect(readModel.maturityStatus).toBe('locked_for_later');
   });
 
@@ -276,5 +278,76 @@ describe('MILA26 lifecycle state', () => {
 
     expect(editedReadModel.subscriptionRedemptionTemplate.status).toBe('draft');
     expect(editedReadModel.subscriptionRedemptionTemplate.canGenerateTemplateParameters).toBe(false);
+  });
+
+  it('keeps Allocation / Mint locked until Investor Registry and Subscription are coherent', () => {
+    const readModel = toMila26LifecycleReadModel({
+      ...createInitialMila26LifecycleState(),
+      investorRegistryEntries: [
+        createInvestorRegistryEntry({
+          id: 'investor-wallet-1',
+          walletAddress: firstWallet,
+        }),
+      ],
+      allocationMintParameters: {
+        targetWalletAddress: firstWallet,
+        tokenAmount: '1000',
+      },
+    });
+
+    expect(readModel.investorRegistry.status).toBe('ready');
+    expect(readModel.subscription.status).toBe('needs_parameters');
+    expect(readModel.allocationMint.status).toBe('locked_for_later');
+    expect(readModel.allocationMint.canReviewAllocationMint).toBe(false);
+    expect(readModel.allocationMint.blockingReasons).toContain('Complete Subscription parameters before Allocation / Mint.');
+  });
+
+  it('validates Allocation / Mint target wallet and token amount against shared lifecycle state', () => {
+    const baseState = {
+      ...createInitialMila26LifecycleState(),
+      investorRegistryEntries: [
+        createInvestorRegistryEntry({
+          id: 'investor-wallet-1',
+          walletAddress: firstWallet,
+        }),
+      ],
+      subscriptionParameters: {
+        permittedStablecoins: ['USDC'],
+        subscriptionWindow: 'Monthly subscriptions',
+        minimumSubscriptionAmount: '10000',
+        paymentAddress: secondWallet,
+        paymentPerToken: '1.02',
+      },
+    };
+
+    const draftReadModel = toMila26LifecycleReadModel({
+      ...baseState,
+      allocationMintParameters: {
+        targetWalletAddress: '0x9999999999999999999999999999999999999999',
+        tokenAmount: '0',
+      },
+    });
+
+    expect(draftReadModel.allocationMint.status).toBe('draft');
+    expect(draftReadModel.allocationMint.validationMessages).toEqual(
+      expect.arrayContaining([
+        'Select a wallet from Investor Registry before Allocation / Mint.',
+        'Token allocation amount must be greater than zero.',
+      ]),
+    );
+
+    const readyReadModel = toMila26LifecycleReadModel({
+      ...baseState,
+      allocationMintParameters: {
+        targetWalletAddress: firstWallet,
+        tokenAmount: '1250.5',
+      },
+    });
+
+    expect(readyReadModel.allocationMint.status).toBe('ready');
+    expect(readyReadModel.allocationMintStatus).toBe('ready');
+    expect(readyReadModel.allocationMint.canReviewAllocationMint).toBe(true);
+    expect(readyReadModel.allocationMint.statusDetail).toBe(`Allocation ready for 1250.5 token(s) to ${firstWallet}.`);
+    expect(readyReadModel.allocationMint.validationMessages).toEqual([]);
   });
 });

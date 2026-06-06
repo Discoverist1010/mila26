@@ -87,4 +87,4 @@ SCP may expose at most two active wallet-signed operation controls:
 - Record NAV Event
 - Whitelist Wallet
 
-Allocation/Mint remains deferred until investor registry and subscription parameters are coherent. Burn, pause/unpause, transfer, distribution, and role-administration operations remain locked or absent until their own capability work exists.
+Allocation/Mint readiness now depends on coherent investor registry and subscription parameters, but live Allocation/Mint execution remains deferred. Burn, pause/unpause, transfer, distribution, and role-administration operations remain locked or absent until their own capability work exists.

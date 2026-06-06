@@ -183,7 +183,7 @@ The UI intentionally shows these as parameters needed or locked for later:
 - subscription-redemption smart-contract template implementation beyond local-session handoff;
 - live stablecoin subscription execution;
 - live redemption wallet receipt and payout workflow;
-- allocation/mint operation;
+- live allocation/mint execution;
 - investor communication/asset-servicing update push;
 - maturity closeout;
 - durable Evidence Vault persistence.
@@ -192,8 +192,8 @@ The UI intentionally shows these as parameters needed or locked for later:
 
 Prefer this sequence before broadening operations:
 
-1. Add e2e and screenshot hardening for the working investor registry, subscription, redemption, and template handoff flow.
-2. Add allocation/mint only after investor registry and subscription parameters are coherent.
+1. Add e2e and screenshot hardening for the working investor registry, subscription, redemption, template handoff, and Allocation/Mint readiness flow.
+2. Add allocation/mint execution only after investor registry, subscription, and Allocation/Mint readiness parameters are coherent.
 3. Start website/access work without duplicating app lifecycle state.
 4. Add durable evidence persistence after the local-session evidence shape is stable.
 5. Add maturity closeout once subscription/redemption/mint flows are proven.

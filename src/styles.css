@@ -1636,6 +1636,37 @@ summary {
   padding-left: 20px;
 }
 
+.allocation-context {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.allocation-context article {
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  background: #f8fafc;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.allocation-context span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.allocation-context strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.allocation-context p {
+  color: #475569;
+  font-size: 13px;
+  margin: 0;
+}
+
 .registry-panel-heading {
   align-items: flex-start;
   display: flex;
@@ -1713,7 +1744,7 @@ summary {
   border-top: 1px solid #e2e8f0;
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(230px, 1.2fr) minmax(130px, 0.65fr) minmax(220px, 1fr) minmax(160px, 0.7fr);
+  grid-template-columns: minmax(230px, 1.2fr) minmax(130px, 0.65fr) minmax(220px, 1fr) minmax(210px, 0.8fr);
   padding: 10px 12px;
 }
 
@@ -1733,6 +1764,11 @@ summary {
 
 .registry-row .workflow-button {
   width: 100%;
+}
+
+.registry-actions {
+  display: grid;
+  gap: 8px;
 }
 
 .empty-registry {
@@ -1935,8 +1971,12 @@ summary {
     grid-template-columns: 1fr;
   }
 
+  .allocation-context {
+    grid-template-columns: 1fr;
+  }
+
   .registry-row {
-    grid-template-columns: minmax(220px, 1fr) minmax(130px, 0.55fr) minmax(180px, 0.9fr) minmax(150px, 0.65fr);
+    grid-template-columns: minmax(220px, 1fr) minmax(130px, 0.55fr) minmax(180px, 0.9fr) minmax(180px, 0.65fr);
   }
 }
 

@@ -8,10 +8,10 @@ The current app can guide a project from plain-language intent through Requireme
 
 The current UI is the MILA26 lifecycle workspace. It uses visual lifecycle tabs, a large Engineering Bot answer surface, suggested next actions, passive right rail, Product Vault, lifecycle snapshot, and a scroll-down Smart Contract Control Panel.
 
-The next implementation step should follow the new tab-aligned roadmap, not the old dashboard flow:
+The next implementation step should follow the tab-aligned roadmap, not the old dashboard flow:
 
-1. e2e hardening for investor registry, subscription, redemption, and subscription-redemption template handoff;
-2. Allocation/Mint only after registry/subscription parameters are coherent;
+1. browser/screenshot hardening for investor registry, subscription, redemption, template handoff, and Allocation/Mint readiness;
+2. wallet-signed Allocation/Mint execution only after the readiness panel and operation contract are stable;
 3. website/access first slice without duplicating app lifecycle state;
 4. durable Evidence Vault persistence after local-session evidence shape is stable;
 5. maturity closeout later.
@@ -44,7 +44,7 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Wallet boundary: MetaMask-first EIP-1193 connection and Sepolia readiness are implemented frontend-only.
 - Deployment boundary: wallet-signed Sepolia deployment exists, with local-session provider/receipt evidence only.
 - Operation boundary: Record NAV Event and Whitelist Wallet exist as operation-specific wallet-signed SCP controls.
-- Persistence, auth, payments, durable Evidence Vault storage, live subscription/redemption execution, allocation/mint, maturity closeout, and mainnet are not implemented.
+- Persistence, auth, payments, durable Evidence Vault storage, live subscription/redemption execution, live allocation/mint execution, maturity closeout, and mainnet are not implemented.
 
 ## Current Repo Capabilities
 
@@ -52,8 +52,9 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Visual tabs: Overview, Requirements, Investor Registry, Subscription, Smart Contract, Asset Servicing, Redemption, Maturity, Evidence.
 - Shared workspace presentation model: `src/domain/workspacePresentation.ts`.
 - Shared lifecycle state/read model: `src/domain/lifecycleState.ts`.
-- Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, and SCP whitelist target handoff.
+- Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, SCP whitelist target handoff, and Allocation/Mint handoff.
 - Subscription and Redemption tabs for local-session parameter capture, validation, lifecycle snapshot/vault/status updates, and subscription-redemption template handoff input.
+- Smart Contract tab Allocation/Mint readiness panel for target wallet and token allocation amount validation from shared Investor Registry and Subscription state. Live Mint remains locked.
 - Passive right rail and Product Vault.
 - Backend chat route: `POST /api/chat/blockchain-engineer`.
 - Backend Engineering Brief route: `POST /api/prd/engineering-brief`.
@@ -84,6 +85,7 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Whitelist Wallet operation.
 - Sprint Track 1 shared lifecycle state and Investor Registry functionality.
 - Sprint Track 2 shared Subscription/Redemption parameter capture and template handoff readiness.
+- Sprint Track 3 shared Allocation/Mint readiness, Investor Registry handoff, and Smart Contract tab validation without live mint execution.
 - Lifecycle workspace UX implementation:
   - dark left navigation rail;
   - top project/network/wallet/safety bar;
@@ -98,10 +100,10 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 
 Recommended next coding sequence:
 
-1. Add e2e/smoke coverage and screenshot review for the full investor registry to subscription-redemption handoff path.
-2. Tighten Subscription/Redemption UX where browser review shows clutter, unclear validation, or editing friction.
-3. Prepare the Allocation/Mint scope and smart-contract template mapping from the current registry/subscription state.
-4. Start the website/access first slice from `docs/product/website-mvp-brief.md`.
+1. Add screenshot/browser review for Investor Registry, Subscription, Redemption, Smart Contract, and Allocation/Mint readiness.
+2. Tighten UX where browser review shows clutter, unclear validation, or editing friction.
+3. Draft and test the wallet-signed Allocation/Mint operation contract from the current registry/subscription/allocation state.
+4. Continue website/access work from `docs/product/website-mvp-brief.md` without duplicating app lifecycle state.
 5. Defer durable persistence until the lifecycle state and evidence shape are stable.
 
 ## Code Review (Agent / PR)

@@ -32,11 +32,17 @@ export type MaturityParameters = {
   closeoutMethod?: string;
 };
 
+export type AllocationMintParameters = {
+  targetWalletAddress?: string;
+  tokenAmount?: string;
+};
+
 export type Mila26LifecycleState = {
   investorRegistryEntries: InvestorRegistryEntry[];
   subscriptionParameters: SubscriptionParameters;
   redemptionParameters: RedemptionParameters;
   maturityParameters: MaturityParameters;
+  allocationMintParameters: AllocationMintParameters;
 };
 
 export type InvestorRegistryReadModelEntry = InvestorRegistryEntry & {
@@ -45,6 +51,7 @@ export type InvestorRegistryReadModelEntry = InvestorRegistryEntry & {
   validationStatus: 'valid' | 'invalid' | 'duplicate';
   validationMessages: string[];
   canUseForWhitelist: boolean;
+  canUseForAllocationMint: boolean;
 };
 
 export type InvestorRegistryReadModel = {
@@ -102,13 +109,27 @@ export type SubscriptionRedemptionTemplateReadModel = {
   };
 };
 
+export type AllocationMintReadModel = {
+  status: LifecycleParameterStatus;
+  statusLabel: string;
+  statusDetail: string;
+  targetWalletAddress?: string;
+  tokenAmount?: string;
+  selectedInvestorStatus?: InvestorRegistryReadModelEntry['status'];
+  validationMessages: string[];
+  blockingReasons: string[];
+  canReviewAllocationMint: boolean;
+};
+
 export type Mila26LifecycleReadModel = {
   investorRegistry: InvestorRegistryReadModel;
   subscription: SubscriptionParametersReadModel;
   redemption: RedemptionParametersReadModel;
   subscriptionRedemptionTemplate: SubscriptionRedemptionTemplateReadModel;
+  allocationMint: AllocationMintReadModel;
   subscriptionStatus: LifecycleParameterStatus;
   redemptionStatus: LifecycleParameterStatus;
+  allocationMintStatus: LifecycleParameterStatus;
   maturityStatus: LifecycleParameterStatus;
 };
 
@@ -120,6 +141,7 @@ export function createInitialMila26LifecycleState(): Mila26LifecycleState {
     },
     redemptionParameters: {},
     maturityParameters: {},
+    allocationMintParameters: {},
   };
 }
 
@@ -182,14 +204,21 @@ export function toMila26LifecycleReadModel(state: Mila26LifecycleState): Mila26L
     subscription,
     redemption,
   );
+  const allocationMint = toAllocationMintReadModel(
+    state.allocationMintParameters,
+    investorRegistry,
+    subscription,
+  );
 
   return {
     investorRegistry,
     subscription,
     redemption,
     subscriptionRedemptionTemplate,
+    allocationMint,
     subscriptionStatus: subscription.status,
     redemptionStatus: redemption.status,
+    allocationMintStatus: allocationMint.status,
     maturityStatus: state.maturityParameters.maturityDate ? 'draft' : 'locked_for_later',
   };
 }
@@ -316,6 +345,67 @@ function normalizedOptional(value: string | undefined): string | undefined {
   return normalized || undefined;
 }
 
+function toAllocationMintReadModel(
+  parameters: AllocationMintParameters,
+  investorRegistry: InvestorRegistryReadModel,
+  subscription: SubscriptionParametersReadModel,
+): AllocationMintReadModel {
+  const targetWalletAddress = normalizedOptional(parameters.targetWalletAddress);
+  const tokenAmount = normalizedOptional(parameters.tokenAmount);
+  const normalizedTarget = targetWalletAddress?.toLowerCase();
+  const selectedInvestor = normalizedTarget
+    ? investorRegistry.entries.find((entry) => entry.normalizedWalletAddress?.toLowerCase() === normalizedTarget)
+    : undefined;
+  const validationMessages: string[] = [];
+  const blockingReasons: string[] = [];
+
+  if (investorRegistry.entryCount === 0) {
+    blockingReasons.push('Register at least one investor wallet before Allocation / Mint.');
+  } else if (investorRegistry.status === 'needs_attention') {
+    blockingReasons.push('Resolve Investor Registry validation issues before Allocation / Mint.');
+  }
+
+  if (subscription.status !== 'ready') {
+    blockingReasons.push('Complete Subscription parameters before Allocation / Mint.');
+  }
+
+  if (!targetWalletAddress) {
+    validationMessages.push('Select a registered investor wallet.');
+  } else if (!isValidNonZeroEvmAddress(targetWalletAddress)) {
+    validationMessages.push('Allocation target wallet must be a valid non-zero EVM address.');
+  } else if (!selectedInvestor) {
+    validationMessages.push('Select a wallet from Investor Registry before Allocation / Mint.');
+  } else if (!selectedInvestor.canUseForAllocationMint) {
+    validationMessages.push('Select a valid, unique investor wallet before Allocation / Mint.');
+  }
+
+  if (!isPositiveNumericString(tokenAmount)) {
+    validationMessages.push('Token allocation amount must be greater than zero.');
+  }
+
+  const hasAnyInput = Boolean(targetWalletAddress || tokenAmount);
+  const status: LifecycleParameterStatus =
+    blockingReasons.length > 0
+      ? 'locked_for_later'
+      : validationMessages.length === 0
+        ? 'ready'
+        : hasAnyInput
+          ? 'draft'
+          : 'needs_parameters';
+
+  return {
+    status,
+    statusLabel: allocationMintStatusLabel(status),
+    statusDetail: allocationMintStatusDetail(status, targetWalletAddress, tokenAmount, blockingReasons, validationMessages),
+    targetWalletAddress,
+    tokenAmount,
+    selectedInvestorStatus: selectedInvestor?.status,
+    validationMessages,
+    blockingReasons,
+    canReviewAllocationMint: status === 'ready',
+  };
+}
+
 function isPositiveNumericString(value: string | undefined): boolean {
   if (!value?.trim()) return false;
   const numeric = Number(value);
@@ -357,6 +447,26 @@ function templateStatusLabel(status: LifecycleParameterStatus): string {
   return 'Template handoff not started';
 }
 
+function allocationMintStatusLabel(status: LifecycleParameterStatus): string {
+  if (status === 'ready') return 'Allocation / Mint: Ready for review';
+  if (status === 'draft') return 'Allocation / Mint: Needs review';
+  if (status === 'locked_for_later') return 'Allocation / Mint: Locked';
+  return 'Allocation / Mint: Parameters needed';
+}
+
+function allocationMintStatusDetail(
+  status: LifecycleParameterStatus,
+  targetWalletAddress: string | undefined,
+  tokenAmount: string | undefined,
+  blockingReasons: string[],
+  validationMessages: string[],
+): string {
+  if (status === 'ready') return `Allocation ready for ${tokenAmount} token(s) to ${targetWalletAddress}.`;
+  if (status === 'locked_for_later') return blockingReasons[0] ?? 'Complete required setup before Allocation / Mint.';
+  if (status === 'draft') return validationMessages[0] ?? 'Review Allocation / Mint parameters.';
+  return 'Select a registered investor wallet and token allocation amount.';
+}
+
 function toInvestorRegistryReadModel(entries: InvestorRegistryEntry[]): InvestorRegistryReadModel {
   const normalizedCounts = entries.reduce<Record<string, number>>((counts, entry) => {
     const normalized = normalizeInvestorWalletAddress(entry.walletAddress).toLowerCase();
@@ -378,6 +488,7 @@ function toInvestorRegistryReadModel(entries: InvestorRegistryEntry[]): Investor
 
     const validationStatus = isDuplicate ? 'duplicate' : isValidWallet ? 'valid' : 'invalid';
     const canUseForWhitelist = validationStatus === 'valid' && entry.status !== 'whitelisted_local_session_only';
+    const canUseForAllocationMint = validationStatus === 'valid';
 
     return {
       ...entry,
@@ -386,6 +497,7 @@ function toInvestorRegistryReadModel(entries: InvestorRegistryEntry[]): Investor
       validationStatus,
       validationMessages,
       canUseForWhitelist,
+      canUseForAllocationMint,
     };
   });
 

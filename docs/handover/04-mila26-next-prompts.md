@@ -30,7 +30,7 @@ Scope:
    - no real-world investor names required;
    - no KYC/investor eligibility claim.
 3. Keep tabs visual-only. The Engineering Bot and all tabs must read the same shared lifecycle state.
-4. Do not add Allocation/Mint yet.
+4. Do not add Allocation/Mint execution yet.
 5. Do not add subscription/redemption execution yet.
 6. Do not add persistence unless explicitly scoped.
 
@@ -42,9 +42,9 @@ Acceptance:
 - No internal track numbers appear in user-facing UI.
 ```
 
-## Next Codex Prompt: Prototype Hardening + Website Start
+## Completed Prompt: Prototype Hardening + Website Start
 
-Use this prompt for the next implementation turn:
+This prompt has been implemented. Keep it here as completion context:
 
 ```text
 You are working inside the MILA26 repository:
@@ -87,17 +87,56 @@ Acceptance:
 
 This should still be parameter/spec work, not live stablecoin execution.
 
+## Next Codex Prompt: Allocation/Mint Browser Hardening + Operation Contract
+
+Use this prompt for the next implementation turn:
+
+```text
+You are working inside the MILA26 repository:
+
+/Users/macbookpro18/Desktop/CODE/active/mila26
+
+Start from main. Before editing, read `AGENTS.md`, then run:
+
+git status --short --branch
+npm run test -- tests/lifecycle-state.test.ts tests/app-chat-panel.test.tsx
+npm run test:e2e
+
+Goal:
+Harden the working Allocation/Mint readiness surface and design the wallet-signed Allocation/Mint operation contract without enabling live execution yet.
+
+Scope:
+1. Run browser/screenshot review for Overview, Investor Registry, Subscription, Smart Contract, Allocation/Mint readiness, and right rail status.
+2. Fix only UX/state issues found by the review; avoid broad redesign.
+3. Add or update a contract/read-model spec for the later wallet-signed Allocation/Mint operation:
+   - selected wallet must come from Investor Registry;
+   - token amount must be greater than zero;
+   - Subscription must be ready;
+   - deployment evidence, Sepolia wallet, and contract address gates must stay operation-specific;
+   - no stablecoin receipt or KYC/eligibility claim.
+4. Keep the SCP Mint button locked until the execution slice is explicitly implemented.
+5. Do not add live stablecoin execution, durable persistence, or mainnet support.
+
+Acceptance:
+- Existing tests continue passing.
+- Browser/e2e coverage proves Allocation/Mint readiness survives cross-tab edits.
+- The Smart Contract tab remains readable and uncluttered.
+- The right rail remains passive.
+- No transaction hash, contract address, or confirmed mint status appears without provider evidence.
+- No internal track numbers appear in user-facing UI.
+```
+
 ## Prototype Sprint Target
 
 The two-week prototype target is tracked in `docs/production/production-readiness-plan.md`.
 
 For the next sprint, keep the goal narrow:
 
-1. Add e2e and screenshot hardening for the working Subscription/Redemption flow.
+1. Add e2e and screenshot hardening for the working Subscription/Redemption and Allocation/Mint readiness flows.
 2. Keep all tabs connected to shared lifecycle state.
 3. Make Engineering Bot next actions reflect the next missing lifecycle dependency.
 4. Start website/access only after the app flow remains stable.
-5. Do not add live stablecoin execution or Allocation/Mint execution in the same track.
+5. Do not add live stablecoin execution or Allocation/Mint execution without a separate operation contract and tests.
 
 The result must be working software, not a visual placeholder. If a field, button, status, or artifact is shown as active, it must be wired to state, validation, and tests.
 
@@ -121,12 +160,13 @@ Use it first for bounded independent review only:
 
 The Lead Implementer remains accountable for deciding whether to debug, refactor, defer, or reject findings.
 
-## Later Prompt: Allocation/Mint
+## Later Prompt: Allocation/Mint Execution
 
-Add Allocation/Mint only after:
+Add Allocation/Mint execution only after:
 
 - investor registry state exists;
 - subscription parameters exist;
+- Allocation/Mint readiness state exists;
 - smart-contract spec can consume those parameters;
 - wallet/deployment/operation evidence gates remain stable.
 

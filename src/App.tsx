@@ -18,6 +18,7 @@ import {
   MAX_INVESTOR_REGISTRY_ENTRIES,
   parsePermittedStablecoins,
   toMila26LifecycleReadModel,
+  type AllocationMintParameters,
   type Mila26LifecycleState,
   type RedemptionParameters,
 } from './domain/lifecycleState';
@@ -729,6 +730,7 @@ export function App() {
     workspacePresentation.tabs.find((tab) => tab.id === selectedWorkspaceTab) ?? workspacePresentation.tabs[0];
   const shouldShowSmartContractControl = ['overview', 'smart_contract', 'evidence'].includes(activeWorkspaceTab.id);
   const subscriptionRedemptionTemplate = lifecycleReadModel.subscriptionRedemptionTemplate;
+  const allocationMint = lifecycleReadModel.allocationMint;
   const hasSubscriptionRedemptionTemplateInput = subscriptionRedemptionTemplate.status !== 'needs_parameters';
   const selectedProject = demoProjectFolders.find((project) => project.id === selectedProjectId);
   const activeProjectTitle = selectedProject?.title ?? 'All Projects';
@@ -1101,6 +1103,16 @@ export function App() {
     }));
   }
 
+  function updateAllocationMintParameters(nextParameters: Partial<AllocationMintParameters>) {
+    setLifecycleState((current) => ({
+      ...current,
+      allocationMintParameters: {
+        ...current.allocationMintParameters,
+        ...nextParameters,
+      },
+    }));
+  }
+
   function updateWalletWhitelistTargetWallet(walletAddress: string) {
     const nextTarget = normalizeWalletWhitelistTargetAddress(walletAddress);
     const currentOperationTarget = normalizeWalletWhitelistTargetAddress(walletWhitelistOperationState.targetWalletAddress);
@@ -1120,6 +1132,11 @@ export function App() {
 
   function selectInvestorWalletForWhitelist(walletAddress: string) {
     updateWalletWhitelistTargetWallet(walletAddress);
+    setSelectedWorkspaceTab('smart_contract');
+  }
+
+  function selectInvestorWalletForAllocationMint(walletAddress: string) {
+    updateAllocationMintParameters({ targetWalletAddress: walletAddress });
     setSelectedWorkspaceTab('smart_contract');
   }
 
@@ -1620,7 +1637,7 @@ export function App() {
                     <span role="columnheader">Wallet</span>
                     <span role="columnheader">Registry status</span>
                     <span role="columnheader">Validation</span>
-                    <span role="columnheader">SCP handoff</span>
+                    <span role="columnheader">Handoffs</span>
                   </div>
                   {lifecycleReadModel.investorRegistry.entries.length === 0 ? (
                     <p className="empty-registry">No investor wallets registered yet.</p>
@@ -1632,7 +1649,7 @@ export function App() {
                         <span role="cell">
                           {entry.validationMessages.length > 0 ? entry.validationMessages.join(' ') : 'Valid wallet address'}
                         </span>
-                        <span role="cell">
+                        <span role="cell" className="registry-actions">
                           <button
                             type="button"
                             className="workflow-button"
@@ -1640,6 +1657,14 @@ export function App() {
                             onClick={() => selectInvestorWalletForWhitelist(entry.walletAddress)}
                           >
                             Use for SCP whitelist
+                          </button>
+                          <button
+                            type="button"
+                            className="workflow-button"
+                            disabled={!entry.canUseForAllocationMint}
+                            onClick={() => selectInvestorWalletForAllocationMint(entry.walletAddress)}
+                          >
+                            Use for Allocation / Mint
                           </button>
                         </span>
                       </div>
@@ -1836,6 +1861,91 @@ export function App() {
                   ) : (
                     <p>Redemption parameters are ready for template handoff.</p>
                   )}
+                </div>
+              </section>
+            )}
+
+            {activeWorkspaceTab.id === 'smart_contract' && (
+              <section className="parameter-panel" aria-label="Allocation Mint workspace">
+                <div className="registry-panel-heading">
+                  <div>
+                    <h3>Allocation / Mint readiness</h3>
+                    <p>
+                      Prepare single-investor allocation parameters from Investor Registry and Subscription state. This does
+                      not mint tokens or confirm stablecoin receipt.
+                    </p>
+                  </div>
+                  <span className={`gate-badge ${allocationMint.status === 'ready' ? 'ready' : 'draft'}`}>
+                    {allocationMint.statusLabel}
+                  </span>
+                </div>
+
+                <div className="parameter-grid">
+                  <label htmlFor="allocation-target-wallet">
+                    Allocation target wallet
+                    <select
+                      id="allocation-target-wallet"
+                      value={lifecycleState.allocationMintParameters.targetWalletAddress ?? ''}
+                      onChange={(event) => updateAllocationMintParameters({ targetWalletAddress: event.target.value || undefined })}
+                    >
+                      <option value="">Choose registered investor wallet</option>
+                      {lifecycleReadModel.investorRegistry.entries
+                        .filter((entry) => entry.canUseForAllocationMint)
+                        .map((entry) => (
+                          <option key={entry.id} value={entry.walletAddress}>
+                            {entry.walletAddress}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <label htmlFor="allocation-token-amount">
+                    Token allocation amount
+                    <input
+                      id="allocation-token-amount"
+                      value={lifecycleState.allocationMintParameters.tokenAmount ?? ''}
+                      onChange={(event) => updateAllocationMintParameters({ tokenAmount: event.target.value })}
+                      inputMode="decimal"
+                      placeholder="1000"
+                    />
+                  </label>
+                </div>
+
+                <div className="allocation-context" aria-label="Allocation Mint dependencies">
+                  <article>
+                    <span>Investor Registry</span>
+                    <strong>{lifecycleReadModel.investorRegistry.statusLabel}</strong>
+                    <p>{lifecycleReadModel.investorRegistry.statusDetail}</p>
+                  </article>
+                  <article>
+                    <span>Subscription</span>
+                    <strong>{lifecycleReadModel.subscription.statusLabel}</strong>
+                    <p>{lifecycleReadModel.subscription.statusDetail}</p>
+                  </article>
+                  <article>
+                    <span>Template reference</span>
+                    <strong>
+                      {lifecycleReadModel.subscription.normalizedPermittedStablecoins.length > 0
+                        ? lifecycleReadModel.subscription.normalizedPermittedStablecoins.join(', ')
+                        : 'Stablecoin not set'}
+                    </strong>
+                    <p>Payment per token: {lifecycleState.subscriptionParameters.paymentPerToken ?? 'Not set'}</p>
+                  </article>
+                </div>
+
+                <div className="parameter-status" aria-label="Allocation Mint validation status">
+                  <p>{allocationMint.statusDetail}</p>
+                  {allocationMint.blockingReasons.length > 0 || allocationMint.validationMessages.length > 0 ? (
+                    <ul>
+                      {[...allocationMint.blockingReasons, ...allocationMint.validationMessages]
+                        .filter((message) => message !== allocationMint.statusDetail)
+                        .map((message) => (
+                          <li key={message}>{message}</li>
+                        ))}
+                    </ul>
+                  ) : (
+                    <p>Allocation / Mint parameters are ready for review.</p>
+                  )}
+                  <p>No stablecoin receipt check. No live mint transaction is prepared here.</p>
                 </div>
               </section>
             )}

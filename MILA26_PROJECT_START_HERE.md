@@ -66,19 +66,19 @@ MVP scope does not mean every item is already implemented. It means new coding t
 
 ## Immediate Next Step
 
-Harden the working Subscription/Redemption prototype flow, then plan Allocation/Mint and website/access slices.
+Harden the working Allocation/Mint readiness prototype, then implement the next wallet-signed operation slice only after the review surface remains stable.
 
 The next coding track should add:
 
-- full guided-flow e2e coverage from investor registry through subscription/redemption template handoff.
+- browser/screenshot polish for Investor Registry, Subscription, Redemption, Allocation/Mint readiness, and the Smart Contract tab.
+- Allocation/Mint execution scope that maps the ready parameter state to a wallet-signed Sepolia operation without broadening SCP controls.
 - UX polish for parameter panels, edit states, and validation messages based on browser screenshots.
-- Allocation/Mint scope design from `docs/product/allocation-mint-scope.md` after investor registry and subscription parameters are coherent.
 - persistence/access design so website/login work does not create a second lifecycle state model.
-- website first implementation slice from `docs/product/website-mvp-brief.md`.
+- website/access continuation from `docs/product/website-mvp-brief.md`.
 
 The two-week prototype target is a working local/Sepolia prototype, not a static mockup. Implemented screens must validate inputs, persist state during the session, update dependent tabs/statuses/artifacts, and pass focused tests.
 
-Do not build Allocation/Mint execution before the subscription-redemption template handoff and wallet-signed boundary have e2e coverage.
+Do not build Allocation/Mint execution before the current readiness panel has browser coverage, screenshots, and a wallet-signed operation contract.
 
 ## Files To Read Next
 
@@ -108,6 +108,6 @@ Do not build Allocation/Mint execution before the subscription-redemption templa
 - No production legal, tax, accounting, regulatory, KYC/AML, or audit claims.
 - No durable persistence/evidence storage until the lifecycle state shape is stable.
 - No subscription or redemption transaction execution before the parameter model and template handoff are coherent.
-- No allocation/mint before Investor Registry and subscription parameters are implemented.
+- No allocation/mint execution before Investor Registry, Subscription, and Allocation/Mint readiness parameters are coherent.
 - No per-tab state silos.
 - No broad UI redesign that reduces Engineering Bot readability or moves workflow decisions into the passive right rail.
