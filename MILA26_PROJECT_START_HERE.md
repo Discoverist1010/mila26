@@ -80,6 +80,7 @@ After that, build subscription-redemption template handoff and only then allocat
 - `docs/product/ui-ux-vision.md`
 - `docs/product/mvp-user-journey.md`
 - `docs/product/mvp-screen-flow.md`
+- `docs/product/quality-assurance.md`
 - `docs/architecture/frontend-ux-architecture.md`
 - `docs/architecture/frontend-component-plan.md`
 - `src/domain/workspacePresentation.ts`
