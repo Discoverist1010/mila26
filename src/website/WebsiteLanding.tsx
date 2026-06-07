@@ -86,9 +86,9 @@ export function WebsiteLanding() {
           <p className="eyebrow">AI tokenisation copilot</p>
           <h1>Tokenise an investment product without building the full technical and ops teams first.</h1>
           <p className="website-lede">
-            ZiLiOS is an AI-guided system that helps asset managers to turn their product ideas into tokenised
-            investment products, connecting product requirements to distribution, allowing subscription, redemption and
-            valuation and asset servicing on blockchain in one workflow layer.
+            ZiLiOS is an AI-guided system that helps asset managers turn investment ideas into tokenised offerings: from
+            requirements, distribution to subscriptions, redemptions, valuation, asset servicing, and blockchain
+            execution in one workflow.
           </p>
           <div className="website-actions" aria-label="Website access actions">
             <a className="primary-link" href="/">
