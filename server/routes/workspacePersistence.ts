@@ -1,6 +1,10 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { ZodError } from 'zod';
 import {
+  WorkspaceArtifactsListRequestSchema,
+  WorkspaceArtifactsSaveRequestSchema,
+  WorkspaceEvidenceListRequestSchema,
+  WorkspaceEvidenceSaveRequestSchema,
   WorkspacePersistenceLoadRequestSchema,
   WorkspacePersistenceSaveRequestSchema,
 } from '../contracts/workspacePersistence';
@@ -68,5 +72,69 @@ export const workspacePersistenceRoutes: FastifyPluginAsync<WorkspacePersistence
     }
 
     return reply.send(ok(record));
+  });
+
+  app.post('/workspace/evidence/save', async (request, reply) => {
+    const parsed = WorkspaceEvidenceSaveRequestSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply
+        .code(400)
+        .send(fail('VALIDATION_ERROR', 'Invalid evidence persistence save request.', validationDetails(parsed.error)));
+    }
+
+    try {
+      return reply.send(ok(repository.saveEvidenceRecords(parsed.data)));
+    } catch (error) {
+      if (error instanceof WorkspacePersistenceValidationError) {
+        return reply.code(400).send(fail('VALIDATION_ERROR', error.message, error.details));
+      }
+
+      throw error;
+    }
+  });
+
+  app.post('/workspace/evidence/list', async (request, reply) => {
+    const parsed = WorkspaceEvidenceListRequestSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply
+        .code(400)
+        .send(fail('VALIDATION_ERROR', 'Invalid evidence persistence list request.', validationDetails(parsed.error)));
+    }
+
+    return reply.send(ok(repository.listEvidenceRecords(parsed.data.projectId)));
+  });
+
+  app.post('/workspace/artifacts/save', async (request, reply) => {
+    const parsed = WorkspaceArtifactsSaveRequestSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply
+        .code(400)
+        .send(fail('VALIDATION_ERROR', 'Invalid artifact persistence save request.', validationDetails(parsed.error)));
+    }
+
+    try {
+      return reply.send(ok(repository.saveArtifactRecords(parsed.data)));
+    } catch (error) {
+      if (error instanceof WorkspacePersistenceValidationError) {
+        return reply.code(400).send(fail('VALIDATION_ERROR', error.message, error.details));
+      }
+
+      throw error;
+    }
+  });
+
+  app.post('/workspace/artifacts/list', async (request, reply) => {
+    const parsed = WorkspaceArtifactsListRequestSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return reply
+        .code(400)
+        .send(fail('VALIDATION_ERROR', 'Invalid artifact persistence list request.', validationDetails(parsed.error)));
+    }
+
+    return reply.send(ok(repository.listArtifactRecords(parsed.data.projectId)));
   });
 };

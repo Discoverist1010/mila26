@@ -748,6 +748,154 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Subscription workspace')).toHaveTextContent('Subscription parameters are ready for template handoff.');
   });
 
+  it('saves generated artifacts from the Evidence tab after establishing a workspace snapshot', async () => {
+    const smartContractArtifactSpec = {
+      specId: 'smart-contract-artifact-spec-engineering-brief-1',
+      projectId: 'brief-1',
+      projectName: 'MILA Income Fund',
+      status: 'ready',
+      eventModel: {
+        customEvents: ['ValuationUpdated'],
+      },
+    };
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/prd/engineering-brief')) {
+        return Promise.resolve(createJsonResponse({ ok: true, data: engineeringBrief }));
+      }
+
+      if (url.endsWith('/api/smart-contract/artifact-spec')) {
+        return Promise.resolve(createJsonResponse({ ok: true, data: smartContractArtifactSpec }));
+      }
+
+      if (url.endsWith('/api/smart-contract/artifact')) {
+        return Promise.resolve(
+          createJsonResponse({
+            ok: true,
+            data: {
+              artifactPackage: {
+                artifactId: 'contract-artifact-smart-contract-artifact-spec-engineering-brief-1',
+                specId: smartContractArtifactSpec.specId,
+                projectId: 'brief-1',
+                projectName: 'MILA Income Fund',
+                status: 'generated',
+                sourceModel: {
+                  sourceFiles: [{ path: 'contracts/MILARestrictedIncomeFundToken.preview.sol' }],
+                },
+              },
+              checkResult: {
+                checkId: 'contract-check-smart-contract-artifact-spec-engineering-brief-1',
+                artifactId: 'contract-artifact-smart-contract-artifact-spec-engineering-brief-1',
+                specId: smartContractArtifactSpec.specId,
+                status: 'passed',
+                summary:
+                  'Deterministic spec-consistency/static-preview checking only. Not a production security audit, compiler result, deployment approval, wallet-signing proof, or legal/compliance opinion.',
+              },
+              evidenceLite: {
+                evidenceId: 'evidence-lite-smart-contract-artifact-spec-engineering-brief-1',
+                artifactId: 'contract-artifact-smart-contract-artifact-spec-engineering-brief-1',
+                specId: smartContractArtifactSpec.specId,
+                checkId: 'contract-check-smart-contract-artifact-spec-engineering-brief-1',
+                status: 'ready',
+                evidenceItems: [{ id: 'evidence-spec-profile' }],
+                eventEvidenceRefs: [{ eventName: 'ValuationUpdated' }],
+              },
+            },
+          }),
+        );
+      }
+
+      if (url.endsWith('/api/workspace/save')) {
+        expect(init?.body).toEqual(expect.stringContaining('"projectId":"usequities"'));
+        return Promise.resolve(
+          createJsonResponse({
+            ok: true,
+            data: {
+              project: {
+                id: 'usequities',
+                name: 'Alpha Income Fund I',
+                investorCap: 50,
+                createdAtIso: '2026-06-07T00:00:00.000Z',
+                updatedAtIso: '2026-06-07T00:00:00.000Z',
+              },
+              snapshot: {
+                id: 'usequities-snapshot-1',
+                projectId: 'usequities',
+                version: 1,
+                source: 'user_action',
+                lifecycleState: {
+                  investorRegistryEntries: [],
+                  subscriptionParameters: { permittedStablecoins: [] },
+                  redemptionParameters: {},
+                  maturityParameters: {},
+                  allocationMintParameters: {},
+                },
+                investorWalletCount: 0,
+                createdAtIso: '2026-06-07T00:00:00.000Z',
+              },
+              investorWallets: [],
+            },
+          }),
+        );
+      }
+
+      if (url.endsWith('/api/workspace/artifacts/save')) {
+        const body = JSON.parse(String(init?.body));
+        expect(body.projectId).toBe('usequities');
+        expect(body.records.map((record: { artifactType: string }) => record.artifactType)).toEqual([
+          'requirement_brief',
+          'engineering_brief',
+          'smart_contract_spec',
+          'artifact_preview',
+          'check_result',
+          'evidence_lite',
+        ]);
+        expect(JSON.stringify(body)).not.toMatch(/privateKey|signedPayload/i);
+
+        return Promise.resolve(
+          createJsonResponse({
+            ok: true,
+            data: {
+              projectId: 'usequities',
+              latestSnapshotVersion: 1,
+              artifactRecords: body.records.map((record: { artifactType: string; artifactPayload: unknown }, index: number) => ({
+                id: `artifact-record-${index + 1}`,
+                projectId: 'usequities',
+                artifactType: record.artifactType,
+                artifactId: `artifact-${index + 1}`,
+                artifactStatus: 'generated',
+                lifecycleSnapshotVersion: 1,
+                lifecycleContextStatus: 'current_context',
+                contentHash: `${index}`.padStart(64, 'a'),
+                artifactPayload: record.artifactPayload,
+                createdAtIso: '2026-06-07T00:00:00.000Z',
+                updatedAtIso: '2026-06-07T00:00:00.000Z',
+              })),
+            },
+          }),
+        );
+      }
+
+      return Promise.resolve(createJsonResponse({ ok: false, error: { code: 'UNEXPECTED', message: 'Unexpected route.' } }, { status: 400 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    await completeSmartContractPreparation();
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Evidence/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save generated artifacts' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Evidence Vault workspace')).toHaveTextContent('6 generated artifact record(s) saved.');
+    });
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(
+      expect.arrayContaining([
+        'http://127.0.0.1:5174/api/workspace/save',
+        'http://127.0.0.1:5174/api/workspace/artifacts/save',
+      ]),
+    );
+  });
+
   it('completes the golden lifecycle flow into wallet-intent review and locked operations without execution claims', async () => {
     let resolveArtifactSpec: (value: Response) => void = () => undefined;
     const smartContractArtifactSpec = {

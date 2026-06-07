@@ -1,4 +1,11 @@
 import { z } from 'zod';
+import { EngineeringBriefRequirementBriefSchema, EngineeringBriefSchema } from './engineeringBrief';
+import {
+  SmartContractArtifactCheckResultSchema,
+  SmartContractArtifactPackageSchema,
+  SmartContractEvidenceLiteSchema,
+} from './smartContractArtifact';
+import { SmartContractArtifactSpecSchema } from './smartContractArtifactSpec';
 
 export const WorkspaceProjectIdSchema = z
   .string()
@@ -77,9 +84,145 @@ export const WorkspacePersistenceLoadRequestSchema = z
   })
   .strict();
 
+const EvmTransactionHashSchema = z.string().trim().regex(/^0x[0-9a-fA-F]{64}$/, 'Transaction hash must be a 32-byte hex string.');
+const EvmAddressSchema = z.string().trim().regex(/^0x[0-9a-fA-F]{40}$/, 'Wallet or contract address must be a 20-byte hex string.');
+
+export const WorkspaceEvidenceRecordInputSchema = z
+  .object({
+    evidenceType: z.enum(['deployment', 'record_nav', 'wallet_whitelist', 'allocation_mint']),
+    sourcePersistence: z.literal('local_session_only'),
+    sourceAttemptId: z.string().trim().min(1).max(160).optional(),
+    lifecycleSnapshotVersion: z.number().int().positive().optional(),
+    status: z.enum(['submitted', 'confirmed', 'failed']),
+    chainId: z.literal(11155111),
+    networkName: z.literal('Sepolia'),
+    transactionHash: EvmTransactionHashSchema,
+    transactionHashSource: z.literal('provider_returned'),
+    receiptSource: z.enum(['provider_receipt', 'absent']),
+    receiptStatus: z.enum(['pending', 'success', 'failed']).optional(),
+    contractAddress: EvmAddressSchema.optional(),
+    contractAddressSource: z.enum(['receipt_returned', 'absent']),
+    eventEvidenceSource: z.enum(['decoded_from_receipt', 'receipt_confirmed', 'absent']).default('absent'),
+    eventName: z.enum(['ValuationUpdated', 'WalletWhitelisted', 'AllocationMinted']).optional(),
+    targetWalletAddress: EvmAddressSchema.optional(),
+    valuation: z.string().trim().min(1).max(80).optional(),
+    valuationReference: z.string().trim().min(1).max(160).optional(),
+    tokenAmount: z.string().trim().min(1).max(80).optional(),
+    tokenAmountUnits: z.string().trim().min(1).max(120).optional(),
+    artifactPackageId: z.string().trim().min(1).max(160).optional(),
+    compileCheckId: z.string().trim().min(1).max(160).optional(),
+  })
+  .strict()
+  .superRefine((record, ctx) => {
+    if (record.status === 'confirmed' && record.receiptStatus !== 'success') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['receiptStatus'],
+        message: 'Confirmed evidence requires a successful provider receipt.',
+      });
+    }
+
+    if (record.contractAddress && record.contractAddressSource !== 'receipt_returned') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['contractAddressSource'],
+        message: 'Contract address can only be stored when it is receipt-returned.',
+      });
+    }
+  });
+
+export const WorkspaceEvidenceSaveRequestSchema = z
+  .object({
+    projectId: WorkspaceProjectIdSchema,
+    records: z.array(WorkspaceEvidenceRecordInputSchema).min(1).max(20),
+  })
+  .strict();
+
+export const WorkspaceEvidenceListRequestSchema = z
+  .object({
+    projectId: WorkspaceProjectIdSchema,
+  })
+  .strict();
+
+const RequirementBriefArtifactRecordSchema = z
+  .object({
+    artifactType: z.literal('requirement_brief'),
+    artifactPayload: EngineeringBriefRequirementBriefSchema,
+    lifecycleSnapshotVersion: z.number().int().positive().optional(),
+  })
+  .strict();
+
+const EngineeringBriefArtifactRecordSchema = z
+  .object({
+    artifactType: z.literal('engineering_brief'),
+    artifactPayload: EngineeringBriefSchema,
+    lifecycleSnapshotVersion: z.number().int().positive().optional(),
+  })
+  .strict();
+
+const SmartContractSpecArtifactRecordSchema = z
+  .object({
+    artifactType: z.literal('smart_contract_spec'),
+    artifactPayload: SmartContractArtifactSpecSchema,
+    lifecycleSnapshotVersion: z.number().int().positive().optional(),
+  })
+  .strict();
+
+const ArtifactPreviewRecordSchema = z
+  .object({
+    artifactType: z.literal('artifact_preview'),
+    artifactPayload: SmartContractArtifactPackageSchema,
+    lifecycleSnapshotVersion: z.number().int().positive().optional(),
+  })
+  .strict();
+
+const CheckResultArtifactRecordSchema = z
+  .object({
+    artifactType: z.literal('check_result'),
+    artifactPayload: SmartContractArtifactCheckResultSchema,
+    lifecycleSnapshotVersion: z.number().int().positive().optional(),
+  })
+  .strict();
+
+const EvidenceLiteArtifactRecordSchema = z
+  .object({
+    artifactType: z.literal('evidence_lite'),
+    artifactPayload: SmartContractEvidenceLiteSchema,
+    lifecycleSnapshotVersion: z.number().int().positive().optional(),
+  })
+  .strict();
+
+export const WorkspaceArtifactRecordInputSchema = z.discriminatedUnion('artifactType', [
+  RequirementBriefArtifactRecordSchema,
+  EngineeringBriefArtifactRecordSchema,
+  SmartContractSpecArtifactRecordSchema,
+  ArtifactPreviewRecordSchema,
+  CheckResultArtifactRecordSchema,
+  EvidenceLiteArtifactRecordSchema,
+]);
+
+export const WorkspaceArtifactsSaveRequestSchema = z
+  .object({
+    projectId: WorkspaceProjectIdSchema,
+    records: z.array(WorkspaceArtifactRecordInputSchema).min(1).max(10),
+  })
+  .strict();
+
+export const WorkspaceArtifactsListRequestSchema = z
+  .object({
+    projectId: WorkspaceProjectIdSchema,
+  })
+  .strict();
+
 export type Mila26LifecycleStatePersistence = z.infer<typeof Mila26LifecycleStatePersistenceSchema>;
 export type WorkspacePersistenceSaveRequest = z.infer<typeof WorkspacePersistenceSaveRequestSchema>;
 export type WorkspacePersistenceLoadRequest = z.infer<typeof WorkspacePersistenceLoadRequestSchema>;
+export type WorkspaceEvidenceRecordInput = z.infer<typeof WorkspaceEvidenceRecordInputSchema>;
+export type WorkspaceEvidenceSaveRequest = z.infer<typeof WorkspaceEvidenceSaveRequestSchema>;
+export type WorkspaceEvidenceListRequest = z.infer<typeof WorkspaceEvidenceListRequestSchema>;
+export type WorkspaceArtifactRecordInput = z.infer<typeof WorkspaceArtifactRecordInputSchema>;
+export type WorkspaceArtifactsSaveRequest = z.infer<typeof WorkspaceArtifactsSaveRequestSchema>;
+export type WorkspaceArtifactsListRequest = z.infer<typeof WorkspaceArtifactsListRequestSchema>;
 
 export type WorkspacePersistenceProject = {
   id: string;
@@ -116,4 +259,40 @@ export type WorkspacePersistenceRecord = {
   project: WorkspacePersistenceProject;
   snapshot: WorkspacePersistenceSnapshot;
   investorWallets: WorkspacePersistenceInvestorWallet[];
+};
+
+export type WorkspaceEvidenceRecord = WorkspaceEvidenceRecordInput & {
+  id: string;
+  projectId: string;
+  persistence: 'durable';
+  lifecycleSnapshotVersion: number;
+  lifecycleContextStatus: 'current_context' | 'historical_context';
+  createdAtIso: string;
+  updatedAtIso: string;
+};
+
+export type WorkspaceArtifactRecord = {
+  id: string;
+  projectId: string;
+  artifactType: WorkspaceArtifactRecordInput['artifactType'];
+  artifactId: string;
+  artifactStatus: string;
+  lifecycleSnapshotVersion: number;
+  lifecycleContextStatus: 'current_context' | 'stale_context';
+  contentHash: string;
+  artifactPayload: WorkspaceArtifactRecordInput['artifactPayload'];
+  createdAtIso: string;
+  updatedAtIso: string;
+};
+
+export type WorkspaceEvidencePersistenceRecord = {
+  projectId: string;
+  latestSnapshotVersion: number;
+  evidenceRecords: WorkspaceEvidenceRecord[];
+};
+
+export type WorkspaceArtifactPersistenceRecord = {
+  projectId: string;
+  latestSnapshotVersion: number;
+  artifactRecords: WorkspaceArtifactRecord[];
 };

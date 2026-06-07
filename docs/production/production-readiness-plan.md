@@ -67,13 +67,15 @@ Already implemented or documented:
 - Redemption tab parameter capture with redemption window/date, payout stablecoin, payout per token, redemption wallet, and delay unit/duration;
 - shared lifecycle validation and subscription-redemption template handoff status across the Engineering Bot, Product Vault, lifecycle snapshot, and tabs;
 - backend SQLite workspace snapshot persistence for project/lifecycle state and Investor Registry rows;
+- durable Evidence Vault foundation for provider-derived deployment/operation evidence records;
+- generated artifact persistence with lifecycle snapshot context and stale/current labels;
 - reviewer system and triggered review lenses.
 
 Immediate implementation gap:
 
 - Browser/screenshot hardening remains part of the validation loop for every new working path.
-- Durable Evidence Vault storage.
-- Generated artifact persistence.
+- Live Sepolia readiness using user-provided public addresses and optional RPC configuration.
+- Hosted/beta storage decision and backup/audit-log policy.
 - Website/login path.
 - Production readiness controls.
 
@@ -212,8 +214,8 @@ Owner lens: State / Memory / Performance Lens, Security Reviewer.
 Must deliver before beta:
 
 - decision on local SQLite versus hosted database for beta;
-- durable Evidence Vault storage with explicit provenance labels;
-- generated artifact persistence with invalidation rules;
+- live Sepolia readiness with public test addresses and optional RPC;
+- hosted/beta storage decision once local SQLite prototype shape is proven;
 - retention/deletion boundary;
 - evidence provenance model;
 - local-session versus durable status labeling;

@@ -1,15 +1,17 @@
+import { useEffect } from 'react';
+
 const domainItems = [
   {
     title: 'AI turns intent into a buildable workflow',
     proof: 'Engineering Bot, Requirement Brief, Engineering Brief, and cross-stage next actions.',
     description:
-      'The asset manager explains the product once. MILA26 structures the lifecycle questions, parameters, documents, and next steps.',
+      'The asset manager explains the product once. ZiLiOS structures the lifecycle questions, parameters, documents, and next steps.',
   },
   {
     title: 'Blockchain actions stay gated and wallet-signed',
     proof: 'MetaMask/EIP-1193, Sepolia-only checks, deployment evidence, NAV, whitelist, and Allocation/Mint operations.',
     description:
-      'Users can prove the testnet path without giving MILA26 private keys or accepting fake transaction evidence.',
+      'Users can prove the testnet path without giving ZiLiOS private keys or accepting fake transaction evidence.',
   },
   {
     title: 'Distribution and servicing are designed in from the start',
@@ -42,7 +44,7 @@ const userMeaningItems = [
   {
     title: 'Less coordination burden',
     description:
-      'MILA26 brings AI workflow support, blockchain execution planning, and servicing operations into one workspace so fewer details fall between teams.',
+      'ZiLiOS brings AI workflow support, blockchain execution planning, and servicing operations into one workspace so fewer details fall between teams.',
   },
   {
     title: 'Safer technical path',
@@ -69,25 +71,29 @@ const qaItems = [
 ];
 
 export function WebsiteLanding() {
+  useEffect(() => {
+    document.title = 'ZiLiOS';
+  }, []);
+
   return (
-    <main className="website-page" aria-label="MILA26 company and product website">
+    <main className="website-page" aria-label="ZiLiOS company and product website">
       <section className="website-hero">
         <div className="website-hero-copy">
-          <a className="website-brand" href="/site" aria-label="MILA26 home">
-            <span>M26</span>
-            MILA26
+          <a className="website-brand" href="/site" aria-label="ZiLiOS home">
+            <img src="/assets/brand/kangle-ai-logo.png" alt="" aria-hidden="true" />
+            ZiLiOS
           </a>
           <p className="eyebrow">AI tokenisation copilot</p>
           <h1>Tokenise an investment product without building the full technical team first.</h1>
           <p className="website-lede">
-            MILA26 helps asset managers turn a product idea into requirements, investor-wallet rules, smart-contract
+            ZiLiOS helps asset managers turn a product idea into requirements, investor-wallet rules, smart-contract
             parameters, Sepolia wallet actions, servicing workflows, and evidence in one guided workspace.
           </p>
           <div className="website-actions" aria-label="Website access actions">
             <a className="primary-link" href="/">
               Open app workspace
             </a>
-            <a className="secondary-link" href="mailto:hello@mila26.ai?subject=MILA26%20beta%20access">
+            <a className="secondary-link" href="mailto:hello@mila26.ai?subject=ZiLiOS%20beta%20access">
               Request beta access
             </a>
           </div>
@@ -99,18 +105,18 @@ export function WebsiteLanding() {
           </div>
         </div>
         <figure className="website-product-preview">
-          <img src="/mila26-product-preview.png" alt="MILA26 lifecycle workspace showing redemption parameters and template handoff" />
+          <img src="/mila26-product-preview.png" alt="ZiLiOS lifecycle workspace showing redemption parameters and template handoff" />
           <figcaption>Working lifecycle workspace preview</figcaption>
         </figure>
       </section>
 
-      <section className="website-section" aria-label="What MILA26 means for users">
+      <section className="website-section" aria-label="What ZiLiOS means for users">
         <div>
           <p className="eyebrow">User outcome</p>
           <h2>Less uncertainty between product idea and technical proof.</h2>
           <p className="website-section-copy">
             Tokenising a product creates practical questions about code safety, effort reuse, investor communications,
-            redemption mechanics, and review evidence. MILA26 makes those questions visible before they become expensive.
+            redemption mechanics, and review evidence. ZiLiOS makes those questions visible before they become expensive.
           </p>
         </div>
         <div className="website-card-grid">
@@ -129,7 +135,7 @@ export function WebsiteLanding() {
           <h2>AI, blockchain, and post-trade operations stay connected.</h2>
           <p className="website-section-copy">
             A tokenised product usually needs blockchain engineering, investor distribution operations, post-trade
-            servicing, and AI-enabled workflow support. MILA26 connects those workstreams so the asset manager can focus
+            servicing, and AI-enabled workflow support. ZiLiOS connects those workstreams so the asset manager can focus
             on investment decisions.
           </p>
         </div>
@@ -168,22 +174,22 @@ export function WebsiteLanding() {
           <article>
             <strong>Current MVP boundary</strong>
             <p>
-              The app runs as a working local/Sepolia prototype. Wallet and operation evidence is clearly labelled as
-              local-session-only until durable storage is implemented.
+              The app runs as a working local/Sepolia prototype. Durable evidence and generated artifacts now persist
+              through the backend; active wallet state remains local-session-only.
             </p>
           </article>
           <article>
             <strong>Persistence decision</strong>
             <p>
-              Project, lifecycle, investor registry, artifact, and evidence records should move behind a backend storage
-              boundary first, with SQLite as the local MVP starting point.
+              Project, lifecycle, investor registry, artifact, and evidence records sit behind a SQLite-backed local MVP
+              storage boundary, so the app can evolve without browser-state lock-in.
             </p>
           </article>
           <article>
             <strong>User meaning</strong>
             <p>
-              Requirements, parameters, smart-contract artifacts, and evidence can become a reviewable project record
-              later, instead of remaining screenshots or scattered demo notes.
+              Requirements, parameters, smart-contract artifacts, and provider-derived evidence can become a reviewable
+              project record, instead of remaining screenshots or scattered demo notes.
             </p>
           </article>
         </div>
@@ -194,7 +200,7 @@ export function WebsiteLanding() {
           <p className="eyebrow">Quality Assurance</p>
           <h2>Built to reduce brittle code and unsupported claims.</h2>
           <p className="website-section-copy">
-            MILA26 uses review gates and drift checks because asset managers, investors, and auditors need to know what
+            ZiLiOS uses review gates and drift checks because asset managers, investors, and auditors need to know what
             is implemented, what is evidence-backed, and what still requires approval.
           </p>
         </div>
@@ -215,7 +221,7 @@ export function WebsiteLanding() {
           </p>
         </div>
         <a className="primary-link" href="/">
-          Continue to MILA26 app
+          Continue to ZiLiOS app
         </a>
       </section>
     </main>

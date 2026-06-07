@@ -3,23 +3,24 @@ import { expect, test } from '@playwright/test';
 test('website intro routes to app access without overclaiming production readiness', async ({ page }) => {
   await page.goto('/site');
 
-  await expect(page.getByLabel('MILA26 company and product website')).toBeVisible();
+  await expect(page).toHaveTitle('ZiLiOS');
+  await expect(page.getByLabel('ZiLiOS company and product website')).toBeVisible();
   await expect(
     page.getByRole('heading', {
       name: /Tokenise an investment product without building the full technical team first/i,
     }),
   ).toBeVisible();
-  await expect(page.getByRole('img', { name: /MILA26 lifecycle workspace/i })).toBeVisible();
+  await expect(page.getByRole('img', { name: /ZiLiOS lifecycle workspace/i })).toBeVisible();
   await expect(page.getByText('Controlled MVP access. Ethereum Sepolia/testnet only. User wallet signs.')).toBeVisible();
-  await expect(page.getByLabel('What MILA26 means for users')).toContainText('Less throwaway effort');
-  await expect(page.getByLabel('What MILA26 means for users')).toContainText('Clearer proof for stakeholders');
+  await expect(page.getByLabel('What ZiLiOS means for users')).toContainText('Less throwaway effort');
+  await expect(page.getByLabel('What ZiLiOS means for users')).toContainText('Clearer proof for stakeholders');
   await expect(page.getByLabel('Three domain workstreams')).toContainText('AI turns intent into a buildable workflow');
   await expect(page.getByLabel('Three domain workstreams')).toContainText('Blockchain actions stay gated and wallet-signed');
   await expect(page.getByLabel('Three domain workstreams')).toContainText('Distribution and servicing are designed in from the start');
   await expect(page.getByLabel('Product overview')).toContainText('Keep distribution tied to named wallet rules');
   await expect(page.getByLabel('Product overview')).toContainText('provider-returned hashes');
-  await expect(page.getByLabel('Persistence and evidence direction')).toContainText('local-session-only');
-  await expect(page.getByLabel('Persistence and evidence direction')).toContainText('SQLite as the local MVP starting point');
+  await expect(page.getByLabel('Persistence and evidence direction')).toContainText('Durable evidence');
+  await expect(page.getByLabel('Persistence and evidence direction')).toContainText('SQLite-backed local MVP storage boundary');
   await expect(page.getByLabel('Quality assurance')).toContainText('reduce brittle implementation risk');
   await expect(page.getByLabel('Access path')).toContainText('source of truth');
   await expect(page.getByRole('link', { name: 'Open app workspace' })).toHaveAttribute('href', '/');

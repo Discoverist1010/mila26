@@ -3,7 +3,14 @@ import { askBlockchainEngineer } from './api/blockchainEngineerChat';
 import { generateEngineeringBrief } from './api/engineeringBrief';
 import { generateSmartContractArtifact } from './api/smartContractArtifact';
 import { generateSmartContractArtifactSpec } from './api/smartContractArtifactSpec';
-import { loadLatestWorkspaceSnapshot, saveWorkspaceSnapshot } from './api/workspacePersistence';
+import {
+  listWorkspaceArtifactRecords,
+  listWorkspaceEvidenceRecords,
+  loadLatestWorkspaceSnapshot,
+  saveWorkspaceArtifactRecords,
+  saveWorkspaceEvidenceRecords,
+  saveWorkspaceSnapshot,
+} from './api/workspacePersistence';
 import {
   answerAsBlockchainEngineer,
   createRequirementBrief,
@@ -125,6 +132,12 @@ import type {
 } from '../server/contracts/smartContractArtifact';
 import type { SmartContractArtifactSpec } from '../server/contracts/smartContractArtifactSpec';
 import type { SmartContractCompileTestResult } from '../server/contracts/smartContractCompileCheck';
+import type {
+  WorkspaceArtifactRecord,
+  WorkspaceArtifactRecordInput,
+  WorkspaceEvidenceRecord,
+  WorkspaceEvidenceRecordInput,
+} from '../server/contracts/workspacePersistence';
 import type { FundFacts, RequirementBrief } from './domain/schemas';
 
 const starterFacts: FundFacts = {
@@ -216,6 +229,11 @@ type GeneratedArtifactCard = {
 };
 
 type WorkspacePersistenceStatus = {
+  status: 'idle' | 'saving' | 'loading' | 'saved' | 'loaded' | 'error';
+  message: string;
+};
+
+type DurableRecordStatus = {
   status: 'idle' | 'saving' | 'loading' | 'saved' | 'loaded' | 'error';
   message: string;
 };
@@ -500,6 +518,16 @@ export function App() {
     status: 'idle',
     message: 'Current session only until saved.',
   });
+  const [evidenceVaultStatus, setEvidenceVaultStatus] = useState<DurableRecordStatus>({
+    status: 'idle',
+    message: 'Durable Evidence Vault is empty until provider-derived records are saved.',
+  });
+  const [artifactVaultStatus, setArtifactVaultStatus] = useState<DurableRecordStatus>({
+    status: 'idle',
+    message: 'Generated artifacts are in session until saved.',
+  });
+  const [durableEvidenceRecords, setDurableEvidenceRecords] = useState<WorkspaceEvidenceRecord[]>([]);
+  const [durableArtifactRecords, setDurableArtifactRecords] = useState<WorkspaceArtifactRecord[]>([]);
   const [permittedStablecoinsInput, setPermittedStablecoinsInput] = useState('');
   const [investorRegistryError, setInvestorRegistryError] = useState<string | undefined>();
   const [smartContractGenerationStatus, setSmartContractGenerationStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -1272,12 +1300,23 @@ export function App() {
   }
 
   async function saveWorkspaceToBackend() {
+    const result = await saveWorkspaceSnapshotForPersistence();
+
+    if (result) {
+      setWorkspacePersistenceStatus({
+        status: 'saved',
+        message: `Snapshot v${result.snapshot.version} saved. Evidence remains local-session only.`,
+      });
+    }
+  }
+
+  async function saveWorkspaceSnapshotForPersistence() {
     if (selectedProjectId === 'workspace') {
       setWorkspacePersistenceStatus({
         status: 'error',
         message: 'Choose a project before saving a workspace snapshot.',
       });
-      return;
+      return undefined;
     }
 
     setWorkspacePersistenceStatus({ status: 'saving', message: 'Saving workspace snapshot...' });
@@ -1289,14 +1328,11 @@ export function App() {
     });
 
     if (result.ok) {
-      setWorkspacePersistenceStatus({
-        status: 'saved',
-        message: `Snapshot v${result.data.snapshot.version} saved. Evidence remains local-session only.`,
-      });
-      return;
+      return result.data;
     }
 
     setWorkspacePersistenceStatus({ status: 'error', message: result.message });
+    return undefined;
   }
 
   async function loadLatestWorkspaceFromBackend() {
@@ -1326,6 +1362,262 @@ export function App() {
     }
 
     setWorkspacePersistenceStatus({ status: 'error', message: result.message });
+  }
+
+  function buildEvidenceRecords(lifecycleSnapshotVersion: number): WorkspaceEvidenceRecordInput[] {
+    const records: WorkspaceEvidenceRecordInput[] = [];
+
+    if (deploymentEvidenceReadModel.transactionHash) {
+      records.push({
+        evidenceType: 'deployment',
+        sourcePersistence: 'local_session_only',
+        sourceAttemptId: deploymentEvidenceReadModel.sourceAttemptId,
+        lifecycleSnapshotVersion,
+        status: deploymentEvidenceReadModel.status === 'confirmed' ? 'confirmed' : 'submitted',
+        chainId: deploymentEvidenceReadModel.chainId,
+        networkName: deploymentEvidenceReadModel.networkName,
+        transactionHash: deploymentEvidenceReadModel.transactionHash,
+        transactionHashSource: 'provider_returned',
+        receiptSource: deploymentEvidenceReadModel.receiptStatus ? 'provider_receipt' : 'absent',
+        receiptStatus: deploymentEvidenceReadModel.receiptStatus,
+        contractAddress: deploymentEvidenceReadModel.contractAddress,
+        contractAddressSource: deploymentEvidenceReadModel.contractAddressSource,
+        eventEvidenceSource: 'absent',
+        artifactPackageId: smartContractArtifactPackage?.artifactId,
+        compileCheckId: smartContractCompileTestResult?.compileCheckId,
+      });
+    }
+
+    if (recordNavOperationReadModel.operationTransactionHash) {
+      records.push({
+        evidenceType: 'record_nav',
+        sourcePersistence: 'local_session_only',
+        sourceAttemptId: recordNavOperationReadModel.sourceAttemptId,
+        lifecycleSnapshotVersion,
+        status: recordNavOperationReadModel.operationStatus === 'confirmed' ? 'confirmed' : 'submitted',
+        chainId: recordNavOperationReadModel.chainId,
+        networkName: recordNavOperationReadModel.networkName,
+        transactionHash: recordNavOperationReadModel.operationTransactionHash,
+        transactionHashSource: 'provider_returned',
+        receiptSource: recordNavOperationReadModel.operationReceiptSource,
+        receiptStatus: recordNavOperationReadModel.operationReceiptStatus,
+        contractAddress: recordNavOperationReadModel.contractAddress,
+        contractAddressSource: recordNavOperationReadModel.contractAddress ? 'receipt_returned' : 'absent',
+        eventEvidenceSource: recordNavOperationReadModel.eventEvidenceSource,
+        eventName: 'ValuationUpdated',
+        valuation: recordNavOperationReadModel.valuation,
+        valuationReference: recordNavOperationReadModel.valuationReference,
+      });
+    }
+
+    if (walletWhitelistOperationReadModel.operationTransactionHash) {
+      records.push({
+        evidenceType: 'wallet_whitelist',
+        sourcePersistence: 'local_session_only',
+        sourceAttemptId: walletWhitelistOperationReadModel.sourceAttemptId,
+        lifecycleSnapshotVersion,
+        status: walletWhitelistOperationReadModel.operationStatus === 'confirmed' ? 'confirmed' : 'submitted',
+        chainId: walletWhitelistOperationReadModel.chainId,
+        networkName: walletWhitelistOperationReadModel.networkName,
+        transactionHash: walletWhitelistOperationReadModel.operationTransactionHash,
+        transactionHashSource: 'provider_returned',
+        receiptSource: walletWhitelistOperationReadModel.operationReceiptSource,
+        receiptStatus: walletWhitelistOperationReadModel.operationReceiptStatus,
+        contractAddress: walletWhitelistOperationReadModel.contractAddress,
+        contractAddressSource: walletWhitelistOperationReadModel.contractAddress ? 'receipt_returned' : 'absent',
+        eventEvidenceSource:
+          walletWhitelistOperationReadModel.eventEvidenceStatus === 'not_available'
+            ? 'absent'
+            : walletWhitelistOperationReadModel.eventEvidenceStatus,
+        eventName: 'WalletWhitelisted',
+        targetWalletAddress: walletWhitelistOperationReadModel.targetWalletAddress,
+      });
+    }
+
+    if (walletAllocationMintOperationReadModel.operationTransactionHash) {
+      records.push({
+        evidenceType: 'allocation_mint',
+        sourcePersistence: 'local_session_only',
+        sourceAttemptId: walletAllocationMintOperationReadModel.sourceAttemptId,
+        lifecycleSnapshotVersion,
+        status: walletAllocationMintOperationReadModel.operationStatus === 'confirmed' ? 'confirmed' : 'submitted',
+        chainId: walletAllocationMintOperationReadModel.chainId,
+        networkName: walletAllocationMintOperationReadModel.networkName,
+        transactionHash: walletAllocationMintOperationReadModel.operationTransactionHash,
+        transactionHashSource: 'provider_returned',
+        receiptSource: walletAllocationMintOperationReadModel.operationReceiptSource,
+        receiptStatus: walletAllocationMintOperationReadModel.operationReceiptStatus,
+        contractAddress: walletAllocationMintOperationReadModel.contractAddress,
+        contractAddressSource: walletAllocationMintOperationReadModel.contractAddress ? 'receipt_returned' : 'absent',
+        eventEvidenceSource:
+          walletAllocationMintOperationReadModel.eventEvidenceStatus === 'not_available'
+            ? 'absent'
+            : walletAllocationMintOperationReadModel.eventEvidenceStatus,
+        eventName: 'AllocationMinted',
+        targetWalletAddress: walletAllocationMintOperationReadModel.targetWalletAddress,
+        tokenAmount: walletAllocationMintOperationReadModel.tokenAmount,
+        tokenAmountUnits: walletAllocationMintOperationReadModel.tokenAmountUnits,
+      });
+    }
+
+    return records;
+  }
+
+  function buildArtifactRecords(lifecycleSnapshotVersion: number): WorkspaceArtifactRecordInput[] {
+    const records: WorkspaceArtifactRecordInput[] = [];
+
+    if (approvedRequirementBriefContract) {
+      records.push({
+        artifactType: 'requirement_brief',
+        artifactPayload: approvedRequirementBriefContract,
+        lifecycleSnapshotVersion,
+      });
+    }
+    if (engineeringBrief) {
+      records.push({
+        artifactType: 'engineering_brief',
+        artifactPayload: engineeringBrief,
+        lifecycleSnapshotVersion,
+      });
+    }
+    if (smartContractArtifactSpec) {
+      records.push({
+        artifactType: 'smart_contract_spec',
+        artifactPayload: smartContractArtifactSpec,
+        lifecycleSnapshotVersion,
+      });
+    }
+    if (smartContractArtifactPackage) {
+      records.push({
+        artifactType: 'artifact_preview',
+        artifactPayload: smartContractArtifactPackage,
+        lifecycleSnapshotVersion,
+      });
+    }
+    if (smartContractCheckResult) {
+      records.push({
+        artifactType: 'check_result',
+        artifactPayload: smartContractCheckResult,
+        lifecycleSnapshotVersion,
+      });
+    }
+    if (smartContractEvidenceLite) {
+      records.push({
+        artifactType: 'evidence_lite',
+        artifactPayload: smartContractEvidenceLite,
+        lifecycleSnapshotVersion,
+      });
+    }
+
+    return records;
+  }
+
+  async function saveEvidenceVaultRecords() {
+    const workspaceRecord = await saveWorkspaceSnapshotForPersistence();
+    if (!workspaceRecord) {
+      setEvidenceVaultStatus({ status: 'error', message: 'Save the workspace snapshot before storing evidence.' });
+      return;
+    }
+
+    const records = buildEvidenceRecords(workspaceRecord.snapshot.version);
+    if (records.length === 0) {
+      setEvidenceVaultStatus({
+        status: 'error',
+        message: 'No provider-derived transaction evidence is available to store yet.',
+      });
+      return;
+    }
+
+    setEvidenceVaultStatus({ status: 'saving', message: 'Saving durable evidence records...' });
+    const result = await saveWorkspaceEvidenceRecords({
+      projectId: workspaceRecord.project.id,
+      records,
+    });
+
+    if (result.ok) {
+      setDurableEvidenceRecords(result.data.evidenceRecords);
+      setEvidenceVaultStatus({
+        status: 'saved',
+        message: `${result.data.evidenceRecords.length} durable evidence record(s) saved.`,
+      });
+      return;
+    }
+
+    setEvidenceVaultStatus({ status: 'error', message: result.message });
+  }
+
+  async function loadEvidenceVaultRecords() {
+    if (selectedProjectId === 'workspace') {
+      setEvidenceVaultStatus({ status: 'error', message: 'Choose a project before loading durable evidence.' });
+      return;
+    }
+
+    setEvidenceVaultStatus({ status: 'loading', message: 'Loading durable evidence records...' });
+    const result = await listWorkspaceEvidenceRecords({ projectId: selectedProjectId });
+    if (result.ok) {
+      setDurableEvidenceRecords(result.data.evidenceRecords);
+      setEvidenceVaultStatus({
+        status: 'loaded',
+        message: `${result.data.evidenceRecords.length} durable evidence record(s) loaded.`,
+      });
+      return;
+    }
+
+    setEvidenceVaultStatus({ status: 'error', message: result.message });
+  }
+
+  async function saveGeneratedArtifactRecords() {
+    const workspaceRecord = await saveWorkspaceSnapshotForPersistence();
+    if (!workspaceRecord) {
+      setArtifactVaultStatus({ status: 'error', message: 'Save the workspace snapshot before storing artifacts.' });
+      return;
+    }
+
+    const records = buildArtifactRecords(workspaceRecord.snapshot.version);
+    if (records.length === 0) {
+      setArtifactVaultStatus({
+        status: 'error',
+        message: 'No generated artifacts are available to store yet.',
+      });
+      return;
+    }
+
+    setArtifactVaultStatus({ status: 'saving', message: 'Saving generated artifact records...' });
+    const result = await saveWorkspaceArtifactRecords({
+      projectId: workspaceRecord.project.id,
+      records,
+    });
+
+    if (result.ok) {
+      setDurableArtifactRecords(result.data.artifactRecords);
+      setArtifactVaultStatus({
+        status: 'saved',
+        message: `${result.data.artifactRecords.length} generated artifact record(s) saved.`,
+      });
+      return;
+    }
+
+    setArtifactVaultStatus({ status: 'error', message: result.message });
+  }
+
+  async function loadGeneratedArtifactRecords() {
+    if (selectedProjectId === 'workspace') {
+      setArtifactVaultStatus({ status: 'error', message: 'Choose a project before loading generated artifacts.' });
+      return;
+    }
+
+    setArtifactVaultStatus({ status: 'loading', message: 'Loading generated artifact records...' });
+    const result = await listWorkspaceArtifactRecords({ projectId: selectedProjectId });
+    if (result.ok) {
+      setDurableArtifactRecords(result.data.artifactRecords);
+      setArtifactVaultStatus({
+        status: 'loaded',
+        message: `${result.data.artifactRecords.length} generated artifact record(s) loaded.`,
+      });
+      return;
+    }
+
+    setArtifactVaultStatus({ status: 'error', message: result.message });
   }
 
   function addInvestorRegistryWallet() {
@@ -2531,6 +2823,97 @@ export function App() {
                     </div>
                     {fundingHelperMessage && <p className="funding-helper-message">{fundingHelperMessage}</p>}
                   </div>
+                </div>
+              </section>
+            )}
+
+            {activeWorkspaceTab.id === 'evidence' && (
+              <section className="parameter-panel durable-records-panel" aria-label="Evidence Vault workspace">
+                <div className="registry-panel-heading">
+                  <div>
+                    <h3>Durable evidence and artifact records</h3>
+                    <p>
+                      Save provider-derived Sepolia evidence and generated artifacts against the current workspace snapshot.
+                      Loading these records does not restore local wallet session state.
+                    </p>
+                  </div>
+                  <span className="gate-badge draft">Durable storage foundation</span>
+                </div>
+
+                <div className="durable-record-grid">
+                  <article>
+                    <div>
+                      <span>Evidence Vault</span>
+                      <strong>{durableEvidenceRecords.length} record(s)</strong>
+                      <p>{evidenceVaultStatus.message}</p>
+                    </div>
+                    <div className="durable-record-actions">
+                      <button
+                        type="button"
+                        className="workflow-button primary-action"
+                        onClick={() => void saveEvidenceVaultRecords()}
+                        disabled={evidenceVaultStatus.status === 'saving' || workspacePersistenceStatus.status === 'saving'}
+                      >
+                        {evidenceVaultStatus.status === 'saving' ? 'Saving evidence...' : 'Save evidence records'}
+                      </button>
+                      <button
+                        type="button"
+                        className="workflow-button"
+                        onClick={() => void loadEvidenceVaultRecords()}
+                        disabled={evidenceVaultStatus.status === 'loading'}
+                      >
+                        {evidenceVaultStatus.status === 'loading' ? 'Loading evidence...' : 'Load Evidence Vault'}
+                      </button>
+                    </div>
+                    {durableEvidenceRecords.length > 0 && (
+                      <ul className="durable-record-list" aria-label="Durable evidence records">
+                        {durableEvidenceRecords.slice(0, 4).map((record) => (
+                          <li key={record.id}>
+                            <strong>{record.evidenceType}</strong>
+                            <span>{record.lifecycleContextStatus === 'current_context' ? 'Current snapshot' : 'Historical snapshot'}</span>
+                            <small>{record.transactionHash}</small>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </article>
+
+                  <article>
+                    <div>
+                      <span>Generated Artifacts</span>
+                      <strong>{durableArtifactRecords.length} record(s)</strong>
+                      <p>{artifactVaultStatus.message}</p>
+                    </div>
+                    <div className="durable-record-actions">
+                      <button
+                        type="button"
+                        className="workflow-button primary-action"
+                        onClick={() => void saveGeneratedArtifactRecords()}
+                        disabled={artifactVaultStatus.status === 'saving' || workspacePersistenceStatus.status === 'saving'}
+                      >
+                        {artifactVaultStatus.status === 'saving' ? 'Saving artifacts...' : 'Save generated artifacts'}
+                      </button>
+                      <button
+                        type="button"
+                        className="workflow-button"
+                        onClick={() => void loadGeneratedArtifactRecords()}
+                        disabled={artifactVaultStatus.status === 'loading'}
+                      >
+                        {artifactVaultStatus.status === 'loading' ? 'Loading artifacts...' : 'Load artifacts'}
+                      </button>
+                    </div>
+                    {durableArtifactRecords.length > 0 && (
+                      <ul className="durable-record-list" aria-label="Generated artifact records">
+                        {durableArtifactRecords.slice(0, 5).map((record) => (
+                          <li key={record.id}>
+                            <strong>{record.artifactType}</strong>
+                            <span>{record.lifecycleContextStatus === 'current_context' ? 'Current snapshot' : 'Stale snapshot'}</span>
+                            <small>{record.contentHash}</small>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </article>
                 </div>
               </section>
             )}

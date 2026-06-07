@@ -8,9 +8,11 @@ const WebsiteLanding = lazy(() =>
 );
 
 export function Root() {
-  const route = window.location.pathname === '/site' ? <WebsiteLanding /> : <App />;
+  const isWebsiteRoute = window.location.pathname === '/site';
+  const route = isWebsiteRoute ? <WebsiteLanding /> : <App />;
+  const loadingName = isWebsiteRoute ? 'ZiLiOS' : 'MILA26';
 
-  return <Suspense fallback={<main aria-label="MILA26 loading">Loading MILA26...</main>}>{route}</Suspense>;
+  return <Suspense fallback={<main aria-label={`${loadingName} loading`}>Loading {loadingName}...</main>}>{route}</Suspense>;
 }
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

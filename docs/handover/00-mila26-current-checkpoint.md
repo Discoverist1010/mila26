@@ -10,8 +10,8 @@ The current UI is the MILA26 lifecycle workspace. It uses visual lifecycle tabs,
 
 The next implementation step should follow the tab-aligned roadmap, not the old dashboard flow:
 
-1. durable Evidence Vault persistence after local-session evidence shape is stable;
-2. generated artifact persistence after provenance and invalidation rules are explicit;
+1. Live Sepolia readiness with public addresses, RPC configuration, and live-gated tests;
+2. live Sepolia evidence integration through the durable Evidence Vault path;
 3. website/access/login without duplicating lifecycle state;
 4. subscription-redemption execution design with explicit adapter/evidence contracts;
 5. maturity closeout later.
@@ -44,7 +44,7 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Wallet boundary: MetaMask-first EIP-1193 connection and Sepolia readiness are implemented frontend-only.
 - Deployment boundary: wallet-signed Sepolia deployment exists, with local-session provider/receipt evidence only.
 - Operation boundary: Record NAV Event, Whitelist Wallet, and Allocation / Mint exist as operation-specific wallet-signed SCP controls.
-- Auth, payments, durable Evidence Vault storage, generated artifact persistence, live subscription/redemption execution, batch allocation/mint execution, maturity closeout, and mainnet are not implemented.
+- Auth, payments, live Sepolia RPC automation, live subscription/redemption execution, batch allocation/mint execution, maturity closeout, and mainnet are not implemented.
 
 ## Current Repo Capabilities
 
@@ -77,7 +77,9 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Sepolia funding helper targets for issuer/admin signer, generated investor wallet pack, payment destination, and redemption wallet, with copyable public addresses.
 - Benefit-led website first slice that explains AI tokenisation, blockchain execution, distribution/post-trade servicing, user meaning, and quality boundaries.
 - Backend SQLite workspace snapshot persistence for project identity, versioned lifecycle state, and Investor Registry rows.
-- Persistence boundary decision: active app state remains the current-session source of truth; evidence/artifacts require separate durable storage contracts before they can be labelled durable.
+- Durable Evidence Vault foundation for provider-derived deployment, Record NAV, Wallet Whitelist, and Allocation/Mint evidence records.
+- Generated artifact persistence for Requirement Brief, Engineering Brief, Smart Contract Spec, Artifact Preview, Check Result, and Evidence-Lite records.
+- Persistence boundary decision: active app state remains the current-session source of truth; durable records do not restore local wallet session state.
 
 ## Completed Recent Work
 
@@ -94,6 +96,7 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Sprint Track 6 demo hardening: Sepolia funding-helper targets, repeated investor whitelist/mint regression coverage, and 50-investor product-boundary cleanup in chat mocks/fixtures.
 - Sprint Track 7/8 website and persistence decision: benefit-led website messaging plus backend/SQLite persistence boundary decision, without browser-storage persistence or durable evidence claims.
 - Sprint Track 9/10 backend persistence foundation: project/lifecycle snapshot and Investor Registry persistence through SQLite repository/API routes, with frontend save/load actions and local-session evidence reset on load.
+- Sprint Track 11/12 durable Evidence Vault and generated artifact persistence foundation: typed evidence/artifact records, current/stale lifecycle context labels, and Evidence tab save/load controls.
 - Lifecycle workspace UX implementation:
   - dark left navigation rail;
   - top project/network/wallet/safety bar;
@@ -108,8 +111,8 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 
 Recommended next coding sequence:
 
-1. Add durable Evidence Vault persistence after the local-session evidence shape is stable.
-2. Add generated artifact persistence after provenance and invalidation rules are explicit.
+1. Add Live Sepolia readiness with public addresses, RPC configuration, and live-gated tests.
+2. Feed real provider-returned Sepolia hashes/receipts through the durable Evidence Vault path.
 3. Add website/access/login without duplicating lifecycle ownership.
 4. Design subscription-redemption execution adapters and evidence contracts before live stablecoin movement.
 5. Keep browser/screenshot review in the validation loop for every newly functional tab.
@@ -140,5 +143,5 @@ Use it for Test Engineer, Quality Architect / Refactorer, Security Reviewer, Sol
 - No production database or hosted persistence switch until beta storage, backup, and audit-log requirements are settled.
 - No auth/payments.
 - No per-tab state silos.
-- No durable evidence claim until the durable Evidence Vault exists.
+- No durable evidence claim unless the record was stored and loaded through the durable Evidence Vault.
 - No investor eligibility/KYC/legal/audit approval claim.

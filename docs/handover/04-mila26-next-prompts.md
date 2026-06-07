@@ -198,9 +198,9 @@ Acceptance:
 - No fake transaction hash, contract address, investor eligibility, investment advice, mainnet, audit, or production-ready claim is introduced.
 ```
 
-## Next Codex Prompt: Durable Evidence Vault Foundation
+## Completed Prompt: Durable Evidence Vault + Generated Artifact Persistence
 
-Use this prompt for the next implementation turn:
+This prompt has been implemented with Sprint 11/12. Keep it here as completion context:
 
 ```text
 You are working inside the MILA26 repository:
@@ -239,6 +239,47 @@ Acceptance:
 - The UI distinguishes durable evidence from local-session-only evidence.
 - Loading workspace state does not resurrect stale wallet operation evidence unless it was loaded from the durable Evidence Vault.
 - No fake transaction hash, contract address, investor eligibility, investment advice, mainnet, audit, or production-ready claim is introduced.
+```
+
+## Next Codex Prompt: Live Sepolia Readiness
+
+Use this prompt for the next implementation turn:
+
+```text
+You are working inside the MILA26 repository:
+
+/Users/macbookpro18/Desktop/CODE/active/mila26
+
+Start from main. Before editing, read:
+
+- `AGENTS.md`
+- `docs/architecture/persistence-boundary-decision.md`
+- `docs/architecture/wallet-adapter-sepolia-design.md`
+- `docs/contracts/deployment-evidence-contract.md`
+- `docs/contracts/allocation-mint-operation-contract.md`
+
+Then run:
+
+git status --short --branch
+npm run test -- tests/app-chat-panel.test.tsx tests/workspace-evidence-artifacts-repository.test.ts tests/api-workspace-evidence-artifacts.test.ts
+
+Goal:
+Add Live Sepolia readiness without making normal tests depend on MetaMask, private keys, or external RPC.
+
+Scope:
+1. Add `.env.example` entries for public Sepolia test addresses and optional Sepolia RPC URL.
+2. Add a live-test harness gated behind an explicit flag such as `LIVE_SEPOLIA=1`.
+3. Validate public issuer/admin, payment, redemption, and representative investor addresses.
+4. Validate optional RPC connectivity, chain id, balance lookup, and transaction receipt lookup when values are provided.
+5. Do not commit private keys, wallet seeds, RPC secrets, or generated test wallet exports.
+6. Do not require live tests in normal `npm run check`.
+7. Document exactly what user-provided artefacts are needed before live Sepolia evidence testing.
+
+Acceptance:
+- Normal tests remain deterministic and pass without external network.
+- Live tests are opt-in, clearly skipped when env is absent, and fail loudly when configured artefacts are invalid.
+- Evidence Vault remains the storage path for real provider-returned hashes/receipts.
+- No mainnet, backend private-key custody, or production-ready claim is introduced.
 ```
 
 ## Prototype Sprint Target

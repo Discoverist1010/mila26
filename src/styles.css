@@ -921,15 +921,14 @@ summary {
   text-decoration: none;
 }
 
-.website-brand span {
-  align-items: center;
-  background: #0b65d8;
-  border-radius: 8px;
-  display: inline-flex;
-  font-size: 13px;
-  height: 38px;
-  justify-content: center;
-  width: 38px;
+.website-brand img {
+  border: 1px solid rgba(190, 215, 238, 0.48);
+  border-radius: 10px;
+  display: block;
+  flex: 0 0 auto;
+  height: 56px;
+  object-fit: contain;
+  width: 56px;
 }
 
 .website-hero h1 {
@@ -1977,6 +1976,76 @@ summary {
   margin: 0;
 }
 
+.durable-records-panel {
+  background: #fbfdff;
+}
+
+.durable-record-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.durable-record-grid article {
+  border: 1px solid #dce5f0;
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.durable-record-grid span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.durable-record-grid strong {
+  color: #0f172a;
+  display: block;
+  font-size: 18px;
+  margin-top: 4px;
+}
+
+.durable-record-grid p {
+  color: #475569;
+  margin: 6px 0 0;
+}
+
+.durable-record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.durable-record-list {
+  border-top: 1px solid #e6edf6;
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 10px 0 0;
+}
+
+.durable-record-list li {
+  border: 1px solid #edf2f7;
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+}
+
+.durable-record-list strong {
+  font-size: 13px;
+  margin: 0;
+}
+
+.durable-record-list small {
+  color: #64748b;
+  overflow-wrap: anywhere;
+}
+
 .registry-panel-heading {
   align-items: flex-start;
   display: flex;
@@ -2353,6 +2422,7 @@ summary {
   .lifecycle-snapshot > div,
   .generated-artifact-grid,
   .artifact-grid,
+  .durable-record-grid,
   .registry-summary,
   .parameter-grid,
   .registry-form,
