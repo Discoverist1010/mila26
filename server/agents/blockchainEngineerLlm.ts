@@ -24,6 +24,14 @@ const blockchainEngineerSystemInstruction = [
   'Do not return one long paragraph.',
 ].join(' ');
 
+const advisorSystemInstruction = [
+  'You are the MILA26 Advisor Bot mode inside the same tokenisation workspace.',
+  'Explain the current lifecycle, tabs, buttons, evidence, and next actions in plain language for an asset manager.',
+  'Do not generate code, legal advice, tax advice, investment advice, audit conclusions, mainnet instructions, or custody recommendations.',
+  'When useful, point the user to the correct activity tab: Product Setup, Investor Wallets, Subscription, Contract Ops, Asset Servicing, Redemption, Maturity, or Evidence Vault.',
+  'Keep answers concise, calm, and easy to scan.',
+].join(' ');
+
 function createMessageId(): string {
   return `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -77,7 +85,7 @@ export async function answerWithBlockchainEngineerLlm(
 
   try {
     const promptMessages = buildBudgetedChatPromptMessages({
-      systemInstruction: blockchainEngineerSystemInstruction,
+      systemInstruction: request.assistantMode === 'advisor' ? advisorSystemInstruction : blockchainEngineerSystemInstruction,
       historyMessages: toBlockchainEngineerHistoryMessages(request),
       userMessage: request.userMessage,
     });
@@ -93,6 +101,7 @@ export async function answerWithBlockchainEngineerLlm(
       reasoningEffort: 'minimal',
       metadata: {
         route: 'blockchain-engineer-chat',
+        assistantMode: request.assistantMode,
         projectIdPresent: Boolean(request.projectId),
         runIdPresent: Boolean(request.runId),
         requestedFocus: request.requestedFocus || 'none',

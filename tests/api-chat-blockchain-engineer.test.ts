@@ -3,13 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { createApp } from '../server/app';
 import type { Mila26LlmProvider } from '../server/llm/types';
 
-async function postChat(userMessage: string, requestedFocus?: string) {
+async function postChat(
+  userMessage: string,
+  requestedFocus?: string,
+  assistantMode?: 'engineering' | 'advisor',
+) {
   const app = createApp();
   const response = await app.inject({
     method: 'POST',
     url: '/api/chat/blockchain-engineer',
     payload: {
       userMessage,
+      ...(assistantMode ? { assistantMode } : {}),
       ...(requestedFocus ? { requestedFocus } : {}),
     },
   });
@@ -70,6 +75,17 @@ describe('blockchain engineer chat api', () => {
     expect(body.data.content).toMatch(/testnet/i);
     expect(body.data.content).toMatch(/wallet/i);
     expect(body.data.content).toMatch(/PRD approval/i);
+  });
+
+  it('supports Advisor mode for plain-language lifecycle Q&A', async () => {
+    const response = await postChat('Where should I configure redemption delay?', undefined, 'advisor');
+    const body = response.json();
+
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.content).toMatch(/Advisor view/i);
+    expect(body.data.content).toMatch(/Redemption/i);
+    expect(body.data.nextRecommendedAction).toMatch(/plain-language/i);
   });
 
   it('covers OpenZeppelin and QA/security review', async () => {

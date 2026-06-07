@@ -25,6 +25,17 @@ export function answerWithBlockchainEngineerMock(
     createdAt,
   };
 
+  if (request.assistantMode === 'advisor') {
+    return BlockchainEngineerChatResponseSchema.parse({
+      ...base,
+      content:
+        'Advisor view: treat MILA26 as a guided workbench for tokenising and servicing a financial product. Start from the user outcome, then check the lifecycle surface that owns the next input. Investor wallets belong in Investor Wallets, stablecoin subscription terms belong in Subscription, delayed redemption terms belong in Redemption, wallet-signed token operations belong in Contract Ops, and proof belongs in Evidence Vault. The tabs are visual separators only; the underlying lifecycle state stays shared.',
+      openQuestions: ['Which part of the lifecycle do you want explained in plain language first?'],
+      riskNotes: ['This is explanatory product guidance, not legal, tax, accounting, investment, or formal audit advice.'],
+      nextRecommendedAction: 'Ask a plain-language question about the current tab, next action, or evidence state.',
+    });
+  }
+
   if (
     request.requestedFocus === 'protocol_choice' ||
     includesAny(lower, ['erc-20', 'erc20', 'erc-721', 'erc721', 'protocol', 'fungible', 'non-fungible'])

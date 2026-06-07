@@ -331,7 +331,7 @@ describe('MILA26 lifecycle state', () => {
     expect(draftReadModel.allocationMint.status).toBe('draft');
     expect(draftReadModel.allocationMint.validationMessages).toEqual(
       expect.arrayContaining([
-        'Select a wallet from Investor Registry before Allocation / Mint.',
+        'Select a wallet from Investor Wallets before Allocation / Mint.',
         'Token allocation amount must be greater than zero.',
       ]),
     );

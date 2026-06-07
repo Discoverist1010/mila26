@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Allocation / Mint is the smart-contract operation after Investor Registry, Wallet Whitelist, and Subscription parameters are coherent. The current implemented slice prepares and validates single-investor allocation parameters from shared lifecycle state and lets the issuer request a wallet-signed `mintAllocation(address,uint256)` operation on Sepolia after explicit gates pass.
+Allocation / Mint is the smart-contract operation after Investor Wallets, Wallet Whitelist, and Subscription parameters are coherent. The current implemented slice prepares and validates single-investor allocation parameters from shared lifecycle state and lets the issuer request a wallet-signed `mintAllocation(address,uint256)` operation on Sepolia after explicit gates pass.
 
 This is not live investor subscription settlement. It must not imply stablecoins have been received, KYC/AML is complete, or investors are eligible.
 
@@ -10,7 +10,7 @@ This is not live investor subscription settlement. It must not imply stablecoins
 
 Allocation / Mint can only be designed against shared lifecycle state:
 
-- Investor Registry:
+- Investor Wallets:
   - up to 50 wallet addresses;
   - each target wallet must be a valid non-zero EVM address;
   - duplicate and invalid entries block readiness;
@@ -46,11 +46,11 @@ The current Allocation / Mint slice is parameter, gate, and wallet-operation dri
 
 ## UI Placement
 
-- The Smart Contract tab owns Allocation / Mint readiness and action controls.
-- The Investor Registry tab provides a handoff action: `Use for Allocation / Mint`.
+- The Contract Ops tab owns Allocation / Mint readiness and action controls.
+- The Investor Wallets tab provides a handoff action: `Use for Allocation / Mint`.
 - The Subscription tab should remain parameter capture only.
 - The right rail should stay passive and show readiness, not execution controls.
-- SCP remains the only home for wallet-signed contract operations.
+- Contract Ops remains the only home for wallet-signed contract operations.
 
 ## Non-Goals
 

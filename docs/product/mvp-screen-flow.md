@@ -13,18 +13,18 @@ Prototype screens must be functional where shown as implemented. A tab is not co
 - Current status: implemented.
 - Guardrail: the tabs are visual only; code uses shared lifecycle state.
 
-## 2. Requirements
+## 2. Product Setup
 
 - User goal: turn plain-language product intent into a Requirement Brief.
 - Primary UI: Engineering Bot and central primary action.
 - Current status: implemented.
 - Guardrail: Requirement Brief is an engineering/product artifact, not legal/compliance approval.
 
-## 3. Investor Registry
+## 3. Investor Wallets
 
 - User goal: define or generate up to 50 investor wallet addresses that can be whitelisted and used for prototype investor activity.
-- Primary UI: Investor Registry tab with Test Wallet Lab, wallet rows, validation, duplicate detection, local-session whitelist status, activity-console placeholders, SCP handoff, and Allocation/Mint handoff.
-- Current status: implemented for manual entry, generated test investor wallet packs, explicit test-only export preparation, SCP Whitelist Wallet handoff, Allocation/Mint handoff, and Smart Contract tab funding-helper targets.
+- Primary UI: Investor Wallets tab with Test Wallet Lab, wallet rows, validation, duplicate detection, local-session whitelist status, activity-console placeholders, Contract Ops Whitelist Wallet handoff, and Allocation/Mint handoff.
+- Current status: implemented for manual entry, generated test investor wallet packs, explicit test-only export preparation, Contract Ops Whitelist Wallet handoff, Allocation/Mint handoff, and Contract Ops funding-helper targets.
 - Gap: no CSV/import/export beyond the explicit test-only wallet export, off-chain investor profile fields, or durable registry persistence yet.
 
 ## 4. Subscription
@@ -34,19 +34,19 @@ Prototype screens must be functional where shown as implemented. A tab is not co
 - Current status: implemented for local-session parameter capture and subscription-redemption template handoff input.
 - Guardrail: no subscription smart-contract template execution yet.
 
-## 5. Smart Contract
+## 5. Contract Ops
 
-- User goal: prepare/review the smart-contract artifact spec, deterministic preview, local compile/test representation, deployment gate, and wallet-signed deployment path.
+- User goal: prepare/review the smart-contract artifact spec, deterministic preview, local compile/test representation, deployment gate, wallet-signed deployment path, and released wallet-signed operations.
 - Backend/API:
   - `POST /api/smart-contract/artifact-spec`
   - `POST /api/smart-contract/artifact`
-- Current status: implemented through generated artifacts and SCP.
+- Current status: implemented through generated artifacts and the focused Contract Ops workspace.
 - Guardrail: preview/check/local compile-test status is not audit, mainnet, or production readiness.
 
 ## 6. Asset Servicing
 
 - User goal: record NAV and later push investor information such as valuation, investment information, corporate actions, and notices.
-- Primary UI: visual tab plus Record NAV Event in SCP after confirmed deployment evidence.
+- Primary UI: visual tab plus Record NAV Event in Contract Ops after confirmed deployment evidence.
 - Current status: Record NAV Event implemented; broader investor updates are future.
 - Guardrail: current NAV operation evidence is local-session-only.
 
@@ -67,7 +67,7 @@ Prototype screens must be functional where shown as implemented. A tab is not co
 ## 9. Evidence
 
 - User goal: inspect local-session evidence and generated artifacts.
-- Primary UI: Product Vault, Recent Activity, generated artifacts, SCP evidence sections.
+- Primary UI: Product Vault, Recent Activity, generated artifacts, Contract Ops evidence summary, durable evidence save/load controls.
 - Current status: local-session evidence implemented for deployment, Record NAV, Whitelist Wallet, and Allocation / Mint.
 - Gap: durable Evidence Vault persistence remains future.
 
@@ -80,7 +80,7 @@ Prototype screens must be functional where shown as implemented. A tab is not co
 5. Display transaction hash only after provider return.
 6. Display contract address only after successful receipt.
 7. Derive local-session deployment evidence.
-8. Unlock only operation-specific SCP controls:
+8. Unlock only operation-specific Contract Ops controls:
    - Record NAV Event;
    - Whitelist Wallet;
    - Allocation / Mint after the selected investor wallet is whitelisted and allocation parameters are coherent.

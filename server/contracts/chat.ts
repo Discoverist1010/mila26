@@ -18,12 +18,15 @@ export const RequestedFocusSchema = z.enum([
   'security',
 ]);
 
+export const AssistantModeSchema = z.enum(['engineering', 'advisor']);
+
 export const BlockchainEngineerChatRequestSchema = z.object({
   projectId: z.string().min(1).optional(),
   runId: z.string().min(1).optional(),
   userMessage: z.string().trim().min(1, 'userMessage is required.'),
   conversationHistory: z.array(ChatMessageSchema).optional(),
   projectContext: z.record(z.unknown()).optional(),
+  assistantMode: AssistantModeSchema.default('engineering'),
   requestedFocus: RequestedFocusSchema.optional(),
 });
 
@@ -52,5 +55,7 @@ export const BlockchainEngineerChatResponseSchema = z.object({
   createdAt: z.string().min(1),
 });
 
-export type BlockchainEngineerChatRequest = z.infer<typeof BlockchainEngineerChatRequestSchema>;
+export type BlockchainEngineerChatRequestInput = z.input<typeof BlockchainEngineerChatRequestSchema>;
+export type BlockchainEngineerChatRequest = z.output<typeof BlockchainEngineerChatRequestSchema>;
 export type BlockchainEngineerChatResponse = z.infer<typeof BlockchainEngineerChatResponseSchema>;
+export type AssistantMode = z.infer<typeof AssistantModeSchema>;

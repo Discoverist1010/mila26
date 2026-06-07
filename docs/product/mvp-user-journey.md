@@ -4,7 +4,7 @@ Use this document as the primary UX brief for MILA26's current lifecycle workspa
 
 ## Product Narrative
 
-MILA26 helps an asset manager tokenise a financial product without needing to know the full blockchain workflow upfront. The user explains the product intent; the Engineering Bot structures the lifecycle across requirements, investor registry, subscription, smart contract, asset servicing, redemption, maturity, and evidence.
+MILA26 helps an asset manager tokenise a financial product without needing to know the full blockchain workflow upfront. The user explains the product intent; the Engineering Bot structures the lifecycle across product setup, investor wallets, subscription, contract operations, asset servicing, redemption, maturity, and evidence.
 
 The alpha path remains a restricted ERC-20-compatible tokenised fund unit contract, MetaMask/injected EIP-1193 wallet connection, Ethereum Sepolia deployment, and a small number of wallet-signed operations.
 
@@ -41,10 +41,11 @@ It should not become a dense workflow dashboard.
 
 ### Center Workspace
 
-The center is the Engineering Bot decision surface:
+The center is the AI decision surface:
 
 - user intent;
-- AI answer;
+- Engineering Bot answer for implementation/workflow decisions;
+- Advisor mode answer for plain-language Q&A in the same shared context;
 - structured sections;
 - next best action;
 - suggested action buttons;
@@ -70,14 +71,14 @@ It must not contain workflow, wallet, deploy, or operation buttons.
 Tabs are visual separation for the user, not code separation.
 
 1. Overview - current workspace and Engineering Bot response.
-2. Requirements - product objectives, investor rules, NAV assumptions, servicing assumptions.
-3. Investor Registry - up to 50 whitelisted wallet addresses.
+2. Product Setup - product objectives, investor rules, NAV assumptions, servicing assumptions.
+3. Investor Wallets - up to 50 whitelisted wallet addresses.
 4. Subscription - permitted stablecoins, windows, minimums, payment per token.
-5. Smart Contract - artifact spec, generated preview, deployment readiness.
+5. Contract Ops - wallet-signed deployment and released contract operations.
 6. Asset Servicing - NAV and future investor updates.
 7. Redemption - redemption wallet, delay, payout rules.
 8. Maturity - final token closeout.
-9. Evidence - local-session evidence and future Evidence Vault.
+9. Evidence Vault - local-session evidence, durable evidence records, and generated artifacts.
 
 ## Current Implemented Journey
 
@@ -116,9 +117,9 @@ Current output:
 - testnet-only deployment path;
 - risks, controls, and acceptance criteria.
 
-### 4. Smart Contract Preparation
+### 4. Smart Contract Preparation / Contract Ops
 
-User prepares the Smart Contract Artifact Spec and deterministic preview package.
+User prepares the Smart Contract Artifact Spec and deterministic preview package, then uses Contract Ops for wallet-signed operations once gates are satisfied.
 
 Current output:
 
@@ -153,7 +154,7 @@ Current output:
 
 ### 7. Asset Servicing: Record NAV
 
-After confirmed deployment evidence, user can submit a wallet-signed Record NAV Event from SCP.
+After confirmed deployment evidence, user can submit a wallet-signed Record NAV Event from Contract Ops.
 
 Current output:
 
@@ -161,10 +162,10 @@ Current output:
 - operation receipt/event evidence only after provider/receipt response;
 - local-session operation evidence.
 
-### 8. Investor Registry And Whitelist Wallet
+### 8. Investor Wallets And Whitelist Wallet
 
-The user can register up to 50 investor wallet addresses in the Investor Registry tab. The tab validates wallet format,
-flags duplicates, tracks local-session whitelist status, and hands valid rows into the SCP Whitelist Wallet operation.
+The user can register up to 50 investor wallet addresses in the Investor Wallets tab. The tab validates wallet format,
+flags duplicates, tracks local-session whitelist status, and hands valid rows into the Contract Ops Whitelist Wallet operation.
 After confirmed deployment evidence, the user can submit a wallet-signed whitelist operation for the selected target
 wallet address.
 
@@ -208,7 +209,7 @@ Production-readiness planning for website, login, beta operations, persistence, 
 - Right rail is passive.
 - Engineering Bot replies should be readable and body-sized.
 - Conversation history stays visible in the local session.
-- SCP is the home for wallet-signed post-deployment operations.
+- Contract Ops is the home for wallet-signed post-deployment operations.
 - Wallet connection is not signing.
 - Signing intent is not transaction execution.
 - Deployment/operation evidence is local-session-only until persistence is implemented.

@@ -9,10 +9,10 @@ The current implemented direction is the MILA26 lifecycle workspace:
 - dark left navigation rail;
 - top project, wallet, network, and safety bar;
 - visual lifecycle tabs;
-- large central Engineering Bot conversation and answer surface;
+- large central AI conversation and answer surface with Engineering and Advisor modes;
 - suggested next actions based on the user's intent;
 - passive right status/Product Vault rail;
-- Smart Contract Control Panel below the main AI workspace for executable wallet-signed operations.
+- focused Contract Ops tab for executable wallet-signed operations.
 
 The tabs are visual separation only. The Engineering Bot and code should operate over one shared product lifecycle state.
 
@@ -46,7 +46,7 @@ Responsibilities:
 - MILA26 brand;
 - active project selector;
 - workspace navigation;
-- Engineering Bot / Smart Contract Lab / Deployments / Evidence Vault links;
+- Engineering Bot / Contract Ops / Deployment Evidence / Evidence Vault links;
 - settings links;
 - compact Product Setup status.
 
@@ -65,14 +65,14 @@ Responsibilities:
 Current tabs:
 
 1. Overview
-2. Requirements
-3. Investor Registry
+2. Product Setup
+3. Investor Wallets
 4. Subscription
-5. Smart Contract
+5. Contract Ops
 6. Asset Servicing
 7. Redemption
 8. Maturity
-9. Evidence
+9. Evidence Vault
 
 Tabs structure the user's mental model only. They must not create real state silos in code.
 
@@ -80,7 +80,7 @@ Tabs structure the user's mental model only. They must not create real state sil
 
 Responsibilities:
 
-- Engineering Bot conversation;
+- Engineering Bot / Advisor mode conversation;
 - readable structured AI responses;
 - next best action;
 - suggested buttons such as defining stablecoins, redemption delay, investor registry, or smart-contract parameters;
@@ -99,21 +99,22 @@ Responsibilities:
 
 The right rail must not contain workflow or wallet execution buttons.
 
-### Smart Contract Control Panel
+### Contract Ops
 
 Responsibilities:
 
 - wallet-signed Sepolia deployment evidence;
 - Record NAV Event operation;
 - Whitelist Wallet operation;
-- locked/future operations;
+- Allocation / Mint operation;
 - operation evidence and safety boundaries.
 
-The SCP remains the place for executable wallet-signed contract operations once their gates exist.
+Contract Ops is the focused place for wallet-signed contract operations once their gates exist. It should not become a broad dashboard or duplicate the full generated-artifact review.
 
 ## UX Principles
 
 - The Engineering Bot should have cross-stage context at all times.
+- Advisor mode should answer user Q&A in plain language using the same shared context, without creating a separate bot state store or artifact pipeline.
 - Use tabs to guide the user, not to fragment state.
 - The user should always understand where they are in the lifecycle, what has been captured, what is missing, and what MILA26 recommends next.
 - Keep AI answers readable with normal body text, short sections, and clear next actions.

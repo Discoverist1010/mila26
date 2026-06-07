@@ -65,13 +65,13 @@ const baseWorkspaceTabs: WorkspaceTab[] = [
   },
   {
     id: 'requirements',
-    label: 'Requirements',
-    purpose: 'Capture product, investor, subscription, redemption, and maturity terms.',
+    label: 'Product Setup',
+    purpose: 'Capture the product terms, investor rules, servicing assumptions, and lifecycle requirements.',
     status: 'needs_review',
   },
   {
     id: 'investor_registry',
-    label: 'Investor Registry',
+    label: 'Investor Wallets',
     purpose: 'Register up to 50 investor wallet references for whitelisting and later servicing.',
     status: 'needs_parameters',
   },
@@ -83,8 +83,8 @@ const baseWorkspaceTabs: WorkspaceTab[] = [
   },
   {
     id: 'smart_contract',
-    label: 'Smart Contract',
-    purpose: 'Review the fund token contract, wallet operations, and template parameters.',
+    label: 'Contract Ops',
+    purpose: 'Review and run gated Sepolia wallet operations from the shared lifecycle state.',
     status: 'available',
   },
   {
@@ -107,8 +107,8 @@ const baseWorkspaceTabs: WorkspaceTab[] = [
   },
   {
     id: 'evidence',
-    label: 'Evidence',
-    purpose: 'Review local-session wallet evidence and draft project artifacts.',
+    label: 'Evidence Vault',
+    purpose: 'Store and review provider-derived evidence and generated project artifacts.',
     status: 'local_session_only',
   },
 ];
@@ -177,7 +177,7 @@ export function toWorkspacePresentation(input: WorkspacePresentationInput): Work
       { label: 'Wallet whitelist', status: input.isWalletWhitelistAvailable ? 'available' : 'locked_for_later' },
       { label: 'NAV recording', status: input.isNavRecordingAvailable ? 'available' : 'locked_for_later' },
       { label: 'Allocation / Mint', status: parameterStatusToCapabilityStatus(allocationMint.status) },
-      { label: 'Investor registry', status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'active' : 'needs_parameters' },
+      { label: 'Investor wallets', status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'active' : 'needs_parameters' },
       { label: 'Subscription template', status: parameterStatusToCapabilityStatus(subscription.status) },
       { label: 'Redemption template', status: parameterStatusToCapabilityStatus(redemption.status) },
       { label: 'Maturity closeout', status: parameterStatusToCapabilityStatus(input.lifecycle.maturityStatus) },
@@ -195,7 +195,7 @@ export function toWorkspacePresentation(input: WorkspacePresentationInput): Work
     lifecycleSnapshot: [
       { label: 'Requirements', detail: input.hasRequirementBrief ? 'Draft ready' : 'Needs review', status: input.hasRequirementBrief ? 'ready' : 'needs_review' },
       {
-        label: 'Investor Registry',
+        label: 'Investor Wallets',
         detail:
           investorRegistry.entryCount > 0
             ? `${investorRegistry.readyToWhitelistCount} ready, ${investorRegistry.whitelistedCount} whitelisted`
@@ -229,7 +229,7 @@ export function toWorkspacePresentation(input: WorkspacePresentationInput): Work
       { label: 'Smart Contract Spec', status: input.hasSmartContractSpec ? 'Draft' : 'Pending' },
       { label: 'Contract Template (Sub-Redemption)', status: template.status === 'ready' ? 'Available' : template.status === 'draft' ? 'Draft' : 'Pending' },
       { label: 'Allocation / Mint Parameters', status: allocationMint.status === 'ready' ? 'Available' : allocationMint.status === 'draft' ? 'Draft' : 'Pending' },
-      { label: 'Investor Registry', status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'Active' : 'Pending' },
+      { label: 'Investor Wallets', status: investorRegistry.status === 'active' || investorRegistry.status === 'ready' ? 'Active' : 'Pending' },
     ],
     openItems: [
       { label: 'Open questions', status: input.hasRequirementBrief ? 'draft' : 'needs_parameters' },

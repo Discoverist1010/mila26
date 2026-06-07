@@ -23,6 +23,7 @@ Likely fields:
 - `userMessage`.
 - `conversationHistory` optional.
 - `projectContext` optional.
+- `assistantMode` optional: `engineering` or `advisor`; defaults to `engineering`.
 - `requestedFocus` optional: `protocol_choice`, `whitelist`, `valuation_update`, `deployment`, or `security`.
 
 ## `BlockchainEngineerChatResponse`
@@ -56,6 +57,7 @@ Likely fields:
 - No secrets, private keys, seed phrases, or API keys.
 - No claim of formal legal, regulatory, investment, tax, or audit advice.
 - ERC recommendation should explain trade-offs, not force a choice.
+- Advisor mode is explanatory Q&A inside the same AI panel and shared project context; it must not create a second workflow state store or generate artifacts.
 - Any suggested requirement update must be reviewable by the user before PRD generation.
 - Chat output must follow the API response convention when returned from backend routes.
 

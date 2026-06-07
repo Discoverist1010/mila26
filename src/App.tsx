@@ -123,7 +123,7 @@ import {
   checkSepoliaDemoWalletReadiness,
   type SepoliaDemoWalletReadinessProvider,
 } from './wallet/sepoliaDemoWalletReadinessAdapter';
-import type { BlockchainEngineerChatResponse } from '../server/contracts/chat';
+import type { AssistantMode, BlockchainEngineerChatResponse } from '../server/contracts/chat';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
 import type {
   SmartContractArtifactCheckResult,
@@ -169,12 +169,14 @@ type EngineeringBotConversationTurn =
       id: string;
       role: 'user';
       content: string;
+      assistantMode: AssistantMode;
     }
   | {
       id: string;
       role: 'assistant';
       response: BlockchainEngineerChatResponse;
       source: EngineerAnswerSource;
+      assistantMode: AssistantMode;
     };
 
 const demoProjectFolders: DemoProjectFolder[] = [
@@ -317,14 +319,14 @@ function createRecordNavOperationResponse(operation: RecordNavOperationState): B
     messageId: 'local-record-nav-operation',
     agentId: 'blockchain-engineer',
     content:
-      'Record NAV operation status updated. SCP owns the active operation control; evidence is derived from local-session provider and receipt responses only.',
+      'Record NAV operation status updated. Contract Ops owns the active operation control; evidence is derived from local-session provider and receipt responses only.',
     riskNotes: [
       `Record NAV operation: ${statusLabel}.`,
       operation.operationTransactionHash ? `Operation transaction hash: ${operation.operationTransactionHash}.` : 'No operation transaction hash.',
       operation.decodedEvent ? 'ValuationUpdated event decoded from receipt.' : 'ValuationUpdated event not decoded.',
       'Backend never holds private keys.',
       'Mainnet remains disabled.',
-      'Other Smart Contract Operations require their own explicit adapters and evidence paths before release.',
+      'Other Contract Ops actions require their own explicit adapters and evidence paths before release.',
     ],
     nextRecommendedAction:
       operation.operationStatus === 'confirmed'
@@ -341,7 +343,7 @@ function createWalletWhitelistOperationResponse(operation: WalletWhitelistOperat
     messageId: 'local-wallet-whitelist-operation',
     agentId: 'blockchain-engineer',
     content:
-      'Wallet Whitelist operation status updated. SCP owns the active operation control; evidence is derived from local-session provider and receipt responses only.',
+      'Wallet Whitelist operation status updated. Contract Ops owns the active operation control; evidence is derived from local-session provider and receipt responses only.',
     riskNotes: [
       `Wallet Whitelist operation: ${statusLabel}.`,
       operation.targetWalletAddress ? `Target wallet: ${operation.targetWalletAddress}.` : 'Target wallet address is required.',
@@ -351,11 +353,11 @@ function createWalletWhitelistOperationResponse(operation: WalletWhitelistOperat
       'Backend never holds private keys.',
       'Mainnet remains disabled.',
       'Allocation / Mint is available when the selected whitelisted wallet and token amount pass validation.',
-      'Other Smart Contract Operations require their own explicit adapters and evidence paths before release.',
+      'Other Contract Ops actions require their own explicit adapters and evidence paths before release.',
     ],
     nextRecommendedAction:
       operation.operationStatus === 'confirmed'
-        ? 'Next recommended operation is Allocation/Mint after the subscription and investor registry setup is complete.'
+        ? 'Next recommended operation is Allocation/Mint after the subscription and investor wallet setup is complete.'
         : 'Continue only after the wallet-signed Wallet Whitelist operation is confirmed or safely retried.',
     createdAt: new Date(0).toISOString(),
   };
@@ -483,6 +485,7 @@ export function App() {
   const [goal] = useState('We want to launch a tokenized income product for approved investors.');
   const [selectedProjectId, setSelectedProjectId] = useState<ProjectDirectorySelection>('usequities');
   const [selectedWorkspaceTab, setSelectedWorkspaceTab] = useState<WorkspaceTabId>('overview');
+  const [activeAssistantMode, setActiveAssistantMode] = useState<AssistantMode>('engineering');
   const [question, setQuestion] = useState('');
   const [brief, setBrief] = useState<RequirementBrief | undefined>();
   const [engineeringBrief, setEngineeringBrief] = useState<EngineeringBrief | undefined>();
@@ -541,6 +544,7 @@ export function App() {
       role: 'assistant',
       response: createInitialEngineerResponse(),
       source: 'local',
+      assistantMode: 'engineering',
     },
   ]);
   const [engineerAnswerSource, setEngineerAnswerSource] = useState<EngineerAnswerSource>('local');
@@ -896,7 +900,7 @@ export function App() {
   );
   const activeWorkspaceTab =
     workspacePresentation.tabs.find((tab) => tab.id === selectedWorkspaceTab) ?? workspacePresentation.tabs[0];
-  const shouldShowSmartContractControl = ['overview', 'smart_contract', 'evidence'].includes(activeWorkspaceTab.id);
+  const shouldShowSmartContractControl = false;
   const subscriptionRedemptionTemplate = lifecycleReadModel.subscriptionRedemptionTemplate;
   const hasSubscriptionRedemptionTemplateInput = subscriptionRedemptionTemplate.status !== 'needs_parameters';
   const selectedProject = demoProjectFolders.find((project) => project.id === selectedProjectId);
@@ -918,10 +922,13 @@ export function App() {
   const canRequestSepoliaDeployment =
     smartContractGenerationStatus === 'ready' &&
     unsignedDeploymentIntentReadModel.intentStatus === 'review_ready' &&
+    walletSignedDeploymentState.deploymentStatus !== 'confirmed' &&
     !isDeploymentAttemptInFlight(walletSignedDeploymentState);
   const deploymentActionDisabledReason = isDeploymentAttemptInFlight(walletSignedDeploymentState)
     ? 'A wallet deployment request is already awaiting confirmation or receipt.'
-    : unsignedDeploymentIntentReadModel.blockedReasons[0] ?? 'Complete wallet connection and unsigned deployment intent review first.';
+    : walletSignedDeploymentState.deploymentStatus === 'confirmed'
+      ? 'Wallet-signed Sepolia deployment is already confirmed in this local session.'
+      : unsignedDeploymentIntentReadModel.blockedReasons[0] ?? 'Complete wallet connection and unsigned deployment intent review first.';
   const canRequestRecordNavOperation =
     smartContractGenerationStatus === 'ready' &&
     isWalletConnectionComplete &&
@@ -977,9 +984,9 @@ export function App() {
     if (!isWalletConnectionComplete) return 'Connect a Sepolia wallet before whitelisting a wallet.';
     if (!normalizedWhitelistTargetWallet) return 'Enter a target wallet address before whitelisting.';
     if (!whitelistTargetIsValid) return 'Target wallet address must be a valid non-zero EVM address.';
-    if (!selectedWhitelistRegistryEntry) return 'Register this wallet in Investor Registry before whitelisting.';
+    if (!selectedWhitelistRegistryEntry) return 'Register this wallet in Investor Wallets before whitelisting.';
     if (selectedWhitelistTargetAlreadyWhitelisted) return 'Selected wallet is already whitelisted in this local session.';
-    if (!selectedWhitelistRegistryEntry.canUseForWhitelist) return 'Resolve this Investor Registry wallet before SCP whitelist.';
+    if (!selectedWhitelistRegistryEntry.canUseForWhitelist) return 'Resolve this investor wallet before whitelisting.';
     if (!whitelistFunctionAvailable) return 'setWalletAllowed(address,bool) is missing from the deployment artifact ABI.';
     return 'Contract authorization is enforced on-chain.';
   })();
@@ -1106,8 +1113,8 @@ export function App() {
               label: 'Smart Contract Operations',
               status: deploymentEvidenceReadModel.status === 'confirmed' ? 'Record NAV, Wallet Whitelist, and Allocation / Mint gated' : 'Waiting for deployment evidence',
               detail:
-                'SCP exposes Record NAV Event, Whitelist Wallet, and Allocation / Mint when their wallet, deployment, ABI, parameter, and evidence gates are satisfied. Other operations need explicit adapters before release.',
-              source: 'SCP operations boundary',
+                'Contract Ops exposes Record NAV Event, Whitelist Wallet, and Allocation / Mint when their wallet, deployment, ABI, parameter, and evidence gates are satisfied. Other operations need explicit adapters before release.',
+              source: 'Contract Ops boundary',
             },
             {
               label: 'Deployment / Signing / Audit',
@@ -1143,7 +1150,11 @@ export function App() {
     return `${prefix}-${engineeringBotConversationSequenceRef.current}`;
   }
 
-  function publishEngineerResponse(response: BlockchainEngineerChatResponse, source: EngineerAnswerSource) {
+  function publishEngineerResponse(
+    response: BlockchainEngineerChatResponse,
+    source: EngineerAnswerSource,
+    assistantMode: AssistantMode = 'engineering',
+  ) {
     setEngineerAnswerSource(source);
     setEngineeringBotConversation((turns) => [
       ...turns,
@@ -1152,6 +1163,7 @@ export function App() {
         role: 'assistant',
         response,
         source,
+        assistantMode,
       },
     ]);
   }
@@ -1223,11 +1235,13 @@ export function App() {
         id: nextEngineeringBotConversationTurnId('user'),
         role: 'user',
         content: submittedQuestion,
+        assistantMode: activeAssistantMode,
       },
     ]);
 
     const result = await askBlockchainEngineer({
       userMessage: submittedQuestion,
+      assistantMode: activeAssistantMode,
       projectContext: brief
         ? {
             fundName: brief.fundFacts.fundName,
@@ -1245,13 +1259,13 @@ export function App() {
     setIsBotReplyLoading(false);
 
     if (result.ok) {
-      publishEngineerResponse(result.data, 'backend');
+      publishEngineerResponse(result.data, 'backend', activeAssistantMode);
       setQuestion('');
       return;
     }
 
     setBotChatError(result.message);
-    publishEngineerResponse(createLocalEngineerResponse(answerAsBlockchainEngineer(submittedQuestion, brief)), 'local');
+    publishEngineerResponse(createLocalEngineerResponse(answerAsBlockchainEngineer(submittedQuestion, brief)), 'local', activeAssistantMode);
     setQuestion('');
   }
 
@@ -1624,7 +1638,7 @@ export function App() {
     const walletAddress = investorRegistryDraftWallet.trim();
 
     if (!lifecycleReadModel.investorRegistry.canAddEntry) {
-      setInvestorRegistryError('Investor Registry already has the maximum 50 wallet addresses.');
+      setInvestorRegistryError('Investor Wallets already has the maximum 50 wallet addresses.');
       return;
     }
 
@@ -1672,7 +1686,7 @@ export function App() {
     setTestWalletLabMessage(
       pack.warnings.length > 0
         ? `${entries.length} generated test investor wallet(s) added. ${pack.warnings.join(' ')}`
-        : `${entries.length} generated test investor wallet(s) added to Investor Registry.`,
+        : `${entries.length} generated test investor wallet(s) added to Investor Wallets.`,
     );
   }
 
@@ -2124,8 +2138,10 @@ export function App() {
           onClick={() => setIsLeftRailOpen((current) => !current)}
           aria-expanded={isLeftRailOpen}
           aria-controls="left-rail"
+          aria-label={isLeftRailOpen ? 'Hide left navigation' : 'Show left navigation'}
+          title={isLeftRailOpen ? 'Hide left navigation' : 'Show left navigation'}
         >
-          {isLeftRailOpen ? 'Hide left rail' : 'Show left rail'}
+          <span aria-hidden="true">{isLeftRailOpen ? '<' : '>'}</span>
         </button>
         <button
           className="rail-toggle right-toggle"
@@ -2133,8 +2149,10 @@ export function App() {
           onClick={() => setIsRightRailOpen((current) => !current)}
           aria-expanded={isRightRailOpen}
           aria-controls="right-rail"
+          aria-label={isRightRailOpen ? 'Hide right context' : 'Show right context'}
+          title={isRightRailOpen ? 'Hide right context' : 'Show right context'}
         >
-          {isRightRailOpen ? 'Hide right rail' : 'Show right rail'}
+          <span aria-hidden="true">{isRightRailOpen ? '>' : '<'}</span>
         </button>
 
         {isLeftRailOpen && (
@@ -2171,13 +2189,13 @@ export function App() {
               <button type="button" className="project-nav-button" onClick={() => setSelectedProjectId('workspace')}>
                 <span>All Projects</span>
               </button>
-              <button type="button" className="project-nav-button">
+              <button type="button" className="project-nav-button" disabled title="Templates will be connected in a later workspace sprint.">
                 <span>Templates</span>
               </button>
-              <button type="button" className="project-nav-button">
+              <button type="button" className="project-nav-button" disabled title="Knowledge Base will be connected in a later workspace sprint.">
                 <span>Knowledge Base</span>
               </button>
-              <button type="button" className="project-nav-button">
+              <button type="button" className="project-nav-button" disabled title="Activity Log will be connected in a later workspace sprint.">
                 <span>Activity Log</span>
               </button>
             </nav>
@@ -2188,10 +2206,10 @@ export function App() {
                 <span>Engineering Bot</span>
               </button>
               <button type="button" className="project-nav-button" onClick={() => setSelectedWorkspaceTab('smart_contract')}>
-                <span>Smart Contract Lab</span>
+                <span>Contract Ops</span>
               </button>
               <button type="button" className="project-nav-button" onClick={() => setSelectedWorkspaceTab('evidence')}>
-                <span>Deployments</span>
+                <span>Deployment Evidence</span>
               </button>
               <button type="button" className="project-nav-button" onClick={() => setSelectedWorkspaceTab('evidence')}>
                 <span>Evidence Vault</span>
@@ -2200,16 +2218,16 @@ export function App() {
 
             <nav className="project-nav rail-section" aria-label="Settings navigation">
               <p className="rail-label">Settings</p>
-              <button type="button" className="project-nav-button">
+              <button type="button" className="project-nav-button" disabled title="Wallet settings will be connected in a later workspace sprint.">
                 <span>Wallet & Network</span>
               </button>
-              <button type="button" className="project-nav-button">
+              <button type="button" className="project-nav-button" disabled title="Team settings will be connected in a later workspace sprint.">
                 <span>Team</span>
               </button>
-              <button type="button" className="project-nav-button">
+              <button type="button" className="project-nav-button" disabled title="Preferences will be connected in a later workspace sprint.">
                 <span>Preferences</span>
               </button>
-              <button type="button" className="project-nav-button">
+              <button type="button" className="project-nav-button" disabled title="Audit Trail will be connected in a later workspace sprint.">
                 <span>Audit Trail</span>
               </button>
             </nav>
@@ -2301,7 +2319,7 @@ export function App() {
             </div>
 
             {activeWorkspaceTab.id === 'investor_registry' && (
-              <section className="registry-panel" aria-label="Investor Registry workspace">
+              <section className="registry-panel" aria-label="Investor Wallets workspace">
                 <div className="registry-panel-heading">
                   <div>
                     <h3>Investor wallet registry</h3>
@@ -2313,7 +2331,7 @@ export function App() {
                   <span className="gate-badge draft">{lifecycleReadModel.investorRegistry.statusLabel}</span>
                 </div>
 
-                <div className="registry-summary" aria-label="Investor Registry summary">
+                <div className="registry-summary" aria-label="Investor Wallets summary">
                   <article>
                     <span>Registered</span>
                     <strong>{lifecycleReadModel.investorRegistry.entryCount}/50</strong>
@@ -2429,7 +2447,7 @@ export function App() {
                 )}
 
                 {lifecycleReadModel.investorRegistry.blockingReasons.length > 0 && (
-                  <ul className="registry-warnings" aria-label="Investor Registry blocking items">
+                  <ul className="registry-warnings" aria-label="Investor Wallets blocking items">
                     {lifecycleReadModel.investorRegistry.blockingReasons.map((reason) => (
                       <li key={reason}>{reason}</li>
                     ))}
@@ -2472,7 +2490,7 @@ export function App() {
                             disabled={!entry.canUseForWhitelist}
                             onClick={() => selectInvestorWalletForWhitelist(entry.walletAddress)}
                           >
-                            Use for SCP whitelist
+                            Use for wallet whitelist
                           </button>
                           <button
                             type="button"
@@ -2682,13 +2700,128 @@ export function App() {
             )}
 
             {activeWorkspaceTab.id === 'smart_contract' && (
-              <section className="parameter-panel" aria-label="Allocation Mint workspace">
+              <section className="parameter-panel contract-ops-workspace" aria-label="Contract Ops workspace" data-testid="smart-contract-control">
                 <div className="registry-panel-heading">
                   <div>
-                    <h3>Allocation / Mint readiness</h3>
+                    <h3>Contract operations</h3>
                     <p>
-                      Prepare single-investor allocation parameters from Investor Registry and Subscription state. SCP can submit
-                      a wallet-signed Sepolia mint after deployment evidence and investor whitelist are confirmed.
+                      Review and run the wallet-signed Sepolia operations that are actually available from the current shared lifecycle state.
+                    </p>
+                  </div>
+                  <span className={`gate-badge ${smartContractControlPanel.status === 'ready_for_spec' ? 'ready' : 'draft'}`}>
+                    {smartContractControlPanel.statusLabel}
+                  </span>
+                </div>
+
+                <div className="contract-ops-summary" aria-label="Contract Ops summary">
+                  <article>
+                    <span>Deployment</span>
+                    <strong>{formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus)}</strong>
+                    <p>{deploymentEvidenceReadModel.contractAddress ?? 'No receipt-returned contract address yet.'}</p>
+                  </article>
+                  <article>
+                    <span>Wallet</span>
+                    <strong>{formatWalletConnectionStatus(walletConnectionReadModel.walletConnectionStatus)}</strong>
+                    <p>{walletAddressDisplay ? `${walletAddressDisplay} / ${formatWalletChainStatus(walletConnectionReadModel.chainStatus)}` : 'Connect a Sepolia wallet.'}</p>
+                  </article>
+                  <article>
+                    <span>Operations</span>
+                    <strong>{deploymentEvidenceReadModel.status === 'confirmed' ? 'Gated operations available' : 'Waiting for deployment evidence'}</strong>
+                    <p>Record NAV, Whitelist Wallet, and Allocation / Mint are released operation-by-operation.</p>
+                  </article>
+                </div>
+
+                <div className="contract-ops-actions" aria-label="Contract Ops actions">
+                  <button
+                    type="button"
+                    className="workflow-button primary-action"
+                    data-action-id={uiActions.deployToSepolia}
+                    disabled={!canRequestSepoliaDeployment}
+                    onClick={() => void requestSepoliaDeployment()}
+                    title={canRequestSepoliaDeployment ? undefined : deploymentActionDisabledReason}
+                  >
+                    {walletSignedDeploymentState.deploymentStatus === 'awaiting_wallet_confirmation'
+                      ? 'Awaiting Wallet Confirmation...'
+                      : walletSignedDeploymentState.deploymentStatus === 'submitted'
+                        ? 'Deployment Submitted to Sepolia'
+                        : walletSignedDeploymentState.deploymentStatus === 'confirmed'
+                          ? 'Deployment Confirmed on Sepolia'
+                          : 'Deploy to Sepolia with Wallet'}
+                  </button>
+                  <button
+                    type="button"
+                    className="workflow-button"
+                    data-action-id={uiActions.recordNavEvent}
+                    disabled={!canRequestRecordNavOperation}
+                    onClick={() => void requestRecordNavOperation()}
+                    title={canRequestRecordNavOperation ? undefined : recordNavOperationDisabledReason}
+                  >
+                    {recordNavOperationState.operationStatus === 'awaiting_wallet_confirmation'
+                      ? 'Awaiting Wallet Confirmation...'
+                      : recordNavOperationState.operationStatus === 'submitted'
+                        ? 'Record NAV Submitted to Sepolia'
+                        : recordNavOperationState.operationStatus === 'confirmed'
+                          ? 'Record NAV Confirmed on Sepolia'
+                          : 'Record NAV Event'}
+                  </button>
+                  <label className="field-label compact-operation-field" htmlFor="wallet-whitelist-target">
+                    Whitelist target wallet
+                    <input
+                      id="wallet-whitelist-target"
+                      value={walletWhitelistTargetWallet}
+                      onChange={(event) => updateWalletWhitelistTargetWallet(event.target.value)}
+                      placeholder="0x..."
+                      autoComplete="off"
+                      disabled={isWalletWhitelistOperationInFlight(walletWhitelistOperationState)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="workflow-button"
+                    data-action-id={uiActions.whitelistWallet}
+                    disabled={!canRequestWalletWhitelistOperation}
+                    onClick={() => void requestWalletWhitelistOperation()}
+                    title={canRequestWalletWhitelistOperation ? undefined : walletWhitelistOperationDisabledReason}
+                  >
+                    {walletWhitelistOperationState.operationStatus === 'awaiting_wallet_confirmation'
+                      ? 'Wallet whitelist status: Awaiting wallet confirmation'
+                      : walletWhitelistOperationState.operationStatus === 'submitted'
+                        ? 'Wallet whitelist submitted to Sepolia'
+                        : selectedWhitelistTargetAlreadyConfirmed
+                          ? 'Wallet whitelist confirmed on Sepolia'
+                          : 'Whitelist Wallet'}
+                  </button>
+                  <button
+                    type="button"
+                    className="workflow-button"
+                    data-action-id={uiActions.allocationMint}
+                    disabled={!canRequestAllocationMintOperation}
+                    onClick={() => void requestAllocationMintOperation()}
+                    title={canRequestAllocationMintOperation ? undefined : allocationMintOperationDisabledReason}
+                  >
+                    {walletAllocationMintOperationState.operationStatus === 'awaiting_wallet_confirmation'
+                      ? 'Allocation / Mint awaiting wallet confirmation'
+                      : walletAllocationMintOperationState.operationStatus === 'submitted'
+                        ? 'Allocation / Mint submitted to Sepolia'
+                        : selectedAllocationMintAlreadyConfirmed
+                          ? 'Allocation / Mint confirmed on Sepolia'
+                          : 'Submit Allocation / Mint'}
+                  </button>
+                </div>
+
+                <div className="contract-ops-evidence" aria-label="Contract Ops evidence summary">
+                  <span>Deployment evidence: {deploymentEvidenceReadModel.statusLabel}</span>
+                  <span>Record NAV: {recordNavOperationReadModel.statusLabel}</span>
+                  <span>Wallet whitelist: {walletWhitelistOperationReadModel.statusLabel}</span>
+                  <span>Allocation / Mint: {walletAllocationMintOperationReadModel.statusLabel}</span>
+                  <span>Safety: user wallet signs, backend holds no private keys, Sepolia only.</span>
+                </div>
+
+                <div className="registry-panel-heading compact-subsection-heading">
+                  <div>
+                    <h3>Allocation / Mint setup</h3>
+                    <p>
+                      Prepare single-investor allocation parameters from Investor Wallets and Subscription state before submitting the wallet-signed mint.
                     </p>
                   </div>
                   <span className={`gate-badge ${allocationMint.status === 'ready' ? 'ready' : 'draft'}`}>
@@ -2696,6 +2829,7 @@ export function App() {
                   </span>
                 </div>
 
+                <div className="allocation-mint-workspace" aria-label="Allocation Mint workspace">
                 <div className="parameter-grid">
                   <label htmlFor="allocation-target-wallet">
                     Allocation target wallet
@@ -2728,7 +2862,7 @@ export function App() {
 
                 <div className="allocation-context" aria-label="Allocation Mint dependencies">
                   <article>
-                    <span>Investor Registry</span>
+                    <span>Investor Wallets</span>
                     <strong>{lifecycleReadModel.investorRegistry.statusLabel}</strong>
                     <p>{lifecycleReadModel.investorRegistry.statusDetail}</p>
                   </article>
@@ -2823,6 +2957,7 @@ export function App() {
                     </div>
                     {fundingHelperMessage && <p className="funding-helper-message">{fundingHelperMessage}</p>}
                   </div>
+                </div>
                 </div>
               </section>
             )}
@@ -2923,13 +3058,30 @@ export function App() {
                 <div className="bot-identity">
                   <div className="bot-avatar" aria-hidden="true">AI</div>
                   <div>
-                    <h3>Engineering Bot</h3>
-                    <p>Cross-stage intelligence across requirements, investor registry, subscription, redemption, asset servicing, and evidence.</p>
+                    <h3>{activeAssistantMode === 'engineering' ? 'Engineering Bot' : 'Advisor Bot'}</h3>
+                    <p>
+                      {activeAssistantMode === 'engineering'
+                        ? 'Designs the tokenisation workflow, artifacts, smart-contract handoffs, and wallet operation next steps.'
+                        : 'Explains the lifecycle, tabs, evidence, and next actions in plain language without changing the workflow.'}
+                    </p>
                   </div>
                 </div>
-                <button type="button" className="secondary-button" data-action-id={uiActions.askQuestion} onClick={() => void askBot()}>
-                  Ask a question
-                </button>
+                <div className="ai-mode-switch" aria-label="AI assistant mode">
+                  <button
+                    type="button"
+                    aria-pressed={activeAssistantMode === 'engineering'}
+                    onClick={() => setActiveAssistantMode('engineering')}
+                  >
+                    Engineering
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={activeAssistantMode === 'advisor'}
+                    onClick={() => setActiveAssistantMode('advisor')}
+                  >
+                    Advisor
+                  </button>
+                </div>
               </div>
 
               <div className="bot-conversation" aria-label="Engineering Bot conversation">
@@ -2938,20 +3090,24 @@ export function App() {
                     {engineeringBotConversation.map((turn) =>
                       turn.role === 'user' ? (
                         <article className="conversation-turn user-turn" key={turn.id}>
-                          <span className="turn-label">You</span>
+                          <span className="turn-label">
+                            You to {turn.assistantMode === 'advisor' ? 'Advisor' : 'Engineering'}
+                          </span>
                           <p>{turn.content}</p>
                         </article>
                       ) : (
                         <article className="conversation-turn assistant-turn" key={turn.id}>
-                          <span className="turn-label">Engineering Bot</span>
+                          <span className="turn-label">
+                            {turn.assistantMode === 'advisor' ? 'Advisor Bot' : 'Engineering Bot'}
+                          </span>
                           {renderEngineerResponse(turn.response)}
                         </article>
                       ),
                     )}
                     {isBotReplyLoading && (
                       <article className="conversation-turn assistant-turn pending-turn" aria-live="polite">
-                        <span className="turn-label">Engineering Bot</span>
-                        <p>Waiting for Engineering Bot response...</p>
+                        <span className="turn-label">{activeAssistantMode === 'advisor' ? 'Advisor Bot' : 'Engineering Bot'}</span>
+                        <p>Waiting for {activeAssistantMode === 'advisor' ? 'Advisor Bot' : 'Engineering Bot'} response...</p>
                       </article>
                     )}
                   </div>
@@ -3012,11 +3168,15 @@ export function App() {
               </section>
 
               <label className="chat-composer ai-composer">
-                <span className="composer-title">Engineering Bot MILA</span>
+                <span className="composer-title">{activeAssistantMode === 'advisor' ? 'Advisor Bot MILA' : 'Engineering Bot MILA'}</span>
                 <div className="composer-shell">
                   <textarea
-                    aria-label="Engineering Bot MILA"
-                    placeholder="Ask MILA26 what to design, configure, or review next..."
+                    aria-label={activeAssistantMode === 'advisor' ? 'Advisor Bot MILA' : 'Engineering Bot MILA'}
+                    placeholder={
+                      activeAssistantMode === 'advisor'
+                        ? 'Ask what a lifecycle step, button, artifact, or evidence status means...'
+                        : 'Ask MILA26 what to design, configure, or review next...'
+                    }
                     value={question}
                     onChange={(event) => setQuestion(event.target.value)}
                     onKeyDown={(event) => {

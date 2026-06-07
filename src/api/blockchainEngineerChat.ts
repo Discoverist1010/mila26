@@ -1,5 +1,5 @@
 import type {
-  BlockchainEngineerChatRequest,
+  BlockchainEngineerChatRequestInput,
   BlockchainEngineerChatResponse,
 } from '../../server/contracts/chat';
 import { requestJson, type ApiClientResult } from './client';
@@ -14,7 +14,7 @@ export type BlockchainEngineerChatClientOptions = {
 export type BlockchainEngineerChatResult = ApiClientResult<BlockchainEngineerChatResponse>;
 
 export async function askBlockchainEngineer(
-  request: BlockchainEngineerChatRequest,
+  request: BlockchainEngineerChatRequestInput,
   options: BlockchainEngineerChatClientOptions = {},
 ): Promise<BlockchainEngineerChatResult> {
   if (!request.userMessage.trim()) {

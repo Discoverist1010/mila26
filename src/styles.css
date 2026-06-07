@@ -1248,10 +1248,36 @@ summary {
 }
 
 .product-workspace-shell .rail-toggle {
-  border-color: rgb(255 255 255 / 0.14);
-  background: #0f172a;
+  align-items: center;
+  border-color: rgb(255 255 255 / 0.2);
+  border-radius: 999px;
+  background: #0b203d;
   color: #e5edf8;
+  display: inline-flex;
+  font-size: 15px;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
   opacity: 0.9;
+  padding: 0;
+  top: 18px;
+  width: 34px;
+}
+
+.product-workspace-shell .left-toggle {
+  left: 206px;
+}
+
+.product-workspace-shell.left-collapsed .left-toggle {
+  left: 14px;
+}
+
+.product-workspace-shell .right-toggle {
+  right: 326px;
+}
+
+.product-workspace-shell.right-collapsed .right-toggle {
+  right: 14px;
 }
 
 .mila-left-rail,
@@ -1337,6 +1363,13 @@ summary {
 .mila-left-rail .project-nav-button[aria-current='page'] small,
 .mila-left-rail .project-nav-button:hover small {
   color: #d5e5ff;
+}
+
+.mila-left-rail .project-nav-button:disabled {
+  background: transparent;
+  color: #6d819f;
+  cursor: not-allowed;
+  opacity: 0.72;
 }
 
 .left-status-card {
@@ -1601,6 +1634,36 @@ summary {
   justify-content: space-between;
   margin: -2px -28px 0;
   padding: 0 28px 18px;
+  order: -2;
+}
+
+.ai-workspace {
+  order: -1;
+}
+
+.ai-mode-switch {
+  align-items: center;
+  border: 1px solid #dbe6f3;
+  border-radius: 999px;
+  background: #f8fbff;
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+}
+
+.ai-mode-switch button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 7px 11px;
+}
+
+.ai-mode-switch button[aria-pressed='true'] {
+  background: #0b65d8;
+  color: #ffffff;
 }
 
 .stage-header h2 {
@@ -1974,6 +2037,86 @@ summary {
   color: #475569;
   font-size: 13px;
   margin: 0;
+}
+
+.contract-ops-workspace {
+  gap: 16px;
+}
+
+.contract-ops-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.contract-ops-summary article,
+.contract-ops-evidence {
+  border: 1px solid #dce5f0;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 13px;
+}
+
+.contract-ops-summary span,
+.contract-ops-evidence span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.contract-ops-summary strong {
+  color: #0f172a;
+  display: block;
+  font-size: 16px;
+  margin: 4px 0;
+}
+
+.contract-ops-summary p {
+  color: #475569;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.contract-ops-actions {
+  align-items: end;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #f8fbff;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 13px;
+}
+
+.compact-operation-field {
+  min-width: min(100%, 280px);
+}
+
+.compact-operation-field input {
+  margin-top: 5px;
+}
+
+.contract-ops-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.contract-ops-evidence span {
+  border: 1px solid #e6edf6;
+  border-radius: 999px;
+  background: #f8fafc;
+  padding: 6px 10px;
+}
+
+.compact-subsection-heading {
+  border-top: 1px solid #e5ebf3;
+  padding-top: 14px;
+}
+
+.allocation-mint-workspace {
+  display: grid;
+  gap: 14px;
 }
 
 .durable-records-panel {
@@ -2358,6 +2501,10 @@ summary {
   }
 
   .allocation-context {
+    grid-template-columns: 1fr;
+  }
+
+  .contract-ops-summary {
     grid-template-columns: 1fr;
   }
 

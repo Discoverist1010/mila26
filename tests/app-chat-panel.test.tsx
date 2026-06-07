@@ -207,6 +207,16 @@ async function completeSmartContractPreparation() {
   await waitFor(() => {
     expect(screen.getByLabelText('Generated smart contract artifacts')).toBeVisible();
   });
+
+  fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Contract Ops/ }));
+}
+
+function contractOps() {
+  return within(screen.getByTestId('smart-contract-control'));
+}
+
+function getContractOpsDeployButton() {
+  return contractOps().getByRole('button', { name: 'Deploy to Sepolia with Wallet' });
 }
 
 describe('App Blockchain Engineer Bot panel', () => {
@@ -249,12 +259,12 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Tokenisation lifecycle tabs')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Overview' })).toBeVisible();
     expect(screen.getByLabelText('Engineering Bot workspace')).toBeVisible();
-    expect(screen.getByText('Cross-stage intelligence across requirements, investor registry, subscription, redemption, asset servicing, and evidence.')).toBeVisible();
+    expect(screen.getByText('Designs the tokenisation workflow, artifacts, smart-contract handoffs, and wallet operation next steps.')).toBeVisible();
     expect(screen.getByText('Next best action')).toBeVisible();
     expect(screen.getByRole('button', { name: /Alpha Income Fund I/i })).toBeVisible();
     expect(screen.getByRole('button', { name: /Singapore REIT Token/i })).toBeVisible();
     expect(screen.getByRole('button', { name: /Mixed Portfolio Token/i })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Smart Contract Control Panel' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Smart Contract Control Panel' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Current-stage activities')).not.toBeInTheDocument();
     expect(screen.queryByText('Goal intake')).not.toBeInTheDocument();
     expect(screen.queryByText('Project Closure Ledger')).not.toBeInTheDocument();
@@ -274,15 +284,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByText('Tokenisation goal')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Engineering Bot MILA' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Send' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Ask a question' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Advisor' })).toBeVisible();
     expect(screen.queryByText('Next Recommended Action')).not.toBeInTheDocument();
-    expect(screen.getByTestId('smart-contract-control')).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Smart Contract Control Panel' })).toBeVisible();
-    expect(screen.getByText('NAV Updated')).toBeVisible();
-    expect(screen.getByText('Distribution Recorded')).toBeVisible();
-    expect(screen.getAllByRole('button', { name: 'Trigger Event' }).length).toBeGreaterThan(0);
-    expect(screen.getByText('SCP readiness')).toBeVisible();
-    expect(screen.getAllByText('Preview only').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('smart-contract-control')).not.toBeInTheDocument();
 
     const botComposer = screen.getByRole('textbox', { name: 'Engineering Bot MILA' });
     fireEvent.change(botComposer, {
@@ -325,6 +329,45 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a question before asking the bot.');
+  });
+
+  it('keeps Advisor mode in the same AI panel across tab switches', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse({
+        ok: true,
+        data: {
+          messageId: 'advisor-response-1',
+          agentId: 'blockchain-engineer',
+          content: 'Advisor view: use Redemption for delay terms and Evidence Vault for provider-derived proof.',
+          openQuestions: ['Which lifecycle step should I explain next?'],
+          riskNotes: ['Explanatory guidance only.'],
+          nextRecommendedAction: 'Ask a plain-language question about the current lifecycle state.',
+          createdAt: '2026-05-21T00:00:00.000Z',
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Advisor' }));
+    expect(screen.getByRole('textbox', { name: 'Advisor Bot MILA' })).toBeVisible();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Advisor Bot MILA' }), {
+      target: { value: 'Where do redemption delays belong?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Advisor view: use Redemption');
+    });
+    const requestBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(requestBody.assistantMode).toBe('advisor');
+    expect(screen.getByText('You to Advisor')).toBeVisible();
+    expect(screen.getAllByText('Advisor Bot').length).toBeGreaterThan(0);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Redemption/ }));
+    expect(screen.getByRole('textbox', { name: 'Advisor Bot MILA' })).toBeVisible();
+    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Advisor view: use Redemption');
   });
 
   it('shows a safe error and local fallback when the backend is unavailable', async () => {
@@ -391,22 +434,22 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(artifactScope.getByText('Risks / controls')).toBeVisible();
     expect(artifactScope.getByText('Acceptance criteria')).toBeVisible();
     expect(artifactScope.getByText('Capture tokenized fund requirements.')).toBeVisible();
-    expect(screen.getAllByText('Ready for Smart Contract Spec').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Prepare Smart Contract Spec' })).toBeEnabled();
     expect(screen.getByText('Start by registering investor wallet addresses so subscription, whitelisting, servicing, and evidence can use the same lifecycle state.')).toBeVisible();
     const nextAction = screen.getByRole('button', { name: 'Prepare Smart Contract Spec' });
     expect(nextAction).toBeEnabled();
     expect(screen.queryByRole('button', { name: 'Approve Brief and Run Coding Bot' })).not.toBeInTheDocument();
   });
 
-  it('uses shared lifecycle state for the Investor Registry tab, snapshot, vault, and SCP handoff', () => {
+  it('uses shared lifecycle state for the Investor Wallets tab, snapshot, vault, and Contract Ops handoff', () => {
     const validWallet = '0x3333333333333333333333333333333333333333';
     render(<App />);
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
 
-    const registry = screen.getByLabelText('Investor Registry workspace');
+    const registry = screen.getByLabelText('Investor Wallets workspace');
     expect(within(registry).getByText('No investor wallets registered yet.')).toBeVisible();
-    expect(within(registry).getByText('Investor Registry: Wallets needed')).toBeVisible();
+    expect(within(registry).getByText('Investor Wallets: Wallets needed')).toBeVisible();
     expect(within(registry).getByText(/This is not KYC, investor eligibility approval, or legal approval/i)).toBeVisible();
     expect(within(registry).queryByText(/KYC approved|investor eligibility approved|legally approved/i)).not.toBeInTheDocument();
 
@@ -420,29 +463,29 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(within(registry).getByText('Valid wallet address')).toBeVisible();
     expect(screen.getByText('1 ready, 0 whitelisted')).toBeVisible();
     expect(screen.getByLabelText('Product setup status')).toHaveTextContent('1/50 registered');
-    expect(screen.getByLabelText('Project status')).toHaveTextContent('Investor Registry');
+    expect(screen.getByLabelText('Project status')).toHaveTextContent('Investor Wallets');
     expect(screen.getByLabelText('Project status')).toHaveTextContent('Active');
 
-    fireEvent.click(within(registry).getByRole('button', { name: 'Use for SCP whitelist' }));
-    expect(screen.getByRole('heading', { name: 'Smart Contract' })).toBeVisible();
-    expect(screen.getByText(`Target wallet: ${validWallet}`)).toBeVisible();
+    fireEvent.click(within(registry).getByRole('button', { name: 'Use for wallet whitelist' }));
+    expect(screen.getByRole('heading', { name: 'Contract Ops' })).toBeVisible();
+    expect(screen.getByLabelText('Whitelist target wallet')).toHaveValue(validWallet);
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
     fireEvent.change(screen.getByLabelText('Investor wallet address'), {
       target: { value: '0x1234' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add wallet' }));
 
     expect(screen.getByText('Wallet address must be a valid non-zero EVM address.')).toBeVisible();
-    expect(screen.getByLabelText('Investor Registry blocking items')).toHaveTextContent('Resolve invalid wallet addresses.');
+    expect(screen.getByLabelText('Investor Wallets blocking items')).toHaveTextContent('Resolve invalid wallet addresses.');
   });
 
   it('generates a test investor wallet pack and uses generated wallets for Allocation / Mint readiness', () => {
     const paymentWallet = '0x4444444444444444444444444444444444444444';
     render(<App />);
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
-    const registry = screen.getByLabelText('Investor Registry workspace');
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
+    const registry = screen.getByLabelText('Investor Wallets workspace');
     const walletLab = within(registry).getByLabelText('Test Wallet Lab');
 
     expect(within(walletLab).getByText(/separate test-only MetaMask profile/i)).toBeVisible();
@@ -452,7 +495,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(within(walletLab).getByRole('button', { name: 'Generate test wallet pack' }));
 
     expect(within(registry).getByText('50/50')).toBeVisible();
-    expect(within(walletLab).getByText('50 generated test investor wallet(s) added to Investor Registry.')).toBeVisible();
+    expect(within(walletLab).getByText('50 generated test investor wallet(s) added to Investor Wallets.')).toBeVisible();
     expect(within(registry).getByText('Investor 01')).toBeVisible();
     expect(within(registry).getAllByText('Generated test wallet').length).toBeGreaterThan(0);
     expect(within(registry).getAllByText(/Ready for whitelist; subscription, redemption, notices planned/i).length).toBeGreaterThan(0);
@@ -475,7 +518,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.change(within(subscription).getByLabelText('Payment wallet / contract address'), { target: { value: paymentWallet } });
     fireEvent.change(within(subscription).getByLabelText('Payment per token'), { target: { value: '1.025' } });
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Smart Contract/ }));
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Contract Ops/ }));
     fireEvent.change(within(screen.getByLabelText('Allocation Mint workspace')).getByLabelText('Token allocation amount'), {
       target: { value: '1000' },
     });
@@ -490,8 +533,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     const redemptionWallet = '0x5555555555555555555555555555555555555555';
     render(<App />);
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
-    const registry = screen.getByLabelText('Investor Registry workspace');
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
+    const registry = screen.getByLabelText('Investor Wallets workspace');
     fireEvent.change(within(registry).getByLabelText('Investor wallet address'), { target: { value: investorWallet } });
     fireEvent.click(within(registry).getByRole('button', { name: 'Add wallet' }));
 
@@ -548,22 +591,22 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Project status')).toHaveTextContent('Draft');
   });
 
-  it('prepares Allocation / Mint readiness from Investor Registry and Subscription without live mint execution', () => {
+  it('prepares Allocation / Mint readiness from Investor Wallets and Subscription without live mint execution', () => {
     const investorWallet = '0x3333333333333333333333333333333333333333';
     const paymentWallet = '0x4444444444444444444444444444444444444444';
     render(<App />);
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
-    const registry = screen.getByLabelText('Investor Registry workspace');
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
+    const registry = screen.getByLabelText('Investor Wallets workspace');
     fireEvent.change(within(registry).getByLabelText('Investor wallet address'), { target: { value: investorWallet } });
     fireEvent.click(within(registry).getByRole('button', { name: 'Add wallet' }));
 
     fireEvent.click(within(registry).getByRole('button', { name: 'Use for Allocation / Mint' }));
     const allocationMintPanel = screen.getByLabelText('Allocation Mint workspace');
-    expect(within(allocationMintPanel).getByRole('heading', { name: 'Allocation / Mint readiness' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Allocation / Mint setup' })).toBeVisible();
     expect(within(allocationMintPanel).getByLabelText('Allocation target wallet')).toHaveValue(investorWallet);
     expect(within(allocationMintPanel).getByText('Complete Subscription parameters before Allocation / Mint.')).toBeVisible();
-    expect(within(allocationMintPanel).getByText(/SCP can submit a wallet-signed Sepolia mint/i)).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Contract operations' })).toBeVisible();
     expect(screen.getByLabelText('Project status')).toHaveTextContent('Allocation / Mint');
     expect(screen.getByLabelText('Project status')).toHaveTextContent('Allocation setup needs review');
 
@@ -575,7 +618,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.change(within(subscription).getByLabelText('Payment wallet / contract address'), { target: { value: paymentWallet } });
     fireEvent.change(within(subscription).getByLabelText('Payment per token'), { target: { value: '1.025' } });
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Smart Contract/ }));
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Contract Ops/ }));
     const readyAllocationMintPanel = screen.getByLabelText('Allocation Mint workspace');
     fireEvent.change(within(readyAllocationMintPanel).getByLabelText('Token allocation amount'), { target: { value: '1250' } });
 
@@ -585,15 +628,15 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Lifecycle snapshot')).toHaveTextContent('Ready for review');
     expect(screen.getByLabelText('Project status')).toHaveTextContent('Allocation / Mint Parameters');
     expect(screen.getByLabelText('Project status')).toHaveTextContent('Available');
-    expect(within(screen.getByTestId('smart-contract-control')).queryByRole('button', { name: /Mint/i })).toBeDisabled();
-    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Mint' })).toHaveAttribute(
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Submit Allocation / Mint' })).toBeDisabled();
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Submit Allocation / Mint' })).toHaveAttribute(
       'title',
       'Confirm wallet-signed Sepolia deployment evidence before Allocation / Mint.',
     );
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
     fireEvent.change(screen.getByLabelText('Payment per token'), { target: { value: '' } });
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Smart Contract/ }));
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Contract Ops/ }));
 
     expect(screen.getByLabelText('Allocation Mint workspace')).toHaveTextContent(
       'Complete Subscription parameters before Allocation / Mint.',
@@ -644,7 +687,7 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     render(<App />);
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
     fireEvent.change(screen.getByLabelText('Investor wallet address'), { target: { value: investorWallet } });
     fireEvent.click(screen.getByRole('button', { name: 'Add wallet' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save snapshot' }));
@@ -740,9 +783,9 @@ describe('App Blockchain Engineer Bot panel', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ projectId: 'usequities' }),
     });
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
-    expect(screen.getByLabelText('Investor Registry workspace')).toHaveTextContent('Investor 07');
-    expect(screen.getByLabelText('Investor Registry workspace')).toHaveTextContent(investorWallet);
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
+    expect(screen.getByLabelText('Investor Wallets workspace')).toHaveTextContent('Investor 07');
+    expect(screen.getByLabelText('Investor Wallets workspace')).toHaveTextContent(investorWallet);
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
     expect(screen.getByLabelText('Permitted stablecoins')).toHaveValue('USDC');
     expect(screen.getByLabelText('Subscription workspace')).toHaveTextContent('Subscription parameters are ready for template handoff.');
@@ -1029,7 +1072,7 @@ describe('App Blockchain Engineer Bot panel', () => {
 	    expect(generatedArtifacts.getByText('Waiting for deployment evidence')).toBeVisible();
     expect(
       generatedArtifacts.getByText(
-        'SCP exposes Record NAV Event, Whitelist Wallet, and Allocation / Mint when their wallet, deployment, ABI, parameter, and evidence gates are satisfied. Other operations need explicit adapters before release.',
+        'Contract Ops exposes Record NAV Event, Whitelist Wallet, and Allocation / Mint when their wallet, deployment, ABI, parameter, and evidence gates are satisfied. Other operations need explicit adapters before release.',
       ),
     ).toBeVisible();
     expect(screen.getByText('Deployment / Signing / Audit')).toBeVisible();
@@ -1038,72 +1081,65 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('represented the known local compile/test foundation as passed');
     expect(screen.getByText('Recommended next action')).toBeVisible();
     expect(screen.getByText('Deployment Gate and wallet-signing design remain later steps. Local compile/test status does not imply deployment readiness.')).toBeVisible();
-    expect(screen.getAllByText('Artifact preview generated').length).toBeGreaterThan(0);
-    expect(screen.getByText('Smart Contract Spec: Generated')).toBeVisible();
-    expect(screen.getByText('Artifact preview: Generated, not compiled')).toBeVisible();
-    expect(screen.getByText('Check result: Spec-consistency result available')).toBeVisible();
-    expect(screen.getByText('Evidence-lite: Available for later evidence pack wiring')).toBeVisible();
-    expect(screen.getByText('Local compile/test foundation: Passed')).toBeVisible();
-    expect(screen.getByText('Solidity fixture: Compiles locally')).toBeVisible();
-    expect(screen.getByText('Contract tests: Passed locally')).toBeVisible();
-    expect(screen.getByText('Tested capabilities: ERC-20 basics, whitelist restrictions, issuer mint/allocation, valuation event, distribution event, pause/unpause, access control')).toBeVisible();
-    expect(screen.getAllByText('Deployment Gate Review: Review-ready').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Pre-deployment readiness: Complete').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Deployment execution: Blocked').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Wallet Signing Intent: Review-ready').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Wallet execution: Deployment, Record NAV, Wallet Whitelist, and Allocation \/ Mint use wallet-signed Sepolia requests/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('User wallet signing required for each transaction').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Backend never holds private keys').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Wallet connection: Not detected').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Wallet chain: Unknown').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('No wallet address').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('No signed payload').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('No submitted transaction').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('No confirmed transaction').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('No contract address').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('No transaction hash').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Smart Contract Operations: Released operation-by-operation').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Artifact Preview');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Smart Contract Spec');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Generated');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Artifact Preview');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Check Result');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Evidence-Lite');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Local Compile/Test');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Hardhat fixture');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('local contract tests');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent(
+      'Tested capabilities: ERC-20 basics, whitelist restrictions, issuer mint/allocation, valuation event, distribution event, pause/unpause, and access control.',
+    );
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Deployment Gate Review');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Pre-deployment readiness: Complete');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Deployment execution: Blocked');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Wallet Signing Intent');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Wallet-signed deployment');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Backend never holds private keys');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Wallet Connection');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Not detected');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Wallet chain: Unknown');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('No wallet address');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('No contract address');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('No transaction hash');
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Contract Ops/ }));
+    expect(screen.getByText('Contract operations')).toBeVisible();
+    expect(screen.getByLabelText('Contract Ops summary')).toHaveTextContent('Waiting for deployment evidence');
     expect(
       screen.getAllByText(
-        'SCP exposes Record NAV Event, Whitelist Wallet, and Allocation / Mint when their wallet, deployment, ABI, parameter, and evidence gates are satisfied. Other operations need explicit adapters before release.',
+        'Contract Ops exposes Record NAV Event, Whitelist Wallet, and Allocation / Mint when their wallet, deployment, ABI, parameter, and evidence gates are satisfied. Other operations need explicit adapters before release.',
       ).length,
     ).toBeGreaterThan(0);
-    expect(screen.queryByRole('button', { name: 'Record NAV Event' })).not.toBeInTheDocument();
-    expect(screen.getByText('Wallet signing not implemented: Not implemented')).toBeVisible();
-    expect(screen.getByText('User wallet signing required later: Required')).toBeVisible();
-    expect(screen.getAllByText('Wallet connection: Not detected').length).toBeGreaterThan(0);
-    expect(screen.getByText('Wallet address: Absent')).toBeVisible();
-    expect(screen.getByText('No signed payload: Absent')).toBeVisible();
-    expect(screen.getByText('No submitted transaction: Absent')).toBeVisible();
-    expect(screen.getByText('No confirmed transaction: Absent')).toBeVisible();
-    expect(screen.getByText('Contract address: No contract address')).toBeVisible();
-    expect(screen.getByText('Transaction hash: No transaction hash')).toBeVisible();
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Record NAV Event' })).toBeDisabled();
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Wallet Connection');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Not detected');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('No wallet address');
+    expect(screen.getByLabelText('Contract Ops summary')).toHaveTextContent('No receipt-returned contract address yet.');
     expect(screen.getAllByText('Deployment Evidence').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Deployment Evidence: Not available').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Evidence strength: None').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Evidence persistence: Local session only').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Transaction hash source: Absent').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Contract address source: Absent').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Other Smart Contract Operations: Require explicit adapters and evidence paths before release').length).toBeGreaterThan(0);
-    expect(screen.getByText('Deployment: Not started')).toBeVisible();
-    expect(screen.getByText('Wallet signing: Not started')).toBeVisible();
-    expect(screen.getByText('Audit: Not audited')).toBeVisible();
-    expect(screen.getByText('Ethereum testnet: Only')).toBeVisible();
-    expect(screen.getByText('Mainnet: Disabled')).toBeVisible();
-    expect(screen.getByText('Backend private keys: None held')).toBeVisible();
-    expect(screen.getByText('Future deployment signer: User wallet')).toBeVisible();
-    expect(screen.getByText('Transaction hash: No transaction hash')).toBeVisible();
-    expect(screen.getByText('ValuationUpdated')).toBeVisible();
-    expect(screen.getByText('ContractPaused')).toBeVisible();
-    expect(screen.getByText('ContractUnpaused')).toBeVisible();
-    expect(screen.getAllByText('No contract address').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Deployment Evidence: Not available');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Evidence strength: None');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Local-session evidence');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Transaction hash source: Absent');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Contract address source: Absent');
+    expect(screen.getByLabelText('Contract Ops evidence summary')).toHaveTextContent('Deployment evidence: Deployment Evidence: Not available');
+    expect(screen.getByLabelText('Contract Ops evidence summary')).toHaveTextContent('Record NAV: Record NAV operation not started');
+    expect(screen.getByLabelText('Contract Ops evidence summary')).toHaveTextContent(
+      'Safety: user wallet signs, backend holds no private keys, Sepolia only.',
+    );
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('No transaction hash.');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('valuation event');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('pause/unpause');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('No contract address');
     const rightRail = screen.getByLabelText('Project status');
     const scp = screen.getByTestId('smart-contract-control');
     expect(within(rightRail).queryByRole('button', { name: /wallet/i })).not.toBeInTheDocument();
-    expect(within(scp).queryByRole('button', { name: /wallet/i })).not.toBeInTheDocument();
+    expect(within(scp).getByRole('button', { name: 'Whitelist Wallet' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' })).toBeEnabled();
     expect(screen.queryByRole('button', { name: /sign/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeDisabled();
+    expect(getContractOpsDeployButton()).toBeDisabled();
     expect(screen.queryByText(/0x[a-fA-F0-9]{6,}/)).not.toBeInTheDocument();
     expect(screen.queryByText(/txHash/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/ready to sign|sign now|ready to deploy|ready for signature|production ready|mainnet ready/i)).not.toBeInTheDocument();
@@ -1132,7 +1168,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(generatedArtifacts.getByText('Not connected')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' })).toBeEnabled();
     expect(within(rightRail).queryByRole('button', { name: /wallet/i })).not.toBeInTheDocument();
-    expect(within(scp).queryByRole('button', { name: /wallet/i })).not.toBeInTheDocument();
+    expect(within(scp).getByRole('button', { name: 'Whitelist Wallet' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
 
@@ -1140,12 +1176,12 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(screen.getByRole('button', { name: 'Wallet Connected on Sepolia' })).toBeDisabled();
     });
 
-    expect(screen.getAllByText('Wallet connection: Connected').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Wallet chain: Sepolia').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Connected wallet: 0x1111...1111').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Wallet execution: Deployment, Record NAV, Wallet Whitelist, and Allocation \/ Mint use wallet-signed Sepolia requests/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Deployment: Not started').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Smart Contract Operations: Released operation-by-operation').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Wallet Connection');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Sepolia');
+    expect(screen.getByLabelText('Contract Ops summary')).toHaveTextContent('0x1111...1111');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Wallet-signed deployment');
+    expect(screen.getByLabelText('Contract Ops summary')).toHaveTextContent('Deployment execution not started');
+    expect(screen.getByLabelText('Contract Ops summary')).toHaveTextContent('Waiting for deployment evidence');
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Wallet connection check updated');
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('It does not sign, deploy, submit a transaction, or unlock Smart Contract Operations.');
     expect(calls).toContain('eth_requestAccounts');
@@ -1173,22 +1209,22 @@ describe('App Blockchain Engineer Bot panel', () => {
     render(<App />);
     await completeSmartContractPreparation();
 
-    expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeDisabled();
+    expect(getContractOpsDeployButton()).toBeDisabled();
     expect(screen.queryByText(/0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/i)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeEnabled();
+      expect(getContractOpsDeployButton()).toBeEnabled();
     });
 
-    const deploymentButton = screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' });
+    const deploymentButton = getContractOpsDeployButton();
     fireEvent.click(deploymentButton);
     fireEvent.click(deploymentButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Deployment confirmed on Sepolia')).toBeVisible();
+      expect(screen.getAllByText('Deployment confirmed on Sepolia').length).toBeGreaterThan(0);
     });
 
     expect(calls.filter((method) => method === 'eth_sendTransaction')).toHaveLength(1);
@@ -1204,20 +1240,20 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getAllByText(/Transaction hash: 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Contract address: 0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Deployment Evidence: Confirmed from receipt').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Evidence strength: Confirmed receipt').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Transaction hash source: Provider returned').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Contract address source: Receipt returned').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Evidence persistence: Local session only').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Smart Contract Operations: Released operation-by-operation').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Confirmed receipt');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Provider returned');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Receipt returned');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Local-session evidence');
+    expect(screen.getByLabelText('Contract Ops summary')).toHaveTextContent('Gated operations available');
     expect(within(screen.getByLabelText('Engineering Bot actions')).queryByRole('button', { name: /Record NAV/i })).not.toBeInTheDocument();
     expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Record NAV Event' })).toBeEnabled();
     expect(screen.queryByText(/durable evidence|persistent evidence|permanent evidence/i)).not.toBeInTheDocument();
     expect(within(screen.getByLabelText('Project status')).queryByRole('button', { name: /deploy/i })).not.toBeInTheDocument();
-    expect(within(screen.getByTestId('smart-contract-control')).queryByRole('button', { name: /deploy/i })).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: /Deployment Confirmed on Sepolia/i })).toBeDisabled();
     expect(screen.queryByText(/production ready|mainnet ready|audit passed|security approved/i)).not.toBeInTheDocument();
   });
 
-  it('records the first wallet-signed NAV event from SCP only after confirmed deployment evidence', async () => {
+  it('records the first wallet-signed NAV event from Contract Ops only after confirmed deployment evidence', async () => {
     const { provider, calls, transactionParams } = createMockWalletProvider();
     stubBrowserWallet(provider);
     stubSmartContractPreparationFetch();
@@ -1225,15 +1261,15 @@ describe('App Blockchain Engineer Bot panel', () => {
     render(<App />);
     await completeSmartContractPreparation();
 
-    expect(within(screen.getByTestId('smart-contract-control')).queryByRole('button', { name: 'Record NAV Event' })).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Record NAV Event' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeEnabled();
+      expect(getContractOpsDeployButton()).toBeEnabled();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' }));
+    fireEvent.click(getContractOpsDeployButton());
 
     await waitFor(() => {
       expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Record NAV Event' })).toBeEnabled();
@@ -1258,21 +1294,18 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(operationTransaction.to).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
     expect(operationTransaction.value).toBe('0x0');
     expect(String(operationTransaction.data)).toMatch(/^0x/);
-    expect(screen.getAllByText(/Operation transaction hash: 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Operation evidence: Local session only').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Operation transaction hash source: Provider returned').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Operation receipt source: Provider receipt').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('ValuationUpdated event: Not decoded').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Other Smart Contract Operations: Require explicit adapters and evidence paths before release').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Contract Ops evidence summary')).toHaveTextContent('Record NAV: Record NAV confirmed on Sepolia');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Operation evidence: Local session only');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Transaction hash source: Provider returned');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Receipt source: Provider receipt');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Event evidence: Receipt confirmed');
+    expect(screen.getByLabelText('Contract Ops evidence summary')).toHaveTextContent('Record NAV: Record NAV confirmed on Sepolia');
     expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Record NAV Confirmed on Sepolia' })).toBeDisabled();
-    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Mint' })).toBeDisabled();
-    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Burn' })).toBeDisabled();
-    const distributionButton = within(screen.getByTestId('smart-contract-control')).queryByRole('button', { name: /Distribution/i });
-    if (distributionButton) expect(distributionButton).toBeDisabled();
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Submit Allocation / Mint' })).toBeDisabled();
     expect(screen.queryByText(/production ready|mainnet ready|audit passed|security approved|operation suite unlocked/i)).not.toBeInTheDocument();
   });
 
-  it('whitelists a target wallet from SCP only after explicit target input and confirmed deployment evidence', async () => {
+  it('whitelists a target wallet from Contract Ops only after explicit target input and confirmed deployment evidence', async () => {
     const firstTargetWallet = '0x3333333333333333333333333333333333333333';
     const secondTargetWallet = '0x4444444444444444444444444444444444444444';
     const { provider, calls, transactionParams } = createMockWalletProvider({
@@ -1284,15 +1317,15 @@ describe('App Blockchain Engineer Bot panel', () => {
     render(<App />);
     await completeSmartContractPreparation();
 
-    expect(within(screen.getByTestId('smart-contract-control')).queryByRole('button', { name: 'Whitelist Wallet' })).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeEnabled();
+      expect(getContractOpsDeployButton()).toBeEnabled();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' }));
+    fireEvent.click(getContractOpsDeployButton());
 
     await waitFor(() => {
       expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeDisabled();
@@ -1312,11 +1345,11 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeDisabled();
     expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toHaveAttribute(
       'title',
-      'Register this wallet in Investor Registry before whitelisting.',
+      'Register this wallet in Investor Wallets before whitelisting.',
     );
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
-    const registry = screen.getByLabelText('Investor Registry workspace');
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
+    const registry = screen.getByLabelText('Investor Wallets workspace');
     fireEvent.change(within(registry).getByLabelText('Investor wallet address'), {
       target: { value: firstTargetWallet },
     });
@@ -1327,8 +1360,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(within(registry).getByRole('button', { name: 'Add wallet' }));
     expect(within(registry).getAllByText('Ready to whitelist').length).toBeGreaterThanOrEqual(2);
 
-    fireEvent.click(within(registry).getAllByRole('button', { name: 'Use for SCP whitelist' })[0]);
-    expect(screen.getByText(`Target wallet: ${firstTargetWallet}`)).toBeVisible();
+    fireEvent.click(within(registry).getAllByRole('button', { name: 'Use for wallet whitelist' })[0]);
+    expect(screen.getByLabelText('Whitelist target wallet')).toHaveValue(firstTargetWallet);
 
     await waitFor(() => {
       expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeEnabled();
@@ -1342,17 +1375,17 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(screen.getAllByText('Wallet whitelist confirmed on Sepolia').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
-    const updatedRegistry = screen.getByLabelText('Investor Registry workspace');
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
+    const updatedRegistry = screen.getByLabelText('Investor Wallets workspace');
     await waitFor(() => {
       expect(within(updatedRegistry).getByText('Whitelisted locally')).toBeVisible();
     });
-    const updatedHandoffButtons = within(updatedRegistry).getAllByRole('button', { name: 'Use for SCP whitelist' });
+    const updatedHandoffButtons = within(updatedRegistry).getAllByRole('button', { name: 'Use for wallet whitelist' });
     expect(updatedHandoffButtons[0]).toBeDisabled();
     expect(updatedHandoffButtons[1]).toBeEnabled();
 
     fireEvent.click(updatedHandoffButtons[1]);
-    expect(screen.getByText(`Target wallet: ${secondTargetWallet}`)).toBeVisible();
+    expect(screen.getByLabelText('Whitelist target wallet')).toHaveValue(secondTargetWallet);
 
     await waitFor(() => {
       expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeEnabled();
@@ -1391,12 +1424,12 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(secondWhitelistTransaction.to).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
     expect(secondWhitelistTransaction.value).toBe('0x0');
     expect(String(secondWhitelistTransaction.data)).toMatch(/^0x/);
-    expect(screen.getAllByText(/Whitelist transaction hash: 0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Wallet whitelist evidence: Local session only').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Whitelist transaction hash source: Provider returned').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('WalletWhitelisted event: Not decoded').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Contract authorization is enforced on-chain').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Allocation\/Mint: Available after investor whitelist and allocation parameters/i).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Contract Ops evidence summary')).toHaveTextContent('Wallet whitelist: Wallet whitelist confirmed on Sepolia');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Wallet whitelist evidence: Local session only');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Transaction hash source: Provider returned');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('WalletWhitelisted event: Not decoded');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Contract authorization is enforced on-chain');
+    expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Submit Allocation / Mint' })).toBeDisabled();
     expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Wallet whitelist confirmed on Sepolia' })).toBeDisabled();
     within(screen.getByTestId('smart-contract-control'))
       .getAllByRole('button', { name: /Mint/i })
@@ -1418,19 +1451,19 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeEnabled();
+      expect(getContractOpsDeployButton()).toBeEnabled();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' }));
+    fireEvent.click(getContractOpsDeployButton());
 
     await waitFor(() => {
-      expect(screen.getByText('Deployment confirmed on Sepolia')).toBeVisible();
+      expect(screen.getAllByText('Deployment confirmed on Sepolia').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
-    const registry = screen.getByLabelText('Investor Registry workspace');
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
+    const registry = screen.getByLabelText('Investor Wallets workspace');
     fireEvent.change(within(registry).getByLabelText('Investor wallet address'), { target: { value: investorWallet } });
     fireEvent.click(within(registry).getByRole('button', { name: 'Add wallet' }));
-    fireEvent.click(within(registry).getByRole('button', { name: 'Use for SCP whitelist' }));
+    fireEvent.click(within(registry).getByRole('button', { name: 'Use for wallet whitelist' }));
 
     await waitFor(() => {
       expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeEnabled();
@@ -1449,13 +1482,13 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.change(within(subscription).getByLabelText('Payment wallet / contract address'), { target: { value: paymentWallet } });
     fireEvent.change(within(subscription).getByLabelText('Payment per token'), { target: { value: '1.025' } });
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Smart Contract/ }));
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Contract Ops/ }));
     const allocationMintPanel = screen.getByLabelText('Allocation Mint workspace');
     fireEvent.change(within(allocationMintPanel).getByLabelText('Allocation target wallet'), { target: { value: investorWallet } });
     fireEvent.change(within(allocationMintPanel).getByLabelText('Token allocation amount'), { target: { value: '1000' } });
 
     await waitFor(() => {
-      expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Mint' })).toBeEnabled();
+      expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Submit Allocation / Mint' })).toBeEnabled();
     });
     expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Submit Allocation / Mint' })).toBeEnabled();
 
@@ -1472,9 +1505,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(allocationMintTransaction.to).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
     expect(allocationMintTransaction.value).toBe('0x0');
     expect(String(allocationMintTransaction.data)).toMatch(/^0x/);
-    expect(screen.getAllByText(/Allocation \/ Mint transaction hash: 0xeeee/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Allocation / Mint evidence: Local session only').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/AllocationMinted event.*Not decoded/i).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Contract Ops evidence summary')).toHaveTextContent('Allocation / Mint: Allocation / Mint confirmed on Sepolia');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Allocation / Mint evidence: Local session only');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('AllocationMinted event: Receipt confirmed');
     expect(screen.queryByText(/production ready|mainnet ready|audit passed|operation suite unlocked/i)).not.toBeInTheDocument();
   });
 
@@ -1493,22 +1526,22 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeEnabled();
+      expect(getContractOpsDeployButton()).toBeEnabled();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' }));
+    fireEvent.click(getContractOpsDeployButton());
 
     await waitFor(() => {
-      expect(screen.getByText('Deployment confirmed on Sepolia')).toBeVisible();
+      expect(screen.getAllByText('Deployment confirmed on Sepolia').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
-    const registry = screen.getByLabelText('Investor Registry workspace');
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
+    const registry = screen.getByLabelText('Investor Wallets workspace');
     fireEvent.change(within(registry).getByLabelText('Investor wallet address'), { target: { value: investorOne } });
     fireEvent.click(within(registry).getByRole('button', { name: 'Add wallet' }));
     fireEvent.change(within(registry).getByLabelText('Investor wallet address'), { target: { value: investorTwo } });
     fireEvent.click(within(registry).getByRole('button', { name: 'Add wallet' }));
 
-    const whitelistButtons = within(registry).getAllByRole('button', { name: 'Use for SCP whitelist' });
+    const whitelistButtons = within(registry).getAllByRole('button', { name: 'Use for wallet whitelist' });
     fireEvent.click(whitelistButtons[0]);
     await waitFor(() => {
       expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeEnabled();
@@ -1526,7 +1559,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.change(within(subscription).getByLabelText('Payment wallet / contract address'), { target: { value: paymentWallet } });
     fireEvent.change(within(subscription).getByLabelText('Payment per token'), { target: { value: '1.025' } });
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Smart Contract/ }));
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Contract Ops/ }));
     const allocationMintPanel = screen.getByLabelText('Allocation Mint workspace');
     fireEvent.change(within(allocationMintPanel).getByLabelText('Allocation target wallet'), { target: { value: investorOne } });
     fireEvent.change(within(allocationMintPanel).getByLabelText('Token allocation amount'), { target: { value: '1000' } });
@@ -1538,8 +1571,8 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(screen.getAllByText('Allocation / Mint confirmed on Sepolia').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
-    fireEvent.click(within(screen.getByLabelText('Investor Registry workspace')).getAllByRole('button', { name: 'Use for SCP whitelist' })[1]);
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
+    fireEvent.click(within(screen.getByLabelText('Investor Wallets workspace')).getAllByRole('button', { name: 'Use for wallet whitelist' })[1]);
     await waitFor(() => {
       expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeEnabled();
     });
@@ -1548,7 +1581,7 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(screen.getAllByText('Wallet whitelist confirmed on Sepolia').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Smart Contract/ }));
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Contract Ops/ }));
     fireEvent.change(within(screen.getByLabelText('Allocation Mint workspace')).getByLabelText('Allocation target wallet'), {
       target: { value: investorTwo },
     });
@@ -1585,7 +1618,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Recheck Wallet Chain' })).toBeEnabled();
     });
-    expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeDisabled();
+    expect(getContractOpsDeployButton()).toBeDisabled();
     expect(wrongChainWallet.calls).not.toContain('eth_sendTransaction');
 
     cleanup();
@@ -1606,16 +1639,16 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeEnabled();
+      expect(getContractOpsDeployButton()).toBeEnabled();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Deploy to Sepolia with Wallet' }));
+    fireEvent.click(getContractOpsDeployButton());
 
     await waitFor(() => {
-      expect(screen.getByText('Deployment rejected in wallet')).toBeVisible();
+      expect(screen.getAllByText('Deployment rejected in wallet').length).toBeGreaterThan(0);
     });
-    expect(screen.getAllByText('No transaction hash').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('No contract address').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('No transaction hash.');
+    expect(screen.getByLabelText('Contract Ops summary')).toHaveTextContent('No receipt-returned contract address yet.');
   });
 
   it('shows wrong-chain and rejected wallet states through MILA26-owned statuses', async () => {
@@ -1630,9 +1663,10 @@ describe('App Blockchain Engineer Bot panel', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Recheck Wallet Chain' })).toBeEnabled();
     });
-    expect(screen.getAllByText('Wallet connection: Wrong chain').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Wallet chain: Wrong chain').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Wallet execution: Deployment, Record NAV, Wallet Whitelist, and Allocation \/ Mint use wallet-signed Sepolia requests/i).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Wallet connection');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Wrong chain');
+    expect(screen.getByLabelText('Contract Ops summary')).toHaveTextContent('Wrong chain');
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Wallet-signed deployment');
     expect(screen.queryByText(/ready to sign|ready to deploy|contract address: 0x|transaction hash: 0x/i)).not.toBeInTheDocument();
 
     cleanup();
@@ -1646,9 +1680,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' }));
 
     await waitFor(() => {
-      expect(screen.getAllByText('Wallet connection: Rejected').length).toBeGreaterThan(0);
+      expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Rejected');
     });
-    expect(screen.getAllByText('Wallet chain: Unknown').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Unknown');
     expect(screen.queryByText(/User rejected request/)).not.toBeInTheDocument();
     expect(screen.queryByText(/ready to sign|ready to deploy|contract address: 0x|transaction hash: 0x/i)).not.toBeInTheDocument();
   });
@@ -1767,14 +1801,14 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Asset Servicing/ }));
     expect(screen.getByRole('heading', { name: 'Asset Servicing' })).toBeVisible();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Hide left rail' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hide left navigation' }));
     expect(screen.queryByLabelText('Project navigation')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Show left rail' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show left navigation' }));
     expect(screen.getByLabelText('Project navigation')).toBeVisible();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Hide right rail' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hide right context' }));
     expect(screen.queryByLabelText('Project status')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Show right rail' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show right context' }));
     expect(screen.getByLabelText('Project status')).toBeVisible();
   });
 });

@@ -67,9 +67,9 @@ These are MVP roadmap commitments, not claims that every item is already impleme
 - User wallet-signed Sepolia deployment.
 - Real transaction hash and contract address only after real Sepolia execution.
 - Deployment evidence/readiness surface with local-session-only persistence.
-- wallet-signed SCP operation for Record NAV Event.
-- wallet-signed SCP operation for Whitelist Wallet.
-- visual lifecycle workspace tabs for overview, requirements, investor registry, subscription, smart contract, asset servicing, redemption, maturity, and evidence.
+- wallet-signed Contract Ops operation for Record NAV Event.
+- wallet-signed Contract Ops operation for Whitelist Wallet.
+- visual lifecycle workspace tabs for overview, product setup, investor wallets, subscription, contract ops, asset servicing, redemption, maturity, and evidence vault.
 - production-readiness plan covering prototype, beta, and GTM gates.
 
 ## Out Of Scope For Current Alpha
@@ -101,9 +101,9 @@ The app currently supports:
 - unsigned deployment intent.
 - wallet-signed Sepolia deployment local-session status.
 - deployment evidence/readiness local-session surface.
-- Record NAV Event as a wallet-signed SCP operation.
-- Whitelist Wallet as a wallet-signed SCP operation.
-- Investor Registry tab for up to 50 wallet addresses with validation, duplicate detection, generated test investor wallet packs, explicit test-only export preparation, local-session whitelist status, SCP handoff, and Allocation/Mint handoff.
+- Record NAV Event as a wallet-signed Contract Ops operation.
+- Whitelist Wallet as a wallet-signed Contract Ops operation.
+- Investor Wallets tab for up to 50 wallet addresses with validation, duplicate detection, generated test investor wallet packs, explicit test-only export preparation, local-session whitelist status, Contract Ops handoff, and Allocation/Mint handoff.
 - Sepolia funding helper targets for issuer/admin, generated investor wallets, payment destination, and redemption wallet with copyable public addresses.
 - Subscription tab parameter capture for permitted stablecoins, subscription window, minimum subscription amount, payment address, and payment per token.
 - Redemption tab parameter capture for redemption window/date, redemption wallet, payout stablecoin, payout per token, and configurable delay.
@@ -126,7 +126,7 @@ The app does not yet support:
 
 ## Persistence Decision
 
-Sprint 8 records the persistence boundary in `docs/architecture/persistence-boundary-decision.md`. Sprint 9/10 implements the first backend SQLite adapter for workspace snapshots, lifecycle state, and Investor Registry rows. Sprint 11/12 extends it with durable evidence and generated artifact records.
+Sprint 8 records the persistence boundary in `docs/architecture/persistence-boundary-decision.md`. Sprint 9/10 implements the first backend SQLite adapter for workspace snapshots, lifecycle state, and investor wallet rows. Sprint 11/12 extends it with durable evidence and generated artifact records.
 
 The current decision is to keep active lifecycle state in the app during the session and save/load snapshots through backend routes when the user asks. Browser storage is not the production path for lifecycle state, wallet evidence, transaction hashes, contract addresses, private keys, generated artifacts, or investor registry records.
 

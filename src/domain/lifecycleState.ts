@@ -372,7 +372,7 @@ function toAllocationMintReadModel(
   if (investorRegistry.entryCount === 0) {
     blockingReasons.push('Register at least one investor wallet before Allocation / Mint.');
   } else if (investorRegistry.status === 'needs_attention') {
-    blockingReasons.push('Resolve Investor Registry validation issues before Allocation / Mint.');
+    blockingReasons.push('Resolve Investor Wallets validation issues before Allocation / Mint.');
   }
 
   if (subscription.status !== 'ready') {
@@ -384,7 +384,7 @@ function toAllocationMintReadModel(
   } else if (!isValidNonZeroEvmAddress(targetWalletAddress)) {
     validationMessages.push('Allocation target wallet must be a valid non-zero EVM address.');
   } else if (!selectedInvestor) {
-    validationMessages.push('Select a wallet from Investor Registry before Allocation / Mint.');
+    validationMessages.push('Select a wallet from Investor Wallets before Allocation / Mint.');
   } else if (!selectedInvestor.canUseForAllocationMint) {
     validationMessages.push('Select a valid, unique investor wallet before Allocation / Mint.');
   }
@@ -591,10 +591,10 @@ function investorActivityStatusLabel(status: InvestorRegistryEntryStatus): strin
 }
 
 function investorRegistryStatusLabel(status: InvestorRegistryReadModel['status']): string {
-  if (status === 'needs_attention') return 'Investor Registry: Needs attention';
-  if (status === 'ready') return 'Investor Registry: Ready to whitelist';
-  if (status === 'active') return 'Investor Registry: Active';
-  return 'Investor Registry: Wallets needed';
+  if (status === 'needs_attention') return 'Investor Wallets: Needs attention';
+  if (status === 'ready') return 'Investor Wallets: Ready to whitelist';
+  if (status === 'active') return 'Investor Wallets: Active';
+  return 'Investor Wallets: Wallets needed';
 }
 
 function investorRegistryStatusDetail(
@@ -605,6 +605,6 @@ function investorRegistryStatusDetail(
 ): string {
   if (status === 'needs_attention') return 'Resolve invalid or duplicate wallets before contract operations.';
   if (status === 'active') return `${whitelistedCount} wallet(s) whitelisted in this local session.`;
-  if (status === 'ready') return `${readyToWhitelistCount} wallet(s) ready for the SCP Whitelist Wallet operation.`;
+  if (status === 'ready') return `${readyToWhitelistCount} wallet(s) ready for the Contract Ops Whitelist Wallet operation.`;
   return `Add up to ${MAX_INVESTOR_REGISTRY_ENTRIES} whitelisted investor wallet addresses.`;
 }

@@ -170,7 +170,6 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByRole('button', { name: /Alpha Income Fund I/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /Singapore REIT Token/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /Mixed Portfolio Token/i })).toBeVisible();
-  await expect(page.getByTestId('smart-contract-control').getByText('SCP readiness', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Tokenisation lifecycle tabs')).toBeVisible();
   await expect(page.getByLabel('Top stage progress')).toHaveCount(0);
   await expect(page.getByLabel('Current-stage activities')).toHaveCount(0);
@@ -193,26 +192,24 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByRole('heading', { name: 'Singapore REIT Token' }).first()).toBeVisible();
   await expect(page.getByLabel('Project status').getByText('Product Vault')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Hide left rail' }).click();
+  await page.getByRole('button', { name: 'Hide left navigation' }).click();
   await expect(page.getByLabel('Project navigation')).toBeHidden();
-  await page.getByRole('button', { name: 'Show left rail' }).click();
+  await page.getByRole('button', { name: 'Show left navigation' }).click();
   await expect(page.getByLabel('Project navigation')).toBeVisible();
-  await page.getByRole('button', { name: 'Hide right rail' }).click();
+  await page.getByRole('button', { name: 'Hide right context' }).click();
   await expect(page.getByLabel('Project status')).toBeHidden();
-  await page.getByRole('button', { name: 'Show right rail' }).click();
+  await page.getByRole('button', { name: 'Show right context' }).click();
   await expect(page.getByLabel('Project status')).toBeVisible();
 
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Contract Ops/ }).click();
   await expect(page.getByTestId('smart-contract-control')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Smart Contract Control Panel' })).toBeVisible();
-  await expect(page.getByTestId('smart-contract-control').getByText('SCP readiness', { exact: true })).toBeVisible();
-  await expect(page.getByTestId('smart-contract-control').getByText('Preview only').first()).toBeVisible();
-  await expect(page.getByText('NAV Updated')).toBeVisible();
-  await expect(page.getByText('Distribution Recorded')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Trigger Event' }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Contract operations' })).toBeVisible();
+  await expect(page.getByLabel('Contract Ops evidence summary')).toContainText('Deployment evidence');
+  await expect(page.getByRole('button', { name: 'Record NAV Event' })).toBeVisible();
 
   const cockpitBox = await page.getByLabel('MILA26 tokenisation workspace').boundingBox();
   const controlBox = await page.getByTestId('smart-contract-control').boundingBox();
-  expect(controlBox?.y).toBeGreaterThan((cockpitBox?.y ?? 0) + 200);
+  expect(controlBox?.y).toBeGreaterThan((cockpitBox?.y ?? 0) + 80);
 
   const askButtonBox = await page.getByRole('button', { name: 'Send' }).boundingBox();
   expect(askButtonBox?.height).toBeLessThan(80);
@@ -249,7 +246,7 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(generatedArtifacts.getByText('Waiting for deployment evidence')).toBeVisible();
   await expect(
     generatedArtifacts.getByText(
-      /SCP exposes Record NAV Event, Whitelist Wallet, and Allocation \/ Mint when their wallet, deployment, ABI, parameter, and evidence gates are satisfied/i,
+      /Contract Ops exposes Record NAV Event, Whitelist Wallet, and Allocation \/ Mint when their wallet, deployment, ABI, parameter, and evidence gates are satisfied/i,
     ),
   ).toBeVisible();
   await expect(generatedArtifacts.getByText('Sepolia Deployment', { exact: true })).toBeVisible();
@@ -268,59 +265,41 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByText('Backend artifacts generated.')).toBeVisible();
   const scp = page.getByTestId('smart-contract-control');
   await expect(scp.getByText('Artifact preview generated').first()).toBeVisible();
-  await expect(scp.getByText('Smart Contract Spec: Generated')).toBeVisible();
-  await expect(scp.getByText('Local compile/test foundation: Passed')).toBeVisible();
-  await expect(scp.getByText('Solidity fixture: Compiles locally')).toBeVisible();
-  await expect(scp.getByText('Contract tests: Passed locally')).toBeVisible();
-  await expect(scp.getByText('Tested capabilities: ERC-20 basics, whitelist restrictions, issuer mint/allocation, valuation event, distribution event, pause/unpause, access control')).toBeVisible();
-  await expect(scp.getByText('Deployment Gate Review: Review-ready').first()).toBeVisible();
-  await expect(scp.getByText('Pre-deployment readiness: Complete').first()).toBeVisible();
-  await expect(scp.getByText('Deployment execution: Blocked').first()).toBeVisible();
-  await expect(scp.getByText('Wallet Signing Intent: Review-ready').first()).toBeVisible();
-  await expect(scp.getByText('Wallet execution: Not implemented').first()).toBeVisible();
-  await expect(scp.getByText('User wallet signing required later').first()).toBeVisible();
-  await expect(scp.getByText('Backend never holds private keys').first()).toBeVisible();
-  await expect(scp.getByText('Wallet connection: Not detected').first()).toBeVisible();
-  await expect(scp.getByText('Wallet chain: Unknown').first()).toBeVisible();
-  await expect(scp.getByText('No wallet address').first()).toBeVisible();
-  await expect(scp.getByText('No signed payload').first()).toBeVisible();
-  await expect(scp.getByText('No submitted transaction').first()).toBeVisible();
-  await expect(scp.getByText('No confirmed transaction').first()).toBeVisible();
-  await expect(scp.getByText('No contract address').first()).toBeVisible();
-  await expect(scp.getByText('No transaction hash').first()).toBeVisible();
-  await expect(scp.getByText('Deployment Evidence: Not available').first()).toBeVisible();
-  await expect(scp.getByText('Evidence strength: None').first()).toBeVisible();
-  await expect(scp.getByText('Evidence persistence: Local session only').first()).toBeVisible();
-  await expect(scp.getByText('Transaction hash source: Absent').first()).toBeVisible();
-  await expect(scp.getByText('Contract address source: Absent').first()).toBeVisible();
-  await expect(scp.getByText('Smart Contract Operations: Released operation-by-operation').first()).toBeVisible();
-  await expect(scp.getByText('Operations after deployment: Waiting for deployment evidence').first()).toBeVisible();
-  await expect(scp.getByText('Other Smart Contract Operations: Require explicit adapters and evidence paths before release').first()).toBeVisible();
-  await expect(scp.getByText('Wallet signing not implemented: Not implemented')).toBeVisible();
-  await expect(scp.getByText('User wallet signing required later: Required')).toBeVisible();
-  await expect(scp.getByText('Wallet connection: Not detected').first()).toBeVisible();
-  await expect(scp.getByText('Wallet address: Absent')).toBeVisible();
-  await expect(scp.getByText('No signed payload: Absent')).toBeVisible();
-  await expect(scp.getByText('No submitted transaction: Absent')).toBeVisible();
-  await expect(scp.getByText('No confirmed transaction: Absent')).toBeVisible();
-  await expect(scp.getByText('Contract address: No contract address', { exact: true })).toBeVisible();
-  await expect(scp.getByText('Transaction hash: No transaction hash', { exact: true })).toBeVisible();
-  await expect(scp.getByText('Deployment: Not started', { exact: true })).toBeVisible();
-  await expect(scp.getByText('Wallet signing: Not started')).toBeVisible();
-  await expect(scp.getByText('Audit: Not audited')).toBeVisible();
-  await expect(scp.getByText('Ethereum testnet: Only')).toBeVisible();
-  await expect(scp.getByText('Mainnet: Disabled')).toBeVisible();
-  await expect(scp.getByText('Backend private keys: None held')).toBeVisible();
-  await expect(scp.getByText('Transaction hash: No transaction hash', { exact: true })).toBeVisible();
-  await expect(scp.getByRole('cell', { name: 'ValuationUpdated' })).toBeVisible();
-  await expect(scp.getByText('ContractPaused')).toBeVisible();
-  await expect(scp.getByText('ContractUnpaused')).toBeVisible();
-  await expect(scp.getByText('No contract address - not deployed')).toBeVisible();
+  await expect(generatedArtifacts).toContainText('Smart Contract Spec');
+  await expect(generatedArtifacts).toContainText('Local Compile/Test');
+  await expect(generatedArtifacts).toContainText('Hardhat fixture compiles and local contract tests pass');
+  await expect(generatedArtifacts).toContainText('Deployment Gate Review');
+  await expect(generatedArtifacts).toContainText('Pre-deployment readiness: Complete');
+  await expect(generatedArtifacts).toContainText('Wallet Signing Intent');
+  await expect(generatedArtifacts).toContainText('Backend never holds private keys');
+  await expect(generatedArtifacts).toContainText('Wallet Connection');
+  await expect(generatedArtifacts).toContainText('Wallet chain: Unknown');
+  await expect(generatedArtifacts).toContainText('No wallet address');
+  await expect(generatedArtifacts).toContainText('No contract address');
+  await expect(generatedArtifacts).toContainText('No transaction hash');
+  await expect(generatedArtifacts).toContainText('Deployment Evidence: Not available');
+  await expect(generatedArtifacts).toContainText('Evidence strength: None');
+  await expect(generatedArtifacts).toContainText('Local session only');
+  await expect(generatedArtifacts).toContainText('Transaction hash source: Absent');
+  await expect(generatedArtifacts).toContainText('Contract address source: Absent');
+  await expect(scp.getByText('Contract operations')).toBeVisible();
+  await expect(page.getByLabel('Contract Ops evidence summary')).toContainText('Safety: user wallet signs, backend holds no private keys, Sepolia only.');
+  await expect(page.getByLabel('Contract Ops summary')).toContainText('Deployment');
+  await expect(page.getByLabel('Contract Ops summary')).toContainText('Deployment execution not started');
+  await expect(page.getByLabel('Contract Ops summary')).toContainText('Connect a Sepolia wallet.');
+  await expect(page.getByLabel('Contract Ops summary')).toContainText('Waiting for deployment evidence');
+  await expect(page.getByLabel('Contract Ops summary')).toContainText('Record NAV, Whitelist Wallet, and Allocation / Mint are released operation-by-operation.');
+  await expect(scp.getByRole('button', { name: 'Deploy to Sepolia with Wallet' })).toBeVisible();
+  await expect(scp.getByRole('button', { name: 'Record NAV Event' })).toBeVisible();
+  await expect(scp.getByLabel('Whitelist target wallet')).toBeVisible();
+  await expect(scp.getByRole('button', { name: 'Whitelist Wallet' })).toBeVisible();
+  await expect(scp.getByRole('button', { name: 'Submit Allocation / Mint' })).toBeVisible();
+  await expect(page.getByLabel('Contract Ops evidence summary')).toContainText('Deployment evidence: Deployment Evidence: Not available');
+  await expect(page.getByLabel('Contract Ops evidence summary')).toContainText('Record NAV: Record NAV operation not started');
+  await expect(page.getByLabel('Contract Ops evidence summary')).toContainText('Wallet whitelist: Wallet whitelist not started');
+  await expect(page.getByLabel('Contract Ops evidence summary')).toContainText('Allocation / Mint: Allocation / Mint not started');
   await expect(page.getByText(/txHash/i)).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Connect Wallet for Sepolia Check' })).toBeVisible();
   await expect(page.getByLabel('Project status').getByRole('button', { name: /wallet|sign/i })).toHaveCount(0);
-  await expect(scp.getByRole('button', { name: /wallet|sign/i })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /Review Deployment Gate/i })).toHaveCount(0);
   await expect(page.getByText(/ready to sign|sign now|ready to deploy|ready for signature|production ready|mainnet ready/i)).toHaveCount(0);
   await expect(page.getByText(/^Wallet connected$/i)).toHaveCount(0);
   await expect(page.getByText(/^Submitted transaction:/i)).toHaveCount(0);
@@ -350,8 +329,8 @@ test('subscription redemption parameters update shared lifecycle state and templ
 
   await page.goto('/');
 
-  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Investor Registry/ }).click();
-  const registry = page.getByLabel('Investor Registry workspace');
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Investor Wallets/ }).click();
+  const registry = page.getByLabel('Investor Wallets workspace');
   await registry.getByLabel('Investor wallet address').fill(investorWallet);
   await registry.getByRole('button', { name: 'Add wallet' }).click();
   await expect(registry.getByText('1/50')).toBeVisible();
@@ -409,17 +388,17 @@ test('allocation mint readiness uses shared investor registry and subscription s
 
   await page.goto('/');
 
-  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Investor Registry/ }).click();
-  const registry = page.getByLabel('Investor Registry workspace');
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Investor Wallets/ }).click();
+  const registry = page.getByLabel('Investor Wallets workspace');
   await registry.getByLabel('Investor wallet address').fill(investorWallet);
   await registry.getByRole('button', { name: 'Add wallet' }).click();
   await registry.getByRole('button', { name: 'Use for Allocation / Mint' }).click();
 
   const allocationMint = page.getByLabel('Allocation Mint workspace');
-  await expect(allocationMint.getByRole('heading', { name: 'Allocation / Mint readiness' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Allocation / Mint setup' })).toBeVisible();
   await expect(allocationMint.getByLabel('Allocation target wallet')).toHaveValue(investorWallet);
   await expect(allocationMint.getByText('Complete Subscription parameters before Allocation / Mint.')).toBeVisible();
-  await expect(allocationMint.getByText(/SCP can submit a wallet-signed Sepolia mint/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Contract operations' })).toBeVisible();
   await expect(page.getByLabel('Project status')).toContainText('Allocation setup needs review');
 
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
@@ -430,7 +409,7 @@ test('allocation mint readiness uses shared investor registry and subscription s
   await subscription.getByLabel('Payment wallet / contract address').fill(paymentWallet);
   await subscription.getByLabel('Payment per token').fill('1.025');
 
-  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Smart Contract/ }).click();
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Contract Ops/ }).click();
   await allocationMint.getByLabel('Token allocation amount').fill('1250');
   await expect(allocationMint.getByText('Allocation / Mint parameters are ready for review.')).toBeVisible();
   await expect(allocationMint.getByText(`Allocation ready for 1250 token(s) to ${investorWallet}.`)).toBeVisible();
@@ -442,7 +421,7 @@ test('allocation mint readiness uses shared investor registry and subscription s
 
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
   await subscription.getByLabel('Payment per token').fill('');
-  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Smart Contract/ }).click();
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Contract Ops/ }).click();
   await expect(allocationMint.getByText('Complete Subscription parameters before Allocation / Mint.')).toBeVisible();
 });
 
@@ -451,8 +430,8 @@ test('test wallet lab generates investor wallets for allocation mint prototype d
 
   await page.goto('/');
 
-  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Investor Registry/ }).click();
-  const registry = page.getByLabel('Investor Registry workspace');
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Investor Wallets/ }).click();
+  const registry = page.getByLabel('Investor Wallets workspace');
   const walletLab = registry.getByLabel('Test Wallet Lab');
 
   await expect(walletLab.getByText(/separate test-only MetaMask profile/i)).toBeVisible();
@@ -462,7 +441,7 @@ test('test wallet lab generates investor wallets for allocation mint prototype d
   await walletLab.getByRole('button', { name: 'Generate test wallet pack' }).click();
 
   await expect(registry.getByText('50/50')).toBeVisible();
-  await expect(walletLab.getByText('50 generated test investor wallet(s) added to Investor Registry.')).toBeVisible();
+  await expect(walletLab.getByText('50 generated test investor wallet(s) added to Investor Wallets.')).toBeVisible();
   await expect(
     registry.getByRole('table', { name: 'Investor wallet entries' }).getByText('Investor 01', { exact: true }),
   ).toBeVisible();
@@ -484,7 +463,7 @@ test('test wallet lab generates investor wallets for allocation mint prototype d
   await subscription.getByLabel('Payment wallet / contract address').fill(paymentWallet);
   await subscription.getByLabel('Payment per token').fill('1.025');
 
-  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Smart Contract/ }).click();
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Contract Ops/ }).click();
   await allocationMint.getByLabel('Token allocation amount').fill('1000');
   await expect(allocationMint.getByText('Allocation / Mint parameters are ready for review.')).toBeVisible();
   await expect(page.getByTestId('smart-contract-control').getByRole('button', { name: 'Mint' })).toBeDisabled();
