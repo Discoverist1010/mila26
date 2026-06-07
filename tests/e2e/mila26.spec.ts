@@ -7,7 +7,7 @@ test('website intro routes to app access without overclaiming production readine
   await expect(page.getByLabel('ZiLiOS company and product website')).toBeVisible();
   await expect(
     page.getByRole('heading', {
-      name: /Tokenise an investment product without building the full technical team first/i,
+      name: /Tokenise an investment product without building the full technical and ops teams first/i,
     }),
   ).toBeVisible();
   await expect(page.getByRole('img', { name: /ZiLiOS lifecycle workspace/i })).toBeVisible();
