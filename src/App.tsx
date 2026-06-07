@@ -1416,7 +1416,7 @@ export function App() {
         receiptSource: recordNavOperationReadModel.operationReceiptSource,
         receiptStatus: recordNavOperationReadModel.operationReceiptStatus,
         contractAddress: recordNavOperationReadModel.contractAddress,
-        contractAddressSource: recordNavOperationReadModel.contractAddress ? 'receipt_returned' : 'absent',
+        contractAddressSource: recordNavOperationReadModel.contractAddress ? 'confirmed_deployment_evidence' : 'absent',
         eventEvidenceSource: recordNavOperationReadModel.eventEvidenceSource,
         eventName: 'ValuationUpdated',
         valuation: recordNavOperationReadModel.valuation,
@@ -1438,7 +1438,7 @@ export function App() {
         receiptSource: walletWhitelistOperationReadModel.operationReceiptSource,
         receiptStatus: walletWhitelistOperationReadModel.operationReceiptStatus,
         contractAddress: walletWhitelistOperationReadModel.contractAddress,
-        contractAddressSource: walletWhitelistOperationReadModel.contractAddress ? 'receipt_returned' : 'absent',
+        contractAddressSource: walletWhitelistOperationReadModel.contractAddress ? 'confirmed_deployment_evidence' : 'absent',
         eventEvidenceSource:
           walletWhitelistOperationReadModel.eventEvidenceStatus === 'not_available'
             ? 'absent'
@@ -1462,7 +1462,7 @@ export function App() {
         receiptSource: walletAllocationMintOperationReadModel.operationReceiptSource,
         receiptStatus: walletAllocationMintOperationReadModel.operationReceiptStatus,
         contractAddress: walletAllocationMintOperationReadModel.contractAddress,
-        contractAddressSource: walletAllocationMintOperationReadModel.contractAddress ? 'receipt_returned' : 'absent',
+        contractAddressSource: walletAllocationMintOperationReadModel.contractAddress ? 'confirmed_deployment_evidence' : 'absent',
         eventEvidenceSource:
           walletAllocationMintOperationReadModel.eventEvidenceStatus === 'not_available'
             ? 'absent'

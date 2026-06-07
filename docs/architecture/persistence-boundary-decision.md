@@ -1,6 +1,6 @@
 # Persistence Boundary Decision
 
-Status: Sprint 11/12 foundation implemented for workspace snapshots, durable evidence records, and generated artifact records.
+Status: Sprint 14A/14B foundation implemented for workspace snapshots, durable evidence records, generated artifact records, and opt-in live Sepolia readiness/evidence checks.
 
 ## Decision
 
@@ -8,7 +8,7 @@ MILA26 introduces durable persistence behind a backend storage boundary, startin
 
 Do not persist wallet evidence, transaction hashes, contract addresses, generated artifacts, private keys, or investor registry state in browser `localStorage` or `sessionStorage` as the production path.
 
-Sprint 9/10 implements the first backend adapter for project records, versioned lifecycle snapshots, and investor wallet registry rows. Sprint 11/12 extends the same adapter with durable evidence records and generated artifact records. It does not implement auth, live stablecoin execution, production hosted storage, private-key custody, or live Sepolia RPC automation.
+Sprint 9/10 implements the first backend adapter for project records, versioned lifecycle snapshots, and investor wallet registry rows. Sprint 11/12 extends the same adapter with durable evidence records and generated artifact records. Sprint 14A/14B adds an opt-in live Sepolia readiness harness and receipt-to-evidence mapping. It does not implement auth, live stablecoin execution, production hosted storage, private-key custody, or mandatory live Sepolia RPC automation.
 
 ## Why This Matters To The User
 
@@ -22,7 +22,7 @@ At the same time, persistence must not make unsafe claims stronger than they are
 |---|---|---|---|
 | Session state | Current React lifecycle state, wallet connection state, local-session deployment/operation evidence, generated artifacts in memory. | The prototype works during the active local/Sepolia session. | Implemented. |
 | Durable local MVP storage | Project workspace, lifecycle parameters, investor registry rows, generated artifact records, and provider-derived evidence records. Later: review findings and access/session metadata. | Work can be resumed without relying on browser storage or screenshots. | Foundation implemented. |
-| Durable Evidence Vault | Provider-returned transaction hashes, receipt-confirmed contract addresses, operation receipts, decoded/receipt-confirmed event evidence, artifact links, and provenance labels. | Investors, auditors, and internal reviewers can inspect the evidence trail without relying on screenshots or chat history. | Foundation implemented for current Sepolia deployment/NAV/whitelist/allocation evidence shapes. |
+| Durable Evidence Vault | Provider-returned transaction hashes, receipt-confirmed deployment contract addresses, operation receipts, decoded/receipt-confirmed event evidence, artifact links, and provenance labels. | Investors, auditors, and internal reviewers can inspect the evidence trail without relying on screenshots or chat history. | Foundation implemented for current Sepolia deployment/NAV/whitelist/allocation evidence shapes, plus opt-in live receipt mapping. |
 | Production storage | Hosted persistence, access control, backups, retention/deletion policy, audit logs, and release controls. | The product can support beta and later live deployment workflows with stronger operational controls. | Future implementation. |
 
 ## Initial Backend Storage Shape
@@ -60,6 +60,7 @@ Do not move persistence rules into React components to work around a Node SQLite
 - Private keys and wallet signatures must not be persisted.
 - Generated test investor wallet private keys remain explicit test-only exports, not normal project records.
 - Evidence must not be labelled durable unless it was stored and retrieved through the Evidence Vault API/repository.
+- Deployment contract addresses must be labelled `receipt_returned`; operation contract addresses must be labelled `confirmed_deployment_evidence`.
 - Generated artifacts are tied to a lifecycle snapshot version; when the lifecycle snapshot advances, older artifact records must show stale context rather than current context.
 - Durable evidence is tied to a lifecycle snapshot version; if the workspace changes afterward, older evidence must show historical context rather than current context.
 - Any persistence implementation must trigger the State / Memory / Performance review lens.
@@ -68,7 +69,7 @@ Do not move persistence rules into React components to work around a Node SQLite
 
 Extend persistence only after the foundation remains stable:
 
-1. Add Live Sepolia readiness using public addresses and RPC configuration, behind explicit live-test flags.
-2. Feed real provider-returned Sepolia transaction hashes and receipt-confirmed contract addresses into the durable Evidence Vault path.
+1. Run the tab-by-tab workspace audit before broadening functionality.
+2. Use the opt-in live Sepolia harness when public testnet addresses, RPC URL, and transaction hashes are available.
 3. Add access/login state without duplicating lifecycle ownership.
 4. Decide whether beta should remain on local SQLite or move to hosted storage with backups and audit logging.

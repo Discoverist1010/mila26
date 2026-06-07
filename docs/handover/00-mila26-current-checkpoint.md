@@ -10,10 +10,10 @@ The current UI is the MILA26 lifecycle workspace. It uses visual lifecycle tabs,
 
 The next implementation step should follow the tab-aligned roadmap, not the old dashboard flow:
 
-1. Live Sepolia readiness with public addresses, RPC configuration, and live-gated tests;
-2. live Sepolia evidence integration through the durable Evidence Vault path;
-3. website/access/login without duplicating lifecycle state;
-4. subscription-redemption execution design with explicit adapter/evidence contracts;
+1. Tab-by-tab workspace audit for actions, status, information, artefacts, persistence ownership, and cross-tab dependencies;
+2. website/access/login without duplicating lifecycle state;
+3. subscription-redemption execution design with explicit adapter/evidence contracts;
+4. beta live Sepolia evidence rehearsals using the opt-in Sprint 14A/14B harness;
 5. maturity closeout later.
 
 For coding execution, read root `AGENTS.md` first. It defines the Lead Implementer role, active debugging loop, quality refactor triggers, dynamic skill/MCP acquisition policy, and review gates.
@@ -44,7 +44,7 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Wallet boundary: MetaMask-first EIP-1193 connection and Sepolia readiness are implemented frontend-only.
 - Deployment boundary: wallet-signed Sepolia deployment exists, with local-session provider/receipt evidence only.
 - Operation boundary: Record NAV Event, Whitelist Wallet, and Allocation / Mint exist as operation-specific wallet-signed Contract Ops controls.
-- Auth, payments, live Sepolia RPC automation, live subscription/redemption execution, batch allocation/mint execution, maturity closeout, and mainnet are not implemented.
+- Auth, payments, live subscription/redemption execution, batch allocation/mint execution, maturity closeout, and mainnet are not implemented.
 
 ## Current Repo Capabilities
 
@@ -78,6 +78,7 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Benefit-led website first slice that explains AI tokenisation, blockchain execution, distribution/post-trade servicing, user meaning, and quality boundaries.
 - Backend SQLite workspace snapshot persistence for project identity, versioned lifecycle state, and investor wallet rows.
 - Durable Evidence Vault foundation for provider-derived deployment, Record NAV, Wallet Whitelist, and Allocation/Mint evidence records.
+- Opt-in live Sepolia readiness harness for public addresses, optional RPC chain/balance/receipt checks, and optional Evidence Vault API save.
 - Generated artifact persistence for Requirement Brief, Engineering Brief, Smart Contract Spec, Artifact Preview, Check Result, and Evidence-Lite records.
 - Persistence boundary decision: active app state remains the current-session source of truth; durable records do not restore local wallet session state.
 
@@ -111,15 +112,20 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
   - visual tab labels now match the user journey;
   - Contract Ops replaces the old scroll-down SCP as the focused user operation surface;
   - confirmed deployments disable duplicate deployment requests.
+- Sprint Track 14A/14B live Sepolia/evidence foundation:
+  - public-address and optional RPC readiness harness is opt-in through `LIVE_SEPOLIA=1`;
+  - normal tests remain deterministic and do not require RPC, MetaMask, or private keys;
+  - live provider receipts can be mapped into existing durable Evidence Vault records;
+  - operation contract-address evidence is labelled as coming from confirmed deployment evidence, not from operation receipts.
 
 ## Current Next Step
 
 Recommended next coding sequence:
 
-1. Add Live Sepolia readiness with public addresses, RPC configuration, and live-gated tests.
-2. Feed real provider-returned Sepolia hashes/receipts through the durable Evidence Vault path.
-3. Add website/access/login without duplicating lifecycle ownership.
-4. Design subscription-redemption execution adapters and evidence contracts before live stablecoin movement.
+1. Run a tab-by-tab workspace audit for active actions, statuses, information, artefacts, persistence ownership, and shared lifecycle dependencies.
+2. Add website/access/login without duplicating lifecycle ownership.
+3. Design subscription-redemption execution adapters and evidence contracts before live stablecoin movement.
+4. Use the opt-in live Sepolia harness when public testnet addresses/RPC/transaction hashes are available.
 5. Keep browser/screenshot review in the validation loop for every newly functional tab.
 
 ## Code Review (Agent / PR)

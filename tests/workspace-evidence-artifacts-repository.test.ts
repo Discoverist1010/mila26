@@ -263,6 +263,100 @@ describe('workspace evidence and artifact persistence repository', () => {
     ).toThrow();
   });
 
+  it('rejects operation evidence that labels the deployed contract address as receipt-returned', () => {
+    const repository = createRepository();
+    const workspaceRecord = saveBaseWorkspace(repository);
+
+    expect(() =>
+      repository.saveEvidenceRecords({
+        projectId: workspaceRecord.project.id,
+        records: [
+          {
+            evidenceType: 'wallet_whitelist',
+            sourcePersistence: 'local_session_only',
+            lifecycleSnapshotVersion: workspaceRecord.snapshot.version,
+            status: 'confirmed',
+            chainId: 11155111,
+            networkName: 'Sepolia',
+            transactionHash,
+            transactionHashSource: 'provider_returned',
+            receiptSource: 'provider_receipt',
+            receiptStatus: 'success',
+            contractAddress,
+            contractAddressSource: 'receipt_returned',
+            eventEvidenceSource: 'receipt_confirmed',
+            eventName: 'WalletWhitelisted',
+            targetWalletAddress: investorWallet,
+          },
+        ],
+      }),
+    ).toThrow('Operation evidence contract address must come from confirmed deployment evidence.');
+  });
+
+  it('stores operation evidence when the contract address comes from confirmed deployment evidence', () => {
+    const repository = createRepository();
+    const workspaceRecord = saveBaseWorkspace(repository);
+
+    const saved = repository.saveEvidenceRecords({
+      projectId: workspaceRecord.project.id,
+      records: [
+        {
+          evidenceType: 'wallet_whitelist',
+          sourcePersistence: 'local_session_only',
+          lifecycleSnapshotVersion: workspaceRecord.snapshot.version,
+          status: 'confirmed',
+          chainId: 11155111,
+          networkName: 'Sepolia',
+          transactionHash,
+          transactionHashSource: 'provider_returned',
+          receiptSource: 'provider_receipt',
+          receiptStatus: 'success',
+          contractAddress,
+          contractAddressSource: 'confirmed_deployment_evidence',
+          eventEvidenceSource: 'receipt_confirmed',
+          eventName: 'WalletWhitelisted',
+          targetWalletAddress: investorWallet,
+        },
+      ],
+    });
+
+    expect(saved.evidenceRecords[0]).toMatchObject({
+      evidenceType: 'wallet_whitelist',
+      contractAddressSource: 'confirmed_deployment_evidence',
+      eventEvidenceSource: 'receipt_confirmed',
+    });
+  });
+
+  it('rejects confirmed operation evidence without a deployed contract address', () => {
+    const repository = createRepository();
+    const workspaceRecord = saveBaseWorkspace(repository);
+
+    expect(() =>
+      repository.saveEvidenceRecords({
+        projectId: workspaceRecord.project.id,
+        records: [
+          {
+            evidenceType: 'record_nav',
+            sourcePersistence: 'local_session_only',
+            lifecycleSnapshotVersion: workspaceRecord.snapshot.version,
+            status: 'confirmed',
+            chainId: 11155111,
+            networkName: 'Sepolia',
+            transactionHash,
+            transactionHashSource: 'provider_returned',
+            receiptSource: 'provider_receipt',
+            receiptStatus: 'success',
+            contractAddressSource: 'absent',
+            eventEvidenceSource: 'receipt_confirmed',
+            eventName: 'ValuationUpdated',
+            valuation: '1.025',
+            valuationReference: 'NAV-2026-06-07',
+          },
+        ],
+      }),
+    ).toThrow('Confirmed operation evidence requires the deployed contract address from confirmed deployment evidence.');
+  });
+
   it('stores generated artifacts and marks them stale after a later lifecycle snapshot', () => {
     const repository = createRepository();
     const workspaceRecord = saveBaseWorkspace(repository);

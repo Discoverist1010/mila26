@@ -25,13 +25,17 @@ The read model answers:
 
 `evidencePersistence` is always `local_session_only`.
 
-Deployment evidence is an evidence/readiness linkage surface only. It is not durable Evidence Pack storage, indexing, database persistence, backend deployment evidence API, or an on-chain audit trail.
+Deployment evidence starts as an evidence/readiness linkage surface only. It becomes a durable Evidence Vault record only after provider-derived transaction hashes/receipts are stored and loaded through the approved workspace evidence API/repository.
+
+Sprint 14A/14B adds an opt-in live Sepolia harness and receipt-to-evidence mapper. Normal tests remain deterministic and do not require MetaMask, private keys, or external RPC. Live checks run only behind `LIVE_SEPOLIA=1`.
 
 ## SCP Boundary
 
-SCP may passively show deployment evidence status, evidence strength, provider-returned transaction hash, receipt-returned contract address, Sepolia network, and local-session persistence.
+Contract Ops may passively show deployment evidence status, evidence strength, provider-returned transaction hash, receipt-returned contract address, Sepolia network, and local-session persistence.
 
-SCP operations remain unavailable until each operation has its own adapter, authorization gate, ABI gate, and evidence path.
+Contract Ops operations remain unavailable until each operation has its own adapter, authorization gate, ABI gate, and evidence path.
+
+Operation evidence must not label the deployed contract address as receipt-returned by the operation receipt. For operation records, the deployed contract address source is `confirmed_deployment_evidence`.
 
 ## Non-Goals
 
@@ -39,8 +43,8 @@ Deployment evidence does not add:
 
 - new wallet signing.
 - new deployment execution.
-- backend deployment/evidence routes.
-- localStorage/sessionStorage/database persistence.
+- fake durable evidence claims.
+- browser-storage evidence persistence.
 - backend private-key custody.
 - mainnet.
 - fake transaction hash, contract address, block number, or explorer link.

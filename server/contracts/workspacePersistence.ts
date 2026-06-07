@@ -101,7 +101,7 @@ export const WorkspaceEvidenceRecordInputSchema = z
     receiptSource: z.enum(['provider_receipt', 'absent']),
     receiptStatus: z.enum(['pending', 'success', 'failed']).optional(),
     contractAddress: EvmAddressSchema.optional(),
-    contractAddressSource: z.enum(['receipt_returned', 'absent']),
+    contractAddressSource: z.enum(['receipt_returned', 'confirmed_deployment_evidence', 'absent']),
     eventEvidenceSource: z.enum(['decoded_from_receipt', 'receipt_confirmed', 'absent']).default('absent'),
     eventName: z.enum(['ValuationUpdated', 'WalletWhitelisted', 'AllocationMinted']).optional(),
     targetWalletAddress: EvmAddressSchema.optional(),
@@ -122,11 +122,61 @@ export const WorkspaceEvidenceRecordInputSchema = z
       });
     }
 
-    if (record.contractAddress && record.contractAddressSource !== 'receipt_returned') {
+    if (record.contractAddress && record.contractAddressSource === 'absent') {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['contractAddressSource'],
-        message: 'Contract address can only be stored when it is receipt-returned.',
+        message: 'Contract address requires an explicit source.',
+      });
+    }
+
+    if (record.receiptSource === 'provider_receipt' && !record.receiptStatus) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['receiptStatus'],
+        message: 'Provider receipt evidence requires a receipt status.',
+      });
+    }
+
+    if (record.receiptSource === 'absent' && record.receiptStatus) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['receiptStatus'],
+        message: 'Receipt status cannot be stored when provider receipt is absent.',
+      });
+    }
+
+    if (record.evidenceType === 'deployment' && record.status === 'confirmed') {
+      if (!record.contractAddress) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['contractAddress'],
+          message: 'Confirmed deployment evidence requires the receipt-returned contract address.',
+        });
+      }
+
+      if (record.contractAddressSource !== 'receipt_returned') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['contractAddressSource'],
+          message: 'Confirmed deployment contract address must be receipt-returned.',
+        });
+      }
+    }
+
+    if (record.evidenceType !== 'deployment' && record.contractAddress && record.contractAddressSource !== 'confirmed_deployment_evidence') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['contractAddressSource'],
+        message: 'Operation evidence contract address must come from confirmed deployment evidence.',
+      });
+    }
+
+    if (record.evidenceType !== 'deployment' && record.status === 'confirmed' && !record.contractAddress) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['contractAddress'],
+        message: 'Confirmed operation evidence requires the deployed contract address from confirmed deployment evidence.',
       });
     }
   });
