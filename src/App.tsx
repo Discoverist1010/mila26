@@ -3,6 +3,7 @@ import { askBlockchainEngineer } from './api/blockchainEngineerChat';
 import { generateEngineeringBrief } from './api/engineeringBrief';
 import { generateSmartContractArtifact } from './api/smartContractArtifact';
 import { generateSmartContractArtifactSpec } from './api/smartContractArtifactSpec';
+import { loadLatestWorkspaceSnapshot, saveWorkspaceSnapshot } from './api/workspacePersistence';
 import {
   answerAsBlockchainEngineer,
   createRequirementBrief,
@@ -212,6 +213,11 @@ type GeneratedArtifactCard = {
   status: string;
   detail: string;
   source: string;
+};
+
+type WorkspacePersistenceStatus = {
+  status: 'idle' | 'saving' | 'loading' | 'saved' | 'loaded' | 'error';
+  message: string;
 };
 
 function createLocalEngineerResponse(content: string): BlockchainEngineerChatResponse {
@@ -490,6 +496,10 @@ export function App() {
   const [testWalletLabMessage, setTestWalletLabMessage] = useState<string | undefined>();
   const [testWalletExportContent, setTestWalletExportContent] = useState<string | undefined>();
   const [fundingHelperMessage, setFundingHelperMessage] = useState<string | undefined>();
+  const [workspacePersistenceStatus, setWorkspacePersistenceStatus] = useState<WorkspacePersistenceStatus>({
+    status: 'idle',
+    message: 'Current session only until saved.',
+  });
   const [permittedStablecoinsInput, setPermittedStablecoinsInput] = useState('');
   const [investorRegistryError, setInvestorRegistryError] = useState<string | undefined>();
   const [smartContractGenerationStatus, setSmartContractGenerationStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -1241,6 +1251,83 @@ export function App() {
     setSmartContractGenerationError(undefined);
   }
 
+  function syncInvestorRegistrySequenceFromState(nextLifecycleState: Mila26LifecycleState) {
+    const maxSequence = nextLifecycleState.investorRegistryEntries.reduce((max, entry) => {
+      const match = entry.id.match(/(\d+)$/);
+      if (!match) return max;
+      return Math.max(max, Number(match[1]));
+    }, 0);
+    investorRegistrySequenceRef.current = maxSequence;
+  }
+
+  function clearLocalOnlyWorkspaceArtifactsAfterLoad() {
+    resetSmartContractGeneration();
+    setTestInvestorWalletPack(undefined);
+    setTestWalletExportContent(undefined);
+    setTestWalletLabMessage(undefined);
+    setFundingHelperMessage(undefined);
+    setInvestorRegistryDraftWallet('');
+    setInvestorRegistryError(undefined);
+    setWalletWhitelistTargetWallet('');
+  }
+
+  async function saveWorkspaceToBackend() {
+    if (selectedProjectId === 'workspace') {
+      setWorkspacePersistenceStatus({
+        status: 'error',
+        message: 'Choose a project before saving a workspace snapshot.',
+      });
+      return;
+    }
+
+    setWorkspacePersistenceStatus({ status: 'saving', message: 'Saving workspace snapshot...' });
+    const result = await saveWorkspaceSnapshot({
+      projectId: selectedProjectId,
+      projectName: activeProjectTitle,
+      lifecycleState,
+      source: 'user_action',
+    });
+
+    if (result.ok) {
+      setWorkspacePersistenceStatus({
+        status: 'saved',
+        message: `Snapshot v${result.data.snapshot.version} saved. Evidence remains local-session only.`,
+      });
+      return;
+    }
+
+    setWorkspacePersistenceStatus({ status: 'error', message: result.message });
+  }
+
+  async function loadLatestWorkspaceFromBackend() {
+    if (selectedProjectId === 'workspace') {
+      setWorkspacePersistenceStatus({
+        status: 'error',
+        message: 'Choose a project before loading a workspace snapshot.',
+      });
+      return;
+    }
+
+    setWorkspacePersistenceStatus({ status: 'loading', message: 'Loading latest workspace snapshot...' });
+    const result = await loadLatestWorkspaceSnapshot({ projectId: selectedProjectId });
+
+    if (result.ok) {
+      const nextLifecycleState = result.data.snapshot.lifecycleState;
+      syncInvestorRegistrySequenceFromState(nextLifecycleState);
+      setLifecycleState(nextLifecycleState);
+      setPermittedStablecoinsInput(nextLifecycleState.subscriptionParameters.permittedStablecoins.join(', '));
+      clearLocalOnlyWorkspaceArtifactsAfterLoad();
+      setSelectedWorkspaceTab('overview');
+      setWorkspacePersistenceStatus({
+        status: 'loaded',
+        message: `Snapshot v${result.data.snapshot.version} loaded. Local-only wallet evidence was reset.`,
+      });
+      return;
+    }
+
+    setWorkspacePersistenceStatus({ status: 'error', message: result.message });
+  }
+
   function addInvestorRegistryWallet() {
     const walletAddress = investorRegistryDraftWallet.trim();
 
@@ -1846,6 +1933,25 @@ export function App() {
                   </li>
                 ))}
               </ul>
+              <div className="workspace-persistence-actions" aria-label="Workspace snapshot actions">
+                <button
+                  type="button"
+                  onClick={() => void saveWorkspaceToBackend()}
+                  disabled={workspacePersistenceStatus.status === 'saving' || workspacePersistenceStatus.status === 'loading'}
+                >
+                  {workspacePersistenceStatus.status === 'saving' ? 'Saving...' : 'Save snapshot'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void loadLatestWorkspaceFromBackend()}
+                  disabled={workspacePersistenceStatus.status === 'saving' || workspacePersistenceStatus.status === 'loading'}
+                >
+                  {workspacePersistenceStatus.status === 'loading' ? 'Loading...' : 'Load latest'}
+                </button>
+              </div>
+              <p className={`workspace-persistence-message ${workspacePersistenceStatus.status}`} aria-label="Workspace persistence status">
+                {workspacePersistenceStatus.message}
+              </p>
             </section>
 
             <a className="rail-help" href="#workspace">Help & Support</a>

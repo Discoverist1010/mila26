@@ -5,7 +5,9 @@ import { engineeringBriefRoutes } from './routes/engineeringBrief';
 import { healthRoutes } from './routes/health';
 import { smartContractArtifactRoutes } from './routes/smartContractArtifact';
 import { smartContractArtifactSpecRoutes } from './routes/smartContractArtifactSpec';
+import { workspacePersistenceRoutes } from './routes/workspacePersistence';
 import type { Mila26LlmProvider } from './llm/types';
+import type { WorkspacePersistenceRepository } from './persistence/workspacePersistenceRepository';
 
 const defaultAllowedOrigins = ['http://127.0.0.1:5173', 'http://localhost:5173'];
 
@@ -23,6 +25,7 @@ function parseAllowedOrigins(value: string | undefined): string[] {
 export type CreateAppOptions = {
   blockchainEngineerLlmProvider?: Mila26LlmProvider;
   engineeringBriefLlmProvider?: Mila26LlmProvider;
+  workspacePersistenceRepository?: WorkspacePersistenceRepository;
 };
 
 export function createApp(options: CreateAppOptions = {}) {
@@ -55,6 +58,10 @@ export function createApp(options: CreateAppOptions = {}) {
   });
   app.register(smartContractArtifactSpecRoutes, { prefix: '/api' });
   app.register(smartContractArtifactRoutes, { prefix: '/api' });
+  app.register(workspacePersistenceRoutes, {
+    prefix: '/api',
+    repository: options.workspacePersistenceRepository,
+  });
 
   app.setNotFoundHandler(async (_request, reply) => {
     return reply.code(404).send(fail('NOT_FOUND', 'Route not found.'));

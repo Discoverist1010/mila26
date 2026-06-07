@@ -601,6 +601,153 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Project status')).toHaveTextContent('Allocation setup needs review');
   });
 
+  it('saves the shared lifecycle workspace snapshot through the backend persistence API', async () => {
+    const investorWallet = '0x3333333333333333333333333333333333333333';
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse({
+        ok: true,
+        data: {
+          project: {
+            id: 'usequities',
+            name: 'Alpha Income Fund I',
+            investorCap: 50,
+            createdAtIso: '2026-06-07T00:00:00.000Z',
+            updatedAtIso: '2026-06-07T00:00:00.000Z',
+          },
+          snapshot: {
+            id: 'usequities-snapshot-1',
+            projectId: 'usequities',
+            version: 1,
+            source: 'user_action',
+            lifecycleState: {
+              investorRegistryEntries: [
+                {
+                  id: 'investor-wallet-1',
+                  walletAddress: investorWallet,
+                  status: 'ready_to_whitelist',
+                  source: 'manual',
+                },
+              ],
+              subscriptionParameters: { permittedStablecoins: [] },
+              redemptionParameters: {},
+              maturityParameters: {},
+              allocationMintParameters: {},
+            },
+            investorWalletCount: 1,
+            createdAtIso: '2026-06-07T00:00:00.000Z',
+          },
+          investorWallets: [],
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+    fireEvent.change(screen.getByLabelText('Investor wallet address'), { target: { value: investorWallet } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add wallet' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save snapshot' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Workspace persistence status')).toHaveTextContent(
+        'Snapshot v1 saved. Evidence remains local-session only.',
+      );
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:5174/api/workspace/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: expect.any(String),
+    });
+    const requestBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(requestBody).toMatchObject({
+      projectId: 'usequities',
+      projectName: 'Alpha Income Fund I',
+      source: 'user_action',
+      lifecycleState: {
+        investorRegistryEntries: [
+          {
+            walletAddress: investorWallet,
+            status: 'ready_to_whitelist',
+          },
+        ],
+      },
+    });
+    expect(JSON.stringify(requestBody)).not.toMatch(/privateKey|signedPayload/i);
+  });
+
+  it('loads the latest workspace snapshot into the shared lifecycle state and resets local-only artifacts', async () => {
+    const investorWallet = '0x7777777777777777777777777777777777777777';
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse({
+        ok: true,
+        data: {
+          project: {
+            id: 'usequities',
+            name: 'Alpha Income Fund I',
+            investorCap: 50,
+            createdAtIso: '2026-06-07T00:00:00.000Z',
+            updatedAtIso: '2026-06-07T00:00:00.000Z',
+          },
+          snapshot: {
+            id: 'usequities-snapshot-2',
+            projectId: 'usequities',
+            version: 2,
+            source: 'user_action',
+            lifecycleState: {
+              investorRegistryEntries: [
+                {
+                  id: 'investor-wallet-7',
+                  label: 'Investor 07',
+                  walletAddress: investorWallet,
+                  status: 'ready_to_whitelist',
+                  source: 'manual',
+                },
+              ],
+              subscriptionParameters: {
+                permittedStablecoins: ['USDC'],
+                subscriptionWindow: 'Monthly',
+                minimumSubscriptionAmount: '25000',
+                paymentAddress: '0x4444444444444444444444444444444444444444',
+                paymentPerToken: '1.025',
+              },
+              redemptionParameters: {},
+              maturityParameters: {},
+              allocationMintParameters: {},
+            },
+            investorWalletCount: 1,
+            createdAtIso: '2026-06-07T00:00:00.000Z',
+          },
+          investorWallets: [],
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load latest' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Workspace persistence status')).toHaveTextContent(
+        'Snapshot v2 loaded. Local-only wallet evidence was reset.',
+      );
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:5174/api/workspace/load-latest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: 'usequities' }),
+    });
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Registry/ }));
+    expect(screen.getByLabelText('Investor Registry workspace')).toHaveTextContent('Investor 07');
+    expect(screen.getByLabelText('Investor Registry workspace')).toHaveTextContent(investorWallet);
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
+    expect(screen.getByLabelText('Permitted stablecoins')).toHaveValue('USDC');
+    expect(screen.getByLabelText('Subscription workspace')).toHaveTextContent('Subscription parameters are ready for template handoff.');
+  });
+
   it('completes the golden lifecycle flow into wallet-intent review and locked operations without execution claims', async () => {
     let resolveArtifactSpec: (value: Response) => void = () => undefined;
     const smartContractArtifactSpec = {

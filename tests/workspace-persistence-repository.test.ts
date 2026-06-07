@@ -1,0 +1,150 @@
+/* @vitest-environment node */
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  createInMemoryWorkspacePersistenceRepository,
+  WorkspacePersistenceValidationError,
+  type WorkspacePersistenceRepository,
+} from '../server/persistence/workspacePersistenceRepository';
+import { createInitialMila26LifecycleState, createInvestorRegistryEntry } from '../src/domain/lifecycleState';
+
+const firstWallet = '0x1111111111111111111111111111111111111111';
+const secondWallet = '0x2222222222222222222222222222222222222222';
+
+let repositories: WorkspacePersistenceRepository[] = [];
+
+function createRepository() {
+  const repository = createInMemoryWorkspacePersistenceRepository();
+  repositories.push(repository);
+  return repository;
+}
+
+afterEach(() => {
+  repositories.forEach((repository) => repository.close());
+  repositories = [];
+});
+
+describe('workspace persistence repository', () => {
+  it('persists versioned lifecycle snapshots and investor wallet rows', () => {
+    const repository = createRepository();
+    const lifecycleState = {
+      ...createInitialMila26LifecycleState(),
+      investorRegistryEntries: [
+        createInvestorRegistryEntry({
+          id: 'investor-wallet-1',
+          label: 'Investor 01',
+          walletAddress: firstWallet,
+        }),
+        createInvestorRegistryEntry({
+          id: 'investor-wallet-2',
+          label: 'Investor 02',
+          walletAddress: secondWallet,
+        }),
+      ],
+      subscriptionParameters: {
+        permittedStablecoins: ['USDC'],
+        subscriptionWindow: 'Monthly',
+        minimumSubscriptionAmount: '25000',
+        paymentAddress: firstWallet,
+        paymentPerToken: '1.025',
+      },
+    };
+
+    const firstSave = repository.saveWorkspaceSnapshot({
+      projectId: 'alpha-income-fund',
+      projectName: 'Alpha Income Fund I',
+      lifecycleState,
+      source: 'user_action',
+    });
+    const secondSave = repository.saveWorkspaceSnapshot({
+      projectId: 'alpha-income-fund',
+      projectName: 'Alpha Income Fund I',
+      lifecycleState: {
+        ...lifecycleState,
+        redemptionParameters: {
+          redemptionWindow: 'Quarterly',
+          redemptionDelayUnit: 'days',
+          redemptionDelayValue: 14,
+          redemptionWalletAddress: secondWallet,
+          payoutStablecoin: 'USDC',
+          payoutPerToken: '1.03',
+        },
+      },
+      source: 'user_action',
+    });
+
+    expect(firstSave.snapshot.version).toBe(1);
+    expect(secondSave.snapshot.version).toBe(2);
+    expect(secondSave.project.investorCap).toBe(50);
+    expect(secondSave.investorWallets).toHaveLength(2);
+    expect(secondSave.investorWallets[0]).toMatchObject({
+      id: 'investor-wallet-1',
+      label: 'Investor 01',
+      walletAddress: firstWallet,
+      normalizedWalletAddress: firstWallet.toLowerCase(),
+      validationStatus: 'valid',
+      status: 'ready_to_whitelist',
+      source: 'manual',
+    });
+
+    expect(repository.loadLatestWorkspace('alpha-income-fund')).toMatchObject({
+      snapshot: {
+        version: 2,
+        lifecycleState: {
+          redemptionParameters: {
+            redemptionDelayValue: 14,
+          },
+        },
+      },
+    });
+  });
+
+  it('rejects duplicate investor wallet addresses before storing ambiguous registry state', () => {
+    const repository = createRepository();
+    const existing = createInvestorRegistryEntry({
+      id: 'investor-wallet-1',
+      walletAddress: firstWallet,
+    });
+
+    expect(() =>
+      repository.saveWorkspaceSnapshot({
+        projectId: 'alpha-income-fund',
+        projectName: 'Alpha Income Fund I',
+        lifecycleState: {
+          ...createInitialMila26LifecycleState(),
+          investorRegistryEntries: [
+            existing,
+            createInvestorRegistryEntry({
+              id: 'investor-wallet-2',
+              walletAddress: firstWallet.toUpperCase(),
+              existingEntries: [existing],
+            }),
+          ],
+        },
+        source: 'user_action',
+      }),
+    ).toThrow(WorkspacePersistenceValidationError);
+  });
+
+  it('stores a full 50-wallet registry without exceeding the investor cap', () => {
+    const repository = createRepository();
+    const investorRegistryEntries = Array.from({ length: 50 }, (_, index) =>
+      createInvestorRegistryEntry({
+        id: `investor-wallet-${index + 1}`,
+        walletAddress: `0x${(index + 1).toString(16).padStart(40, '0')}`,
+      }),
+    );
+
+    const record = repository.saveWorkspaceSnapshot({
+      projectId: 'full-registry',
+      projectName: 'Full Registry',
+      lifecycleState: {
+        ...createInitialMila26LifecycleState(),
+        investorRegistryEntries,
+      },
+      source: 'user_action',
+    });
+
+    expect(record.investorWallets).toHaveLength(50);
+    expect(record.snapshot.investorWalletCount).toBe(50);
+  });
+});

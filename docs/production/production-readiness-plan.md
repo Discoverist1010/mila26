@@ -2,7 +2,7 @@
 
 ## Status: ACTIVE
 
-**Last updated:** 2026-06-06
+**Last updated:** 2026-06-07
 **Target GTM date:** 2026-11-01
 **Prototype target:** 2026-06-20
 **Beta window:** 2026-09-01 to 2026-10-31
@@ -66,12 +66,14 @@ Already implemented or documented:
 - Subscription tab parameter capture with permitted stablecoins, subscription window, minimum subscription amount, payment address, and payment per token;
 - Redemption tab parameter capture with redemption window/date, payout stablecoin, payout per token, redemption wallet, and delay unit/duration;
 - shared lifecycle validation and subscription-redemption template handoff status across the Engineering Bot, Product Vault, lifecycle snapshot, and tabs;
+- backend SQLite workspace snapshot persistence for project/lifecycle state and Investor Registry rows;
 - reviewer system and triggered review lenses.
 
 Immediate implementation gap:
 
 - Browser/screenshot hardening remains part of the validation loop for every new working path.
-- Durable persistence/evidence storage.
+- Durable Evidence Vault storage.
+- Generated artifact persistence.
 - Website/login path.
 - Production readiness controls.
 
@@ -210,6 +212,8 @@ Owner lens: State / Memory / Performance Lens, Security Reviewer.
 Must deliver before beta:
 
 - decision on local SQLite versus hosted database for beta;
+- durable Evidence Vault storage with explicit provenance labels;
+- generated artifact persistence with invalidation rules;
 - retention/deletion boundary;
 - evidence provenance model;
 - local-session versus durable status labeling;

@@ -158,9 +158,9 @@ Acceptance:
 - No fake transaction hash, contract address, investor eligibility, investment advice, mainnet, audit, or production-ready claim is introduced.
 ```
 
-## Next Codex Prompt: Backend Persistence Adapter Foundation
+## Completed Prompt: Backend Persistence Adapter Foundation
 
-Use this prompt for the next implementation turn:
+This prompt has been implemented. Keep it here as completion context:
 
 ```text
 You are working inside the MILA26 repository:
@@ -195,6 +195,49 @@ Acceptance:
 - Persistence code is behind backend/storage adapters, not website state or browser storage.
 - Website access does not become a second lifecycle state model.
 - Freshness/provenance labels remain explicit: local-session, provider-returned, receipt-confirmed, durable only when implemented.
+- No fake transaction hash, contract address, investor eligibility, investment advice, mainnet, audit, or production-ready claim is introduced.
+```
+
+## Next Codex Prompt: Durable Evidence Vault Foundation
+
+Use this prompt for the next implementation turn:
+
+```text
+You are working inside the MILA26 repository:
+
+/Users/macbookpro18/Desktop/CODE/active/mila26
+
+Start from main. Before editing, read:
+
+- `AGENTS.md`
+- `docs/architecture/persistence-boundary-decision.md`
+- `docs/contracts/deployment-evidence-contract.md`
+- `docs/contracts/record-nav-operation-contract.md`
+- `docs/contracts/wallet-whitelist-operation-contract.md`
+- `docs/contracts/allocation-mint-operation-contract.md`
+
+Then run:
+
+git status --short --branch
+npm run test -- tests/workspace-persistence-repository.test.ts tests/api-workspace-persistence.test.ts tests/app-chat-panel.test.tsx
+
+Goal:
+Design and implement the smallest durable Evidence Vault foundation without weakening local-session/provenance labels.
+
+Scope:
+1. Add storage contracts/schema for evidence records only after mapping existing deployment, Record NAV, Wallet Whitelist, and Allocation/Mint evidence fields.
+2. Preserve provenance labels: local-session, provider-returned, receipt-confirmed, durable.
+3. Do not persist private keys, wallet signatures, generated test wallet private keys, raw provider objects, or unvalidated model output.
+4. Do not claim audit, production readiness, mainnet readiness, investor eligibility, or legal/compliance approval.
+5. Keep React lifecycle state as the active session source of truth; Evidence Vault persistence is a storage/readback layer, not a second workflow state model.
+6. Add focused repository/API tests and UI guardrails for stale or missing evidence.
+7. Do not add live stablecoin subscription/redemption execution.
+
+Acceptance:
+- Existing tests continue passing.
+- Evidence records can be stored and loaded with explicit provenance and timestamps.
+- The UI distinguishes durable evidence from local-session-only evidence.
+- Loading workspace state does not resurrect stale wallet operation evidence unless it was loaded from the durable Evidence Vault.
 - No fake transaction hash, contract address, investor eligibility, investment advice, mainnet, audit, or production-ready claim is introduced.
 ```
 

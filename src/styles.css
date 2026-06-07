@@ -1375,6 +1375,53 @@ summary {
   grid-column: 2;
 }
 
+.workspace-persistence-actions {
+  border-top: 1px solid rgb(148 163 184 / 0.18);
+  display: grid;
+  gap: 7px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.workspace-persistence-actions button {
+  background: rgb(11 101 216 / 0.16);
+  border: 1px solid rgb(147 197 253 / 0.28);
+  border-radius: 7px;
+  color: #eaf2ff;
+  font-size: 12px;
+  font-weight: 800;
+  min-height: 34px;
+  padding: 8px;
+}
+
+.workspace-persistence-actions button:hover:not(:disabled) {
+  background: rgb(11 101 216 / 0.35);
+  color: #ffffff;
+}
+
+.workspace-persistence-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.workspace-persistence-message {
+  color: #9db0ce;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 8px 0 0;
+}
+
+.workspace-persistence-message.saved,
+.workspace-persistence-message.loaded {
+  color: #86efac;
+}
+
+.workspace-persistence-message.error {
+  color: #fca5a5;
+}
+
 .status-dot {
   border-radius: 999px;
   background: #f59e0b;

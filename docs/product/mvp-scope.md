@@ -108,28 +108,28 @@ The app currently supports:
 - Subscription tab parameter capture for permitted stablecoins, subscription window, minimum subscription amount, payment address, and payment per token.
 - Redemption tab parameter capture for redemption window/date, redemption wallet, payout stablecoin, payout per token, and configurable delay.
 - Subscription-redemption smart-contract template handoff readiness/draft status from shared lifecycle state.
+- backend SQLite workspace snapshot persistence for project identity, versioned lifecycle state, and investor registry rows.
 - company/product website first slice at `/site`.
 
 The app does not yet support:
 
-- durable project/lifecycle state persistence.
-- KYC/eligibility workflow or durable registry persistence.
+- durable Evidence Vault storage for wallet-signed deployment/operation evidence.
+- KYC/eligibility workflow.
 - live stablecoin subscription execution.
 - live redemption wallet receipt and stablecoin payout execution.
 - Solidity implementation/execution of the subscription-redemption smart-contract template.
 - maturity closeout flow.
 - durable Evidence Pack storage for deployment evidence.
-- persistence.
 - controlled access/login.
 - production observability, support, and release operations.
 
 ## Persistence Decision
 
-Sprint 8 records the persistence boundary in `docs/architecture/persistence-boundary-decision.md`.
+Sprint 8 records the persistence boundary in `docs/architecture/persistence-boundary-decision.md`. Sprint 9/10 implements the first backend SQLite adapter for workspace snapshots, lifecycle state, and Investor Registry rows.
 
-The current decision is to keep active lifecycle state in the app during the session and introduce durable persistence later behind a backend SQLite boundary. Browser storage is not the production path for lifecycle state, wallet evidence, transaction hashes, contract addresses, private keys, generated artifacts, or investor registry records.
+The current decision is to keep active lifecycle state in the app during the session and save/load snapshots through backend routes when the user asks. Browser storage is not the production path for lifecycle state, wallet evidence, transaction hashes, contract addresses, private keys, generated artifacts, or investor registry records.
 
-This matters because MILA26 should reduce throwaway effort without overstating evidence maturity. Requirements, parameters, wallet rules, artifacts, and evidence should become reusable project records later, but deployment/operation evidence remains local-session-only until the durable Evidence Vault exists.
+This matters because MILA26 should reduce throwaway effort without overstating evidence maturity. Requirements, parameters, and wallet rules can now be resumed from backend snapshots. Artifacts and deployment/operation evidence remain local-session-only until the durable Evidence Vault exists.
 
 ## Funding-Demo Success Criteria
 
