@@ -10,7 +10,7 @@ The current UI is the MILA26 lifecycle workspace. It uses visual lifecycle tabs,
 
 The next implementation step should follow the tab-aligned roadmap, not the old dashboard flow:
 
-1. Tab-by-tab workspace audit for actions, status, information, artefacts, persistence ownership, and cross-tab dependencies;
+1. Sprint 16 workspace completion pass from `docs/product/workspace-tab-audit.md`;
 2. website/access/login without duplicating lifecycle state;
 3. subscription-redemption execution design with explicit adapter/evidence contracts;
 4. beta live Sepolia evidence rehearsals using the opt-in Sprint 14A/14B harness;
@@ -117,16 +117,22 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
   - normal tests remain deterministic and do not require RPC, MetaMask, or private keys;
   - live provider receipts can be mapped into existing durable Evidence Vault records;
   - operation contract-address evidence is labelled as coming from confirmed deployment evidence, not from operation receipts.
+- Sprint Track 15 audit-first workspace review:
+  - completed the tab-by-tab audit for actions, status, information, artefacts, persistence ownership, and cross-tab dependencies;
+  - confirmed that Investor Wallets, Subscription, Redemption, Contract Ops, Evidence Vault, and the persistent AI panel are the strongest current matches;
+  - identified Product Setup, Asset Servicing, Maturity, unwired Expert mode, stale Investor Registry labels, Contract Ops density, and legacy SCP remnants as the next implementation priorities;
+  - captured the Sprint 16 backlog in `docs/product/workspace-tab-audit.md`.
 
 ## Current Next Step
 
 Recommended next coding sequence:
 
-1. Run a tab-by-tab workspace audit for active actions, statuses, information, artefacts, persistence ownership, and shared lifecycle dependencies.
-2. Add website/access/login without duplicating lifecycle ownership.
-3. Design subscription-redemption execution adapters and evidence contracts before live stablecoin movement.
-4. Use the opt-in live Sepolia harness when public testnet addresses/RPC/transaction hashes are available.
-5. Keep browser/screenshot review in the validation loop for every newly functional tab.
+1. Implement Sprint 16 P0 fixes from `docs/product/workspace-tab-audit.md`: Product Setup panel, Asset Servicing panel, Maturity panel, Expert-mode cleanup, and stale Investor Wallets naming cleanup.
+2. Reorganise Contract Ops only where it improves clarity without changing operation adapters or shared state ownership.
+3. Add website/access/login without duplicating lifecycle ownership.
+4. Design subscription-redemption execution adapters and evidence contracts before live stablecoin movement.
+5. Use the opt-in live Sepolia harness when public testnet addresses/RPC/transaction hashes are available.
+6. Keep browser/screenshot review in the validation loop for every newly functional tab.
 
 ## Code Review (Agent / PR)
 

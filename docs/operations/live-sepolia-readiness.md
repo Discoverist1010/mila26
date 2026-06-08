@@ -98,6 +98,8 @@ When ready, provide:
 
 ## Tab-By-Tab Follow-On Planning
 
+Detailed Sprint 15 audit output now lives in `docs/product/workspace-tab-audit.md`. Use that document as the source for the Sprint 16 workspace completion backlog.
+
 Before expanding functionality beyond the current live Sepolia/evidence foundation, review each tab one by one:
 
 | Tab | Actions | Status | Information | Artefacts / persistence |
