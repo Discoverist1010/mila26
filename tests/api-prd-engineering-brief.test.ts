@@ -86,6 +86,7 @@ describe('PRD Engineering Brief API', () => {
         implementationPlan: ['LLM implementation step prepares schema-safe artifacts before any testnet gate.'],
         testingAndQaPlan: ['LLM QA step validates schema, route behavior, and MVP deployment boundaries.'],
         evidencePackPlan: ['LLM evidence step records source brief ID, assumptions, risks, and QA checks.'],
+        openQuestions: null,
         risksAndControls: [
           {
             risk: 'LLM risk: generated content could imply execution happened.',
@@ -124,6 +125,13 @@ describe('PRD Engineering Brief API', () => {
         purpose: 'engineering_brief_generation',
         maxOutputTokens: 1100,
         reasoningEffort: 'minimal',
+        textVerbosity: 'low',
+        textFormat: expect.objectContaining({
+          type: 'json_schema',
+          name: 'mila26_engineering_brief_overlay',
+          strict: true,
+          schema: expect.any(Object),
+        }),
         metadata: expect.objectContaining({
           promptBudgetName: 'engineering_brief_generation',
           estimatedInputTokens: expect.any(Number),
@@ -155,6 +163,7 @@ describe('PRD Engineering Brief API', () => {
         implementationPlan: ['unused'],
         testingAndQaPlan: ['unused'],
         evidencePackPlan: ['unused'],
+        openQuestions: null,
         risksAndControls: [{ risk: 'unused', control: 'unused' }],
         acceptanceCriteria: ['unused'],
       }),

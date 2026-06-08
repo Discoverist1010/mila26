@@ -15,7 +15,7 @@ Backend LLM configuration uses these exact names:
 | Variable | Default | Behavior |
 |---|---:|---|
 | `MILA26_LLM_PROVIDER` | `mock` | `mock` is deterministic/default. `openai` enables backend-only OpenAI provider construction. |
-| `MILA26_LLM_MODEL` | `mila26-mock-model` for mock; required for OpenAI | Model label used by the selected provider. OpenAI mode has no runtime default; set an operator-selected model explicitly, for example `gpt-5-mini` if the account supports it. |
+| `MILA26_LLM_MODEL` | `mila26-mock-model` for mock; required for OpenAI | Model label used by the selected provider. OpenAI mode has no runtime default; set an operator-selected model explicitly. Current recommended OpenAI model: `gpt-5.5` if the account supports it. |
 | `MILA26_LLM_TIMEOUT_MS` | `30000` | Parsed as a positive integer; invalid values fall back to the default. |
 | `MILA26_LLM_MAX_OUTPUT_TOKENS` | `2000` | Parsed as a positive integer; invalid values fall back to the default. |
 | `OPENAI_API_KEY` | none | Required only when `MILA26_LLM_PROVIDER=openai`; not required for mock mode. |
@@ -42,6 +42,9 @@ The LLM boundary accepts typed messages and a narrow purpose:
   messages: [{ role: 'system' | 'user' | 'assistant', content: '...' }],
   temperature?: number,
   maxOutputTokens?: number,
+  reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh',
+  textVerbosity?: 'low' | 'medium' | 'high',
+  textFormat?: { type: 'json_schema', name: string, schema: Record<string, unknown> },
   metadata?: { source: 'safe non-secret metadata only' }
 }
 ```
@@ -69,6 +72,7 @@ The boundary does not return secrets or raw provider configuration to frontend A
 - Same request produces the same mock response content.
 - `openai` is opt-in and requires `OPENAI_API_KEY`.
 - `openai` requires `MILA26_LLM_MODEL`; model choice is operator-configured and example model names are not runtime defaults.
+- The OpenAI provider uses the Responses API with `store: false`, concise `text.verbosity`, and optional `text.format` structured outputs.
 - Automated tests mock the OpenAI client and do not make live OpenAI calls.
 - `POST /api/prd/engineering-brief` remains deterministic in mock/default mode and may use a real provider only when configured.
 - `POST /api/chat/blockchain-engineer` remains deterministic in mock/default mode and may use a real provider only when configured.
@@ -93,7 +97,7 @@ Route integration should:
 
 - keep the existing Engineering Brief API contract stable
 - use deterministic generation as the default and fallback
-- map provider output through a small internal overlay before validating the final Engineering Brief schema
+- map provider output through a small internal structured-output overlay before validating the final Engineering Brief schema
 - preserve Ethereum testnet-only, user-wallet-signs, backend-holds-no-private-keys, and no-mainnet MVP boundaries
 - avoid exposing secrets, provider config, model names, raw provider output, or stack traces to the frontend
 

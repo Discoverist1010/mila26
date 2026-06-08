@@ -12,7 +12,7 @@ Implemented Track 6A method:
 
 - `complete(request)`.
 
-Streaming or structured helper methods remain later-track options only if they are justified by a concrete route.
+Streaming and tool-calling helper methods remain later-track options only if they are justified by a concrete route. Structured text output is supported through the existing `complete(request)` method for routes that need schema-safe model output.
 
 ## `Mila26LlmProvider`
 
@@ -30,6 +30,9 @@ Implemented fields:
 - `messages`.
 - `temperature` optional.
 - `maxOutputTokens` optional.
+- `reasoningEffort` optional.
+- `textVerbosity` optional.
+- `textFormat` optional for Responses API structured outputs.
 - `metadata` optional and safe only.
 
 ## `Mila26LlmResponse`
@@ -49,6 +52,8 @@ Implemented fields:
 - Provider output must be mapped into the chat response contract.
 - Mock provider is required for tests.
 - OpenAI provider integration is opt-in via backend env config.
+- OpenAI provider calls the Responses API with `store: false`.
+- Current recommended OpenAI model is `gpt-5.5`, but runtime OpenAI model selection remains explicit through `MILA26_LLM_MODEL`.
 - Provider-specific fields must not leak into stable frontend route contracts unless deliberately mapped.
 - Environment variables must use `MILA26_LLM_PROVIDER`, `MILA26_LLM_MODEL`, `MILA26_LLM_TIMEOUT_MS`, and `MILA26_LLM_MAX_OUTPUT_TOKENS`.
 - `OPENAI_API_KEY` is required only when `MILA26_LLM_PROVIDER=openai`.

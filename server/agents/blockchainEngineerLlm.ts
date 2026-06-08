@@ -102,6 +102,7 @@ export async function answerWithBlockchainEngineerLlm(
       messages: promptMessages.messages,
       maxOutputTokens: 500,
       reasoningEffort: 'minimal',
+      textVerbosity: 'low',
       metadata: {
         route: 'blockchain-engineer-chat',
         assistantMode: request.assistantMode,

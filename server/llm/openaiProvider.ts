@@ -5,6 +5,8 @@ import type {
   Mila26LlmReasoningEffort,
   Mila26LlmRequest,
   Mila26LlmResponse,
+  Mila26LlmTextFormat,
+  Mila26LlmTextVerbosity,
 } from './types';
 
 type OpenAiResponseCreateBody = {
@@ -15,9 +17,14 @@ type OpenAiResponseCreateBody = {
   }>;
   instructions?: string;
   max_output_tokens: number;
+  store: false;
   temperature?: number;
   reasoning?: {
     effort: Mila26LlmReasoningEffort;
+  };
+  text?: {
+    verbosity?: Mila26LlmTextVerbosity;
+    format?: Mila26LlmTextFormat;
   };
   metadata?: Record<string, string>;
 };
@@ -30,9 +37,28 @@ export type Mila26OpenAiResponsesClient = {
   responses: {
     create(body: OpenAiResponseCreateBody, options: OpenAiResponseCreateOptions): Promise<{
       output_text?: string;
+      status?: string;
+      error?: unknown;
+      incomplete_details?: {
+        reason?: string;
+      } | null;
+      output?: Array<{
+        type?: string;
+        content?: Array<{
+          type?: string;
+          text?: string;
+          refusal?: string;
+        }>;
+      }>;
       usage?: {
         input_tokens?: number;
+        input_tokens_details?: {
+          cached_tokens?: number;
+        };
         output_tokens?: number;
+        output_tokens_details?: {
+          reasoning_tokens?: number;
+        };
         total_tokens?: number;
       };
     }>;
@@ -105,12 +131,70 @@ function usageFromResponse(response: Awaited<ReturnType<Mila26OpenAiResponsesCli
     inputTokens,
     outputTokens,
     totalTokens,
+    cachedInputTokens: response.usage.input_tokens_details?.cached_tokens,
+    reasoningOutputTokens: response.usage.output_tokens_details?.reasoning_tokens,
   };
 }
 
 function supportsReasoningOptions(model: string): boolean {
   const normalized = model.trim().toLowerCase();
   return normalized.startsWith('gpt-5') || normalized.startsWith('o');
+}
+
+function toTextConfig(request: Mila26LlmRequest): OpenAiResponseCreateBody['text'] {
+  const verbosity = request.textVerbosity ?? 'low';
+
+  if (!request.textFormat) {
+    return { verbosity };
+  }
+
+  return {
+    verbosity,
+    format: request.textFormat,
+  };
+}
+
+function responseHasRefusal(
+  response: Awaited<ReturnType<Mila26OpenAiResponsesClient['responses']['create']>>,
+): boolean {
+  return (
+    response.output?.some((item) =>
+      item.content?.some((contentPart) => contentPart.type === 'refusal' || Boolean(contentPart.refusal)),
+    ) ?? false
+  );
+}
+
+function assertCompletedTextResponse(
+  response: Awaited<ReturnType<Mila26OpenAiResponsesClient['responses']['create']>>,
+): string {
+  if (response.status === 'incomplete') {
+    const reason = response.incomplete_details?.reason;
+    throw new Mila26LlmProviderRuntimeError(
+      reason === 'max_output_tokens'
+        ? 'OpenAI provider response was incomplete because max output tokens were reached.'
+        : 'OpenAI provider response was incomplete.',
+    );
+  }
+
+  if (response.status && response.status !== 'completed') {
+    throw new Mila26LlmProviderRuntimeError('OpenAI provider response did not complete.');
+  }
+
+  if (response.error) {
+    throw new Mila26LlmProviderRuntimeError('OpenAI provider returned an error response.');
+  }
+
+  if (responseHasRefusal(response)) {
+    throw new Mila26LlmProviderRuntimeError('OpenAI provider returned a refusal.');
+  }
+
+  const outputText = response.output_text?.trim();
+
+  if (!outputText) {
+    throw new Mila26LlmProviderRuntimeError('OpenAI provider returned no text.');
+  }
+
+  return outputText;
 }
 
 export function createOpenAiMila26LlmProvider({
@@ -139,10 +223,12 @@ export function createOpenAiMila26LlmProvider({
             input: toInput(request),
             instructions: toInstructions(request),
             max_output_tokens: request.maxOutputTokens ?? config.maxOutputTokens,
+            store: false,
             ...(typeof request.temperature === 'number' ? { temperature: request.temperature } : {}),
             ...(request.reasoningEffort && supportsReasoningOptions(config.model)
               ? { reasoning: { effort: request.reasoningEffort } }
               : {}),
+            text: toTextConfig(request),
             metadata: toSafeMetadata(request.metadata),
           },
           {
@@ -150,12 +236,10 @@ export function createOpenAiMila26LlmProvider({
           },
         );
 
-        if (!response.output_text?.trim()) {
-          throw new Mila26LlmProviderRuntimeError('OpenAI provider returned no text.');
-        }
+        const outputText = assertCompletedTextResponse(response);
 
         return {
-          content: response.output_text,
+          content: outputText,
           provider: 'openai',
           model: config.model,
           usage: usageFromResponse(response),

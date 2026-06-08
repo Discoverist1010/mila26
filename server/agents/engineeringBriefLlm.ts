@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { zodTextFormat } from 'openai/helpers/zod';
 import { generateEngineeringBriefMock } from './engineeringBriefMock';
 import {
   EngineeringBriefSchema,
@@ -20,7 +21,7 @@ const llmEngineeringBriefOverlaySchema = z
     implementationPlan: z.array(z.string().trim().min(1).max(420)).min(1).max(8),
     testingAndQaPlan: z.array(z.string().trim().min(1).max(420)).min(1).max(8),
     evidencePackPlan: z.array(z.string().trim().min(1).max(420)).min(1).max(8),
-    openQuestions: z.array(z.string().trim().min(1).max(320)).max(8).optional(),
+    openQuestions: z.array(z.string().trim().min(1).max(320)).max(8).nullable(),
     risksAndControls: z
       .array(
         z.object({
@@ -36,6 +37,15 @@ const llmEngineeringBriefOverlaySchema = z
 
 type LlmEngineeringBriefOverlay = z.infer<typeof llmEngineeringBriefOverlaySchema>;
 
+const engineeringBriefOverlayTextFormat = zodTextFormat(
+  llmEngineeringBriefOverlaySchema,
+  'mila26_engineering_brief_overlay',
+  {
+    description:
+      'Schema-safe overlay fields used to refine the deterministic MILA26 Engineering Brief.',
+  },
+);
+
 const engineeringBriefSystemInstruction = [
   'You generate compact Engineering Brief content for MILA26, an asset manager tokenisation workspace.',
   'Use only the submitted Requirement Brief facts and keep the output suitable for an Ethereum testnet-only MVP.',
@@ -43,7 +53,7 @@ const engineeringBriefSystemInstruction = [
   'The backend must not hold private keys; the user wallet signs deployment.',
   'Do not claim Solidity compilation, deployment, wallet signing, minting, allocation, or valuation upload has happened.',
   'Frame legal, compliance, tax, audit, and investment points as assumptions, not advice.',
-  'Return JSON only with concise strings and the requested keys. Do not include markdown or code fences.',
+  'Use concise strings grounded in the submitted Requirement Brief and leave uncertain items as open questions.',
 ].join(' ');
 
 export function toEngineeringBriefLlmMessages(requirementBrief: EngineeringBriefRequirementBrief): Mila26LlmMessage[] {
@@ -56,7 +66,7 @@ export function toEngineeringBriefLlmMessages(requirementBrief: EngineeringBrief
       role: 'user',
       content: JSON.stringify({
         instruction:
-          'Return a JSON object with summary, functionalRequirements, nonFunctionalRequirements, implementationPlan, testingAndQaPlan, evidencePackPlan, risksAndControls, and acceptanceCriteria. openQuestions is optional.',
+          'Create an Engineering Brief overlay using only the submitted Requirement Brief facts.',
         requirementBrief,
       }),
     },
@@ -133,6 +143,8 @@ export async function generateEngineeringBriefWithLlm(
       messages,
       maxOutputTokens: 1100,
       reasoningEffort: 'minimal',
+      textVerbosity: 'low',
+      textFormat: engineeringBriefOverlayTextFormat,
       metadata: {
         route: 'prd-engineering-brief',
         sourceRequirementBriefId: requirementBrief.sourceBriefId,

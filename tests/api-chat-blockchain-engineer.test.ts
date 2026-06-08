@@ -161,6 +161,7 @@ describe('blockchain engineer chat api', () => {
         expect(request.temperature).toBeUndefined();
         expect(request.maxOutputTokens).toBe(500);
         expect(request.reasoningEffort).toBe('minimal');
+        expect(request.textVerbosity).toBe('low');
         expect(request.metadata).toEqual(
           expect.objectContaining({
             promptBudgetName: 'blockchain_engineer_chat',
