@@ -59,6 +59,136 @@ export const AllocationMintParametersPersistenceSchema = z
   })
   .strict();
 
+const ProductSetupFieldKeyPersistenceSchema = z.enum([
+  'product_name',
+  'issuer_owner',
+  'product_type',
+  'base_currency',
+  'protocol_base',
+  'expected_investor_count',
+  'whitelisted_wallets_required',
+  'subscription_stablecoins',
+  'redemption_schedule',
+  'redemption_payout_delay',
+  'redemption_wallet',
+  'admin_wallet',
+  'burn_lock_rule',
+  'prototype_network',
+]);
+
+const ProductSetupFieldStatusPersistenceSchema = z.enum([
+  'missing',
+  'inferred',
+  'user_stated',
+  'user_confirmed',
+  'system_default',
+  'conflicting',
+  'deferred',
+  'locked',
+]);
+
+const ProductSetupFieldSourceTypePersistenceSchema = z.enum([
+  'user_message',
+  'pasted_text',
+  'uploaded_document',
+  'assistant_inference',
+  'system_default',
+  'user_confirmation',
+  'direct_form_input',
+  'counsel_compliance_pending',
+  'blockchain_transaction',
+  'app_event',
+]);
+
+const ProductSetupFieldValuePersistenceSchema = z.union([
+  z.string().max(600),
+  z.number().finite(),
+  z.boolean(),
+  z.array(z.string().trim().min(1).max(120)).max(20),
+]);
+
+const ProductSetupFieldPersistenceSchema = z
+  .object({
+    key: ProductSetupFieldKeyPersistenceSchema,
+    label: z.string().trim().min(1).max(120),
+    value: ProductSetupFieldValuePersistenceSchema.optional(),
+    status: ProductSetupFieldStatusPersistenceSchema,
+    sourceType: ProductSetupFieldSourceTypePersistenceSchema.optional(),
+    sourceRef: z.string().trim().min(1).max(180).optional(),
+    confidence: z.number().finite().min(0).max(1).optional(),
+    confirmedByUser: z.boolean(),
+    needsCounselComplianceConfirmation: z.boolean().optional(),
+    usedByTabs: z.array(z.string().trim().min(1).max(80)).max(12),
+    smartContractRelevance: z.enum(['contract_parameter', 'operational_metadata', 'evidence_metadata']),
+    deferralReason: z.string().trim().min(1).max(240).optional(),
+    rolePlaceholder: z.string().trim().min(1).max(160).optional(),
+  })
+  .strict();
+
+const ProductSetupFieldsPersistenceSchema = z
+  .object({
+    product_name: ProductSetupFieldPersistenceSchema,
+    issuer_owner: ProductSetupFieldPersistenceSchema,
+    product_type: ProductSetupFieldPersistenceSchema,
+    base_currency: ProductSetupFieldPersistenceSchema,
+    protocol_base: ProductSetupFieldPersistenceSchema,
+    expected_investor_count: ProductSetupFieldPersistenceSchema,
+    whitelisted_wallets_required: ProductSetupFieldPersistenceSchema,
+    subscription_stablecoins: ProductSetupFieldPersistenceSchema,
+    redemption_schedule: ProductSetupFieldPersistenceSchema,
+    redemption_payout_delay: ProductSetupFieldPersistenceSchema,
+    redemption_wallet: ProductSetupFieldPersistenceSchema,
+    admin_wallet: ProductSetupFieldPersistenceSchema,
+    burn_lock_rule: ProductSetupFieldPersistenceSchema,
+    prototype_network: ProductSetupFieldPersistenceSchema,
+  })
+  .strict();
+
+const ProductSetupSuggestedUpdatePersistenceSchema = z
+  .object({
+    id: z.string().trim().min(1).max(220),
+    fieldKey: ProductSetupFieldKeyPersistenceSchema,
+    proposedValue: ProductSetupFieldValuePersistenceSchema,
+    rationale: z.string().trim().min(1).max(500),
+    sourceType: ProductSetupFieldSourceTypePersistenceSchema,
+    sourceRef: z.string().trim().min(1).max(180),
+    confidence: z.number().finite().min(0).max(1),
+  })
+  .strict();
+
+const TermExplanationPersistenceSchema = z
+  .object({
+    termKey: z.string().trim().min(1).max(120),
+    explainedAt: z.string().trim().min(1).max(80),
+    explanationVersion: z.string().trim().min(1).max(80),
+    userAcknowledged: z.boolean().optional(),
+    timesShown: z.number().int().nonnegative(),
+  })
+  .strict();
+
+const UnsupportedRequirementDecisionPersistenceSchema = z
+  .object({
+    id: z.string().trim().min(1).max(180),
+    requirement: z.string().trim().min(1).max(600),
+    mismatchReason: z.string().trim().min(1).max(600),
+    nearestEquivalent: z.string().trim().min(1).max(600).optional(),
+    decision: z.enum(['pending', 'accepted_equivalent', 'rejected_equivalent', 'excluded_from_mvp']),
+    sourceRef: z.string().trim().min(1).max(180),
+  })
+  .strict();
+
+export const ProductSetupRecordPersistenceSchema = z
+  .object({
+    id: z.string().trim().min(1).max(160),
+    status: z.enum(['draft', 'ready_for_engineering', 'locked']),
+    fields: ProductSetupFieldsPersistenceSchema,
+    pendingSuggestedUpdates: z.array(ProductSetupSuggestedUpdatePersistenceSchema).max(40),
+    termExplanations: z.record(z.string().trim().min(1).max(120), TermExplanationPersistenceSchema),
+    unsupportedRequirementDecisions: z.array(UnsupportedRequirementDecisionPersistenceSchema).max(40),
+    updatedAtIso: z.string().trim().min(1).max(80),
+  })
+  .strict();
+
 export const Mila26LifecycleStatePersistenceSchema = z
   .object({
     investorRegistryEntries: z.array(InvestorRegistryEntryPersistenceSchema).max(50),
@@ -74,6 +204,7 @@ export const WorkspacePersistenceSaveRequestSchema = z
     projectId: WorkspaceProjectIdSchema,
     projectName: z.string().trim().min(1).max(160),
     lifecycleState: Mila26LifecycleStatePersistenceSchema,
+    productSetupRecord: ProductSetupRecordPersistenceSchema.optional(),
     source: z.enum(['user_action', 'autosave', 'import']).default('user_action'),
   })
   .strict();
@@ -242,6 +373,29 @@ const EvidenceLiteArtifactRecordSchema = z
   })
   .strict();
 
+const ProductSetupPackArtifactRecordSchema = z
+  .object({
+    artifactType: z.literal('product_setup_pack'),
+    artifactPayload: z
+      .object({
+        recordId: z.string().trim().min(1).max(160),
+        generatedAtIso: z.string().trim().min(1).max(80),
+        statusLabel: z.string().trim().min(1).max(160),
+        readinessLabel: z.string().trim().min(1).max(160),
+        understandingSummary: z.string().trim().min(1).max(1200),
+        recommendedProtocol: z.enum(['ERC-20', 'ERC-4626', 'ERC-3643', 'Custom ERC-20 with rebasing']),
+        executablePrototypeLabel: z.string().trim().min(1).max(360),
+        warning: z.string().trim().min(1).max(600),
+        includedDocuments: z.array(z.string().trim().min(1).max(240)).min(1).max(12),
+        fieldCount: z.number().int().positive(),
+        missingEssentials: z.array(z.string().trim().min(1).max(120)).max(40),
+        deploymentBlockers: z.array(z.string().trim().min(1).max(240)).max(40),
+      })
+      .strict(),
+    lifecycleSnapshotVersion: z.number().int().positive().optional(),
+  })
+  .strict();
+
 export const WorkspaceArtifactRecordInputSchema = z.discriminatedUnion('artifactType', [
   RequirementBriefArtifactRecordSchema,
   EngineeringBriefArtifactRecordSchema,
@@ -249,6 +403,7 @@ export const WorkspaceArtifactRecordInputSchema = z.discriminatedUnion('artifact
   ArtifactPreviewRecordSchema,
   CheckResultArtifactRecordSchema,
   EvidenceLiteArtifactRecordSchema,
+  ProductSetupPackArtifactRecordSchema,
 ]);
 
 export const WorkspaceArtifactsSaveRequestSchema = z
@@ -265,6 +420,7 @@ export const WorkspaceArtifactsListRequestSchema = z
   .strict();
 
 export type Mila26LifecycleStatePersistence = z.infer<typeof Mila26LifecycleStatePersistenceSchema>;
+export type ProductSetupRecordPersistence = z.infer<typeof ProductSetupRecordPersistenceSchema>;
 export type WorkspacePersistenceSaveRequest = z.infer<typeof WorkspacePersistenceSaveRequestSchema>;
 export type WorkspacePersistenceLoadRequest = z.infer<typeof WorkspacePersistenceLoadRequestSchema>;
 export type WorkspaceEvidenceRecordInput = z.infer<typeof WorkspaceEvidenceRecordInputSchema>;
@@ -288,6 +444,7 @@ export type WorkspacePersistenceSnapshot = {
   version: number;
   source: WorkspacePersistenceSaveRequest['source'];
   lifecycleState: Mila26LifecycleStatePersistence;
+  productSetupRecord?: ProductSetupRecordPersistence;
   investorWalletCount: number;
   createdAtIso: string;
 };

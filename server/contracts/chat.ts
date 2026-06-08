@@ -46,7 +46,10 @@ export const BlockchainEngineerChatResponseSchema = z.object({
   protocolComparison: z
     .object({
       erc20: z.string().min(1),
-      erc721: z.string().min(1),
+      erc4626: z.string().min(1),
+      erc3643: z.string().min(1),
+      rebasingErc20: z.string().min(1),
+      erc721OutOfScope: z.string().min(1).optional(),
       recommendation: z.string().min(1),
     })
     .optional(),

@@ -14,7 +14,7 @@ The Solidity artifact metadata contract records whether a generated Solidity art
 - `projectId`.
 - `runId`.
 - `prdId`.
-- `protocol`: `ERC-20` or `ERC-721`.
+- `protocol`: `ERC-20`, `ERC-4626`, `ERC-3643`, or `Custom ERC-20 with rebasing`.
 - `contractName`.
 - `solidityVersion`.
 - `libraryPolicy`.

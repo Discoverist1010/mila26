@@ -13,7 +13,7 @@ describe('blockchain engineer chat contract fixtures', () => {
   it('parses the request fixture through the current chat request schema', () => {
     const request = BlockchainEngineerChatRequestSchema.parse(chatRequestFixture);
 
-    expect(request.userMessage).toMatch(/ERC-20|ERC-721/);
+    expect(request.userMessage).toMatch(/supported protocol base/i);
     expect(request.conversationHistory).toHaveLength(2);
     expect(request.projectContext?.investorWalletCount).toBe(50);
     expect(request.requestedFocus).toBe('protocol_choice');
@@ -25,6 +25,8 @@ describe('blockchain engineer chat contract fixtures', () => {
     expect(response.agentId).toBe('blockchain-engineer');
     expect(response.content.length).toBeGreaterThan(0);
     expect(response.protocolComparison?.erc20).toMatch(/fungible/i);
+    expect(response.protocolComparison?.erc3643).toMatch(/approved|permissioned/i);
+    expect(response.protocolComparison?.erc721OutOfScope).toMatch(/not an active/i);
     expect(response.suggestedRequirementUpdates?.length).toBeGreaterThan(0);
   });
 

@@ -39,7 +39,7 @@ type LlmEngineeringBriefOverlay = z.infer<typeof llmEngineeringBriefOverlaySchem
 const engineeringBriefSystemInstruction = [
   'You generate compact Engineering Brief content for MILA26, an asset manager tokenisation workspace.',
   'Use only the submitted Requirement Brief facts and keep the output suitable for an Ethereum testnet-only MVP.',
-  'ERC-20 and ERC-721 discussion is allowed, but no mainnet deployment is in scope.',
+  'Active Product Setup protocol bases are ERC-20, ERC-4626, ERC-3643, and custom ERC-20 with rebasing; ERC-721 is out of MVP scope.',
   'The backend must not hold private keys; the user wallet signs deployment.',
   'Do not claim Solidity compilation, deployment, wallet signing, minting, allocation, or valuation upload has happened.',
   'Frame legal, compliance, tax, audit, and investment points as assumptions, not advice.',

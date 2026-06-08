@@ -28,6 +28,52 @@ test('website intro routes to app access without overclaiming production readine
   await expect(page.getByText(/production ready|mainnet ready|audit passed|investment advice/i)).toHaveCount(0);
 });
 
+test('product setup turns unstructured chat into reviewable requirements', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Product Setup/ }).click();
+
+  const productSetup = page.getByLabel('Product Setup workspace');
+  await expect(productSetup.getByRole('heading', { name: 'Conversation-first Product Setup' })).toBeVisible();
+  await expect(productSetup).toContainText('Advisor Bot explains unfamiliar tokenisation concepts');
+  await expect(productSetup).toContainText('Engineering Bot structures confirmed requirements');
+  await expect(productSetup).toContainText('Recommended architecture target; current executable prototype is Sepolia restricted ERC-20-compatible.');
+
+  await productSetup.getByRole('button', { name: 'Use rough product note' }).click();
+  await expect(page.getByRole('textbox', { name: 'Engineering Bot MILA' })).toHaveValue(/private credit portfolio/i);
+  await page.getByRole('button', { name: 'Send' }).click();
+
+  const suggestedUpdates = page.getByLabel('Product Setup suggested updates');
+  await expect(suggestedUpdates).toContainText('Expected investors');
+  await expect(suggestedUpdates).toContainText('25');
+  await expect(suggestedUpdates).toContainText('Subscription stablecoins');
+  await expect(suggestedUpdates).toContainText('USDC');
+  await expect(suggestedUpdates).toContainText('Redemption schedule');
+  await expect(suggestedUpdates).toContainText('Quarterly');
+
+  await suggestedUpdates
+    .locator('article')
+    .filter({ hasText: 'Expected investors' })
+    .getByRole('button', { name: 'Confirm' })
+    .click();
+
+  const requirementsBoard = page.getByLabel('Product requirements board');
+  const expectedInvestors = requirementsBoard.locator('li').filter({ hasText: 'Expected investors' });
+  await expect(expectedInvestors).toContainText('user confirmed');
+  await expect(expectedInvestors).toContainText('25');
+
+  const explanations = page.getByLabel('Product Setup just-in-time explanations');
+  const adminWalletExplanation = explanations.locator('article').filter({ hasText: 'Admin wallet' });
+  await expect(adminWalletExplanation).toContainText('I need the admin wallet.');
+  await expect(adminWalletExplanation).toContainText('paste the public wallet address');
+  await expect(adminWalletExplanation).toContainText('do not provide a private key, seed phrase, or recovery phrase');
+  await adminWalletExplanation.getByRole('button', { name: 'Mark explained' }).click();
+  await expect(adminWalletExplanation).toContainText('Shown 1 time(s) in Product Setup.');
+
+  await page.getByRole('button', { name: 'Download Product Setup Pack' }).click();
+  await expect(productSetup).toContainText('Draft Product Setup Pack generated in session.');
+});
+
 test('guided beta journey creates requirements and exposes Engineering Brief action', async ({ page }) => {
   const engineeringBrief = {
     id: 'engineering-brief-e2e',

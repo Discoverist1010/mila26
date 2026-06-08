@@ -17,28 +17,28 @@ describe('blockchain engineer chat client', () => {
         data: {
           messageId: 'chat-1',
           agentId: 'blockchain-engineer',
-          content: 'ERC-20 is usually the simpler fit for fungible portfolio shares.',
+          content: 'ERC-3643 is usually the stronger fit for whitelisted investor wallet products.',
           createdAt: '2026-05-21T00:00:00.000Z',
         },
       }),
     );
 
     const result = await askBlockchainEngineer(
-      { userMessage: 'Should we use ERC-20 or ERC-721?' },
+      { userMessage: 'Which supported protocol base should we use?' },
       { baseUrl: 'http://api.test', fetcher },
     );
 
     expect(fetcher).toHaveBeenCalledWith('http://api.test/api/chat/blockchain-engineer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userMessage: 'Should we use ERC-20 or ERC-721?' }),
+      body: JSON.stringify({ userMessage: 'Which supported protocol base should we use?' }),
     });
     expect(result).toEqual({
       ok: true,
       data: {
         messageId: 'chat-1',
         agentId: 'blockchain-engineer',
-        content: 'ERC-20 is usually the simpler fit for fungible portfolio shares.',
+        content: 'ERC-3643 is usually the stronger fit for whitelisted investor wallet products.',
         createdAt: '2026-05-21T00:00:00.000Z',
       },
     });

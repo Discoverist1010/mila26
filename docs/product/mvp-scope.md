@@ -22,7 +22,7 @@ Current contract assumptions:
 - valuation event.
 - distribution event.
 
-ERC-721 remains useful for comparison and later product variants, but it is not the current blockchain-functional alpha path.
+ERC-721 may be explained if a user asks about it, but it is out of MVP scope and not an active ZiLi-OS Product Setup protocol base.
 
 ## Scale
 

@@ -35,7 +35,7 @@ This checkpoint reviews whether the planned backend/API contracts are stable eno
 If Track 2C includes more than `/api/health`, add narrow planned-contract fixtures before or alongside the skeleton:
 
 - `prd-approval.json`: approved PRD gate with `selectedProtocol`, feature list, approval metadata, and lifecycle status.
-- `solidity-artifact-metadata.json`: OpenZeppelin-default ERC-20 or ERC-721 Solidity artifact metadata with generic compile/test/security statuses.
+- `solidity-artifact-metadata.json`: OpenZeppelin-default Solidity artifact metadata for an active Product Setup protocol base, with generic compile/test/security statuses.
 - `security-benchmark-status.json`: benchmark result with checked categories, no critical unresolved findings, and explicit non-formal-audit disclaimer field or note if that becomes part of the contract.
 - `deployment-gate-readiness.json`: `ready_for_signature` or `not_ready` state showing PRD, compile, tests, QA, security, evidence, wallet, and testnet checks.
 

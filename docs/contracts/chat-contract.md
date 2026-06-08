@@ -67,7 +67,7 @@ Track 3B route tests cover:
 
 - Valid chat request returns `ok: true`.
 - Response includes `agentId: blockchain-engineer`.
-- ERC-20 vs ERC-721 query returns relevant protocol comparison.
+- Protocol query returns the active Product Setup protocol bases: `ERC-20`, `ERC-4626`, `ERC-3643`, and `Custom ERC-20 with rebasing`; ERC-721 may be explained as out of scope, but must not be presented as an active ZiLi-OS choice.
 - Whitelist, valuation/performance, deployment, and security/OpenZeppelin topics return relevant content.
 - Blank `userMessage` returns `VALIDATION_ERROR`.
 - Invalid `conversationHistory` returns `VALIDATION_ERROR`.

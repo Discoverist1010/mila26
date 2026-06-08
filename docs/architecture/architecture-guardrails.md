@@ -103,7 +103,7 @@ Generated Solidity remains scaffold/demo code unless compiled, tested, and exter
 
 For MVP deployment, only prepare Ethereum testnet transactions for user wallet signing. Mainnet and backend-held signing must fail closed until a later production design explicitly approves them.
 
-Current alpha Solidity work targets a restricted ERC-20-compatible fund token profile using OpenZeppelin Contracts primitives. Any future ERC-721 or other profile must be justified in the PRD, QA review, Security Review, and Evidence Pack. Hardhat/OpenZeppelin tooling is intentionally present for the local Track 10A fixture only; do not add deployment/mainnet/toolchain expansion without an approved implementation track.
+Current alpha Solidity work targets a restricted ERC-20-compatible fund token profile using OpenZeppelin Contracts primitives. Product Setup may recommend ERC-20, ERC-4626, ERC-3643, or custom ERC-20 with rebasing as the architecture target, but executable Contract Ops must stay within implemented Sepolia/testnet adapters. ERC-721 is out of MVP scope. Any future protocol expansion must be justified in the PRD, QA review, Security Review, and Evidence Pack. Hardhat/OpenZeppelin tooling is intentionally present for the local Track 10A fixture only; do not add deployment/mainnet/toolchain expansion without an approved implementation track.
 
 ## Major Change Checklist
 

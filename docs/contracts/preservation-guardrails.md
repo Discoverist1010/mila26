@@ -75,7 +75,7 @@ Generated Solidity is scaffold/demo code unless compiled, tested, security-revie
 
 For MVP, generated Solidity is demo/testnet scaffold until compiled, tested, and reviewed against smart-contract security benchmarks. No mainnet deployment is in scope. Real-world investor names should stay off-chain by default.
 
-Current alpha Solidity work targets a restricted ERC-20-compatible fund token profile using OpenZeppelin Contracts primitives. Any future ERC-721 or other profile must be reflected in affected fixtures/tests and recorded in the PRD, QA review, Security Review, and Evidence Pack.
+Current alpha Solidity work targets a restricted ERC-20-compatible fund token profile using OpenZeppelin Contracts primitives. Product Setup may recommend ERC-20, ERC-4626, ERC-3643, or custom ERC-20 with rebasing as the architecture target, but executable Contract Ops must stay within implemented Sepolia/testnet adapters. ERC-721 is out of MVP scope. Any future protocol expansion must be reflected in affected fixtures/tests and recorded in the PRD, QA review, Security Review, and Evidence Pack.
 
 ## Latency Warning
 

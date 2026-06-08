@@ -166,7 +166,8 @@ Avoid brittle long-copy assertions. Prefer structural checks such as:
 
 - loading state appears/disappears.
 - assistant response is non-empty.
-- ERC query shows `ERC-20` and `ERC-721`.
+- Protocol query shows the active Product Setup bases: `ERC-20`, `ERC-4626`, `ERC-3643`, and `Custom ERC-20 with rebasing`.
+- If ERC-721 is mentioned, the UI treats it as an out-of-scope explanation, not an active selectable path.
 - validation/network errors show a safe message.
 
 ## Historical Track 3C Non-Goals

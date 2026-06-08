@@ -24,7 +24,7 @@ export const EngineeringBriefRequirementBriefSchema = z.object({
     initialNav: z.number().nonnegative(),
   }),
   tokenModel: z.object({
-    standardPreference: z.enum(['ERC-20', 'ERC-721', 'undecided']),
+    standardPreference: z.enum(['ERC-20', 'ERC-4626', 'ERC-3643', 'Custom ERC-20 with rebasing']),
     assumption: z.string().trim().min(1),
   }),
   investorAccess: z.object({
@@ -75,7 +75,7 @@ export const EngineeringBriefSchema = z.object({
   functionalRequirements: z.array(z.string().min(1)).min(1),
   nonFunctionalRequirements: z.array(z.string().min(1)).min(1),
   tokenDesign: z.object({
-    standardPreference: z.enum(['ERC-20', 'ERC-721', 'undecided']),
+    standardPreference: z.enum(['ERC-20', 'ERC-4626', 'ERC-3643', 'Custom ERC-20 with rebasing']),
     assumptions: z.array(z.string().min(1)).min(1),
     servicingModules: z.array(z.string().min(1)).min(1),
   }),

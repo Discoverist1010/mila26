@@ -40,6 +40,19 @@ import {
 import { createDemoProjectClosureLedger } from './domain/projectClosureLedger';
 import { toProjectClosureReadModel } from './domain/projectClosureReadModel';
 import { toProjectLifecycleReadModel, type Mila26UiActionId } from './domain/projectLifecycleReadModel';
+import {
+  confirmProductSetupUpdate,
+  createInitialProductSetupRecord,
+  createProductSetupSuggestionsFromText,
+  deferProductSetupField,
+  fieldDisplayValue,
+  markTermExplained,
+  setProductSetupSuggestedUpdates,
+  toProductSetupReadModel,
+  type ProductSetupFieldKey,
+  type ProductSetupRecord,
+  type ProductSetupSuggestedUpdate,
+} from './domain/productSetup';
 import { toRequirementBriefContract } from './domain/requirementBrief';
 import {
   defaultRecordNavOperationPayload,
@@ -511,6 +524,9 @@ export function App() {
     useState<SepoliaDemoWalletReadinessState>(initialSepoliaDemoWalletReadinessState);
   const [walletWhitelistTargetWallet, setWalletWhitelistTargetWallet] = useState('');
   const [lifecycleState, setLifecycleState] = useState<Mila26LifecycleState>(() => createInitialMila26LifecycleState());
+  const [productSetupRecord, setProductSetupRecord] = useState<ProductSetupRecord>(() =>
+    createInitialProductSetupRecord(starterFacts),
+  );
   const [investorRegistryDraftWallet, setInvestorRegistryDraftWallet] = useState('');
   const [testWalletCountInput, setTestWalletCountInput] = useState('50');
   const [testInvestorWalletPack, setTestInvestorWalletPack] = useState<TestInvestorWalletPack | undefined>();
@@ -529,6 +545,7 @@ export function App() {
     status: 'idle',
     message: 'Generated artifacts are in session until saved.',
   });
+  const [productSetupPackGeneratedAtIso, setProductSetupPackGeneratedAtIso] = useState<string | undefined>();
   const [durableEvidenceRecords, setDurableEvidenceRecords] = useState<WorkspaceEvidenceRecord[]>([]);
   const [durableArtifactRecords, setDurableArtifactRecords] = useState<WorkspaceArtifactRecord[]>([]);
   const [permittedStablecoinsInput, setPermittedStablecoinsInput] = useState('');
@@ -731,6 +748,7 @@ export function App() {
     ],
   );
   const lifecycleReadModel = useMemo(() => toMila26LifecycleReadModel(lifecycleState), [lifecycleState]);
+  const productSetupReadModel = useMemo(() => toProductSetupReadModel(productSetupRecord), [productSetupRecord]);
   const allocationMint = lifecycleReadModel.allocationMint;
   const selectedAllocationMintRegistryEntry = useMemo(
     () =>
@@ -1238,6 +1256,8 @@ export function App() {
         assistantMode: activeAssistantMode,
       },
     ]);
+    const chatSourceRef = `chat_turn_${Date.now()}`;
+    const productSetupSuggestions = createProductSetupSuggestionsFromText(submittedQuestion, chatSourceRef);
 
     const result = await askBlockchainEngineer({
       userMessage: submittedQuestion,
@@ -1259,12 +1279,14 @@ export function App() {
     setIsBotReplyLoading(false);
 
     if (result.ok) {
+      setProductSetupRecord((current) => setProductSetupSuggestedUpdates(current, productSetupSuggestions));
       publishEngineerResponse(result.data, 'backend', activeAssistantMode);
       setQuestion('');
       return;
     }
 
     setBotChatError(result.message);
+    setProductSetupRecord((current) => setProductSetupSuggestedUpdates(current, productSetupSuggestions));
     publishEngineerResponse(createLocalEngineerResponse(answerAsBlockchainEngineer(submittedQuestion, brief)), 'local', activeAssistantMode);
     setQuestion('');
   }
@@ -1311,6 +1333,7 @@ export function App() {
     setInvestorRegistryDraftWallet('');
     setInvestorRegistryError(undefined);
     setWalletWhitelistTargetWallet('');
+    setProductSetupPackGeneratedAtIso(undefined);
   }
 
   async function saveWorkspaceToBackend() {
@@ -1338,6 +1361,7 @@ export function App() {
       projectId: selectedProjectId,
       projectName: activeProjectTitle,
       lifecycleState,
+      productSetupRecord,
       source: 'user_action',
     });
 
@@ -1365,6 +1389,7 @@ export function App() {
       const nextLifecycleState = result.data.snapshot.lifecycleState;
       syncInvestorRegistrySequenceFromState(nextLifecycleState);
       setLifecycleState(nextLifecycleState);
+      setProductSetupRecord(result.data.snapshot.productSetupRecord ?? createInitialProductSetupRecord(starterFacts));
       setPermittedStablecoinsInput(nextLifecycleState.subscriptionParameters.permittedStablecoins.join(', '));
       clearLocalOnlyWorkspaceArtifactsAfterLoad();
       setSelectedWorkspaceTab('overview');
@@ -1479,6 +1504,27 @@ export function App() {
 
   function buildArtifactRecords(lifecycleSnapshotVersion: number): WorkspaceArtifactRecordInput[] {
     const records: WorkspaceArtifactRecordInput[] = [];
+
+    if (productSetupPackGeneratedAtIso) {
+      records.push({
+        artifactType: 'product_setup_pack',
+        artifactPayload: {
+          recordId: productSetupRecord.id,
+          generatedAtIso: productSetupPackGeneratedAtIso,
+          statusLabel: productSetupReadModel.statusLabel,
+          readinessLabel: productSetupReadModel.readinessLabel,
+          understandingSummary: productSetupReadModel.understandingSummary,
+          recommendedProtocol: productSetupReadModel.protocolRecommendation.recommendedProtocol,
+          executablePrototypeLabel: productSetupReadModel.protocolRecommendation.executablePrototypeLabel,
+          warning: productSetupReadModel.packPreview.warning,
+          includedDocuments: productSetupReadModel.packPreview.includedDocuments,
+          fieldCount: Object.keys(productSetupRecord.fields).length,
+          missingEssentials: productSetupReadModel.missingEssentials.map((field) => field.label),
+          deploymentBlockers: productSetupReadModel.deploymentBlockers,
+        },
+        lifecycleSnapshotVersion,
+      });
+    }
 
     if (approvedRequirementBriefContract) {
       records.push({
@@ -2126,6 +2172,48 @@ export function App() {
     return fallbackLabel;
   }
 
+  function confirmProductSetupSuggestion(update: ProductSetupSuggestedUpdate) {
+    setProductSetupRecord((current) => confirmProductSetupUpdate(current, update.id));
+
+    if (update.fieldKey === 'subscription_stablecoins' && Array.isArray(update.proposedValue)) {
+      const stablecoins = update.proposedValue.map(String);
+      setPermittedStablecoinsInput(stablecoins.join(', '));
+      updateSubscriptionParameters({ permittedStablecoins: stablecoins });
+    }
+
+    if (update.fieldKey === 'redemption_schedule' && typeof update.proposedValue === 'string') {
+      updateRedemptionParameters({ redemptionWindow: update.proposedValue });
+    }
+
+    if (update.fieldKey === 'redemption_payout_delay' && typeof update.proposedValue === 'string') {
+      const delayMatch = update.proposedValue.match(/(\d{1,3})\s*(?:business\s*)?(day|days|hour|hours|week|weeks)/i);
+      if (delayMatch?.[1] && delayMatch[2]) {
+        const rawValue = Number(delayMatch[1]);
+        const rawUnit = delayMatch[2].toLowerCase();
+        updateRedemptionParameters({
+          redemptionDelayValue: rawUnit.startsWith('week') ? rawValue * 7 : rawValue,
+          redemptionDelayUnit: rawUnit.startsWith('hour') ? 'hours' : 'days',
+        });
+      }
+    }
+  }
+
+  function deferProductSetupBlocker(fieldKey: ProductSetupFieldKey) {
+    setProductSetupRecord((current) => deferProductSetupField(current, fieldKey));
+  }
+
+  function showProductSetupTerm(termKey: string) {
+    setProductSetupRecord((current) => markTermExplained(current, termKey));
+  }
+
+  function generateProductSetupPack() {
+    setProductSetupPackGeneratedAtIso(new Date().toISOString());
+    setArtifactVaultStatus({
+      status: 'idle',
+      message: 'Draft Product Setup Pack is ready in session. Save generated artifacts to persist it.',
+    });
+  }
+
   return (
     <main className="cockpit-page">
       <section
@@ -2317,6 +2405,182 @@ export function App() {
                 {tabStatusLabel(activeWorkspaceTab.status)}
               </span>
             </div>
+
+            {activeWorkspaceTab.id === 'requirements' && (
+              <section className="product-setup-panel" aria-label="Product Setup workspace">
+                <div className="registry-panel-heading">
+                  <div>
+                    <h3>Conversation-first Product Setup</h3>
+                    <p>
+                      Start with rough notes or questions. Advisor Bot explains unfamiliar tokenisation concepts, while
+                      Engineering Bot structures confirmed requirements into the shared Product Setup record.
+                    </p>
+                  </div>
+                  <span className="gate-badge draft">{productSetupReadModel.statusLabel}</span>
+                </div>
+
+                <div className="product-setup-summary" aria-label="Product Setup understanding">
+                  <article>
+                    <span>ZiLi-OS understanding</span>
+                    <strong>{productSetupReadModel.protocolRecommendation.recommendedProtocol}</strong>
+                    <p>{productSetupReadModel.understandingSummary}</p>
+                    <small>{productSetupReadModel.protocolRecommendation.executablePrototypeLabel}</small>
+                  </article>
+                  <article>
+                    <span>MVP readiness</span>
+                    <strong>{productSetupReadModel.readinessLabel}</strong>
+                    <p>
+                      Draft work can continue without every field. Deployment blockers stay visible until filled or deliberately deferred.
+                    </p>
+                  </article>
+                  <article>
+                    <span>ZiLi-OS roles</span>
+                    <strong>Advisor Bot + Engineering Bot</strong>
+                    <p>Advisor explains and discusses. Engineering structures requirements and proposes updates for confirmation.</p>
+                  </article>
+                </div>
+
+                <section className="product-setup-guidance" aria-label="Product Setup guidance">
+                  <div>
+                    <h4>How to start</h4>
+                    <p>
+                      Tell ZiLi-OS what you are trying to tokenise in plain language. The chat can be incomplete; ZiLi-OS will
+                      extract possible requirements and ask focused follow-ups.
+                    </p>
+                  </div>
+                  <div className="product-setup-chip-row" aria-label="Product Setup prompt examples">
+                    <button type="button" className="workflow-button" onClick={() => setQuestion('We are tokenising a USD private credit portfolio for 25 investors. USDC subscriptions, whitelisted wallets only, quarterly redemption, payout may take 10 business days.')}>
+                      Use rough product note
+                    </button>
+                    <button type="button" className="workflow-button" onClick={() => setQuestion('Advisor Bot, explain admin wallet and redemption wallet before I provide addresses.')}>
+                      Ask Advisor Bot
+                    </button>
+                    <button type="button" className="workflow-button" onClick={() => setQuestion('Engineering Bot, map my product to the best protocol base and list missing deployment blockers.')}>
+                      Ask Engineering Bot
+                    </button>
+                  </div>
+                </section>
+
+                {productSetupRecord.pendingSuggestedUpdates.length > 0 && (
+                  <section className="product-setup-review" aria-label="Product Setup suggested updates">
+                    <div className="registry-panel-heading compact-subsection-heading">
+                      <div>
+                        <h3>Suggested requirement updates</h3>
+                        <p>These came from chat interpretation. Confirming one writes it to the canonical Product Setup record.</p>
+                      </div>
+                      <span>{productSetupRecord.pendingSuggestedUpdates.length} pending</span>
+                    </div>
+                    <div className="product-setup-update-list">
+                      {productSetupRecord.pendingSuggestedUpdates.map((update) => (
+                        <article key={update.id}>
+                          <div>
+                            <span>{productSetupRecord.fields[update.fieldKey].label}</span>
+                            <strong>{Array.isArray(update.proposedValue) ? update.proposedValue.join(', ') : String(update.proposedValue)}</strong>
+                            <p>{update.rationale}</p>
+                            <small>{Math.round(update.confidence * 100)}% confidence · source: {update.sourceType}</small>
+                          </div>
+                          <button type="button" className="workflow-button primary-action" onClick={() => confirmProductSetupSuggestion(update)}>
+                            Confirm
+                          </button>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                <section className="product-setup-board" aria-label="Product requirements board">
+                  {productSetupReadModel.requirementSections.map((section) => (
+                    <article key={section.title}>
+                      <h4>{section.title}</h4>
+                      <ul className="artifact-list">
+                        {section.fields.map((field) => (
+                          <li key={field.key}>
+                            <span className={field.status === 'user_confirmed' || field.status === 'system_default' ? 'available' : 'draft'}>
+                              {field.status.replaceAll('_', ' ')}
+                            </span>
+                            {field.label}
+                            <small>
+                              {fieldDisplayValue(field) || field.rolePlaceholder || field.deferralReason || 'Missing'}
+                            </small>
+                          </li>
+                        ))}
+                      </ul>
+                    </article>
+                  ))}
+                </section>
+
+                <section className="product-setup-explanations" aria-label="Product Setup just-in-time explanations">
+                  <div className="registry-panel-heading compact-subsection-heading">
+                    <div>
+                      <h3>Just-in-time explanations</h3>
+                      <p>Product Setup explains terms before asking for technical inputs. Later tabs use shorter labels and tooltips.</p>
+                    </div>
+                  </div>
+                  <div className="product-setup-prompt-grid">
+                    {productSetupReadModel.firstTimePrompts.map((prompt) => (
+                      <article key={prompt.termKey}>
+                        <strong>{productSetupRecord.fields[prompt.fieldKey].label}</strong>
+                        <p>{prompt.prompt}</p>
+                        <small>
+                          Shown {productSetupRecord.termExplanations[prompt.termKey]?.timesShown ?? 0} time(s) in Product Setup.
+                        </small>
+                        <button type="button" className="workflow-button" onClick={() => showProductSetupTerm(prompt.termKey)}>
+                          Mark explained
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="product-setup-blockers" aria-label="Product Setup missing fields">
+                  <div>
+                    <h4>Missing before deployment</h4>
+                    {productSetupReadModel.deploymentBlockers.length > 0 ? (
+                      <ul className="registry-warnings">
+                        {productSetupReadModel.deploymentBlockers.map((blocker) => (
+                          <li key={blocker}>{blocker}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>No Product Setup deployment blockers are currently open.</p>
+                    )}
+                  </div>
+                  <div className="product-setup-defer-actions">
+                    <button type="button" className="workflow-button" onClick={() => deferProductSetupBlocker('admin_wallet')}>
+                      Defer admin wallet
+                    </button>
+                    <button type="button" className="workflow-button" onClick={() => deferProductSetupBlocker('redemption_wallet')}>
+                      Defer redemption wallet
+                    </button>
+                  </div>
+                </section>
+
+                <section className="product-setup-pack" aria-label="Product Setup Pack">
+                  <div>
+                    <h4>Product Setup Pack</h4>
+                    <p>{productSetupReadModel.packPreview.warning}</p>
+                    <ul className="artifact-list">
+                      {productSetupReadModel.packPreview.includedDocuments.map((document) => (
+                        <li key={document}>
+                          <span>Included</span>
+                          {document}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <button
+                    type="button"
+                    className="workflow-button primary-action"
+                    onClick={generateProductSetupPack}
+                  >
+                    Download Product Setup Pack
+                  </button>
+                  {productSetupPackGeneratedAtIso && (
+                    <p className="chat-status">Draft Product Setup Pack generated in session. Save generated artifacts to persist it.</p>
+                  )}
+                </section>
+              </section>
+            )}
 
             {activeWorkspaceTab.id === 'investor_registry' && (
               <section className="registry-panel" aria-label="Investor Wallets workspace">
@@ -3396,7 +3660,7 @@ export function App() {
                 </div>
                 <div>
                   <span>Token model</span>
-                  <strong>{requirementBriefContract?.tokenModel.standardPreference ?? 'ERC-20 / ERC-721 under review'}</strong>
+                  <strong>{requirementBriefContract?.tokenModel.standardPreference ?? 'Protocol base under Product Setup review'}</strong>
                   <p>{requirementBriefContract ? tokenModelSummary : 'Protocol choice remains reviewable until the Requirement Brief is created.'}</p>
                 </div>
                 <div>

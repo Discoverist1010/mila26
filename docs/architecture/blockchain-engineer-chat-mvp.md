@@ -10,7 +10,7 @@ The chat helps an asset manager clarify tokenized-portfolio requirements before 
 
 The Blockchain Engineering Bot should help the user discuss:
 
-- ERC-20 vs ERC-721 suitability for tokenizing a portfolio.
+- Fit across the active Product Setup protocol bases: ERC-20, ERC-4626, ERC-3643, and custom ERC-20 with rebasing.
 - Whitelisting up to 50 investor wallet addresses.
 - Stablecoin subscription parameters, including permitted stablecoins, subscription windows, minimum amount, payment wallet or contract address, payment per token, and investor wallet mapping.
 - Redemption parameters, including redemption window, redemption wallet, payment per token, payout stablecoin, and configurable payout delay.
@@ -18,7 +18,7 @@ The Blockchain Engineering Bot should help the user discuss:
 - Daily valuation/performance upload.
 - Asset servicing updates to token holders, including NAV, information notices, corporate actions, and maturity notices.
 - Wallet-signed Ethereum testnet deployment implications.
-- OpenZeppelin Contracts as the default ERC-20/ERC-721 library policy at a high level.
+- OpenZeppelin Contracts as the default library policy for supported fungible-token profiles and access-control patterns at a high level.
 - QA, security, evidence, and deployment-gate implications.
 
 The bot should explain trade-offs in plain language, ask clarifying questions, and capture requirement candidates that the user can review before PRD generation.

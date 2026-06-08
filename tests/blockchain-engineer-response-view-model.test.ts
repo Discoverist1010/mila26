@@ -6,7 +6,7 @@ function createResponse(overrides: Partial<BlockchainEngineerChatResponse> = {})
   return {
     messageId: 'chat-1',
     agentId: 'blockchain-engineer',
-    content: 'Use ERC-20 for fungible fund shares unless investor positions require unique metadata.',
+    content: 'Use ERC-3643 when whitelisted wallet controls are central to the Product Setup.',
     createdAt: '2026-05-26T00:00:00.000Z',
     ...overrides,
   };
@@ -16,7 +16,7 @@ describe('Blockchain Engineer response view model', () => {
   it('keeps content-only responses backward compatible', () => {
     const viewModel = toBlockchainEngineerResponseViewModel(createResponse());
 
-    expect(viewModel.summary).toContain('Use ERC-20');
+    expect(viewModel.summary).toContain('Use ERC-3643');
     expect(viewModel.sections).toEqual([]);
   });
 
@@ -25,8 +25,11 @@ describe('Blockchain Engineer response view model', () => {
       createResponse({
         protocolComparison: {
           erc20: 'Fungible investor shares with standard wallet support.',
-          erc721: 'Unique investor positions with token-specific metadata.',
-          recommendation: 'Start with ERC-20 for the MVP unless uniqueness is required.',
+          erc4626: 'Vault shares for a clean single-asset deposit/redeem product.',
+          erc3643: 'Permissioned investor token for approved-wallet transfer controls.',
+          rebasingErc20: 'Balances adjust after NAV or yield updates.',
+          erc721OutOfScope: 'Unique token IDs are out of MVP scope.',
+          recommendation: 'Start with ERC-3643 when whitelisting is central.',
         },
       }),
     );
@@ -36,8 +39,11 @@ describe('Blockchain Engineer response view model', () => {
       title: 'Protocol comparison',
       items: [
         'ERC-20: Fungible investor shares with standard wallet support.',
-        'ERC-721: Unique investor positions with token-specific metadata.',
-        'Recommendation: Start with ERC-20 for the MVP unless uniqueness is required.',
+        'ERC-4626: Vault shares for a clean single-asset deposit/redeem product.',
+        'ERC-3643: Permissioned investor token for approved-wallet transfer controls.',
+        'Custom ERC-20 with rebasing: Balances adjust after NAV or yield updates.',
+        'ERC-721: Unique token IDs are out of MVP scope.',
+        'Recommendation: Start with ERC-3643 when whitelisting is central.',
       ],
     });
   });
@@ -81,7 +87,7 @@ describe('Blockchain Engineer response view model', () => {
       createResponse({
         openQuestions: ['   '],
         riskNotes: [],
-        nextRecommendedAction: 'Confirm ERC-20 versus ERC-721 before approving the brief.',
+        nextRecommendedAction: 'Confirm the recommended protocol base before approving the brief.',
       }),
     );
 
@@ -89,7 +95,7 @@ describe('Blockchain Engineer response view model', () => {
       {
         kind: 'next_recommended_action',
         title: 'Recommended next action',
-        items: ['Confirm ERC-20 versus ERC-721 before approving the brief.'],
+        items: ['Confirm the recommended protocol base before approving the brief.'],
       },
     ]);
   });

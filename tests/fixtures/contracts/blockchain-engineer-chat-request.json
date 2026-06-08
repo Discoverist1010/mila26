@@ -1,7 +1,7 @@
 {
   "projectId": "project-tokenized-portfolio-demo",
   "runId": "run-chat-discovery-001",
-  "userMessage": "We want to tokenize a portfolio. Should we use ERC-20 or ERC-721 if we have 50 whitelisted investor wallets and need daily valuation/performance updates?",
+  "userMessage": "We want to tokenize a portfolio. Which supported protocol base should we use if we have 50 whitelisted investor wallets and need daily valuation/performance updates?",
   "conversationHistory": [
     {
       "messageId": "msg-user-001",

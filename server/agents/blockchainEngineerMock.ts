@@ -29,37 +29,40 @@ export function answerWithBlockchainEngineerMock(
     return BlockchainEngineerChatResponseSchema.parse({
       ...base,
       content:
-        'Advisor view: treat MILA26 as a guided workbench for tokenising and servicing a financial product. Start from the user outcome, then check the lifecycle surface that owns the next input. Investor wallets belong in Investor Wallets, stablecoin subscription terms belong in Subscription, delayed redemption terms belong in Redemption, wallet-signed token operations belong in Contract Ops, and proof belongs in Evidence Vault. The tabs are visual separators only; the underlying lifecycle state stays shared.',
-      openQuestions: ['Which part of the lifecycle do you want explained in plain language first?'],
+        'Advisor Bot view: start by telling ZiLi-OS what you are trying to tokenise, even if the details are incomplete. I can explain protocol fit, wallet roles, minting, burning, redemption handling, and evidence in plain language while the Engineering Bot structures confirmed requirements in the same shared Product Setup context.',
+      openQuestions: ['Which tokenisation concept or missing Product Setup field should I explain first?'],
       riskNotes: ['This is explanatory product guidance, not legal, tax, accounting, investment, or formal audit advice.'],
-      nextRecommendedAction: 'Ask a plain-language question about the current tab, next action, or evidence state.',
+      nextRecommendedAction: 'Ask Advisor Bot to explain a concept, or switch to Engineering Bot to structure the next Product Setup requirement.',
     });
   }
 
   if (
     request.requestedFocus === 'protocol_choice' ||
-    includesAny(lower, ['erc-20', 'erc20', 'erc-721', 'erc721', 'protocol', 'fungible', 'non-fungible'])
+    includesAny(lower, ['erc-20', 'erc20', 'erc-4626', 'erc4626', 'erc-3643', 'erc3643', 'erc-721', 'erc721', 'protocol', 'fungible', 'non-fungible', 'rebasing'])
   ) {
     return BlockchainEngineerChatResponseSchema.parse({
       ...base,
       content:
-        'For a tokenized portfolio with many investors holding proportional exposure, ERC-20 is usually the simpler fit because balances represent fungible shares. ERC-721 is better when each token represents a unique asset or position. We should confirm whether the product needs interchangeable investor units or unique portfolio claims before the PRD locks the protocol.',
+        'Engineering Bot view: ZiLi-OS starts with four protocol bases for Product Setup: ERC-20, ERC-4626, ERC-3643, and custom ERC-20 with rebasing. For a product with whitelisted wallets and restricted token holding, ERC-3643 is usually the best architecture target. ERC-721 can be explained if asked, but it is out of MVP scope because this workflow focuses on fungible investment units, vault shares, permissioned fungible tokens, and rebasing balances.',
       protocolComparison: {
-        erc20: 'Best for fungible portfolio shares, percentage allocations, mint/distribute flows, and familiar token-holder balances.',
-        erc721: 'Best for unique positions, individually identified assets, or non-fungible claims where each token has distinct meaning.',
-        recommendation: 'Start from ERC-20 for the MVP unless the asset manager needs each investor position to be unique.',
+        erc20: 'Simple fungible investment units where restrictions can stay mostly in the ZiLi-OS workflow or custom extensions.',
+        erc4626: 'Best for a clean single-asset vault where investors deposit one ERC-20 asset and receive vault shares.',
+        erc3643: 'Best fit when approved wallets, permissioned holding, and transfer checks are central to the product.',
+        rebasingErc20: 'Use only when investor balances should automatically adjust after NAV, value, or yield updates.',
+        erc721OutOfScope: 'Useful for unique non-fungible token IDs, but not an active ZiLi-OS MVP protocol base.',
+        recommendation: 'Recommend ERC-3643 when whitelisted wallets and restricted transfers are core requirements; otherwise choose the closest of the four bases by product behaviour.',
       },
       suggestedRequirementUpdates: [
         {
-          field: 'selectedProtocol',
-          proposedValue: 'ERC-20 preferred unless unique investor positions are required',
-          rationale: 'The MVP describes proportional portfolio exposure and distribution to up to 50 wallets.',
-          confidence: 0.82,
+          field: 'protocol_base',
+          proposedValue: 'ERC-3643',
+          rationale: 'Whitelisted wallets and restricted token holding point to a permissioned token architecture.',
+          confidence: 0.88,
         },
       ],
-      openQuestions: ['Should investors hold fungible shares, or does each investor position need unique token metadata?'],
+      openQuestions: ['Do only approved wallets need to hold or receive the token?', 'Should balances stay fixed unless investors subscribe/redeem, or should they rebase after NAV updates?'],
       riskNotes: ['This is product-engineering guidance, not legal, investment, or formal audit advice.'],
-      nextRecommendedAction: 'Confirm fungible versus unique-token behavior before PRD approval.',
+      nextRecommendedAction: 'Confirm the recommended protocol base in Product Setup before Contract Ops prepares deployment settings.',
     });
   }
 
@@ -67,7 +70,7 @@ export function answerWithBlockchainEngineerMock(
     return BlockchainEngineerChatResponseSchema.parse({
       ...base,
       content:
-        'For the MVP, we can model up to 50 investor wallet addresses as a whitelist requirement. Real-world investor names should stay off-chain by default, while the contract can use wallet addresses and events for token-holder visibility. Allocation percentages should be validated so the total equals 100% before distribution.',
+        'Engineering Bot view: for the MVP, ZiLi-OS can model up to 50 investor wallet addresses as a whitelist requirement. A whitelisted wallet is a public address approved to receive or hold the product token. Real-world investor names should stay off-chain by default, while wallet addresses and provider-derived events can support token-holder evidence.',
       suggestedRequirementUpdates: [
         {
           field: 'walletWhitelistRequirement',
@@ -82,7 +85,7 @@ export function answerWithBlockchainEngineerMock(
           confidence: 0.86,
         },
       ],
-      openQuestions: ['Will the asset manager provide all wallet addresses before deployment, or add them before mint/distribution?'],
+      openQuestions: ['Will the asset manager provide public wallet addresses now, or mark them as to be added before deployment?'],
       riskNotes: ['Do not put real-world investor names on-chain by default.'],
       nextRecommendedAction: 'Capture wallet list and allocation rules in the PRD.',
     });
@@ -114,16 +117,16 @@ export function answerWithBlockchainEngineerMock(
     return BlockchainEngineerChatResponseSchema.parse({
       ...base,
       content:
-        'Deployment should stay Ethereum testnet-only for the MVP. The backend can prepare deployment or token-operation intent later, but the user wallet must sign. Deployment should remain gated by PRD approval, coding completion, QA review, security benchmark review, and evidence-pack recording.',
+        'Deployment should stay Sepolia testnet-only for the current executable MVP. Ethereum mainnet may be recorded as a future intent, but Contract Ops must not execute mainnet. The backend can prepare deployment or token-operation intent, but the user wallet must sign. Deployment remains gated by confirmed Product Setup essentials, generated artifacts, wallet readiness, and evidence boundaries.',
       suggestedRequirementUpdates: [
         {
           field: 'deploymentModel',
-          proposedValue: 'user wallet signs Ethereum testnet deployment and token operations',
+          proposedValue: 'user wallet signs Sepolia testnet deployment and token operations',
           rationale: 'This keeps private keys out of the backend and supports demo credibility.',
           confidence: 0.88,
         },
       ],
-      openQuestions: ['Which Ethereum testnet should be used for the local funding demo?'],
+      openQuestions: ['Which public admin wallet address should manage the token contract before Sepolia deployment?'],
       riskNotes: ['Backend must never hold deployment private keys; mainnet is out of scope for MVP.'],
       nextRecommendedAction: 'Keep deployment planning behind the testnet-only wallet-signed gate.',
     });
@@ -136,11 +139,11 @@ export function answerWithBlockchainEngineerMock(
     return BlockchainEngineerChatResponseSchema.parse({
       ...base,
       content:
-        'For Solidity generation, the MVP should default to OpenZeppelin Contracts for ERC-20/ERC-721 and common access-control/security primitives unless the approved PRD justifies otherwise. QA and Security Reviewer Bot checks should happen before deployment readiness, and no generated code should be described as formal-audit-complete.',
+        'For Solidity generation, the MVP should default to OpenZeppelin Contracts for the supported fungible-token profiles and common access-control/security primitives unless the approved Product Setup record justifies otherwise. QA and Security Reviewer checks should happen before deployment readiness, and no generated code should be described as formal-audit-complete.',
       suggestedRequirementUpdates: [
         {
           field: 'libraryPolicy',
-          proposedValue: 'default to OpenZeppelin Contracts for ERC-20/ERC-721 primitives',
+          proposedValue: 'default to OpenZeppelin Contracts for supported fungible-token primitives and access-control patterns',
           rationale: 'Trusted token primitives reduce avoidable risk versus hand-rolled standards.',
           confidence: 0.9,
         },
@@ -154,11 +157,11 @@ export function answerWithBlockchainEngineerMock(
   return BlockchainEngineerChatResponseSchema.parse({
     ...base,
     content:
-      'I can help turn the asset manager intent into concrete tokenization requirements. The next useful decisions are ERC-20 versus ERC-721, whitelist and allocation rules for up to 50 wallets, valuation/performance update shape, and the wallet-signed testnet deployment gate. I will keep recommendations reviewable before PRD approval.',
+      'Engineering Bot view: I can help turn unstructured asset-manager intent into Product Setup requirements. The next useful decisions are protocol base, whitelisted wallet rules for up to 50 investors, subscription stablecoins, redemption delay, admin wallet, redemption wallet, and the wallet-signed Sepolia deployment gate. I will propose updates for user confirmation instead of silently changing the Product Setup record.',
     openQuestions: [
-      'Should token holders receive fungible portfolio shares or unique token positions?',
+      'Do only approved wallets need to hold or receive tokens?',
       'Do you already have the investor wallet addresses and allocation percentages?',
-      'How will daily portfolio performance be uploaded?',
+      'Which stablecoins and redemption delay should ZiLi-OS capture first?',
     ],
     riskNotes: ['This is engineering planning guidance, not legal, investment, tax, or formal audit advice.'],
     nextRecommendedAction: 'Choose a focus: protocol choice, whitelist, valuation update, deployment, or security.',

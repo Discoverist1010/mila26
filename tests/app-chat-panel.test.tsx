@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../src/App';
 import type { EngineeringBrief } from '../server/contracts/engineeringBrief';
+import { createInitialProductSetupRecord } from '../src/domain/productSetup';
 import { SEPOLIA_CHAIN_ID_HEX } from '../src/domain/walletConnectionReadModel';
 import type { Eip1193Provider } from '../src/wallet/eip1193WalletAdapter';
 import { expectNoPrematureBlockchainExecutionClaims } from './golden-flow-assertions';
@@ -11,6 +12,17 @@ function createJsonResponse(body: unknown, init: ResponseInit = {}): Response {
     status: init.status ?? 200,
     headers: { 'Content-Type': 'application/json' },
     ...init,
+  });
+}
+
+function createTestProductSetupRecord() {
+  return createInitialProductSetupRecord({
+    fundName: 'Alpha Income Fund I',
+    tokenSymbol: 'ALPHA',
+    jurisdiction: 'Singapore',
+    targetInvestors: 'Accredited investors',
+    totalSupply: 1_000_000,
+    initialNav: 1,
   });
 }
 
@@ -227,23 +239,26 @@ describe('App Blockchain Engineer Bot panel', () => {
         data: {
           messageId: 'chat-1',
           agentId: 'blockchain-engineer',
-          content: 'Backend mock says ERC-20 is suitable for fungible portfolio shares.',
+          content: 'Backend mock says ERC-3643 is suitable for whitelisted investor wallet products.',
           protocolComparison: {
             erc20: 'Fungible portfolio shares with broad wallet support.',
-            erc721: 'Unique investor positions with token-specific metadata.',
-            recommendation: 'Use ERC-20 unless the Requirement Brief requires unique positions.',
+            erc4626: 'Vault shares for clean single-asset vaults.',
+            erc3643: 'Permissioned token for approved wallets.',
+            rebasingErc20: 'Balances adjust after NAV updates.',
+            erc721OutOfScope: 'Unique token IDs are out of MVP scope.',
+            recommendation: 'Use ERC-3643 when wallet permissioning is central.',
           },
           suggestedRequirementUpdates: [
             {
-              field: 'token.standardPreference',
-              proposedValue: 'ERC-20',
-              rationale: 'The stated income fund goal looks fungible for the MVP.',
+              field: 'protocol_base',
+              proposedValue: 'ERC-3643',
+              rationale: 'The stated income product needs approved-wallet controls.',
               confidence: 0.84,
             },
           ],
           openQuestions: ['Should every approved investor hold identical share units?'],
           riskNotes: ['Backend must not hold private keys.'],
-          nextRecommendedAction: 'Confirm ERC-20 versus ERC-721 before approving the Requirement Brief.',
+          nextRecommendedAction: 'Confirm the recommended protocol base before approving the Requirement Brief.',
           createdAt: '2026-05-21T00:00:00.000Z',
         },
       }),
@@ -290,7 +305,10 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     const botComposer = screen.getByRole('textbox', { name: 'Engineering Bot MILA' });
     fireEvent.change(botComposer, {
-      target: { value: 'Should we use ERC-20 or ERC-721?' },
+      target: {
+        value:
+          'We are tokenising a private credit portfolio for 25 investors with USDC subscriptions, whitelisted wallets, quarterly redemption, and a 10 business days payout delay.',
+      },
     });
     fireEvent.keyDown(botComposer, { key: 'Enter', code: 'Enter' });
 
@@ -301,19 +319,37 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(screen.getByText('Backend response.')).toBeVisible();
     });
     expect(botComposer).toHaveValue('');
-    expect(screen.getByText('Should we use ERC-20 or ERC-721?')).toBeVisible();
-    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Backend mock says ERC-20');
+    expect(
+      screen.getByText(
+        'We are tokenising a private credit portfolio for 25 investors with USDC subscriptions, whitelisted wallets, quarterly redemption, and a 10 business days payout delay.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Backend mock says ERC-3643');
     expect(screen.getByText('Protocol comparison')).toBeVisible();
     expect(screen.getByText('ERC-20: Fungible portfolio shares with broad wallet support.')).toBeVisible();
-    expect(screen.getByText('ERC-721: Unique investor positions with token-specific metadata.')).toBeVisible();
+    expect(screen.getByText('ERC-3643: Permissioned token for approved wallets.')).toBeVisible();
+    expect(screen.getByText('ERC-721: Unique token IDs are out of MVP scope.')).toBeVisible();
     expect(screen.getByText('Suggested requirement updates')).toBeVisible();
-    expect(screen.getByText('token.standardPreference: ERC-20. The stated income fund goal looks fungible for the MVP.')).toBeVisible();
+    expect(screen.getByText('protocol_base: ERC-3643. The stated income product needs approved-wallet controls.')).toBeVisible();
     expect(screen.getByText('Open questions')).toBeVisible();
     expect(screen.getByText('Should every approved investor hold identical share units?')).toBeVisible();
     expect(screen.queryByText('Risk notes')).not.toBeInTheDocument();
     expect(screen.queryByText('Backend must not hold private keys.')).not.toBeInTheDocument();
     expect(screen.getByText('Recommended next action')).toBeVisible();
-    expect(screen.getByText('Confirm ERC-20 versus ERC-721 before approving the Requirement Brief.')).toBeVisible();
+    expect(screen.getByText('Confirm the recommended protocol base before approving the Requirement Brief.')).toBeVisible();
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Expected investors');
+    expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Subscription stablecoins');
+    expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Redemption payout delay');
+    fireEvent.click(
+      within(screen.getByLabelText('Product Setup suggested updates'))
+        .getAllByRole('button', { name: 'Confirm' })
+        .at(-1) as HTMLElement,
+    );
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Redemption/ }));
+    expect(screen.getByLabelText('Redemption delay unit')).toHaveValue('days');
+    expect(screen.getByLabelText('Redemption delay duration')).toHaveValue('10');
   });
 
   it('blocks blank input before calling fetch', async () => {
@@ -708,6 +744,20 @@ describe('App Blockchain Engineer Bot panel', () => {
       projectId: 'usequities',
       projectName: 'Alpha Income Fund I',
       source: 'user_action',
+      productSetupRecord: {
+        fields: {
+          product_name: {
+            value: 'MILA Income Fund',
+            status: 'system_default',
+          },
+          protocol_base: {
+            value: 'ERC-3643',
+          },
+          prototype_network: {
+            value: 'Sepolia testnet',
+          },
+        },
+      },
       lifecycleState: {
         investorRegistryEntries: [
           {
@@ -722,6 +772,16 @@ describe('App Blockchain Engineer Bot panel', () => {
 
   it('loads the latest workspace snapshot into the shared lifecycle state and resets local-only artifacts', async () => {
     const investorWallet = '0x7777777777777777777777777777777777777777';
+    const productSetupRecord = createTestProductSetupRecord();
+    productSetupRecord.fields.subscription_stablecoins = {
+      ...productSetupRecord.fields.subscription_stablecoins,
+      value: ['USDC'],
+      status: 'user_confirmed',
+      sourceType: 'user_confirmation',
+      sourceRef: 'test_confirmation',
+      confidence: 0.96,
+      confirmedByUser: true,
+    };
     const fetchMock = vi.fn().mockResolvedValue(
       createJsonResponse({
         ok: true,
@@ -759,6 +819,7 @@ describe('App Blockchain Engineer Bot panel', () => {
               maturityParameters: {},
               allocationMintParameters: {},
             },
+            productSetupRecord,
             investorWalletCount: 1,
             createdAtIso: '2026-06-07T00:00:00.000Z',
           },
@@ -789,6 +850,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
     expect(screen.getByLabelText('Permitted stablecoins')).toHaveValue('USDC');
     expect(screen.getByLabelText('Subscription workspace')).toHaveTextContent('Subscription parameters are ready for template handoff.');
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('Subscription stablecoins');
+    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('USDC');
   });
 
   it('saves generated artifacts from the Evidence tab after establishing a workspace snapshot', async () => {

@@ -15,7 +15,7 @@ The PRD approval contract records the asset manager's approved product design be
 - `prdId`.
 - `version`.
 - `generatedFromChatTurnIds`.
-- `selectedProtocol`: `ERC-20` or `ERC-721`.
+- `selectedProtocol`: `ERC-20`, `ERC-4626`, `ERC-3643`, or `Custom ERC-20 with rebasing`.
 - `selectedFeatures`.
 - `walletWhitelistRequirement`.
 - `valuationUpdateRequirement`.
@@ -32,7 +32,8 @@ The PRD approval contract records the asset manager's approved product design be
 ## Invariants
 
 - Coding/orchestration cannot start until PRD is approved.
-- PRD must state `ERC-20` or `ERC-721`.
+- PRD must state one active Product Setup protocol base: `ERC-20`, `ERC-4626`, `ERC-3643`, or `Custom ERC-20 with rebasing`.
+- ERC-721 may be documented as out of MVP scope if the user asks about it, but it must not be selected as the Product Setup protocol base.
 - Material changes after approval create a new version.
 - PRD approval should be traceable to chat turns and user action.
 

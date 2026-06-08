@@ -1,13 +1,13 @@
 {
   "messageId": "chat-fixture-001",
   "agentId": "blockchain-engineer",
-  "content": "For a tokenized portfolio with many investors holding proportional exposure, ERC-20 is usually the simpler fit. ERC-721 is better when each token represents a unique asset or investor position. The PRD should also capture the 50-wallet whitelist, allocation validation, valuation/performance update requirements, and testnet-only wallet-signed deployment gate.",
+  "content": "For a tokenized portfolio with many whitelisted investor wallets, ERC-3643 is the strongest Product Setup architecture target because permissioned holding and transfer checks are central. ERC-721 can be explained if asked, but it is out of MVP scope for ZiLi-OS because this workflow focuses on fungible investment units, vault shares, permissioned fungible tokens, and rebasing balances.",
   "suggestedRequirementUpdates": [
     {
-      "field": "selectedProtocol",
-      "proposedValue": "ERC-20 preferred unless unique investor positions are required",
-      "rationale": "The MVP describes proportional portfolio exposure and distribution to up to 50 wallets.",
-      "confidence": 0.82
+      "field": "protocol_base",
+      "proposedValue": "ERC-3643",
+      "rationale": "The MVP describes whitelisted investor wallets and restricted token holding.",
+      "confidence": 0.88
     },
     {
       "field": "walletWhitelistRequirement",
@@ -17,18 +17,21 @@
     }
   ],
   "openQuestions": [
-    "Should investors hold fungible shares or unique token positions?",
+    "Do only approved wallets need to hold or receive the token?",
     "What valuation file fields will be uploaded daily?"
   ],
   "protocolComparison": {
-    "erc20": "Best for fungible portfolio shares, percentage allocations, mint/distribute flows, and familiar token-holder balances.",
-    "erc721": "Best for unique positions, individually identified assets, or non-fungible claims where each token has distinct meaning.",
-    "recommendation": "Start from ERC-20 for the MVP unless the asset manager needs each investor position to be unique."
+    "erc20": "Simple fungible investment units where restrictions can stay mostly in ZiLi-OS workflows or custom extensions.",
+    "erc4626": "Best for a clean single-asset vault where investors deposit one ERC-20 asset and receive vault shares.",
+    "erc3643": "Best fit when approved wallets, permissioned holding, and transfer checks are central to the product.",
+    "rebasingErc20": "Use only when investor balances should automatically adjust after NAV, value, or yield updates.",
+    "erc721OutOfScope": "Useful for unique non-fungible token IDs, but not an active ZiLi-OS MVP protocol base.",
+    "recommendation": "Recommend ERC-3643 when whitelisted wallets and restricted transfers are core requirements."
   },
   "riskNotes": [
     "This is product-engineering guidance, not legal, investment, or formal audit advice.",
     "Generated Solidity remains demo/testnet scaffold until compiled, tested, QA-reviewed, and security-reviewed."
   ],
-  "nextRecommendedAction": "Confirm fungible versus unique-token behavior before PRD approval.",
+  "nextRecommendedAction": "Confirm the recommended protocol base before Contract Ops prepares deployment settings.",
   "createdAt": "2026-05-20T00:02:00.000Z"
 }

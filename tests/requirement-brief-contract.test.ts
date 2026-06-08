@@ -46,8 +46,8 @@ describe('Requirement Brief contract boundary', () => {
   it('preserves valuation and token model assumptions from current modules', () => {
     const contract = createDemoContract();
 
-    expect(contract.tokenModel.standardPreference).toBe('ERC-20');
-    expect(contract.tokenModel.assumption).toContain('ERC-20 fund token base');
+    expect(contract.tokenModel.standardPreference).toBe('ERC-3643');
+    expect(contract.tokenModel.assumption).toContain('Product Setup protocol architecture target');
     expect(contract.valuationPolicy.cadence).toContain('NAV/performance update cadence');
     expect(contract.valuationPolicy.assumptions[0]).toContain('deterministic MVP assumptions');
   });

@@ -47,7 +47,12 @@ export function toBlockchainEngineerResponseViewModel(
       title: 'Protocol comparison',
       items: compact([
         `ERC-20: ${response.protocolComparison.erc20}`,
-        `ERC-721: ${response.protocolComparison.erc721}`,
+        `ERC-4626: ${response.protocolComparison.erc4626}`,
+        `ERC-3643: ${response.protocolComparison.erc3643}`,
+        `Custom ERC-20 with rebasing: ${response.protocolComparison.rebasingErc20}`,
+        response.protocolComparison.erc721OutOfScope
+          ? `ERC-721: ${response.protocolComparison.erc721OutOfScope}`
+          : undefined,
         `Recommendation: ${response.protocolComparison.recommendation}`,
       ]),
     });

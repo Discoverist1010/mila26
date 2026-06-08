@@ -10,9 +10,9 @@ Product/workflow bots below are distinct from the engineering delivery roles in 
 `docs/handover/08-delivery-role-skills.md`. Delivery roles review and harden the codebase; product bots are part of
 the MILA26 user-facing or artifact-generation workflow.
 
-- Blockchain Engineering Bot: chats with the asset manager, explains ERC-20 vs ERC-721, captures requirements, and remains available while workers run.
+- Blockchain Engineering Bot: chats with the asset manager, explains fit across the active Product Setup protocol bases, captures requirements, and remains available while workers run.
 - PRD/Requirement Brief Bot or Engineering Bot: turns finalized design into a PRD/enhanced Requirement Brief.
-- Contract Coding Bot: generates Solidity ERC-20/ERC-721 scaffold/artifacts from the approved PRD, defaulting to OpenZeppelin Contracts for ERC-20/ERC-721 and common access-control/security primitives unless the PRD explicitly justifies otherwise.
+- Contract Coding Bot: generates Solidity scaffold/artifacts for the approved Product Setup protocol base, defaulting to OpenZeppelin Contracts for supported fungible-token profiles and common access-control/security primitives unless the PRD explicitly justifies otherwise.
 - API/Integration Bot: prepares backend/API or integration notes/artifacts.
 - Frontend Bot: prepares UI workflow notes/artifacts.
 - Test Bot: generates Solidity test plans, test artifacts, or compile/test expectations.
@@ -31,7 +31,7 @@ The user should be able to keep chatting while Coding, QA, Security, Evidence, A
 ## Suggested Orchestration Sequence
 
 1. Chat captures initial product intent.
-2. Engineering Bot compares ERC-20 vs ERC-721 and helps decide.
+2. Engineering Bot recommends the best-fit Product Setup protocol base and explains any out-of-scope requirements.
 3. Engineering Bot captures investor wallet, whitelist, allocation, and performance-reporting requirements.
 4. Engineering Bot generates PRD/enhanced Requirement Brief.
 5. User approves PRD.
@@ -66,7 +66,7 @@ PRD approved -> coding complete -> QA complete -> security benchmark complete ->
 
 - Schema validation for all contract-shaped outputs.
 - Golden fixture/contract tests for the contract spine.
-- Solidity generation should prefer trusted ERC-20/ERC-721 libraries and security patterns where practical.
+- Solidity generation should prefer trusted OpenZeppelin libraries and security patterns where practical for the approved supported protocol base.
 - Deviations from the default OpenZeppelin Contracts policy must be documented in the PRD, QA review, Security Review, and Evidence Pack.
 - MVP Solidity should default to simple non-upgradeable contracts unless upgradeability is explicitly required.
 - QA must check generated Solidity against the approved PRD and tokenized-portfolio requirements.

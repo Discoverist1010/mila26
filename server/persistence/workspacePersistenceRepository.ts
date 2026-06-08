@@ -5,9 +5,11 @@ import { DatabaseSync } from 'node:sqlite';
 import { isValidNonZeroEvmAddress } from '../../src/domain/recordNavOperationReadModel';
 import {
   Mila26LifecycleStatePersistenceSchema,
+  ProductSetupRecordPersistenceSchema,
   WorkspaceArtifactRecordInputSchema,
   WorkspaceEvidenceRecordInputSchema,
   type Mila26LifecycleStatePersistence,
+  type ProductSetupRecordPersistence,
   type WorkspaceArtifactPersistenceRecord,
   type WorkspaceArtifactRecord,
   type WorkspaceArtifactRecordInput,
@@ -56,6 +58,7 @@ type SnapshotRow = {
   version: number;
   source: WorkspacePersistenceSaveRequest['source'];
   lifecycle_state_json: string;
+  product_setup_record_json: string | null;
   investor_wallet_count: number;
   created_at_iso: string;
 };
@@ -130,6 +133,7 @@ CREATE TABLE IF NOT EXISTS lifecycle_snapshots (
   version INTEGER NOT NULL,
   source TEXT NOT NULL,
   lifecycle_state_json TEXT NOT NULL,
+  product_setup_record_json TEXT,
   investor_wallet_count INTEGER NOT NULL,
   created_at_iso TEXT NOT NULL,
   FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
@@ -248,6 +252,11 @@ function parseLifecycleState(lifecycleStateJson: string): Mila26LifecycleStatePe
   return Mila26LifecycleStatePersistenceSchema.parse(JSON.parse(lifecycleStateJson));
 }
 
+function parseProductSetupRecord(productSetupRecordJson: string | null): ProductSetupRecordPersistence | undefined {
+  if (!productSetupRecordJson) return undefined;
+  return ProductSetupRecordPersistenceSchema.parse(JSON.parse(productSetupRecordJson));
+}
+
 function parseArtifactPayload(row: ArtifactRecordRow): WorkspaceArtifactRecordInput['artifactPayload'] {
   return WorkspaceArtifactRecordInputSchema.parse({
     artifactType: row.artifact_type,
@@ -273,6 +282,7 @@ function toSnapshot(row: SnapshotRow): WorkspacePersistenceSnapshot {
     version: row.version,
     source: row.source,
     lifecycleState: parseLifecycleState(row.lifecycle_state_json),
+    productSetupRecord: parseProductSetupRecord(row.product_setup_record_json),
     investorWalletCount: row.investor_wallet_count,
     createdAtIso: row.created_at_iso,
   };
@@ -365,12 +375,18 @@ function artifactIdentity(record: WorkspaceArtifactRecordInput): { artifactId: s
       return { artifactId: record.artifactPayload.checkId, artifactStatus: record.artifactPayload.status };
     case 'evidence_lite':
       return { artifactId: record.artifactPayload.evidenceId, artifactStatus: record.artifactPayload.status };
+    case 'product_setup_pack':
+      return { artifactId: `product-setup-pack-${record.artifactPayload.recordId}`, artifactStatus: 'generated' };
   }
 }
 
 export function createWorkspacePersistenceRepository(db: DatabaseSync): WorkspacePersistenceRepository {
   db.exec('PRAGMA foreign_keys = ON;');
   db.exec(schemaSql);
+  const snapshotColumns = db.prepare('PRAGMA table_info(lifecycle_snapshots)').all() as Array<{ name: string }>;
+  if (!snapshotColumns.some((column) => column.name === 'product_setup_record_json')) {
+    db.exec('ALTER TABLE lifecycle_snapshots ADD COLUMN product_setup_record_json TEXT;');
+  }
 
   function getProject(projectId: string): WorkspacePersistenceProject | undefined {
     const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId) as ProjectRow | undefined;
@@ -428,6 +444,7 @@ export function createWorkspacePersistenceRepository(db: DatabaseSync): Workspac
       const nextVersion = latestVersionRow.latest_version + 1;
       const snapshotId = `${input.projectId}-snapshot-${nextVersion}`;
       const lifecycleStateJson = JSON.stringify(input.lifecycleState);
+      const productSetupRecordJson = input.productSetupRecord ? JSON.stringify(input.productSetupRecord) : null;
 
       db.exec('BEGIN');
       try {
@@ -442,14 +459,15 @@ export function createWorkspacePersistenceRepository(db: DatabaseSync): Workspac
 
         db.prepare(
           `INSERT INTO lifecycle_snapshots (
-            id, project_id, version, source, lifecycle_state_json, investor_wallet_count, created_at_iso
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            id, project_id, version, source, lifecycle_state_json, product_setup_record_json, investor_wallet_count, created_at_iso
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           snapshotId,
           input.projectId,
           nextVersion,
           input.source,
           lifecycleStateJson,
+          productSetupRecordJson,
           input.lifecycleState.investorRegistryEntries.length,
           createdAtIso,
         );

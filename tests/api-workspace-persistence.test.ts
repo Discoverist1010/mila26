@@ -6,6 +6,7 @@ import {
   type WorkspacePersistenceRepository,
 } from '../server/persistence/workspacePersistenceRepository';
 import { createInitialMila26LifecycleState, createInvestorRegistryEntry } from '../src/domain/lifecycleState';
+import { createInitialProductSetupRecord } from '../src/domain/productSetup';
 
 const firstWallet = '0x1111111111111111111111111111111111111111';
 
@@ -36,6 +37,23 @@ describe('workspace persistence API', () => {
         }),
       ],
     };
+    const productSetupRecord = createInitialProductSetupRecord({
+      fundName: 'Alpha Income Fund I',
+      tokenSymbol: 'ALPHA',
+      jurisdiction: 'Singapore',
+      targetInvestors: 'Accredited investors',
+      totalSupply: 1_000_000,
+      initialNav: 1,
+    });
+    productSetupRecord.fields.subscription_stablecoins = {
+      ...productSetupRecord.fields.subscription_stablecoins,
+      value: ['USDC'],
+      status: 'user_confirmed',
+      sourceType: 'user_confirmation',
+      sourceRef: 'test_confirmation',
+      confidence: 0.96,
+      confirmedByUser: true,
+    };
 
     const saveResponse = await app.inject({
       method: 'POST',
@@ -44,6 +62,7 @@ describe('workspace persistence API', () => {
         projectId: 'alpha-income-fund',
         projectName: 'Alpha Income Fund I',
         lifecycleState,
+        productSetupRecord,
       },
     });
 
@@ -81,6 +100,11 @@ describe('workspace persistence API', () => {
     });
     expect(loadResponse.statusCode).toBe(200);
     expect(loadResponse.json().data.snapshot.lifecycleState.investorRegistryEntries[0].walletAddress).toBe(firstWallet);
+    expect(loadResponse.json().data.snapshot.productSetupRecord.fields.subscription_stablecoins).toMatchObject({
+      value: ['USDC'],
+      status: 'user_confirmed',
+      confirmedByUser: true,
+    });
     expect(JSON.stringify(loadResponse.json())).not.toMatch(/privateKey|walletPrivateKey|signedPayload/i);
   });
 

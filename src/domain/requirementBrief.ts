@@ -7,7 +7,12 @@ import {
 } from './schemas';
 
 export const RequirementBriefApprovalStatusSchema = z.enum(['draft', 'ready_for_approval', 'approved']);
-export const TokenStandardPreferenceSchema = z.enum(['ERC-20', 'ERC-721', 'undecided']);
+export const TokenStandardPreferenceSchema = z.enum([
+  'ERC-20',
+  'ERC-4626',
+  'ERC-3643',
+  'Custom ERC-20 with rebasing',
+]);
 export const TargetNetworkBoundarySchema = z.literal('ethereum-testnet-only');
 export const DeploymentSigningBoundarySchema = z.literal('user-wallet-signs');
 export const BackendCustodyBoundarySchema = z.literal('backend-holds-no-private-keys');
@@ -58,7 +63,7 @@ function enabledModules(modules: ServicingModule[]) {
 }
 
 function inferTokenStandardPreference(modules: ServicingModule[]): TokenStandardPreference {
-  return modules.some((module) => module.id === 'erc20-base' && module.enabled) ? 'ERC-20' : 'undecided';
+  return modules.some((module) => module.id === 'whitelist' && module.enabled) ? 'ERC-3643' : 'ERC-20';
 }
 
 function inferValuationCadence(modules: ServicingModule[]) {
@@ -90,8 +95,8 @@ export function toRequirementBriefContract(
       standardPreference: tokenStandardPreference,
       assumption:
         tokenStandardPreference === 'ERC-20'
-          ? 'ERC-20 fund token base selected for the current beta scaffold.'
-          : 'Token standard remains undecided until a future requirement track selects it.',
+          ? 'ERC-20 fungible token base selected for a simple prototype architecture.'
+          : `${tokenStandardPreference} selected as the Product Setup protocol architecture target. Current Contract Ops execution remains limited to the Sepolia restricted ERC-20-compatible prototype until a matching adapter exists.`,
     },
     investorAccess: {
       walletWhitelistRequired,

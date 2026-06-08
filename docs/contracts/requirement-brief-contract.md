@@ -63,8 +63,10 @@ These are contract invariants for the MVP unless a later explicit track changes 
 
 - The current beta `RequirementBrief` remains the runtime producer.
 - Enabled servicing modules are preserved exactly.
-- ERC-20 is inferred only when the current `erc20-base` module is enabled.
-- ERC-721 is represented in the enum for future compatibility, but not inferred from current inputs.
+- The active ZiLi-OS Product Setup protocol bases are `ERC-20`, `ERC-4626`, `ERC-3643`, and `Custom ERC-20 with rebasing`.
+- ERC-20 is inferred for unrestricted fungible product units.
+- ERC-3643 is inferred when wallet whitelist / permissioned transfer requirements are enabled.
+- ERC-721 is not an active Product Setup protocol base and must not be inferred from current inputs.
 - Wallet whitelist is inferred from the current `whitelist` module.
 - Valuation/performance cadence remains a deterministic assumption because no real valuation feed or oracle cadence exists yet.
 - Compliance and security assumptions are combined for future QA/security/evidence gates.

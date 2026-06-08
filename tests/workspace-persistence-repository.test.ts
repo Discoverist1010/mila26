@@ -6,6 +6,7 @@ import {
   type WorkspacePersistenceRepository,
 } from '../server/persistence/workspacePersistenceRepository';
 import { createInitialMila26LifecycleState, createInvestorRegistryEntry } from '../src/domain/lifecycleState';
+import { createInitialProductSetupRecord } from '../src/domain/productSetup';
 
 const firstWallet = '0x1111111111111111111111111111111111111111';
 const secondWallet = '0x2222222222222222222222222222222222222222';
@@ -48,6 +49,23 @@ describe('workspace persistence repository', () => {
         paymentPerToken: '1.025',
       },
     };
+    const productSetupRecord = createInitialProductSetupRecord({
+      fundName: 'Alpha Income Fund I',
+      tokenSymbol: 'ALPHA',
+      jurisdiction: 'Singapore',
+      targetInvestors: 'Accredited investors',
+      totalSupply: 1_000_000,
+      initialNav: 1,
+    });
+    productSetupRecord.fields.expected_investor_count = {
+      ...productSetupRecord.fields.expected_investor_count,
+      value: 2,
+      status: 'user_confirmed',
+      sourceType: 'user_confirmation',
+      sourceRef: 'test_confirmation',
+      confidence: 0.95,
+      confirmedByUser: true,
+    };
 
     const firstSave = repository.saveWorkspaceSnapshot({
       projectId: 'alpha-income-fund',
@@ -69,6 +87,7 @@ describe('workspace persistence repository', () => {
           payoutPerToken: '1.03',
         },
       },
+      productSetupRecord,
       source: 'user_action',
     });
 
@@ -92,6 +111,15 @@ describe('workspace persistence repository', () => {
         lifecycleState: {
           redemptionParameters: {
             redemptionDelayValue: 14,
+          },
+        },
+        productSetupRecord: {
+          fields: {
+            expected_investor_count: {
+              value: 2,
+              status: 'user_confirmed',
+              confirmedByUser: true,
+            },
           },
         },
       },

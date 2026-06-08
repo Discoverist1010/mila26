@@ -73,7 +73,7 @@ Decision: Track 9B.2 kept Solidity compile/test tooling uninstalled and recommen
 
 Near-term direction:
 
-- Current alpha Solidity direction is a restricted ERC-20-compatible fund token profile using OpenZeppelin Contracts primitives. ERC-721 remains a comparison/future variant, not the current alpha implementation path.
+- Current alpha Solidity direction is a restricted ERC-20-compatible fund token profile using OpenZeppelin Contracts primitives. Product Setup can recommend ERC-20, ERC-4626, ERC-3643, or custom ERC-20 with rebasing as architecture targets, but the current executable prototype remains the restricted ERC-20-compatible Sepolia path until adapters/contracts/tests expand. ERC-721 is out of MVP scope.
 - Default to simple non-upgradeable contracts for MVP unless upgradeability is explicitly required.
 - OpenZeppelin Contracts and Hardhat are now intentionally installed for the Track 10A local compile/test fixture only. Do not add broader Solidity/deployment tooling without an approved implementation track.
 - Use `viem` or equivalent TypeScript Ethereum tooling later for wallet/testnet interactions.

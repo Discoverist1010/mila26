@@ -1772,6 +1772,97 @@ summary {
   padding: 18px;
 }
 
+.product-setup-panel {
+  border: 1px solid #dce5f0;
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.product-setup-summary,
+.product-setup-board,
+.product-setup-prompt-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.product-setup-summary article,
+.product-setup-board article,
+.product-setup-prompt-grid article,
+.product-setup-guidance,
+.product-setup-review,
+.product-setup-blockers,
+.product-setup-pack {
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  background: #f8fafc;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.product-setup-summary span,
+.product-setup-update-list span {
+  color: #68798c;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.product-setup-summary strong,
+.product-setup-board h4,
+.product-setup-guidance h4,
+.product-setup-blockers h4,
+.product-setup-pack h4,
+.product-setup-prompt-grid strong {
+  color: #0f172a;
+}
+
+.product-setup-summary p,
+.product-setup-summary small,
+.product-setup-guidance p,
+.product-setup-prompt-grid p,
+.product-setup-prompt-grid small,
+.product-setup-pack p,
+.product-setup-update-list p,
+.product-setup-update-list small {
+  color: #506079;
+  margin: 0;
+}
+
+.product-setup-chip-row,
+.product-setup-defer-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.product-setup-update-list {
+  display: grid;
+  gap: 10px;
+}
+
+.product-setup-update-list article {
+  align-items: center;
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 12px;
+}
+
+.product-setup-explanations {
+  display: grid;
+  gap: 10px;
+}
+
 .parameter-grid {
   display: grid;
   gap: 12px;
@@ -2504,6 +2595,12 @@ summary {
     grid-template-columns: 1fr;
   }
 
+  .product-setup-summary,
+  .product-setup-board,
+  .product-setup-prompt-grid {
+    grid-template-columns: 1fr;
+  }
+
   .contract-ops-summary {
     grid-template-columns: 1fr;
   }
@@ -2574,7 +2671,11 @@ summary {
   .parameter-grid,
   .registry-form,
   .registry-row,
-  .funding-target {
+    .funding-target {
+    grid-template-columns: 1fr;
+  }
+
+  .product-setup-update-list article {
     grid-template-columns: 1fr;
   }
 

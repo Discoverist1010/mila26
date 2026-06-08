@@ -35,15 +35,19 @@ describe('blockchain engineer chat api', () => {
     expect(body.data.createdAt).toEqual(expect.any(String));
   });
 
-  it('explains ERC-20 vs ERC-721 tradeoffs', async () => {
-    const response = await postChat('Should this portfolio token use ERC-20 or ERC-721?', 'protocol_choice');
+  it('explains the four supported protocol bases and ERC-721 as out of scope', async () => {
+    const response = await postChat('Which ERC protocol should this whitelisted portfolio token use?', 'protocol_choice');
     const body = response.json();
 
     expect(body.ok).toBe(true);
     expect(body.data.content).toMatch(/ERC-20/i);
+    expect(body.data.content).toMatch(/ERC-3643/i);
     expect(body.data.content).toMatch(/ERC-721/i);
     expect(body.data.protocolComparison.erc20).toMatch(/fungible/i);
-    expect(body.data.protocolComparison.erc721).toMatch(/unique/i);
+    expect(body.data.protocolComparison.erc4626).toMatch(/vault/i);
+    expect(body.data.protocolComparison.erc3643).toMatch(/approved|permissioned/i);
+    expect(body.data.protocolComparison.rebasingErc20).toMatch(/balances/i);
+    expect(body.data.protocolComparison.erc721OutOfScope).toMatch(/not an active|out of.*scope/i);
   });
 
   it('covers whitelist and allocation requirements', async () => {
@@ -53,7 +57,7 @@ describe('blockchain engineer chat api', () => {
     expect(body.ok).toBe(true);
     expect(body.data.content).toMatch(/50/);
     expect(body.data.content).toMatch(/wallet/i);
-    expect(body.data.content).toMatch(/100%/);
+    expect(body.data.content).toMatch(/evidence|token-holder/i);
     expect(body.data.suggestedRequirementUpdates.length).toBeGreaterThan(0);
   });
 
@@ -74,7 +78,7 @@ describe('blockchain engineer chat api', () => {
     expect(body.ok).toBe(true);
     expect(body.data.content).toMatch(/testnet/i);
     expect(body.data.content).toMatch(/wallet/i);
-    expect(body.data.content).toMatch(/PRD approval/i);
+    expect(body.data.content).toMatch(/Product Setup|generated artifacts/i);
   });
 
   it('supports Advisor mode for plain-language lifecycle Q&A', async () => {
@@ -83,9 +87,9 @@ describe('blockchain engineer chat api', () => {
 
     expect(response.statusCode).toBe(200);
     expect(body.ok).toBe(true);
-    expect(body.data.content).toMatch(/Advisor view/i);
-    expect(body.data.content).toMatch(/Redemption/i);
-    expect(body.data.nextRecommendedAction).toMatch(/plain-language/i);
+    expect(body.data.content).toMatch(/Advisor Bot view/i);
+    expect(body.data.content).toMatch(/redemption/i);
+    expect(body.data.nextRecommendedAction).toMatch(/Advisor Bot|Engineering Bot/i);
   });
 
   it('covers OpenZeppelin and QA/security review', async () => {
@@ -279,7 +283,7 @@ describe('blockchain engineer chat api', () => {
     expect(providerCalled).toBe(false);
     expect(response.statusCode).toBe(200);
     expect(body.ok).toBe(true);
-    expect(body.data.content).toMatch(/Deployment should stay Ethereum testnet-only/i);
+    expect(body.data.content).toMatch(/Deployment should stay Sepolia testnet-only/i);
   });
 
   it('falls back to deterministic mock behavior when the injected LLM provider fails', async () => {
@@ -306,7 +310,7 @@ describe('blockchain engineer chat api', () => {
 
     expect(response.statusCode).toBe(200);
     expect(body.ok).toBe(true);
-    expect(body.data.content).toMatch(/Deployment should stay Ethereum testnet-only/i);
+    expect(body.data.content).toMatch(/Deployment should stay Sepolia testnet-only/i);
     expect(body.data.content).toMatch(/user wallet must sign/i);
     expect(serialized).not.toContain('OPENAI_API_KEY');
     expect(serialized).not.toContain('sk-test-secret');
@@ -332,7 +336,7 @@ describe('blockchain engineer chat api', () => {
       method: 'POST',
       url: '/api/chat/blockchain-engineer',
       payload: {
-        userMessage: 'Should this portfolio token use ERC-20 or ERC-721?',
+        userMessage: 'Which supported protocol base should this whitelisted portfolio token use?',
         requestedFocus: 'protocol_choice',
       },
     });
@@ -342,7 +346,7 @@ describe('blockchain engineer chat api', () => {
     expect(response.statusCode).toBe(200);
     expect(body.ok).toBe(true);
     expect(body.data.content).toMatch(/ERC-20/i);
-    expect(body.data.content).toMatch(/ERC-721/i);
+    expect(body.data.content).toMatch(/ERC-3643/i);
     expect(JSON.stringify(body)).not.toContain('test-model');
   });
 
@@ -374,7 +378,7 @@ describe('blockchain engineer chat api', () => {
 
     expect(response.statusCode).toBe(200);
     expect(body.ok).toBe(true);
-    expect(body.data.content).toMatch(/Deployment should stay Ethereum testnet-only/i);
+    expect(body.data.content).toMatch(/Deployment should stay Sepolia testnet-only/i);
     expect(serialized).not.toContain('OPENAI_API_KEY');
     expect(serialized).not.toContain('sk-test-secret');
     expect(serialized).not.toContain('MILA26_LLM_MODEL');
