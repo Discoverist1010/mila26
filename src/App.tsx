@@ -26,6 +26,7 @@ import {
   MAX_INVESTOR_REGISTRY_ENTRIES,
   parsePermittedStablecoins,
   toMila26LifecycleReadModel,
+  type AssetServicingParameters,
   type AllocationMintParameters,
   type Mila26LifecycleState,
   type RedemptionParameters,
@@ -41,17 +42,27 @@ import { createDemoProjectClosureLedger } from './domain/projectClosureLedger';
 import { toProjectClosureReadModel } from './domain/projectClosureReadModel';
 import { toProjectLifecycleReadModel, type Mila26UiActionId } from './domain/projectLifecycleReadModel';
 import {
+  acknowledgeProductSetupDeploymentWarnings,
   confirmProductSetupUpdate,
   createInitialProductSetupRecord,
+  createProductSetupPackMarkdown,
+  createProductSetupPackPayload,
+  createProductSetupPackPrintableHtml,
   createProductSetupSuggestionsFromText,
+  createUnsupportedRequirementDecisionsFromText,
+  decideUnsupportedRequirement,
   deferProductSetupField,
   fieldDisplayValue,
+  handleProductSetupWalletInput,
   markTermExplained,
   setProductSetupSuggestedUpdates,
+  setUnsupportedRequirementDecisions,
   toProductSetupReadModel,
+  updateProductSetupField,
   type ProductSetupFieldKey,
   type ProductSetupRecord,
   type ProductSetupSuggestedUpdate,
+  type ProductSetupProtocolBase,
 } from './domain/productSetup';
 import { toRequirementBriefContract } from './domain/requirementBrief';
 import {
@@ -546,6 +557,14 @@ export function App() {
     message: 'Generated artifacts are in session until saved.',
   });
   const [productSetupPackGeneratedAtIso, setProductSetupPackGeneratedAtIso] = useState<string | undefined>();
+  const [productSetupPackStatus, setProductSetupPackStatus] = useState<string | undefined>();
+  const [productSetupWalletMessage, setProductSetupWalletMessage] = useState<string | undefined>();
+  const [contractOpsDeploymentWarningMessage, setContractOpsDeploymentWarningMessage] = useState<string | undefined>();
+  const [productSetupWalletInputs, setProductSetupWalletInputs] = useState({
+    admin_wallet: '',
+    subscription_receiving_wallet: '',
+    redemption_wallet: '',
+  });
   const [durableEvidenceRecords, setDurableEvidenceRecords] = useState<WorkspaceEvidenceRecord[]>([]);
   const [durableArtifactRecords, setDurableArtifactRecords] = useState<WorkspaceArtifactRecord[]>([]);
   const [permittedStablecoinsInput, setPermittedStablecoinsInput] = useState('');
@@ -1257,7 +1276,10 @@ export function App() {
       },
     ]);
     const chatSourceRef = `chat_turn_${Date.now()}`;
-    const productSetupSuggestions = createProductSetupSuggestionsFromText(submittedQuestion, chatSourceRef);
+    const productSetupSuggestions =
+      activeAssistantMode === 'engineering' ? createProductSetupSuggestionsFromText(submittedQuestion, chatSourceRef) : [];
+    const unsupportedRequirementDecisions =
+      activeAssistantMode === 'engineering' ? createUnsupportedRequirementDecisionsFromText(submittedQuestion, chatSourceRef) : [];
 
     const result = await askBlockchainEngineer({
       userMessage: submittedQuestion,
@@ -1279,14 +1301,18 @@ export function App() {
     setIsBotReplyLoading(false);
 
     if (result.ok) {
-      setProductSetupRecord((current) => setProductSetupSuggestedUpdates(current, productSetupSuggestions));
+      setProductSetupRecord((current) =>
+        setUnsupportedRequirementDecisions(setProductSetupSuggestedUpdates(current, productSetupSuggestions), unsupportedRequirementDecisions),
+      );
       publishEngineerResponse(result.data, 'backend', activeAssistantMode);
       setQuestion('');
       return;
     }
 
     setBotChatError(result.message);
-    setProductSetupRecord((current) => setProductSetupSuggestedUpdates(current, productSetupSuggestions));
+    setProductSetupRecord((current) =>
+      setUnsupportedRequirementDecisions(setProductSetupSuggestedUpdates(current, productSetupSuggestions), unsupportedRequirementDecisions),
+    );
     publishEngineerResponse(createLocalEngineerResponse(answerAsBlockchainEngineer(submittedQuestion, brief)), 'local', activeAssistantMode);
     setQuestion('');
   }
@@ -1386,11 +1412,24 @@ export function App() {
     const result = await loadLatestWorkspaceSnapshot({ projectId: selectedProjectId });
 
     if (result.ok) {
-      const nextLifecycleState = result.data.snapshot.lifecycleState;
+      const nextLifecycleState: Mila26LifecycleState = {
+        ...result.data.snapshot.lifecycleState,
+        assetServicingParameters: result.data.snapshot.lifecycleState.assetServicingParameters ?? {},
+      };
       syncInvestorRegistrySequenceFromState(nextLifecycleState);
       setLifecycleState(nextLifecycleState);
-      setProductSetupRecord(result.data.snapshot.productSetupRecord ?? createInitialProductSetupRecord(starterFacts));
+      const loadedProductSetupRecord = result.data.snapshot.productSetupRecord ?? createInitialProductSetupRecord(starterFacts);
+      setProductSetupRecord(loadedProductSetupRecord);
       setPermittedStablecoinsInput(nextLifecycleState.subscriptionParameters.permittedStablecoins.join(', '));
+      setProductSetupWalletInputs({
+        admin_wallet: fieldDisplayValue(loadedProductSetupRecord.fields.admin_wallet),
+        subscription_receiving_wallet:
+          nextLifecycleState.subscriptionParameters.paymentAddress ??
+          fieldDisplayValue(loadedProductSetupRecord.fields.subscription_receiving_wallet),
+        redemption_wallet:
+          nextLifecycleState.redemptionParameters.redemptionWalletAddress ??
+          fieldDisplayValue(loadedProductSetupRecord.fields.redemption_wallet),
+      });
       clearLocalOnlyWorkspaceArtifactsAfterLoad();
       setSelectedWorkspaceTab('overview');
       setWorkspacePersistenceStatus({
@@ -1506,22 +1545,10 @@ export function App() {
     const records: WorkspaceArtifactRecordInput[] = [];
 
     if (productSetupPackGeneratedAtIso) {
+      const productSetupPackPayload = createProductSetupPackPayload(productSetupRecord, productSetupReadModel);
       records.push({
         artifactType: 'product_setup_pack',
-        artifactPayload: {
-          recordId: productSetupRecord.id,
-          generatedAtIso: productSetupPackGeneratedAtIso,
-          statusLabel: productSetupReadModel.statusLabel,
-          readinessLabel: productSetupReadModel.readinessLabel,
-          understandingSummary: productSetupReadModel.understandingSummary,
-          recommendedProtocol: productSetupReadModel.protocolRecommendation.recommendedProtocol,
-          executablePrototypeLabel: productSetupReadModel.protocolRecommendation.executablePrototypeLabel,
-          warning: productSetupReadModel.packPreview.warning,
-          includedDocuments: productSetupReadModel.packPreview.includedDocuments,
-          fieldCount: Object.keys(productSetupRecord.fields).length,
-          missingEssentials: productSetupReadModel.missingEssentials.map((field) => field.label),
-          deploymentBlockers: productSetupReadModel.deploymentBlockers,
-        },
+        artifactPayload: productSetupPackPayload,
         lifecycleSnapshotVersion,
       });
     }
@@ -1699,6 +1726,12 @@ export function App() {
       ...current,
       investorRegistryEntries: [...current.investorRegistryEntries, entry],
     }));
+    updateProductSetupFieldFromTab(
+      'expected_investor_count',
+      lifecycleState.investorRegistryEntries.length + 1,
+      'edited_in_investor_wallets_tab',
+      { onlyWhenMissing: true },
+    );
     setInvestorRegistryDraftWallet('');
     setInvestorRegistryError(undefined);
   }
@@ -1726,6 +1759,12 @@ export function App() {
       ...current,
       investorRegistryEntries: [...current.investorRegistryEntries, ...entries],
     }));
+    updateProductSetupFieldFromTab(
+      'expected_investor_count',
+      lifecycleState.investorRegistryEntries.length + entries.length,
+      'edited_in_investor_wallets_tab',
+      { onlyWhenMissing: true },
+    );
     setTestInvestorWalletPack(pack);
     setTestWalletExportContent(undefined);
     setInvestorRegistryError(undefined);
@@ -1770,6 +1809,12 @@ export function App() {
         ...nextParameters,
       },
     }));
+    if (nextParameters.permittedStablecoins) {
+      updateProductSetupFieldFromTab('subscription_stablecoins', nextParameters.permittedStablecoins, 'edited_in_subscription_tab');
+    }
+    if (nextParameters.paymentAddress !== undefined) {
+      updateProductSetupFieldFromTab('subscription_receiving_wallet', nextParameters.paymentAddress, 'edited_in_subscription_tab');
+    }
   }
 
   function updateRedemptionParameters(nextParameters: Partial<RedemptionParameters>) {
@@ -1780,6 +1825,59 @@ export function App() {
         ...nextParameters,
       },
     }));
+    if (nextParameters.redemptionWindow !== undefined) {
+      updateProductSetupFieldFromTab('redemption_schedule', nextParameters.redemptionWindow, 'edited_in_redemption_tab');
+    }
+    if (nextParameters.redemptionDelayValue !== undefined || nextParameters.redemptionDelayUnit !== undefined) {
+      const nextDelayValue = nextParameters.redemptionDelayValue ?? lifecycleState.redemptionParameters.redemptionDelayValue;
+      const nextDelayUnit = nextParameters.redemptionDelayUnit ?? lifecycleState.redemptionParameters.redemptionDelayUnit;
+      updateProductSetupFieldFromTab(
+        'redemption_payout_delay',
+        nextDelayValue && nextDelayUnit ? `${nextDelayValue} ${nextDelayUnit}` : undefined,
+        'edited_in_redemption_tab',
+      );
+    }
+    if (nextParameters.redemptionWalletAddress !== undefined) {
+      updateProductSetupFieldFromTab('redemption_wallet', nextParameters.redemptionWalletAddress, 'edited_in_redemption_tab');
+    }
+    if (nextParameters.redemptionHandlingRule !== undefined) {
+      updateProductSetupFieldFromTab('burn_lock_rule', nextParameters.redemptionHandlingRule, 'edited_in_redemption_tab');
+    }
+  }
+
+  function updateAssetServicingParameters(nextParameters: Partial<AssetServicingParameters>) {
+    setLifecycleState((current) => ({
+      ...current,
+      assetServicingParameters: {
+        ...current.assetServicingParameters,
+        ...nextParameters,
+      },
+    }));
+    if (nextParameters.navCadence !== undefined) {
+      updateProductSetupFieldFromTab('nav_cadence', nextParameters.navCadence, 'edited_in_asset_servicing_tab');
+    }
+    if (nextParameters.navSource !== undefined) {
+      updateProductSetupFieldFromTab('nav_source', nextParameters.navSource, 'edited_in_asset_servicing_tab');
+    }
+    if (nextParameters.investorUpdateRule !== undefined) {
+      updateProductSetupFieldFromTab('investor_update_rule', nextParameters.investorUpdateRule, 'edited_in_asset_servicing_tab');
+    }
+  }
+
+  function updateMaturityParameters(nextParameters: Partial<Mila26LifecycleState['maturityParameters']>) {
+    setLifecycleState((current) => ({
+      ...current,
+      maturityParameters: {
+        ...current.maturityParameters,
+        ...nextParameters,
+      },
+    }));
+    if (nextParameters.maturityDate !== undefined) {
+      updateProductSetupFieldFromTab('maturity_date', nextParameters.maturityDate, 'edited_in_maturity_tab');
+    }
+    if (nextParameters.closeoutMethod !== undefined) {
+      updateProductSetupFieldFromTab('maturity_closeout_rule', nextParameters.closeoutMethod, 'edited_in_maturity_tab');
+    }
   }
 
   function updateAllocationMintParameters(nextParameters: Partial<AllocationMintParameters>) {
@@ -1927,6 +2025,11 @@ export function App() {
   }
 
   async function requestSepoliaDeployment() {
+    if (productSetupReadModel.hasUnacknowledgedDeploymentWarnings) {
+      setContractOpsDeploymentWarningMessage('Review Product Setup deployment warnings and record your proceed decision before requesting wallet signature.');
+      return;
+    }
+
     const provider = getBrowserEthereumProvider();
     const connectedWalletAddress = walletConnectionReadModel.connectedWalletAddress;
     const attemptId = `wallet-signed-sepolia-deployment-${deploymentAttemptSequenceRef.current + 1}`;
@@ -2175,10 +2278,29 @@ export function App() {
   function confirmProductSetupSuggestion(update: ProductSetupSuggestedUpdate) {
     setProductSetupRecord((current) => confirmProductSetupUpdate(current, update.id));
 
+    if (update.fieldKey === 'protocol_base' && typeof update.proposedValue === 'string') {
+      setProductSetupRecord((current) =>
+        updateProductSetupField(current, {
+          fieldKey: 'protocol_base',
+          value: update.proposedValue as ProductSetupProtocolBase,
+          sourceType: 'user_confirmation',
+          sourceRef: update.sourceRef,
+        }),
+      );
+    }
+
     if (update.fieldKey === 'subscription_stablecoins' && Array.isArray(update.proposedValue)) {
       const stablecoins = update.proposedValue.map(String);
       setPermittedStablecoinsInput(stablecoins.join(', '));
       updateSubscriptionParameters({ permittedStablecoins: stablecoins });
+    }
+
+    if (update.fieldKey === 'subscription_receiving_wallet' && typeof update.proposedValue === 'string') {
+      updateSubscriptionParameters({ paymentAddress: update.proposedValue });
+    }
+
+    if (update.fieldKey === 'investor_wallet_rule' && typeof update.proposedValue === 'string') {
+      updateProductSetupFieldFromTab('investor_wallet_rule', update.proposedValue, 'confirmed_in_product_setup');
     }
 
     if (update.fieldKey === 'redemption_schedule' && typeof update.proposedValue === 'string') {
@@ -2196,6 +2318,34 @@ export function App() {
         });
       }
     }
+
+    if (update.fieldKey === 'redemption_wallet' && typeof update.proposedValue === 'string') {
+      updateRedemptionParameters({ redemptionWalletAddress: update.proposedValue });
+    }
+
+    if (update.fieldKey === 'burn_lock_rule' && typeof update.proposedValue === 'string') {
+      updateRedemptionParameters({ redemptionHandlingRule: update.proposedValue });
+    }
+
+    if (update.fieldKey === 'nav_cadence' && typeof update.proposedValue === 'string') {
+      updateAssetServicingParameters({ navCadence: update.proposedValue });
+    }
+
+    if (update.fieldKey === 'nav_source' && typeof update.proposedValue === 'string') {
+      updateAssetServicingParameters({ navSource: update.proposedValue });
+    }
+
+    if (update.fieldKey === 'investor_update_rule' && typeof update.proposedValue === 'string') {
+      updateAssetServicingParameters({ investorUpdateRule: update.proposedValue });
+    }
+
+    if (update.fieldKey === 'maturity_date' && typeof update.proposedValue === 'string') {
+      updateMaturityParameters({ maturityDate: update.proposedValue });
+    }
+
+    if (update.fieldKey === 'maturity_closeout_rule' && typeof update.proposedValue === 'string') {
+      updateMaturityParameters({ closeoutMethod: update.proposedValue });
+    }
   }
 
   function deferProductSetupBlocker(fieldKey: ProductSetupFieldKey) {
@@ -2206,12 +2356,79 @@ export function App() {
     setProductSetupRecord((current) => markTermExplained(current, termKey));
   }
 
-  function generateProductSetupPack() {
+  function updateProductSetupFieldFromTab(
+    fieldKey: ProductSetupFieldKey,
+    value: string | number | boolean | string[] | undefined,
+    sourceRef: string,
+    options: { onlyWhenMissing?: boolean } = {},
+  ) {
+    setProductSetupRecord((current) => {
+      if (options.onlyWhenMissing && current.fields[fieldKey].status !== 'missing') return current;
+      return updateProductSetupField(current, {
+        fieldKey,
+        value,
+        sourceType: 'direct_form_input',
+        sourceRef,
+      });
+    });
+  }
+
+  function updateProductSetupWalletField(
+    fieldKey: Extract<ProductSetupFieldKey, 'admin_wallet' | 'redemption_wallet' | 'subscription_receiving_wallet'>,
+    value: string,
+  ) {
+    const resultRef = `product_setup_${fieldKey}_input`;
+    const result = handleProductSetupWalletInput(productSetupRecord, fieldKey, value, resultRef);
+    setProductSetupRecord(result.record);
+    setProductSetupWalletMessage(result.message);
+
+    if (fieldKey === 'subscription_receiving_wallet' && isValidNonZeroEvmAddress(value.trim())) {
+      updateSubscriptionParameters({ paymentAddress: value.trim() });
+    }
+
+    if (fieldKey === 'redemption_wallet' && isValidNonZeroEvmAddress(value.trim())) {
+      updateRedemptionParameters({ redemptionWalletAddress: value.trim() });
+    }
+  }
+
+  function generateProductSetupPack(format: 'markdown' | 'json' | 'pdf') {
     setProductSetupPackGeneratedAtIso(new Date().toISOString());
+    const baseName = `${productSetupRecord.id}-${format}`;
+    const content =
+      format === 'markdown'
+        ? createProductSetupPackMarkdown(productSetupRecord)
+        : format === 'json'
+          ? JSON.stringify(createProductSetupPackPayload(productSetupRecord, productSetupReadModel), null, 2)
+          : createProductSetupPackPrintableHtml(productSetupRecord);
+    const mimeType = format === 'json' ? 'application/json' : format === 'markdown' ? 'text/markdown' : 'text/html';
+    const extension = format === 'json' ? 'json' : format === 'markdown' ? 'md' : 'html';
+
+    try {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${baseName}.${extension}`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setProductSetupPackStatus(
+        format === 'pdf'
+          ? 'PDF-readable Product Setup Pack downloaded as HTML. Open it and print or save as PDF.'
+          : `${format.toUpperCase()} Product Setup Pack downloaded.`,
+      );
+    } catch {
+      setProductSetupPackStatus('Product Setup Pack is ready in session. Browser download was unavailable.');
+    }
+
     setArtifactVaultStatus({
       status: 'idle',
       message: 'Draft Product Setup Pack is ready in session. Save generated artifacts to persist it.',
     });
+  }
+
+  function acknowledgeDeploymentWarnings() {
+    setProductSetupRecord((current) => acknowledgeProductSetupDeploymentWarnings(current));
+    setContractOpsDeploymentWarningMessage('Proceed-with-warnings decision recorded in Product Setup.');
   }
 
   return (
@@ -2374,7 +2591,7 @@ export function App() {
               </span>
               <span className="mode-toggle" aria-label="Mode selector">
                 <button type="button" aria-current="true">Guided</button>
-                <button type="button">Expert</button>
+                <button type="button" disabled title="Expert mode will be wired after the guided lifecycle is stable.">Expert</button>
               </span>
               <span className="topbar-pill safety">Safety Status</span>
             </div>
@@ -2461,6 +2678,140 @@ export function App() {
                   </div>
                 </section>
 
+                <section className="parameter-panel product-setup-direct-inputs" aria-label="Product Setup canonical inputs">
+                  <div className="registry-panel-heading compact-subsection-heading">
+                    <div>
+                      <h3>Canonical setup inputs</h3>
+                      <p>These fields feed the later tabs. Downstream edits write back here with provenance.</p>
+                    </div>
+                  </div>
+
+                  <div className="parameter-grid">
+                    <label htmlFor="product-setup-protocol-base">
+                      Protocol base
+                      <select
+                        id="product-setup-protocol-base"
+                        value={String(productSetupRecord.fields.protocol_base.value ?? '')}
+                        onChange={(event) =>
+                          updateProductSetupFieldFromTab(
+                            'protocol_base',
+                            event.target.value as ProductSetupProtocolBase,
+                            'edited_in_product_setup_tab',
+                          )
+                        }
+                      >
+                        <option value="ERC-20">ERC-20</option>
+                        <option value="ERC-4626">ERC-4626</option>
+                        <option value="ERC-3643">ERC-3643</option>
+                        <option value="Custom ERC-20 with rebasing">Custom ERC-20 with rebasing</option>
+                      </select>
+                    </label>
+
+                    <label htmlFor="product-setup-investor-wallet-rule">
+                      Investor wallet rule
+                      <select
+                        id="product-setup-investor-wallet-rule"
+                        value={String(productSetupRecord.fields.investor_wallet_rule.value ?? '')}
+                        onChange={(event) =>
+                          updateProductSetupFieldFromTab('investor_wallet_rule', event.target.value, 'edited_in_product_setup_tab')
+                        }
+                      >
+                        <option value="">Choose rule</option>
+                        <option value="Approved wallets only; transfers should stay between approved wallets.">Approved wallets only</option>
+                        <option value="Approved investors may transfer peer-to-peer only to other approved wallets.">Approved P2P transfers</option>
+                        <option value="Issuer/admin transfers only except redemption and maturity operations.">Issuer/admin transfers only</option>
+                        <option value="Open transfer to any EVM wallet; review suitability before deployment.">Open transfers</option>
+                        <option value="Not sure yet">Not sure yet</option>
+                      </select>
+                    </label>
+
+                    <label htmlFor="product-setup-burn-lock-rule">
+                      Redemption handling
+                      <select
+                        id="product-setup-burn-lock-rule"
+                        value={String(productSetupRecord.fields.burn_lock_rule.value ?? '')}
+                        onChange={(event) => {
+                          updateProductSetupFieldFromTab('burn_lock_rule', event.target.value, 'edited_in_product_setup_tab');
+                          updateRedemptionParameters({ redemptionHandlingRule: event.target.value || undefined });
+                        }}
+                      >
+                        <option value="">Choose handling</option>
+                        <option value="Burn after tokens are received">Burn after tokens are received</option>
+                        <option value="Lock until stablecoin payout is complete, then burn">Lock until payout, then burn</option>
+                        <option value="Burn only after payout is complete">Burn only after payout is complete</option>
+                        <option value="Do not automate this for MVP">Do not automate for MVP</option>
+                        <option value="Not sure yet">Not sure yet</option>
+                      </select>
+                    </label>
+
+                    <label htmlFor="product-setup-nav-cadence">
+                      NAV cadence
+                      <input
+                        id="product-setup-nav-cadence"
+                        value={lifecycleState.assetServicingParameters.navCadence ?? ''}
+                        onChange={(event) => updateAssetServicingParameters({ navCadence: event.target.value })}
+                        placeholder="e.g. Quarterly"
+                      />
+                    </label>
+
+                    <label htmlFor="product-setup-nav-source">
+                      NAV source
+                      <input
+                        id="product-setup-nav-source"
+                        value={lifecycleState.assetServicingParameters.navSource ?? ''}
+                        onChange={(event) => updateAssetServicingParameters({ navSource: event.target.value })}
+                        placeholder="e.g. Uploaded file"
+                      />
+                    </label>
+
+                    <label htmlFor="product-setup-maturity-date">
+                      Maturity date
+                      <input
+                        id="product-setup-maturity-date"
+                        value={lifecycleState.maturityParameters.maturityDate ?? ''}
+                        onChange={(event) => updateMaturityParameters({ maturityDate: event.target.value })}
+                        placeholder="e.g. 2028-12-31"
+                      />
+                    </label>
+                  </div>
+                </section>
+
+                <section className="product-setup-wallet-capture" aria-label="Product Setup wallet capture">
+                  <div className="registry-panel-heading compact-subsection-heading">
+                    <div>
+                      <h3>Wallets needed before deployment</h3>
+                      <p>Paste public wallet addresses only. Role names are saved as placeholders but remain missing before deployment.</p>
+                    </div>
+                  </div>
+                  <div className="parameter-grid">
+                    {(['admin_wallet', 'subscription_receiving_wallet', 'redemption_wallet'] as const).map((fieldKey) => (
+                      <label htmlFor={`product-setup-${fieldKey}`} key={fieldKey}>
+                        {productSetupRecord.fields[fieldKey].label}
+                        <input
+                          id={`product-setup-${fieldKey}`}
+                          value={productSetupWalletInputs[fieldKey]}
+                          onChange={(event) =>
+                            setProductSetupWalletInputs((current) => ({
+                              ...current,
+                              [fieldKey]: event.target.value,
+                            }))
+                          }
+                          placeholder="0x... or role placeholder"
+                          autoComplete="off"
+                        />
+                        <button
+                          type="button"
+                          className="workflow-button compact"
+                          onClick={() => updateProductSetupWalletField(fieldKey, productSetupWalletInputs[fieldKey])}
+                        >
+                          Save wallet
+                        </button>
+                      </label>
+                    ))}
+                  </div>
+                  {productSetupWalletMessage && <p className="chat-status">{productSetupWalletMessage}</p>}
+                </section>
+
                 {productSetupRecord.pendingSuggestedUpdates.length > 0 && (
                   <section className="product-setup-review" aria-label="Product Setup suggested updates">
                     <div className="registry-panel-heading compact-subsection-heading">
@@ -2482,6 +2833,53 @@ export function App() {
                           <button type="button" className="workflow-button primary-action" onClick={() => confirmProductSetupSuggestion(update)}>
                             Confirm
                           </button>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {productSetupReadModel.unsupportedRequirementDecisions.length > 0 && (
+                  <section className="product-setup-review" aria-label="Product Setup unsupported requirements">
+                    <div className="registry-panel-heading compact-subsection-heading">
+                      <div>
+                        <h3>Unsupported or custom requirements</h3>
+                        <p>ZiLi-OS can document these, propose a nearest equivalent, or exclude them from MVP execution.</p>
+                      </div>
+                      <span>{productSetupReadModel.unsupportedRequirementDecisions.length} item(s)</span>
+                    </div>
+                    <div className="product-setup-update-list">
+                      {productSetupReadModel.unsupportedRequirementDecisions.map((item) => (
+                        <article key={item.id}>
+                          <div>
+                            <span>{item.requirement}</span>
+                            <strong>{item.decision.replaceAll('_', ' ')}</strong>
+                            <p>{item.mismatchReason}</p>
+                            {item.nearestEquivalent && <small>Nearest equivalent: {item.nearestEquivalent}</small>}
+                          </div>
+                          <div className="registry-actions">
+                            <button
+                              type="button"
+                              className="workflow-button"
+                              onClick={() => setProductSetupRecord((current) => decideUnsupportedRequirement(current, item.id, 'accepted_equivalent'))}
+                            >
+                              Accept equivalent
+                            </button>
+                            <button
+                              type="button"
+                              className="workflow-button"
+                              onClick={() => setProductSetupRecord((current) => decideUnsupportedRequirement(current, item.id, 'rejected_equivalent'))}
+                            >
+                              Reject
+                            </button>
+                            <button
+                              type="button"
+                              className="workflow-button"
+                              onClick={() => setProductSetupRecord((current) => decideUnsupportedRequirement(current, item.id, 'excluded_from_mvp'))}
+                            >
+                              Exclude from MVP
+                            </button>
+                          </div>
                         </article>
                       ))}
                     </div>
@@ -2535,22 +2933,35 @@ export function App() {
                 <section className="product-setup-blockers" aria-label="Product Setup missing fields">
                   <div>
                     <h4>Missing before deployment</h4>
-                    {productSetupReadModel.deploymentBlockers.length > 0 ? (
+                    {productSetupReadModel.deploymentWarnings.length > 0 ? (
                       <ul className="registry-warnings">
-                        {productSetupReadModel.deploymentBlockers.map((blocker) => (
-                          <li key={blocker}>{blocker}</li>
+                        {productSetupReadModel.deploymentWarnings.map((warning) => (
+                          <li key={warning.fieldKey}>
+                            {warning.message} Likely error: {warning.likelyError}
+                          </li>
                         ))}
                       </ul>
                     ) : (
                       <p>No Product Setup deployment blockers are currently open.</p>
+                    )}
+                    {productSetupReadModel.latestDeploymentWarningAcknowledgement && (
+                      <p className="chat-status">
+                        Proceed-with-warnings recorded at {productSetupReadModel.latestDeploymentWarningAcknowledgement.acknowledgedAtIso}.
+                      </p>
                     )}
                   </div>
                   <div className="product-setup-defer-actions">
                     <button type="button" className="workflow-button" onClick={() => deferProductSetupBlocker('admin_wallet')}>
                       Defer admin wallet
                     </button>
+                    <button type="button" className="workflow-button" onClick={() => deferProductSetupBlocker('subscription_receiving_wallet')}>
+                      Defer subscription receiving wallet
+                    </button>
                     <button type="button" className="workflow-button" onClick={() => deferProductSetupBlocker('redemption_wallet')}>
                       Defer redemption wallet
+                    </button>
+                    <button type="button" className="workflow-button" onClick={acknowledgeDeploymentWarnings}>
+                      Record proceed-with-warnings decision
                     </button>
                   </div>
                 </section>
@@ -2571,13 +2982,28 @@ export function App() {
                   <button
                     type="button"
                     className="workflow-button primary-action"
-                    onClick={generateProductSetupPack}
+                    onClick={() => generateProductSetupPack('markdown')}
                   >
                     Download Product Setup Pack
+                  </button>
+                  <button
+                    type="button"
+                    className="workflow-button"
+                    onClick={() => generateProductSetupPack('json')}
+                  >
+                    Download JSON
+                  </button>
+                  <button
+                    type="button"
+                    className="workflow-button"
+                    onClick={() => generateProductSetupPack('pdf')}
+                  >
+                    Download PDF-readable
                   </button>
                   {productSetupPackGeneratedAtIso && (
                     <p className="chat-status">Draft Product Setup Pack generated in session. Save generated artifacts to persist it.</p>
                   )}
+                  {productSetupPackStatus && <p className="chat-status">{productSetupPackStatus}</p>}
                 </section>
               </section>
             )}
@@ -2946,6 +3372,20 @@ export function App() {
                       placeholder="1.01"
                     />
                   </label>
+                  <label htmlFor="redemption-handling-rule">
+                    Redemption handling
+                    <select
+                      id="redemption-handling-rule"
+                      value={lifecycleState.redemptionParameters.redemptionHandlingRule ?? ''}
+                      onChange={(event) => updateRedemptionParameters({ redemptionHandlingRule: event.target.value || undefined })}
+                    >
+                      <option value="">Choose handling</option>
+                      <option value="Burn after tokens are received">Burn after tokens are received</option>
+                      <option value="Lock until stablecoin payout is complete, then burn">Lock until payout, then burn</option>
+                      <option value="Burn only after payout is complete">Burn only after payout is complete</option>
+                      <option value="Do not automate this for MVP">Do not automate for MVP</option>
+                    </select>
+                  </label>
                 </div>
 
                 <div className="parameter-status" aria-label="Redemption validation status">
@@ -2976,6 +3416,29 @@ export function App() {
                     {smartContractControlPanel.statusLabel}
                   </span>
                 </div>
+
+                <section className="product-setup-blockers" aria-label="Contract Ops Product Setup warnings">
+                  <div>
+                    <h4>Product Setup deployment warnings</h4>
+                    {productSetupReadModel.deploymentWarnings.length > 0 ? (
+                      <ul className="registry-warnings">
+                        {productSetupReadModel.deploymentWarnings.map((warning) => (
+                          <li key={warning.fieldKey}>
+                            {warning.message} Likely error: {warning.likelyError}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>Product Setup has no open deployment warnings.</p>
+                    )}
+                    {contractOpsDeploymentWarningMessage && <p className="chat-status">{contractOpsDeploymentWarningMessage}</p>}
+                  </div>
+                  {productSetupReadModel.hasUnacknowledgedDeploymentWarnings && (
+                    <button type="button" className="workflow-button" onClick={acknowledgeDeploymentWarnings}>
+                      Proceed with warnings
+                    </button>
+                  )}
+                </section>
 
                 <div className="contract-ops-summary" aria-label="Contract Ops summary">
                   <article>
@@ -3222,6 +3685,103 @@ export function App() {
                     {fundingHelperMessage && <p className="funding-helper-message">{fundingHelperMessage}</p>}
                   </div>
                 </div>
+                </div>
+              </section>
+            )}
+
+            {activeWorkspaceTab.id === 'asset_servicing' && (
+              <section className="parameter-panel" aria-label="Asset Servicing workspace">
+                <div className="registry-panel-heading">
+                  <div>
+                    <h3>Asset servicing parameters</h3>
+                    <p>
+                      Capture NAV cadence, source, and investor update assumptions. Record NAV execution remains a gated Contract Ops action.
+                    </p>
+                  </div>
+                  <span className="gate-badge draft">Parameter setup</span>
+                </div>
+
+                <div className="parameter-grid">
+                  <label htmlFor="asset-servicing-nav-cadence">
+                    NAV cadence
+                    <input
+                      id="asset-servicing-nav-cadence"
+                      value={lifecycleState.assetServicingParameters.navCadence ?? ''}
+                      onChange={(event) => updateAssetServicingParameters({ navCadence: event.target.value })}
+                      placeholder="e.g. Quarterly"
+                    />
+                  </label>
+                  <label htmlFor="asset-servicing-nav-source">
+                    NAV source
+                    <input
+                      id="asset-servicing-nav-source"
+                      value={lifecycleState.assetServicingParameters.navSource ?? ''}
+                      onChange={(event) => updateAssetServicingParameters({ navSource: event.target.value })}
+                      placeholder="e.g. Uploaded valuation file"
+                    />
+                  </label>
+                  <label htmlFor="asset-servicing-investor-update-rule">
+                    Investor update rule
+                    <input
+                      id="asset-servicing-investor-update-rule"
+                      value={lifecycleState.assetServicingParameters.investorUpdateRule ?? ''}
+                      onChange={(event) => updateAssetServicingParameters({ investorUpdateRule: event.target.value })}
+                      placeholder="e.g. Quarterly investor update records"
+                    />
+                  </label>
+                </div>
+
+                <div className="parameter-status" aria-label="Asset Servicing status">
+                  <p>
+                    NAV operation status: {recordNavOperationReadModel.statusLabel}. Use Contract Ops for wallet-signed Record NAV.
+                  </p>
+                  <p>
+                    Product Setup provenance: edits here update NAV cadence, NAV source, and investor update rule in the canonical record.
+                  </p>
+                </div>
+              </section>
+            )}
+
+            {activeWorkspaceTab.id === 'maturity' && (
+              <section className="parameter-panel" aria-label="Maturity workspace">
+                <div className="registry-panel-heading">
+                  <div>
+                    <h3>Maturity parameters</h3>
+                    <p>
+                      Capture closeout assumptions for final redemption planning. This does not execute maturity redemption.
+                    </p>
+                  </div>
+                  <span className={`gate-badge ${lifecycleReadModel.maturityStatus === 'draft' ? 'draft' : 'locked'}`}>
+                    {lifecycleReadModel.maturityStatus === 'draft' ? 'Maturity draft' : 'Maturity parameters needed'}
+                  </span>
+                </div>
+
+                <div className="parameter-grid">
+                  <label htmlFor="maturity-date">
+                    Maturity date
+                    <input
+                      id="maturity-date"
+                      value={lifecycleState.maturityParameters.maturityDate ?? ''}
+                      onChange={(event) => updateMaturityParameters({ maturityDate: event.target.value })}
+                      placeholder="e.g. 2028-12-31"
+                    />
+                  </label>
+                  <label htmlFor="maturity-closeout-method">
+                    Closeout method
+                    <input
+                      id="maturity-closeout-method"
+                      value={lifecycleState.maturityParameters.closeoutMethod ?? ''}
+                      onChange={(event) => updateMaturityParameters({ closeoutMethod: event.target.value })}
+                      placeholder="e.g. Final NAV redemption and token burn"
+                    />
+                  </label>
+                </div>
+
+                <div className="parameter-status" aria-label="Maturity status">
+                  <p>
+                    Maturity stays parameter-only until redemption/maturity execution adapters and evidence contracts are designed.
+                  </p>
+                  <p>Product Setup provenance: edits here update maturity date and closeout rule in the canonical record.</p>
                 </div>
               </section>
             )}
@@ -3555,7 +4115,10 @@ export function App() {
                         <span>Redemption delay</span>
                         <strong>{subscriptionRedemptionTemplate.parameterSummary.redemptionDelay ?? 'Not set'}</strong>
                         <p>{subscriptionRedemptionTemplate.parameterSummary.redemptionWindow ?? 'Redemption window not set.'}</p>
-                        <small>Delay before stablecoin payout after token receipt.</small>
+                        <small>
+                          {subscriptionRedemptionTemplate.parameterSummary.redemptionHandlingRule ??
+                            'Token burn/lock handling not set.'}
+                        </small>
                       </article>
                     </div>
                     {subscriptionRedemptionTemplate.validationMessages.length > 0 && (

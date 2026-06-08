@@ -5,6 +5,7 @@ import {
   WorkspacePersistenceValidationError,
   type WorkspacePersistenceRepository,
 } from '../server/persistence/workspacePersistenceRepository';
+import { ProductSetupRecordPersistenceSchema } from '../server/contracts/workspacePersistence';
 import { createInitialMila26LifecycleState, createInvestorRegistryEntry } from '../src/domain/lifecycleState';
 import { createInitialProductSetupRecord } from '../src/domain/productSetup';
 
@@ -151,6 +152,49 @@ describe('workspace persistence repository', () => {
         source: 'user_action',
       }),
     ).toThrow(WorkspacePersistenceValidationError);
+  });
+
+  it('defaults Sprint 16B Product Setup fields when loading an older persisted record shape', () => {
+    const legacyRecord = JSON.parse(
+      JSON.stringify(
+        createInitialProductSetupRecord({
+          fundName: 'Alpha Income Fund I',
+          tokenSymbol: 'ALPHA',
+          jurisdiction: 'Singapore',
+          targetInvestors: 'Accredited investors',
+          totalSupply: 1_000_000,
+          initialNav: 1,
+        }),
+      ),
+    ) as {
+      fields: Record<string, unknown>;
+      deploymentWarningAcknowledgements?: unknown;
+    };
+
+    delete legacyRecord.fields.investor_wallet_rule;
+    delete legacyRecord.fields.subscription_receiving_wallet;
+    delete legacyRecord.fields.nav_cadence;
+    delete legacyRecord.fields.nav_source;
+    delete legacyRecord.fields.investor_update_rule;
+    delete legacyRecord.fields.maturity_date;
+    delete legacyRecord.fields.maturity_closeout_rule;
+    delete legacyRecord.deploymentWarningAcknowledgements;
+
+    const parsed = ProductSetupRecordPersistenceSchema.parse(legacyRecord);
+
+    expect(parsed.fields.subscription_receiving_wallet).toMatchObject({
+      key: 'subscription_receiving_wallet',
+      status: 'missing',
+      usedByTabs: ['Subscription', 'Contract Ops', 'Evidence Vault'],
+    });
+    expect(parsed.fields.investor_wallet_rule).toMatchObject({
+      key: 'investor_wallet_rule',
+      status: 'inferred',
+      sourceRef: 'migration_default',
+    });
+    expect(parsed.fields.nav_cadence.status).toBe('missing');
+    expect(parsed.fields.maturity_closeout_rule.status).toBe('missing');
+    expect(parsed.deploymentWarningAcknowledgements).toEqual([]);
   });
 
   it('stores a full 50-wallet registry without exceeding the investor cap', () => {

@@ -42,6 +42,15 @@ export const RedemptionParametersPersistenceSchema = z
     redemptionWalletAddress: z.string().trim().min(1).max(80).optional(),
     payoutStablecoin: z.string().trim().min(1).max(24).optional(),
     payoutPerToken: z.string().trim().min(1).max(80).optional(),
+    redemptionHandlingRule: z.string().trim().min(1).max(240).optional(),
+  })
+  .strict();
+
+export const AssetServicingParametersPersistenceSchema = z
+  .object({
+    navCadence: z.string().trim().min(1).max(120).optional(),
+    navSource: z.string().trim().min(1).max(240).optional(),
+    investorUpdateRule: z.string().trim().min(1).max(240).optional(),
   })
   .strict();
 
@@ -66,13 +75,20 @@ const ProductSetupFieldKeyPersistenceSchema = z.enum([
   'base_currency',
   'protocol_base',
   'expected_investor_count',
+  'investor_wallet_rule',
   'whitelisted_wallets_required',
   'subscription_stablecoins',
+  'subscription_receiving_wallet',
   'redemption_schedule',
   'redemption_payout_delay',
   'redemption_wallet',
   'admin_wallet',
   'burn_lock_rule',
+  'nav_cadence',
+  'nav_source',
+  'investor_update_rule',
+  'maturity_date',
+  'maturity_closeout_rule',
   'prototype_network',
 ]);
 
@@ -125,6 +141,31 @@ const ProductSetupFieldPersistenceSchema = z
   })
   .strict();
 
+function defaultProductSetupField(input: {
+  key: z.infer<typeof ProductSetupFieldKeyPersistenceSchema>;
+  label: string;
+  value?: z.infer<typeof ProductSetupFieldValuePersistenceSchema>;
+  status?: z.infer<typeof ProductSetupFieldStatusPersistenceSchema>;
+  sourceType?: z.infer<typeof ProductSetupFieldSourceTypePersistenceSchema>;
+  sourceRef?: string;
+  confidence?: number;
+  usedByTabs: string[];
+  smartContractRelevance: 'contract_parameter' | 'operational_metadata' | 'evidence_metadata';
+}) {
+  return {
+    key: input.key,
+    label: input.label,
+    value: input.value,
+    status: input.status ?? 'missing',
+    sourceType: input.sourceType,
+    sourceRef: input.sourceRef,
+    confidence: input.confidence,
+    confirmedByUser: false,
+    usedByTabs: input.usedByTabs,
+    smartContractRelevance: input.smartContractRelevance,
+  };
+}
+
 const ProductSetupFieldsPersistenceSchema = z
   .object({
     product_name: ProductSetupFieldPersistenceSchema,
@@ -133,13 +174,74 @@ const ProductSetupFieldsPersistenceSchema = z
     base_currency: ProductSetupFieldPersistenceSchema,
     protocol_base: ProductSetupFieldPersistenceSchema,
     expected_investor_count: ProductSetupFieldPersistenceSchema,
+    investor_wallet_rule: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'investor_wallet_rule',
+        label: 'Investor wallet rule',
+        value: 'Approved wallets only; transfers should stay between approved wallets.',
+        status: 'inferred',
+        sourceType: 'assistant_inference',
+        sourceRef: 'migration_default',
+        confidence: 0.78,
+        usedByTabs: ['Investor Wallets', 'Contract Ops', 'Redemption'],
+        smartContractRelevance: 'contract_parameter',
+      }),
+    ),
     whitelisted_wallets_required: ProductSetupFieldPersistenceSchema,
     subscription_stablecoins: ProductSetupFieldPersistenceSchema,
+    subscription_receiving_wallet: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'subscription_receiving_wallet',
+        label: 'Subscription receiving wallet',
+        usedByTabs: ['Subscription', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'contract_parameter',
+      }),
+    ),
     redemption_schedule: ProductSetupFieldPersistenceSchema,
     redemption_payout_delay: ProductSetupFieldPersistenceSchema,
     redemption_wallet: ProductSetupFieldPersistenceSchema,
     admin_wallet: ProductSetupFieldPersistenceSchema,
     burn_lock_rule: ProductSetupFieldPersistenceSchema,
+    nav_cadence: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'nav_cadence',
+        label: 'NAV cadence',
+        usedByTabs: ['Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    nav_source: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'nav_source',
+        label: 'NAV source',
+        usedByTabs: ['Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'evidence_metadata',
+      }),
+    ),
+    investor_update_rule: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'investor_update_rule',
+        label: 'Investor update rule',
+        usedByTabs: ['Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    maturity_date: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'maturity_date',
+        label: 'Maturity date',
+        usedByTabs: ['Maturity', 'Redemption', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    maturity_closeout_rule: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'maturity_closeout_rule',
+        label: 'Maturity closeout rule',
+        usedByTabs: ['Maturity', 'Redemption', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
     prototype_network: ProductSetupFieldPersistenceSchema,
   })
   .strict();
@@ -177,6 +279,17 @@ const UnsupportedRequirementDecisionPersistenceSchema = z
   })
   .strict();
 
+const ProductSetupDeploymentWarningAcknowledgementPersistenceSchema = z
+  .object({
+    id: z.string().trim().min(1).max(180),
+    acknowledgedAtIso: z.string().trim().min(1).max(80),
+    warningFieldKeys: z.array(ProductSetupFieldKeyPersistenceSchema).max(20),
+    likelyErrors: z.array(z.string().trim().min(1).max(400)).max(20),
+    decision: z.literal('proceed_with_warnings'),
+    sourceRef: z.string().trim().min(1).max(180),
+  })
+  .strict();
+
 export const ProductSetupRecordPersistenceSchema = z
   .object({
     id: z.string().trim().min(1).max(160),
@@ -185,6 +298,7 @@ export const ProductSetupRecordPersistenceSchema = z
     pendingSuggestedUpdates: z.array(ProductSetupSuggestedUpdatePersistenceSchema).max(40),
     termExplanations: z.record(z.string().trim().min(1).max(120), TermExplanationPersistenceSchema),
     unsupportedRequirementDecisions: z.array(UnsupportedRequirementDecisionPersistenceSchema).max(40),
+    deploymentWarningAcknowledgements: z.array(ProductSetupDeploymentWarningAcknowledgementPersistenceSchema).max(40).default([]),
     updatedAtIso: z.string().trim().min(1).max(80),
   })
   .strict();
@@ -194,6 +308,7 @@ export const Mila26LifecycleStatePersistenceSchema = z
     investorRegistryEntries: z.array(InvestorRegistryEntryPersistenceSchema).max(50),
     subscriptionParameters: SubscriptionParametersPersistenceSchema,
     redemptionParameters: RedemptionParametersPersistenceSchema,
+    assetServicingParameters: AssetServicingParametersPersistenceSchema.default({}),
     maturityParameters: MaturityParametersPersistenceSchema,
     allocationMintParameters: AllocationMintParametersPersistenceSchema,
   })
@@ -380,16 +495,42 @@ const ProductSetupPackArtifactRecordSchema = z
       .object({
         recordId: z.string().trim().min(1).max(160),
         generatedAtIso: z.string().trim().min(1).max(80),
+        warning: z.string().trim().min(1).max(800),
         statusLabel: z.string().trim().min(1).max(160),
         readinessLabel: z.string().trim().min(1).max(160),
-        understandingSummary: z.string().trim().min(1).max(1200),
-        recommendedProtocol: z.enum(['ERC-20', 'ERC-4626', 'ERC-3643', 'Custom ERC-20 with rebasing']),
-        executablePrototypeLabel: z.string().trim().min(1).max(360),
-        warning: z.string().trim().min(1).max(600),
-        includedDocuments: z.array(z.string().trim().min(1).max(240)).min(1).max(12),
-        fieldCount: z.number().int().positive(),
-        missingEssentials: z.array(z.string().trim().min(1).max(120)).max(40),
-        deploymentBlockers: z.array(z.string().trim().min(1).max(240)).max(40),
+        recommendedArchitectureTarget: z.enum(['ERC-20', 'ERC-4626', 'ERC-3643', 'Custom ERC-20 with rebasing']),
+        currentExecutablePrototype: z.string().trim().min(1).max(420),
+        definitions: z.array(z.string().trim().min(1).max(420)).min(1).max(20),
+        fields: z
+          .array(
+            z
+              .object({
+                requirement: z.string().trim().min(1).max(160),
+                userInput: z.string().trim().min(1).max(800),
+                interpretation: z.string().trim().min(1).max(800),
+                source: z.string().trim().min(1).max(120),
+                status: ProductSetupFieldStatusPersistenceSchema,
+                usedByTabs: z.array(z.string().trim().min(1).max(80)).max(12),
+              })
+              .strict(),
+          )
+          .min(1)
+          .max(40),
+        deploymentWarnings: z
+          .array(
+            z
+              .object({
+                fieldKey: ProductSetupFieldKeyPersistenceSchema,
+                label: z.string().trim().min(1).max(120),
+                message: z.string().trim().min(1).max(360),
+                likelyError: z.string().trim().min(1).max(420),
+                status: ProductSetupFieldStatusPersistenceSchema,
+              })
+              .strict(),
+          )
+          .max(20),
+        deploymentWarningAcknowledgements: z.array(ProductSetupDeploymentWarningAcknowledgementPersistenceSchema).max(40),
+        unsupportedRequirementDecisions: z.array(UnsupportedRequirementDecisionPersistenceSchema).max(40),
       })
       .strict(),
     lifecycleSnapshotVersion: z.number().int().positive().optional(),

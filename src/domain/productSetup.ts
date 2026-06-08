@@ -39,13 +39,20 @@ export type ProductSetupFieldKey =
   | 'base_currency'
   | 'protocol_base'
   | 'expected_investor_count'
+  | 'investor_wallet_rule'
   | 'whitelisted_wallets_required'
   | 'subscription_stablecoins'
+  | 'subscription_receiving_wallet'
   | 'redemption_schedule'
   | 'redemption_payout_delay'
   | 'redemption_wallet'
   | 'admin_wallet'
   | 'burn_lock_rule'
+  | 'nav_cadence'
+  | 'nav_source'
+  | 'investor_update_rule'
+  | 'maturity_date'
+  | 'maturity_closeout_rule'
   | 'prototype_network';
 
 export type ProductSetupFieldValue = string | number | boolean | string[];
@@ -93,6 +100,15 @@ export type UnsupportedRequirementDecision = {
   sourceRef: string;
 };
 
+export type ProductSetupDeploymentWarningAcknowledgement = {
+  id: string;
+  acknowledgedAtIso: string;
+  warningFieldKeys: ProductSetupFieldKey[];
+  likelyErrors: string[];
+  decision: 'proceed_with_warnings';
+  sourceRef: string;
+};
+
 export type ProductSetupRecord = {
   id: string;
   status: 'draft' | 'ready_for_engineering' | 'locked';
@@ -100,7 +116,16 @@ export type ProductSetupRecord = {
   pendingSuggestedUpdates: ProductSetupSuggestedUpdate[];
   termExplanations: Record<string, TermExplanationState>;
   unsupportedRequirementDecisions: UnsupportedRequirementDecision[];
+  deploymentWarningAcknowledgements: ProductSetupDeploymentWarningAcknowledgement[];
   updatedAtIso: string;
+};
+
+export type ProductSetupDeploymentWarning = {
+  fieldKey: ProductSetupFieldKey;
+  label: string;
+  message: string;
+  likelyError: string;
+  status: ProductSetupFieldStatus;
 };
 
 export type ProductSetupReadModel = {
@@ -118,10 +143,14 @@ export type ProductSetupReadModel = {
   };
   missingEssentials: ProductSetupField[];
   deploymentBlockers: string[];
+  deploymentWarnings: ProductSetupDeploymentWarning[];
+  hasUnacknowledgedDeploymentWarnings: boolean;
+  latestDeploymentWarningAcknowledgement?: ProductSetupDeploymentWarningAcknowledgement;
   requirementSections: Array<{
     title: string;
     fields: ProductSetupField[];
   }>;
+  unsupportedRequirementDecisions: UnsupportedRequirementDecision[];
   firstTimePrompts: Array<{
     termKey: string;
     fieldKey: ProductSetupFieldKey;
@@ -141,12 +170,23 @@ const essentialFieldKeys: ProductSetupFieldKey[] = [
   'base_currency',
   'protocol_base',
   'expected_investor_count',
-  'whitelisted_wallets_required',
+  'investor_wallet_rule',
   'subscription_stablecoins',
+  'burn_lock_rule',
   'prototype_network',
 ];
 
-const deploymentFieldKeys: ProductSetupFieldKey[] = ['admin_wallet', 'redemption_wallet'];
+const deploymentFieldKeys: ProductSetupFieldKey[] = [
+  'admin_wallet',
+  'subscription_receiving_wallet',
+  'redemption_wallet',
+  'protocol_base',
+  'investor_wallet_rule',
+  'subscription_stablecoins',
+  'burn_lock_rule',
+  'expected_investor_count',
+  'prototype_network',
+];
 
 function createField(input: Omit<ProductSetupField, 'confirmedByUser'> & { confirmedByUser?: boolean }): ProductSetupField {
   return {
@@ -217,6 +257,17 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
         usedByTabs: ['Investor Wallets', 'Contract Ops'],
         smartContractRelevance: 'contract_parameter',
       }),
+      investor_wallet_rule: createField({
+        key: 'investor_wallet_rule',
+        label: 'Investor wallet rule',
+        value: 'Approved wallets only; transfers should stay between approved wallets.',
+        status: 'inferred',
+        sourceType: 'assistant_inference',
+        sourceRef: 'starter_context',
+        confidence: 0.78,
+        usedByTabs: ['Investor Wallets', 'Contract Ops', 'Redemption'],
+        smartContractRelevance: 'contract_parameter',
+      }),
       whitelisted_wallets_required: createField({
         key: 'whitelisted_wallets_required',
         label: 'Whitelisted wallets required',
@@ -233,6 +284,13 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
         label: 'Subscription stablecoins',
         status: 'missing',
         usedByTabs: ['Subscription', 'Contract Ops'],
+        smartContractRelevance: 'contract_parameter',
+      }),
+      subscription_receiving_wallet: createField({
+        key: 'subscription_receiving_wallet',
+        label: 'Subscription receiving wallet',
+        status: 'missing',
+        usedByTabs: ['Subscription', 'Contract Ops', 'Evidence Vault'],
         smartContractRelevance: 'contract_parameter',
       }),
       redemption_schedule: createField({
@@ -270,6 +328,41 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
         usedByTabs: ['Redemption', 'Contract Ops', 'Evidence Vault'],
         smartContractRelevance: 'contract_parameter',
       }),
+      nav_cadence: createField({
+        key: 'nav_cadence',
+        label: 'NAV cadence',
+        status: 'missing',
+        usedByTabs: ['Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      nav_source: createField({
+        key: 'nav_source',
+        label: 'NAV source',
+        status: 'missing',
+        usedByTabs: ['Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'evidence_metadata',
+      }),
+      investor_update_rule: createField({
+        key: 'investor_update_rule',
+        label: 'Investor update rule',
+        status: 'missing',
+        usedByTabs: ['Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      maturity_date: createField({
+        key: 'maturity_date',
+        label: 'Maturity date',
+        status: 'missing',
+        usedByTabs: ['Maturity', 'Redemption', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      maturity_closeout_rule: createField({
+        key: 'maturity_closeout_rule',
+        label: 'Maturity closeout rule',
+        status: 'missing',
+        usedByTabs: ['Maturity', 'Redemption', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
       prototype_network: createField({
         key: 'prototype_network',
         label: 'Prototype network',
@@ -284,6 +377,7 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
     pendingSuggestedUpdates: [],
     termExplanations: {},
     unsupportedRequirementDecisions: [],
+    deploymentWarningAcknowledgements: [],
     updatedAtIso: new Date().toISOString(),
   };
 }
@@ -337,15 +431,17 @@ export function recommendProductSetupProtocol(record: ProductSetupRecord): Produ
 export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetupReadModel {
   const protocolRecommendation = recommendProductSetupProtocol(record);
   const completedEssentialCount = essentialFieldKeys.filter((key) =>
-    ['user_confirmed', 'system_default', 'deferred'].includes(record.fields[key].status),
+    ['user_confirmed', 'system_default', 'locked'].includes(record.fields[key].status),
   ).length;
   const missingEssentials = essentialFieldKeys
     .map((key) => record.fields[key])
-    .filter((field) => field.status === 'missing' || field.status === 'inferred' || field.status === 'user_stated');
-  const deploymentBlockers = deploymentFieldKeys
-    .map((key) => record.fields[key])
-    .filter((field) => field.status !== 'user_confirmed' && field.status !== 'locked')
-    .map((field) => `${field.label} is needed before wallet-signed Sepolia deployment can proceed.`);
+    .filter((field) => !isDeploymentReadyField(field));
+  const deploymentWarnings = toProductSetupDeploymentWarnings(record);
+  const deploymentBlockers = deploymentWarnings.map((warning) => warning.message);
+  const latestDeploymentWarningAcknowledgement = record.deploymentWarningAcknowledgements.at(-1);
+  const hasUnacknowledgedDeploymentWarnings =
+    deploymentWarnings.length > 0 &&
+    !latestDeploymentWarningAcknowledgementCovers(latestDeploymentWarningAcknowledgement, deploymentWarnings);
 
   return {
     statusLabel: record.status === 'locked' ? 'Locked Product Setup snapshot' : 'Draft Product Setup',
@@ -356,6 +452,9 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
     protocolRecommendation,
     missingEssentials,
     deploymentBlockers,
+    deploymentWarnings,
+    hasUnacknowledgedDeploymentWarnings,
+    latestDeploymentWarningAcknowledgement,
     requirementSections: [
       {
         title: 'Product snapshot',
@@ -363,20 +462,27 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
       },
       {
         title: 'Protocol and token model',
-        fields: (['protocol_base', 'expected_investor_count', 'whitelisted_wallets_required'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
+        fields: (['protocol_base', 'expected_investor_count', 'investor_wallet_rule', 'whitelisted_wallets_required'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
       },
       {
         title: 'Subscription and redemption',
-        fields: (['subscription_stablecoins', 'redemption_schedule', 'redemption_payout_delay', 'redemption_wallet', 'burn_lock_rule'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
+        fields: (['subscription_stablecoins', 'subscription_receiving_wallet', 'redemption_schedule', 'redemption_payout_delay', 'redemption_wallet', 'burn_lock_rule'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
+      },
+      {
+        title: 'Asset servicing and maturity',
+        fields: (['nav_cadence', 'nav_source', 'investor_update_rule', 'maturity_date', 'maturity_closeout_rule'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
       },
       {
         title: 'Contract operations',
         fields: (['prototype_network', 'admin_wallet'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
       },
     ],
+    unsupportedRequirementDecisions: record.unsupportedRequirementDecisions,
     firstTimePrompts: [
       { termKey: 'admin_wallet', fieldKey: 'admin_wallet', prompt: productSetupPromptForTerm('admin_wallet') },
+      { termKey: 'subscription_receiving_wallet', fieldKey: 'subscription_receiving_wallet', prompt: productSetupPromptForTerm('subscription_receiving_wallet') },
       { termKey: 'redemption_wallet', fieldKey: 'redemption_wallet', prompt: productSetupPromptForTerm('redemption_wallet') },
+      { termKey: 'investor_wallet_rule', fieldKey: 'investor_wallet_rule', prompt: productSetupPromptForTerm('investor_wallet_rule') },
       { termKey: 'burn_lock_rule', fieldKey: 'burn_lock_rule', prompt: productSetupPromptForTerm('burn_lock_rule') },
     ],
     packPreview: {
@@ -394,13 +500,69 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
   };
 }
 
+export function isDeploymentReadyField(field: ProductSetupField): boolean {
+  if (field.rolePlaceholder) return false;
+  if (field.value === undefined || field.value === null) return false;
+  if (Array.isArray(field.value)) return field.value.length > 0;
+  if (typeof field.value === 'string' && field.value.trim().length === 0) return false;
+  return ['user_confirmed', 'system_default', 'locked'].includes(field.status);
+}
+
+export function toProductSetupDeploymentWarnings(record: ProductSetupRecord): ProductSetupDeploymentWarning[] {
+  return deploymentFieldKeys
+    .map((fieldKey) => record.fields[fieldKey])
+    .filter((field) => !isDeploymentReadyField(field))
+    .map((field) => ({
+      fieldKey: field.key,
+      label: field.label,
+      status: field.status,
+      message: `${field.label} is needed before wallet-signed Sepolia deployment can proceed.`,
+      likelyError: likelyDeploymentErrorForField(field.key),
+    }));
+}
+
+function latestDeploymentWarningAcknowledgementCovers(
+  acknowledgement: ProductSetupDeploymentWarningAcknowledgement | undefined,
+  warnings: ProductSetupDeploymentWarning[],
+): boolean {
+  if (!acknowledgement) return false;
+  const acknowledged = new Set(acknowledgement.warningFieldKeys);
+  return warnings.every((warning) => acknowledged.has(warning.fieldKey));
+}
+
+export function likelyDeploymentErrorForField(fieldKey: ProductSetupFieldKey): string {
+  switch (fieldKey) {
+    case 'admin_wallet':
+      return 'Token roles cannot be reviewed or assigned to an operator wallet.';
+    case 'subscription_receiving_wallet':
+      return 'Subscription setup cannot identify where investor stablecoins should be received.';
+    case 'redemption_wallet':
+      return 'Redemption setup cannot identify where investors should send tokens for redemption.';
+    case 'protocol_base':
+      return 'Smart contract architecture may be generated against the wrong token pattern.';
+    case 'investor_wallet_rule':
+      return 'Transfer restrictions may not match how investors are meant to hold or transfer tokens.';
+    case 'subscription_stablecoins':
+      return 'Subscription parameters cannot identify the accepted payment token.';
+    case 'burn_lock_rule':
+      return 'Redemption token handling may be inconsistent with payout timing and evidence.';
+    case 'expected_investor_count':
+      return 'Investor Wallets capacity and distribution assumptions may be wrong.';
+    case 'prototype_network':
+      return 'Deployment must remain on Sepolia/testnet for the current prototype.';
+    default:
+      return 'The deployment setup may be incomplete or inconsistent.';
+  }
+}
+
 function createUnderstandingSummary(record: ProductSetupRecord, recommendedProtocol: ProductSetupProtocolBase): string {
   const investors = fieldDisplayValue(record.fields.expected_investor_count) || 'an investor count still to confirm';
   const stablecoins = fieldDisplayValue(record.fields.subscription_stablecoins) || 'stablecoins still to confirm';
   const redemption = fieldDisplayValue(record.fields.redemption_schedule) || 'redemption timing still to confirm';
   const delay = fieldDisplayValue(record.fields.redemption_payout_delay) || 'payout delay still to confirm';
+  const investorWalletRule = fieldDisplayValue(record.fields.investor_wallet_rule) || 'wallet transfer rules still to confirm';
 
-  return `ZiLi-OS currently understands this as a ${fieldDisplayValue(record.fields.base_currency) || 'base-currency'} ${fieldDisplayValue(record.fields.product_type) || 'tokenised product'} for ${investors}. Investors subscribe using ${stablecoins}, wallet access is ${record.fields.whitelisted_wallets_required.value === true ? 'restricted to approved wallets' : 'not yet restricted'}, redemption is ${redemption}, and payout delay is ${delay}. Recommended protocol base: ${recommendedProtocol}.`;
+  return `ZiLi-OS currently understands this as a ${fieldDisplayValue(record.fields.base_currency) || 'base-currency'} ${fieldDisplayValue(record.fields.product_type) || 'tokenised product'} for ${investors}. Investors subscribe using ${stablecoins}, wallet rule is ${investorWalletRule}, redemption is ${redemption}, and payout delay is ${delay}. Recommended protocol base: ${recommendedProtocol}.`;
 }
 
 export function fieldDisplayValue(field: ProductSetupField): string {
@@ -428,6 +590,25 @@ export function productSetupPromptForTerm(termKey: string): string {
       'What to provide: paste the public wallet address on the selected blockchain network.',
       'Example: 0x1234...abcd.',
       'Safety note: do not provide a private key, seed phrase, or recovery phrase.',
+    ].join('\n');
+  }
+
+  if (termKey === 'subscription_receiving_wallet') {
+    return [
+      'I need the subscription receiving wallet.',
+      'Why this is needed: this public wallet address or payment contract is where investors send stablecoins when subscribing.',
+      'What to provide: paste the public wallet address on the selected blockchain network.',
+      'Example: 0x1234...abcd.',
+      'Safety note: do not provide a private key, seed phrase, or recovery phrase.',
+    ].join('\n');
+  }
+
+  if (termKey === 'investor_wallet_rule') {
+    return [
+      'I need the investor wallet rule.',
+      'Why this is needed: ZiLi-OS must know who can hold, receive, or transfer the product token.',
+      'What to provide: choose approved wallets only, approved investor peer-to-peer transfers, issuer-only transfers, open transfers, or not sure yet.',
+      'Example: approved investors may transfer peer-to-peer only to other approved wallets.',
     ].join('\n');
   }
 
@@ -468,23 +649,42 @@ export function createProductSetupSuggestionsFromText(
 ): ProductSetupSuggestedUpdate[] {
   const normalized = text.toLowerCase();
   const updates: ProductSetupSuggestedUpdate[] = [];
-  const investorMatch = normalized.match(/(?:about\s*)?(\d{1,3})\s+(?:investors|wallets)/);
+  const investorMatch = normalized.match(/(?:about\s*)?(\d{1,3})(?:\s*-\s*\d{1,3})?\s+(?:investors|wallets)|(\d{1,3})\s*-\s*(\d{1,3})\s+investors/);
   const delayMatch = normalized.match(/(\d{1,3})\s*(?:business\s*)?(?:day|days|hour|hours|week|weeks)/);
 
-  if (investorMatch?.[1]) {
-    updates.push(createSuggestedUpdate('expected_investor_count', Number(investorMatch[1]), 'User described expected investor scale.', sourceRef, 0.88));
+  if (investorMatch?.[1] || investorMatch?.[3]) {
+    updates.push(createSuggestedUpdate('expected_investor_count', Number(investorMatch[1] ?? investorMatch[3]), 'User described expected investor scale.', sourceRef, 0.88));
   }
   if (normalized.includes('usdc')) {
     updates.push(createSuggestedUpdate('subscription_stablecoins', ['USDC'], 'User mentioned USDC subscription or payout rails.', sourceRef, 0.9));
   }
-  if (normalized.includes('whitelist') || normalized.includes('approved wallet')) {
+  if (normalized.includes('whitelist') || normalized.includes('approved wallet') || normalized.includes('approved wallets')) {
     updates.push(createSuggestedUpdate('whitelisted_wallets_required', true, 'User described approved or whitelisted wallet access.', sourceRef, 0.9));
+    updates.push(createSuggestedUpdate('investor_wallet_rule', 'Approved wallets only; transfers should stay between approved wallets.', 'User described approved or whitelisted wallet access.', sourceRef, 0.86));
+  }
+  if (/peer\s*to\s*peer|p2p|buy-sell|buy sell|transfer.+each other/.test(normalized)) {
+    updates.push(createSuggestedUpdate('investor_wallet_rule', 'Approved investors may transfer peer-to-peer only to other approved wallets.', 'User described investor peer-to-peer transfers.', sourceRef, 0.82));
   }
   if (normalized.includes('quarter')) {
     updates.push(createSuggestedUpdate('redemption_schedule', 'Quarterly', 'User described quarterly redemption timing.', sourceRef, 0.82));
   }
+  if (normalized.includes('weekly')) {
+    updates.push(createSuggestedUpdate('redemption_schedule', 'Weekly', 'User described weekly redemption timing.', sourceRef, 0.8));
+  }
   if (delayMatch?.[0]) {
     updates.push(createSuggestedUpdate('redemption_payout_delay', delayMatch[0], 'User described a redemption payout delay.', sourceRef, 0.84));
+  }
+  if (/valuation|nav/.test(normalized) && /quarter/.test(normalized)) {
+    updates.push(createSuggestedUpdate('nav_cadence', 'Quarterly', 'User described quarterly valuation or NAV updates.', sourceRef, 0.82));
+  }
+  if (/valuation|nav/.test(normalized) && /weekly/.test(normalized)) {
+    updates.push(createSuggestedUpdate('nav_cadence', 'Weekly', 'User described weekly valuation or NAV updates.', sourceRef, 0.78));
+  }
+  if (/uploaded file|upload file|file upload|uploaded via a file|ingested from uploaded file/.test(normalized)) {
+    updates.push(createSuggestedUpdate('nav_source', 'Uploaded file', 'User described NAV or valuation coming from an uploaded file.', sourceRef, 0.84));
+  }
+  if (/push|send|distribute/.test(normalized) && /wallet|investor/.test(normalized) && /information|update|notice/.test(normalized)) {
+    updates.push(createSuggestedUpdate('investor_update_rule', 'ZiLi-OS should prepare investor update records; wallet-pushed notices remain a custom requirement for review.', 'User described pushing investment information to investors.', sourceRef, 0.72));
   }
   if (normalized.includes('erc-3643') || normalized.includes('erc3643')) {
     updates.push(createSuggestedUpdate('protocol_base', 'ERC-3643', 'User asked for or accepted a permissioned token protocol base.', sourceRef, 0.86));
@@ -574,11 +774,338 @@ export function deferProductSetupField(
   };
 }
 
-export function classifyWalletSetupResponse(value: string): 'address' | 'role_placeholder' | 'not_sure' | 'invalid' {
+export function updateProductSetupField(
+  record: ProductSetupRecord,
+  input: {
+    fieldKey: ProductSetupFieldKey;
+    value?: ProductSetupFieldValue;
+    sourceType: ProductSetupFieldSourceType;
+    sourceRef: string;
+    status?: ProductSetupFieldStatus;
+    confidence?: number;
+    rolePlaceholder?: string;
+    deferralReason?: string;
+  },
+): ProductSetupRecord {
+  const nextStatus =
+    input.status ??
+    (input.value === undefined || input.value === '' || (Array.isArray(input.value) && input.value.length === 0)
+      ? 'missing'
+      : 'user_confirmed');
+  const confirmedByUser = nextStatus === 'user_confirmed';
+
+  return {
+    ...record,
+    fields: {
+      ...record.fields,
+      [input.fieldKey]: {
+        ...record.fields[input.fieldKey],
+        value: input.value,
+        status: nextStatus,
+        sourceType: input.sourceType,
+        sourceRef: input.sourceRef,
+        confidence: input.confidence,
+        confirmedByUser,
+        rolePlaceholder: input.rolePlaceholder,
+        deferralReason: input.deferralReason,
+      },
+    },
+    updatedAtIso: new Date().toISOString(),
+  };
+}
+
+export function handleProductSetupWalletInput(
+  record: ProductSetupRecord,
+  fieldKey: Extract<ProductSetupFieldKey, 'admin_wallet' | 'redemption_wallet' | 'subscription_receiving_wallet'>,
+  value: string,
+  sourceRef = 'direct_product_setup_wallet_input',
+): { record: ProductSetupRecord; classification: ReturnType<typeof classifyWalletSetupResponse>; message: string } {
+  const trimmed = value.trim();
+  const classification = classifyWalletSetupResponse(trimmed);
+
+  if (classification === 'unsafe_secret') {
+    return {
+      record,
+      classification,
+      message: 'Do not paste private keys, seed phrases, or recovery phrases. ZiLi-OS only needs public wallet addresses.',
+    };
+  }
+
+  if (classification === 'address') {
+    return {
+      record: updateProductSetupField(record, {
+        fieldKey,
+        value: trimmed,
+        sourceType: 'direct_form_input',
+        sourceRef,
+      }),
+      classification,
+      message: `${record.fields[fieldKey].label} saved as a public wallet address.`,
+    };
+  }
+
+  if (classification === 'role_placeholder') {
+    return {
+      record: updateProductSetupField(record, {
+        fieldKey,
+        sourceType: 'direct_form_input',
+        sourceRef,
+        status: 'deferred',
+        rolePlaceholder: trimmed,
+        deferralReason: 'Role placeholder saved; public wallet address still needed before deployment.',
+      }),
+      classification,
+      message: 'Role placeholder saved. Add the public wallet address before deployment.',
+    };
+  }
+
+  if (classification === 'not_sure') {
+    return {
+      record: deferProductSetupField(record, fieldKey, 'User marked this wallet as to be added before deployment.'),
+      classification,
+      message: 'Marked as to be added before deployment.',
+    };
+  }
+
+  return {
+    record,
+    classification,
+    message: 'Enter a public EVM wallet address, a role placeholder, or "not sure yet".',
+  };
+}
+
+export function acknowledgeProductSetupDeploymentWarnings(
+  record: ProductSetupRecord,
+  sourceRef = 'contract_ops_deployment_warning_acknowledgement',
+): ProductSetupRecord {
+  const warnings = toProductSetupDeploymentWarnings(record);
+  if (warnings.length === 0) return record;
+  const acknowledgedAtIso = new Date().toISOString();
+
+  return {
+    ...record,
+    deploymentWarningAcknowledgements: [
+      ...record.deploymentWarningAcknowledgements,
+      {
+        id: `deployment-warning-${acknowledgedAtIso}`,
+        acknowledgedAtIso,
+        warningFieldKeys: warnings.map((warning) => warning.fieldKey),
+        likelyErrors: warnings.map((warning) => warning.likelyError),
+        decision: 'proceed_with_warnings',
+        sourceRef,
+      },
+    ],
+    updatedAtIso: acknowledgedAtIso,
+  };
+}
+
+export function createUnsupportedRequirementDecisionsFromText(
+  text: string,
+  sourceRef: string,
+): UnsupportedRequirementDecision[] {
+  const normalized = text.toLowerCase();
+  const decisions: UnsupportedRequirementDecision[] = [];
+
+  if (/clawback|claw back|conditional transfer/.test(normalized)) {
+    decisions.push({
+      id: `unsupported-clawback-${sourceRef}`,
+      requirement: 'Conditional transfers with clawback',
+      mismatchReason: 'The current four protocol bases do not release an executable clawback adapter in the Sepolia prototype.',
+      nearestEquivalent: 'Use approved-wallet transfer restrictions and document manual exception handling for MVP.',
+      decision: 'pending',
+      sourceRef,
+    });
+  }
+
+  if (/peer\s*to\s*peer|p2p|buy-sell|buy sell|transfer.+each other/.test(normalized)) {
+    decisions.push({
+      id: `unsupported-p2p-settlement-${sourceRef}`,
+      requirement: 'Investor peer-to-peer transfer and settlement workflow',
+      mismatchReason: 'Approved-wallet transfers can be represented as a rule, but ZiLi-OS does not yet execute a marketplace, matching, liquidity, or settlement workflow.',
+      nearestEquivalent: 'Allow only approved-wallet transfers and record P2P settlement/liquidity as excluded from MVP execution.',
+      decision: 'pending',
+      sourceRef,
+    });
+  }
+
+  if (/push.+wallet|wallet.+push|send.+wallet/.test(normalized) && /information|update|notice/.test(normalized)) {
+    decisions.push({
+      id: `unsupported-wallet-push-${sourceRef}`,
+      requirement: 'Push investment information directly to investor wallets',
+      mismatchReason: 'The current prototype can record asset-servicing events, but it does not push arbitrary notices into wallets.',
+      nearestEquivalent: 'Generate investor update records in Evidence Vault and keep wallet-push delivery outside MVP execution.',
+      decision: 'pending',
+      sourceRef,
+    });
+  }
+
+  return decisions;
+}
+
+export function setUnsupportedRequirementDecisions(
+  record: ProductSetupRecord,
+  decisions: UnsupportedRequirementDecision[],
+): ProductSetupRecord {
+  if (decisions.length === 0) return record;
+  const byId = new Map(record.unsupportedRequirementDecisions.map((decision) => [decision.id, decision]));
+  decisions.forEach((decision) => byId.set(decision.id, decision));
+
+  return {
+    ...record,
+    unsupportedRequirementDecisions: [...byId.values()],
+    updatedAtIso: new Date().toISOString(),
+  };
+}
+
+export function decideUnsupportedRequirement(
+  record: ProductSetupRecord,
+  decisionId: string,
+  decision: UnsupportedRequirementDecision['decision'],
+): ProductSetupRecord {
+  return {
+    ...record,
+    unsupportedRequirementDecisions: record.unsupportedRequirementDecisions.map((item) =>
+      item.id === decisionId ? { ...item, decision } : item,
+    ),
+    updatedAtIso: new Date().toISOString(),
+  };
+}
+
+export function createProductSetupPackPayload(record: ProductSetupRecord, readModel = toProductSetupReadModel(record)) {
+  const definitions = [
+    'Admin wallet: public blockchain address allowed to manage important token settings. Never provide private keys or seed phrases.',
+    'Subscription receiving wallet: public wallet address or payment contract where investors send stablecoins when subscribing.',
+    'Redemption wallet: public wallet address where investors send tokens when requesting redemption.',
+    'Mint: create new tokens, usually after subscription approval.',
+    'Burn: permanently remove tokens from circulation, usually after redemption or maturity.',
+    'Whitelisted wallet: wallet address approved to receive or hold the product token.',
+    'Protocol base: token contract pattern used to represent the product on-chain.',
+  ];
+  const fields = Object.values(record.fields).map((field) => ({
+    requirement: field.label,
+    userInput: fieldDisplayValue(field) || field.rolePlaceholder || 'Not provided',
+    interpretation: field.deferralReason || field.rolePlaceholder || fieldDisplayValue(field) || 'Needed before relevant workflow activation',
+    source: field.sourceType ?? 'missing',
+    status: field.status,
+    usedByTabs: field.usedByTabs,
+  }));
+
+  return {
+    recordId: record.id,
+    generatedAtIso: new Date().toISOString(),
+    warning: readModel.packPreview.warning,
+    statusLabel: readModel.statusLabel,
+    readinessLabel: readModel.readinessLabel,
+    recommendedArchitectureTarget: readModel.protocolRecommendation.recommendedProtocol,
+    currentExecutablePrototype: readModel.protocolRecommendation.executablePrototypeLabel,
+    definitions,
+    fields,
+    deploymentWarnings: readModel.deploymentWarnings,
+    deploymentWarningAcknowledgements: record.deploymentWarningAcknowledgements,
+    unsupportedRequirementDecisions: record.unsupportedRequirementDecisions,
+  };
+}
+
+export function createProductSetupPackMarkdown(record: ProductSetupRecord): string {
+  const payload = createProductSetupPackPayload(record);
+  const fieldRows = payload.fields
+    .map((field) => `| ${field.requirement} | ${field.userInput} | ${field.interpretation} | ${field.source} | ${field.status} |`)
+    .join('\n');
+  const warningRows = payload.deploymentWarnings.length > 0
+    ? payload.deploymentWarnings.map((warning) => `- ${warning.label}: ${warning.likelyError}`).join('\n')
+    : '- No current Product Setup deployment warnings.';
+  const unsupportedRows = payload.unsupportedRequirementDecisions.length > 0
+    ? payload.unsupportedRequirementDecisions.map((decision) => `- ${decision.requirement}: ${decision.decision}. ${decision.nearestEquivalent ?? decision.mismatchReason}`).join('\n')
+    : '- No unsupported/custom requirements recorded.';
+
+  return [
+    '# ZiLi-OS Product Setup Pack',
+    '',
+    `Generated at: ${payload.generatedAtIso}`,
+    '',
+    `> ${payload.warning}`,
+    '',
+    '## Protocol Fit',
+    '',
+    `- Recommended architecture target: ${payload.recommendedArchitectureTarget}`,
+    `- Current executable prototype: ${payload.currentExecutablePrototype}`,
+    '',
+    '## Definitions Used In This Product Setup',
+    '',
+    ...payload.definitions.map((definition) => `- ${definition}`),
+    '',
+    '## Product Requirements And Provenance',
+    '',
+    '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
+    '| --- | --- | --- | --- | --- |',
+    fieldRows,
+    '',
+    '## Deployment Warnings',
+    '',
+    warningRows,
+    '',
+    '## Unsupported Or Custom Requirements',
+    '',
+    unsupportedRows,
+    '',
+    '## Included Documents',
+    '',
+    '- Product Requirements Document',
+    '- Engineering smart-contract and Sepolia testnet details',
+    '- PRD-to-contract translation',
+    '- Asset servicing setup for distribution, wallet addresses, NAV, subscription, and redemption',
+  ].join('\n');
+}
+
+export function createProductSetupPackPrintableHtml(record: ProductSetupRecord): string {
+  const payload = createProductSetupPackPayload(record);
+  const rows = payload.fields
+    .map((field) => `<tr><td>${escapeHtml(field.requirement)}</td><td>${escapeHtml(field.userInput)}</td><td>${escapeHtml(field.interpretation)}</td><td>${escapeHtml(field.source)}</td><td>${escapeHtml(field.status)}</td></tr>`)
+    .join('');
+
+  return [
+    '<!doctype html>',
+    '<html><head><meta charset="utf-8"><title>ZiLi-OS Product Setup Pack</title>',
+    '<style>body{font-family:Inter,Arial,sans-serif;color:#111827;line-height:1.45;margin:32px}table{border-collapse:collapse;width:100%;font-size:12px}td,th{border:1px solid #d1d5db;padding:8px;text-align:left;vertical-align:top}h1,h2{margin-bottom:8px}.warning{background:#fff7ed;border:1px solid #fdba74;padding:12px}</style>',
+    '</head><body>',
+    '<h1>ZiLi-OS Product Setup Pack</h1>',
+    `<p>Generated at: ${escapeHtml(payload.generatedAtIso)}</p>`,
+    `<p class="warning">${escapeHtml(payload.warning)}</p>`,
+    '<h2>Protocol Fit</h2>',
+    `<p><strong>Recommended architecture target:</strong> ${escapeHtml(payload.recommendedArchitectureTarget)}</p>`,
+    `<p><strong>Current executable prototype:</strong> ${escapeHtml(payload.currentExecutablePrototype)}</p>`,
+    '<h2>Definitions</h2>',
+    `<ul>${payload.definitions.map((definition) => `<li>${escapeHtml(definition)}</li>`).join('')}</ul>`,
+    '<h2>Requirements And Provenance</h2>',
+    '<table><thead><tr><th>Requirement</th><th>User input</th><th>ZiLi-OS interpretation</th><th>Source</th><th>Status</th></tr></thead><tbody>',
+    rows,
+    '</tbody></table>',
+    '</body></html>',
+  ].join('');
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+export function classifyWalletSetupResponse(value: string): 'address' | 'role_placeholder' | 'not_sure' | 'unsafe_secret' | 'invalid' {
   const trimmed = value.trim();
   if (!trimmed) return 'invalid';
+  if (looksLikePrivateKeyOrSeedPhrase(trimmed)) return 'unsafe_secret';
   if (/not sure|later|before deployment|to be added/i.test(trimmed)) return 'not_sure';
   if (isValidNonZeroEvmAddress(trimmed)) return 'address';
   if (/wallet|operations|issuer|admin|treasury|team|role/i.test(trimmed)) return 'role_placeholder';
   return 'invalid';
+}
+
+function looksLikePrivateKeyOrSeedPhrase(value: string): boolean {
+  if (/^0x[0-9a-fA-F]{64}$/.test(value)) return true;
+  if (/\b(private key|seed phrase|recovery phrase|mnemonic)\b/i.test(value)) return true;
+  const words = value.trim().split(/\s+/);
+  return words.length >= 12 && words.every((word) => /^[a-z]+$/i.test(word));
 }

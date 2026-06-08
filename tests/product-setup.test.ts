@@ -1,14 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
   classifyWalletSetupResponse,
+  acknowledgeProductSetupDeploymentWarnings,
   confirmProductSetupUpdate,
+  createProductSetupPackMarkdown,
   createInitialProductSetupRecord,
   createProductSetupSuggestionsFromText,
+  createUnsupportedRequirementDecisionsFromText,
   deferProductSetupField,
+  handleProductSetupWalletInput,
   markTermExplained,
   recommendProductSetupProtocol,
+  setUnsupportedRequirementDecisions,
   setProductSetupSuggestedUpdates,
   toProductSetupReadModel,
+  updateProductSetupField,
 } from '../src/domain/productSetup';
 import type { FundFacts } from '../src/domain/schemas';
 
@@ -86,6 +92,91 @@ describe('Product Setup record', () => {
     expect(classifyWalletSetupResponse('0x1111111111111111111111111111111111111111')).toBe('address');
     expect(classifyWalletSetupResponse('Issuer operations wallet')).toBe('role_placeholder');
     expect(classifyWalletSetupResponse('not sure yet')).toBe('not_sure');
+    expect(classifyWalletSetupResponse('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBe('unsafe_secret');
     expect(classifyWalletSetupResponse('')).toBe('invalid');
+  });
+
+  it('accepts public wallet addresses but rejects private-key-shaped wallet input', () => {
+    const record = createInitialProductSetupRecord(facts);
+    const accepted = handleProductSetupWalletInput(record, 'admin_wallet', '0x1111111111111111111111111111111111111111');
+    const rejected = handleProductSetupWalletInput(
+      accepted.record,
+      'redemption_wallet',
+      '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    );
+
+    expect(accepted.classification).toBe('address');
+    expect(accepted.record.fields.admin_wallet.status).toBe('user_confirmed');
+    expect(rejected.classification).toBe('unsafe_secret');
+    expect(rejected.record.fields.redemption_wallet.status).toBe('missing');
+  });
+
+  it('shows deployment warnings and records an explicit proceed-with-warnings decision', () => {
+    const record = updateProductSetupField(createInitialProductSetupRecord(facts), {
+      fieldKey: 'subscription_stablecoins',
+      value: ['USDC'],
+      sourceType: 'direct_form_input',
+      sourceRef: 'test',
+    });
+    const readModel = toProductSetupReadModel(record);
+
+    expect(readModel.deploymentWarnings.map((warning) => warning.fieldKey)).toEqual(
+      expect.arrayContaining(['admin_wallet', 'subscription_receiving_wallet', 'redemption_wallet', 'burn_lock_rule']),
+    );
+    expect(readModel.hasUnacknowledgedDeploymentWarnings).toBe(true);
+
+    const acknowledged = acknowledgeProductSetupDeploymentWarnings(record, 'test_ack');
+    const acknowledgedReadModel = toProductSetupReadModel(acknowledged);
+
+    expect(acknowledged.deploymentWarningAcknowledgements).toHaveLength(1);
+    expect(acknowledgedReadModel.hasUnacknowledgedDeploymentWarnings).toBe(false);
+  });
+
+  it('does not treat an empty deployment default as ready', () => {
+    const record = createInitialProductSetupRecord(facts);
+    const withoutNetworkValue = {
+      ...record,
+      fields: {
+        ...record.fields,
+        prototype_network: {
+          ...record.fields.prototype_network,
+          value: undefined,
+          status: 'system_default' as const,
+        },
+      },
+    };
+
+    expect(toProductSetupReadModel(withoutNetworkValue).deploymentWarnings.map((warning) => warning.fieldKey)).toContain(
+      'prototype_network',
+    );
+  });
+
+  it('captures unsupported custom requirements from messy product notes', () => {
+    const decisions = createUnsupportedRequirementDecisionsFromText(
+      'Investors can buy-sell from each other peer to peer and I want conditional transfers with clawback.',
+      'chat_turn_custom',
+    );
+    const record = setUnsupportedRequirementDecisions(createInitialProductSetupRecord(facts), decisions);
+
+    expect(record.unsupportedRequirementDecisions.map((decision) => decision.requirement)).toEqual(
+      expect.arrayContaining([
+        'Investor peer-to-peer transfer and settlement workflow',
+        'Conditional transfers with clawback',
+      ]),
+    );
+  });
+
+  it('generates a Product Setup Pack with definitions, protocol fit, provenance, and unsupported decisions', () => {
+    const record = setUnsupportedRequirementDecisions(
+      createInitialProductSetupRecord(facts),
+      createUnsupportedRequirementDecisionsFromText('I need conditional transfer with clawback.', 'chat_turn_pack'),
+    );
+    const markdown = createProductSetupPackMarkdown(record);
+
+    expect(markdown).toContain('# ZiLi-OS Product Setup Pack');
+    expect(markdown).toContain('## Definitions Used In This Product Setup');
+    expect(markdown).toContain('Recommended architecture target');
+    expect(markdown).toContain('Current executable prototype');
+    expect(markdown).toContain('Conditional transfers with clawback');
   });
 });

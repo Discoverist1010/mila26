@@ -28,6 +28,13 @@ export type RedemptionParameters = {
   redemptionWalletAddress?: string;
   payoutStablecoin?: string;
   payoutPerToken?: string;
+  redemptionHandlingRule?: string;
+};
+
+export type AssetServicingParameters = {
+  navCadence?: string;
+  navSource?: string;
+  investorUpdateRule?: string;
 };
 
 export type MaturityParameters = {
@@ -44,6 +51,7 @@ export type Mila26LifecycleState = {
   investorRegistryEntries: InvestorRegistryEntry[];
   subscriptionParameters: SubscriptionParameters;
   redemptionParameters: RedemptionParameters;
+  assetServicingParameters: AssetServicingParameters;
   maturityParameters: MaturityParameters;
   allocationMintParameters: AllocationMintParameters;
 };
@@ -112,6 +120,7 @@ export type SubscriptionRedemptionTemplateReadModel = {
     redemptionWalletAddress?: string;
     payoutStablecoin?: string;
     payoutPerToken?: string;
+    redemptionHandlingRule?: string;
   };
 };
 
@@ -146,6 +155,7 @@ export function createInitialMila26LifecycleState(): Mila26LifecycleState {
       permittedStablecoins: [],
     },
     redemptionParameters: {},
+    assetServicingParameters: {},
     maturityParameters: {},
     allocationMintParameters: {},
   };
@@ -229,7 +239,7 @@ export function toMila26LifecycleReadModel(state: Mila26LifecycleState): Mila26L
     subscriptionStatus: subscription.status,
     redemptionStatus: redemption.status,
     allocationMintStatus: allocationMint.status,
-    maturityStatus: state.maturityParameters.maturityDate ? 'draft' : 'locked_for_later',
+    maturityStatus: state.maturityParameters.maturityDate || state.maturityParameters.closeoutMethod ? 'draft' : 'locked_for_later',
   };
 }
 
@@ -280,7 +290,8 @@ function toRedemptionParametersReadModel(parameters: RedemptionParameters): Rede
     Boolean(parameters.redemptionDelayValue) ||
     Boolean(parameters.redemptionWalletAddress?.trim()) ||
     Boolean(parameters.payoutStablecoin?.trim()) ||
-    Boolean(parameters.payoutPerToken?.trim());
+    Boolean(parameters.payoutPerToken?.trim()) ||
+    Boolean(parameters.redemptionHandlingRule?.trim());
 
   if (!parameters.redemptionWindow?.trim()) validationMessages.push('Add a redemption window or date.');
   if (!parameters.redemptionDelayUnit) validationMessages.push('Choose a redemption delay unit.');
@@ -292,6 +303,7 @@ function toRedemptionParametersReadModel(parameters: RedemptionParameters): Rede
   }
   if (!parameters.payoutStablecoin?.trim()) validationMessages.push('Add a stablecoin payout asset.');
   if (!isPositiveNumericString(parameters.payoutPerToken)) validationMessages.push('Payout per token must be greater than zero.');
+  if (!parameters.redemptionHandlingRule?.trim()) validationMessages.push('Choose a redemption token handling rule.');
 
   const status: LifecycleParameterStatus = validationMessages.length === 0 ? 'ready' : hasAnyInput ? 'draft' : 'needs_parameters';
 
@@ -346,6 +358,7 @@ function toSubscriptionRedemptionTemplateReadModel(
       redemptionWalletAddress: normalizedOptional(redemptionParameters.redemptionWalletAddress),
       payoutStablecoin: normalizedOptional(redemptionParameters.payoutStablecoin)?.toUpperCase(),
       payoutPerToken: normalizedOptional(redemptionParameters.payoutPerToken),
+      redemptionHandlingRule: normalizedOptional(redemptionParameters.redemptionHandlingRule),
     },
   };
 }
