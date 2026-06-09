@@ -896,16 +896,63 @@ summary {
   background: #f5f7fb;
   color: #111827;
   min-height: 100vh;
+  scroll-behavior: smooth;
+}
+
+.website-topbar {
+  align-items: center;
+  background: rgb(255 255 255 / 0.92);
+  border-bottom: 1px solid #dde6f0;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 14px min(6vw, 84px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.website-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.website-nav a,
+.nav-cta {
+  border-radius: 8px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 820;
+  padding: 9px 11px;
+  text-decoration: none;
+}
+
+.website-nav a:hover,
+.website-nav a:focus-visible {
+  background: #eaf0f7;
+  color: #0f172a;
+}
+
+.nav-cta {
+  background: #0f766e;
+  color: #ffffff;
+  justify-self: end;
 }
 
 .website-hero {
   align-items: center;
-  background: #07142a;
+  background:
+    linear-gradient(110deg, rgb(5 14 29 / 0.92), rgb(7 20 42 / 0.78)),
+    url('/mila26-product-preview.png');
+  background-position: center;
+  background-size: cover;
   color: #eef5ff;
   display: grid;
   gap: 44px;
   grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.1fr);
-  min-height: 88vh;
+  min-height: 82vh;
   overflow: hidden;
   padding: 44px min(6vw, 84px);
 }
@@ -919,6 +966,17 @@ summary {
   gap: 12px;
   margin-bottom: 58px;
   text-decoration: none;
+}
+
+.website-brand.compact {
+  color: #111827;
+  font-size: 20px;
+  margin-bottom: 0;
+}
+
+.website-brand.compact img {
+  height: 38px;
+  width: 38px;
 }
 
 .website-brand img {
@@ -1018,19 +1076,92 @@ summary {
   margin-top: 12px;
 }
 
+.website-company-band,
+.website-status-band,
+.website-contact,
 .website-section,
 .website-access {
   display: grid;
   gap: 28px;
   grid-template-columns: minmax(280px, 0.8fr) minmax(320px, 1.2fr);
   padding: 70px min(6vw, 84px);
+  scroll-margin-top: 86px;
 }
 
+.website-company-band {
+  background: #ffffff;
+  border-bottom: 1px solid #dde6f0;
+}
+
+.website-company-copy {
+  border-left: 3px solid #0f766e;
+  display: grid;
+  gap: 14px;
+  padding-left: 22px;
+}
+
+.website-company-copy p {
+  color: #475569;
+  font-size: 17px;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.website-company-band h2,
+.website-status-band h2,
+.website-contact h2,
 .website-section h2,
 .website-access h2 {
   color: #111827;
   font-size: clamp(30px, 3vw, 44px);
   line-height: 1.1;
+  margin: 0;
+}
+
+.workflow-band {
+  background: #fbfcfd;
+}
+
+.website-workflow-list {
+  display: grid;
+  gap: 12px;
+}
+
+.website-workflow-list article {
+  align-items: start;
+  background: #ffffff;
+  border: 1px solid #dde6f0;
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 18px;
+}
+
+.website-workflow-list span {
+  align-items: center;
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  color: #0f766e;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 900;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.website-workflow-list strong {
+  color: #0f172a;
+  display: block;
+  font-size: 18px;
+  margin-bottom: 7px;
+}
+
+.website-workflow-list p {
+  color: #536176;
+  line-height: 1.55;
   margin: 0;
 }
 
@@ -1117,6 +1248,51 @@ summary {
   background: #eaf0f7;
 }
 
+.website-status-band {
+  background: #10201f;
+  color: #e9fbf7;
+}
+
+.website-status-band h2 {
+  color: #ffffff;
+}
+
+.website-status-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.website-status-grid article {
+  background: rgb(255 255 255 / 0.08);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.website-status-grid span {
+  color: #99f6e4;
+  display: block;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.website-status-grid strong {
+  color: #ffffff;
+  display: block;
+  font-size: 19px;
+  margin-bottom: 10px;
+}
+
+.website-status-grid p {
+  color: #cce3df;
+  line-height: 1.58;
+  margin: 0;
+}
+
 .website-checklist {
   display: grid;
   gap: 12px;
@@ -1143,6 +1319,71 @@ summary {
   justify-self: start;
 }
 
+.website-contact {
+  background: #f7f2e8;
+}
+
+.website-contact p {
+  color: #4b5563;
+  font-size: 17px;
+  line-height: 1.65;
+  max-width: 720px;
+}
+
+.website-contact-form {
+  background: #ffffff;
+  border: 1px solid #decfae;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.website-contact-form label {
+  color: #334155;
+  display: grid;
+  font-size: 13px;
+  font-weight: 850;
+  gap: 7px;
+}
+
+.website-contact-form input,
+.website-contact-form select,
+.website-contact-form textarea {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #0f172a;
+  font: inherit;
+  padding: 11px 12px;
+}
+
+.website-contact-form input:focus,
+.website-contact-form select:focus,
+.website-contact-form textarea:focus {
+  border-color: #0f766e;
+  outline: 3px solid rgb(15 118 110 / 0.16);
+}
+
+.website-contact-form button {
+  background: #0f766e;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  justify-self: start;
+  padding: 12px 16px;
+}
+
+.website-contact-form p {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 1.45;
+  margin: 0;
+}
+
 @media (max-width: 1280px) {
   .cockpit-shell {
     grid-template-columns: 220px minmax(0, 1fr) 260px;
@@ -1158,6 +1399,22 @@ summary {
 }
 
 @media (max-width: 980px) {
+  .website-topbar {
+    grid-template-columns: 1fr;
+    position: static;
+  }
+
+  .website-nav {
+    justify-content: start;
+  }
+
+  .nav-cta {
+    justify-self: start;
+  }
+
+  .website-company-band,
+  .website-status-band,
+  .website-contact,
   .website-hero,
   .website-section,
   .website-access {
@@ -1169,11 +1426,24 @@ summary {
     padding: 28px 20px 44px;
   }
 
+  .website-company-band,
+  .website-status-band,
+  .website-contact,
+  .website-section,
+  .website-access {
+    padding: 44px 20px;
+  }
+
   .website-brand {
     margin-bottom: 36px;
   }
 
-  .website-card-grid {
+  .website-brand.compact {
+    margin-bottom: 0;
+  }
+
+  .website-card-grid,
+  .website-status-grid {
     grid-template-columns: 1fr;
   }
 
