@@ -4,7 +4,12 @@ test('website exposes company, product, access, and contact information without 
   await page.goto('/site');
 
   await expect(page.getByLabel('ZiLiOS website navigation')).toContainText('Product');
-  await expect(page.getByLabel('Company positioning')).toContainText('tokenised investment products beyond one fund type');
+  await expect(page.getByLabel('Company positioning')).toContainText(
+    'Purpose-built infrastructure for the next generation of tokenised investment products.',
+  );
+  await expect(page.getByLabel('Company positioning')).toContainText(
+    'ZilIOS believes tokenised investment products should be easier to create, test, and launch responsibly.',
+  );
   await expect(page.getByLabel('Workflow path')).toContainText('From product intent to a reviewable Sepolia operation path');
   await expect(page.getByLabel('Workflow path')).toContainText('Prove the Sepolia path');
   await expect(page.getByLabel('MVP status and boundaries')).toContainText('Working MVP');
