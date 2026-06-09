@@ -2065,6 +2065,8 @@ summary {
 .product-setup-guidance,
 .product-setup-review,
 .product-setup-blockers,
+.product-setup-direct-inputs,
+.product-setup-wallet-capture,
 .product-setup-pack {
   border: 1px solid #e6edf6;
   border-radius: 8px;
@@ -2087,6 +2089,8 @@ summary {
 .product-setup-board h4,
 .product-setup-guidance h4,
 .product-setup-blockers h4,
+.product-setup-direct-inputs h3,
+.product-setup-wallet-capture h3,
 .product-setup-pack h4,
 .product-setup-prompt-grid strong {
   color: #0f172a;
@@ -2095,6 +2099,8 @@ summary {
 .product-setup-summary p,
 .product-setup-summary small,
 .product-setup-guidance p,
+.product-setup-direct-inputs p,
+.product-setup-wallet-capture p,
 .product-setup-prompt-grid p,
 .product-setup-prompt-grid small,
 .product-setup-pack p,
@@ -2110,6 +2116,21 @@ summary {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.product-setup-wallet-capture label {
+  display: grid;
+  gap: 8px;
+}
+
+.workflow-button.compact {
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
+.mode-toggle button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .product-setup-update-list {

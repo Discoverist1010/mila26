@@ -231,6 +231,11 @@ function getContractOpsDeployButton() {
   return contractOps().getByRole('button', { name: 'Deploy to Sepolia with Wallet' });
 }
 
+function acknowledgeContractOpsProductSetupWarnings() {
+  const proceedButton = screen.queryByRole('button', { name: 'Proceed with warnings' });
+  if (proceedButton) fireEvent.click(proceedButton);
+}
+
 describe('App Blockchain Engineer Bot panel', () => {
   it('shows local preview before asking and then renders a backend answer', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
@@ -602,6 +607,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.change(within(redemption).getByLabelText('Redemption wallet address'), { target: { value: redemptionWallet } });
     fireEvent.change(within(redemption).getByLabelText('Payout stablecoin'), { target: { value: 'usdc' } });
     fireEvent.change(within(redemption).getByLabelText('Payout per token'), { target: { value: '1.01' } });
+    fireEvent.change(within(redemption).getByLabelText('Redemption handling'), {
+      target: { value: 'Lock until stablecoin payout is complete, then burn' },
+    });
 
     expect(within(redemption).getByText('Redemption parameters are ready for template handoff.')).toBeVisible();
     expect(within(redemption).getByText('Redemption delay configured: 14 days.')).toBeVisible();
@@ -614,6 +622,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(within(handoff).getByText(paymentWallet)).toBeVisible();
     expect(within(handoff).getByText(redemptionWallet)).toBeVisible();
     expect(within(handoff).getByText('14 days')).toBeVisible();
+    expect(within(handoff).getByText('Lock until stablecoin payout is complete, then burn')).toBeVisible();
     expect(screen.getByLabelText('Project status')).toHaveTextContent('Contract Template (Sub-Redemption)');
     expect(screen.getByLabelText('Project status')).toHaveTextContent('Available');
 
@@ -853,6 +862,11 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
     expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('Subscription stablecoins');
     expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('USDC');
+    const walletCapture = within(screen.getByLabelText('Product Setup wallet capture'));
+    const subscriptionWalletInput = walletCapture.getByLabelText('Subscription receiving wallet');
+    expect(subscriptionWalletInput).toHaveValue('0x4444444444444444444444444444444444444444');
+    fireEvent.change(subscriptionWalletInput, { target: { value: '' } });
+    expect(subscriptionWalletInput).toHaveValue('');
   });
 
   it('saves generated artifacts from the Evidence tab after establishing a workspace snapshot', async () => {
@@ -1283,6 +1297,7 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(getContractOpsDeployButton()).toBeEnabled();
     });
 
+    acknowledgeContractOpsProductSetupWarnings();
     const deploymentButton = getContractOpsDeployButton();
     fireEvent.click(deploymentButton);
     fireEvent.click(deploymentButton);
@@ -1333,6 +1348,7 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(getContractOpsDeployButton()).toBeEnabled();
     });
 
+    acknowledgeContractOpsProductSetupWarnings();
     fireEvent.click(getContractOpsDeployButton());
 
     await waitFor(() => {
@@ -1389,6 +1405,7 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(getContractOpsDeployButton()).toBeEnabled();
     });
 
+    acknowledgeContractOpsProductSetupWarnings();
     fireEvent.click(getContractOpsDeployButton());
 
     await waitFor(() => {
@@ -1517,6 +1534,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     await waitFor(() => {
       expect(getContractOpsDeployButton()).toBeEnabled();
     });
+    acknowledgeContractOpsProductSetupWarnings();
     fireEvent.click(getContractOpsDeployButton());
 
     await waitFor(() => {
@@ -1592,6 +1610,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     await waitFor(() => {
       expect(getContractOpsDeployButton()).toBeEnabled();
     });
+    acknowledgeContractOpsProductSetupWarnings();
     fireEvent.click(getContractOpsDeployButton());
 
     await waitFor(() => {
@@ -1706,6 +1725,7 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(getContractOpsDeployButton()).toBeEnabled();
     });
 
+    acknowledgeContractOpsProductSetupWarnings();
     fireEvent.click(getContractOpsDeployButton());
 
     await waitFor(() => {

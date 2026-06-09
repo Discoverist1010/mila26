@@ -192,7 +192,7 @@ describe('MILA26 lifecycle state', () => {
     expect(readModel.subscription.normalizedPermittedStablecoins).toEqual(['USDC', 'USDT']);
   });
 
-  it('marks redemption parameters ready only after delay, wallet, payout asset, and payout price are valid', () => {
+  it('marks redemption parameters ready only after delay, wallet, payout asset, payout price, and token handling are valid', () => {
     const draftReadModel = toMila26LifecycleReadModel({
       ...createInitialMila26LifecycleState(),
       redemptionParameters: {
@@ -202,6 +202,7 @@ describe('MILA26 lifecycle state', () => {
         redemptionWalletAddress: secondWallet,
         payoutStablecoin: 'USDC',
         payoutPerToken: '1.03',
+        redemptionHandlingRule: 'Lock until stablecoin payout is complete, then burn',
       },
     });
 
@@ -217,6 +218,7 @@ describe('MILA26 lifecycle state', () => {
         redemptionWalletAddress: secondWallet,
         payoutStablecoin: 'usdc',
         payoutPerToken: '1.03',
+        redemptionHandlingRule: 'Lock until stablecoin payout is complete, then burn',
       },
     });
 
@@ -242,6 +244,7 @@ describe('MILA26 lifecycle state', () => {
         redemptionWalletAddress: secondWallet,
         payoutStablecoin: 'usdc',
         payoutPerToken: '1.01',
+        redemptionHandlingRule: 'Burn only after payout is complete',
       },
     });
 
@@ -258,6 +261,7 @@ describe('MILA26 lifecycle state', () => {
       redemptionWalletAddress: secondWallet,
       payoutStablecoin: 'USDC',
       payoutPerToken: '1.01',
+      redemptionHandlingRule: 'Burn only after payout is complete',
     });
 
     const editedReadModel = toMila26LifecycleReadModel({

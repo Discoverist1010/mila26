@@ -403,6 +403,7 @@ test('subscription redemption parameters update shared lifecycle state and templ
   await redemption.getByLabel('Redemption wallet address').fill(redemptionWallet);
   await redemption.getByLabel('Payout stablecoin').fill('usdc');
   await redemption.getByLabel('Payout per token').fill('1.01');
+  await redemption.getByLabel('Redemption handling').selectOption('Lock until stablecoin payout is complete, then burn');
   await expect(redemption.getByText('Redemption parameters are ready for template handoff.')).toBeVisible();
   await expect(page.getByText(
     'Review the subscription-redemption template handoff generated from the current shared lifecycle state.',
@@ -415,6 +416,7 @@ test('subscription redemption parameters update shared lifecycle state and templ
   await expect(handoff.getByText(paymentWallet)).toBeVisible();
   await expect(handoff.getByText(redemptionWallet)).toBeVisible();
   await expect(handoff.getByText('14 days')).toBeVisible();
+  await expect(handoff.getByText('Lock until stablecoin payout is complete, then burn')).toBeVisible();
   await expect(page.getByLabel('Project status')).toContainText('Contract Template (Sub-Redemption)');
   await expect(page.getByLabel('Project status')).toContainText('Available');
   await expect(page.getByTestId('smart-contract-control')).toHaveCount(0);
