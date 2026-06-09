@@ -189,17 +189,16 @@ export function WebsiteLanding() {
       <section className="website-company-band" aria-label="Company positioning">
         <div>
           <p className="eyebrow">Company</p>
-          <h2>Purpose-built infrastructure for the next generation of tokenised investment products.</h2>
+          <h2>Infrastructure for tokenised investment products, from workflow design to testnet deployment.</h2>
         </div>
         <div className="website-company-copy">
           <p>
-            ZilIOS believes tokenised investment products should be easier to create, test, and launch responsibly. We
-            help asset managers, founders, and product teams move from idea to blockchain-aware workflows through
-            AI-supported structuring, post-trade operating processes, servicing records, and evidence-ready activity
-            trails.
+            ZilIOS is for builders who want to move tokenised finance forward responsibly, from structured workflow to
+            testnet proof.
           </p>
           <p>
-            ZilIOS is for builders who want to move the next gen of finance forward using blockchain.
+            We seek to facilitate adoption and enable new growth by combining AI-guided structuring, blockchain
+            workflows, and post-trade domain expertise.
           </p>
         </div>
       </section>

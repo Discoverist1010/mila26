@@ -1106,14 +1106,17 @@ summary {
 }
 
 .website-company-band {
+  align-items: start;
   background: #ffffff;
   border-bottom: 1px solid #dde6f0;
 }
 
 .website-company-copy {
+  align-self: start;
   border-left: 3px solid #0f766e;
   display: grid;
-  gap: 14px;
+  gap: 30px;
+  margin-top: 34px;
   padding-left: 22px;
 }
 
@@ -1449,6 +1452,11 @@ summary {
   .website-section,
   .website-access {
     padding: 44px 20px;
+  }
+
+  .website-company-copy {
+    gap: 18px;
+    margin-top: 0;
   }
 
   .website-brand {
