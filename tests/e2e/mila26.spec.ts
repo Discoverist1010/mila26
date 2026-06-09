@@ -35,12 +35,12 @@ test('product setup turns unstructured chat into reviewable requirements', async
 
   const productSetup = page.getByLabel('Product Setup workspace');
   await expect(productSetup.getByRole('heading', { name: 'Conversation-first Product Setup' })).toBeVisible();
-  await expect(productSetup).toContainText('Advisor Bot explains unfamiliar tokenisation concepts');
-  await expect(productSetup).toContainText('Engineering Bot structures confirmed requirements');
+  await expect(productSetup).toContainText('ZiLi-OS routes each message to the right advisor and');
+  await expect(productSetup).toContainText('Engineering structures requirements and proposes updates');
   await expect(productSetup).toContainText('Recommended architecture target; current executable prototype is Sepolia restricted ERC-20-compatible.');
 
   await productSetup.getByRole('button', { name: 'Use rough product note' }).click();
-  await expect(page.getByRole('textbox', { name: 'Engineering Bot MILA' })).toHaveValue(/private credit portfolio/i);
+  await expect(page.getByRole('textbox', { name: 'ZiLi-OS Copilot' })).toHaveValue(/private credit portfolio/i);
   await page.getByRole('button', { name: 'Send' }).click();
 
   const suggestedUpdates = page.getByLabel('Product Setup suggested updates');
@@ -220,14 +220,14 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByLabel('Top stage progress')).toHaveCount(0);
   await expect(page.getByLabel('Current-stage activities')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
-  await expect(page.getByLabel('Engineering Bot workspace')).toBeVisible();
+  await expect(page.getByLabel('ZiLi-OS Copilot workspace')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Create Requirement Doc' })).toBeVisible();
   await expect(page.getByText('Recommendation')).toHaveCount(0);
   await expect(page.getByText('I am ready to create the Requirement Brief.')).toHaveCount(0);
   await expect(page.getByLabel('Brief Preview')).toContainText('Business objective');
   await expect(page.getByLabel('Brief Preview')).toContainText('Token model');
   await expect(page.getByText('Next best action')).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'Engineering Bot MILA' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'ZiLi-OS Copilot' })).toBeVisible();
   await expect(page.getByText('What I understand')).toHaveCount(0);
   await expect(page.getByText('Tokenisation goal')).toHaveCount(0);
   await expect(page.getByText('Lifecycle snapshot')).toBeVisible();

@@ -65,6 +65,7 @@ import {
   type ProductSetupProtocolBase,
 } from './domain/productSetup';
 import { toRequirementBriefContract } from './domain/requirementBrief';
+import { routeZiLiOSCopilotMessage, type ZiLiOSCopilotRouteKind } from './domain/ziliosCopilotRouter';
 import {
   defaultRecordNavOperationPayload,
   formatRecordNavOperationStatus,
@@ -194,6 +195,7 @@ type EngineeringBotConversationTurn =
       role: 'user';
       content: string;
       assistantMode: AssistantMode;
+      copilotRoute: ZiLiOSCopilotRouteKind;
     }
   | {
       id: string;
@@ -201,6 +203,8 @@ type EngineeringBotConversationTurn =
       response: BlockchainEngineerChatResponse;
       source: EngineerAnswerSource;
       assistantMode: AssistantMode;
+      copilotRoute: ZiLiOSCopilotRouteKind;
+      routeLabels: string[];
     };
 
 const demoProjectFolders: DemoProjectFolder[] = [
@@ -509,7 +513,6 @@ export function App() {
   const [goal] = useState('We want to launch a tokenized income product for approved investors.');
   const [selectedProjectId, setSelectedProjectId] = useState<ProjectDirectorySelection>('usequities');
   const [selectedWorkspaceTab, setSelectedWorkspaceTab] = useState<WorkspaceTabId>('overview');
-  const [activeAssistantMode, setActiveAssistantMode] = useState<AssistantMode>('engineering');
   const [question, setQuestion] = useState('');
   const [brief, setBrief] = useState<RequirementBrief | undefined>();
   const [engineeringBrief, setEngineeringBrief] = useState<EngineeringBrief | undefined>();
@@ -581,6 +584,8 @@ export function App() {
       response: createInitialEngineerResponse(),
       source: 'local',
       assistantMode: 'engineering',
+      copilotRoute: 'engineering',
+      routeLabels: ['Engineering view'],
     },
   ]);
   const [engineerAnswerSource, setEngineerAnswerSource] = useState<EngineerAnswerSource>('local');
@@ -1191,6 +1196,8 @@ export function App() {
     response: BlockchainEngineerChatResponse,
     source: EngineerAnswerSource,
     assistantMode: AssistantMode = 'engineering',
+    copilotRoute: ZiLiOSCopilotRouteKind = 'engineering',
+    routeLabels: string[] = ['Engineering view'],
   ) {
     setEngineerAnswerSource(source);
     setEngineeringBotConversation((turns) => [
@@ -1201,6 +1208,8 @@ export function App() {
         response,
         source,
         assistantMode,
+        copilotRoute,
+        routeLabels,
       },
     ]);
   }
@@ -1266,24 +1275,26 @@ export function App() {
 
     setIsBotReplyLoading(true);
     setBotChatError(undefined);
+    const copilotRoute = routeZiLiOSCopilotMessage(submittedQuestion);
     setEngineeringBotConversation((turns) => [
       ...turns,
       {
         id: nextEngineeringBotConversationTurnId('user'),
         role: 'user',
         content: submittedQuestion,
-        assistantMode: activeAssistantMode,
+        assistantMode: copilotRoute.assistantMode,
+        copilotRoute: copilotRoute.route,
       },
     ]);
     const chatSourceRef = `chat_turn_${Date.now()}`;
     const productSetupSuggestions =
-      activeAssistantMode === 'engineering' ? createProductSetupSuggestionsFromText(submittedQuestion, chatSourceRef) : [];
+      copilotRoute.shouldExtractRequirements ? createProductSetupSuggestionsFromText(submittedQuestion, chatSourceRef) : [];
     const unsupportedRequirementDecisions =
-      activeAssistantMode === 'engineering' ? createUnsupportedRequirementDecisionsFromText(submittedQuestion, chatSourceRef) : [];
+      copilotRoute.shouldExtractRequirements ? createUnsupportedRequirementDecisionsFromText(submittedQuestion, chatSourceRef) : [];
 
     const result = await askBlockchainEngineer({
       userMessage: submittedQuestion,
-      assistantMode: activeAssistantMode,
+      assistantMode: copilotRoute.assistantMode,
       projectContext: brief
         ? {
             fundName: brief.fundFacts.fundName,
@@ -1304,7 +1315,7 @@ export function App() {
       setProductSetupRecord((current) =>
         setUnsupportedRequirementDecisions(setProductSetupSuggestedUpdates(current, productSetupSuggestions), unsupportedRequirementDecisions),
       );
-      publishEngineerResponse(result.data, 'backend', activeAssistantMode);
+      publishEngineerResponse(result.data, 'backend', copilotRoute.assistantMode, copilotRoute.route, copilotRoute.labels);
       setQuestion('');
       return;
     }
@@ -1313,7 +1324,13 @@ export function App() {
     setProductSetupRecord((current) =>
       setUnsupportedRequirementDecisions(setProductSetupSuggestedUpdates(current, productSetupSuggestions), unsupportedRequirementDecisions),
     );
-    publishEngineerResponse(createLocalEngineerResponse(answerAsBlockchainEngineer(submittedQuestion, brief)), 'local', activeAssistantMode);
+    publishEngineerResponse(
+      createLocalEngineerResponse(answerAsBlockchainEngineer(submittedQuestion, brief)),
+      'local',
+      copilotRoute.assistantMode,
+      copilotRoute.route,
+      copilotRoute.labels,
+    );
     setQuestion('');
   }
 
@@ -2508,7 +2525,7 @@ export function App() {
             <nav className="project-nav rail-section" aria-label="Engineering navigation">
               <p className="rail-label">Engineering</p>
               <button type="button" className="project-nav-button" aria-current="page">
-                <span>Engineering Bot</span>
+                <span>ZiLi-OS Copilot</span>
               </button>
               <button type="button" className="project-nav-button" onClick={() => setSelectedWorkspaceTab('smart_contract')}>
                 <span>Contract Ops</span>
@@ -2629,8 +2646,8 @@ export function App() {
                   <div>
                     <h3>Conversation-first Product Setup</h3>
                     <p>
-                      Start with rough notes or questions. Advisor Bot explains unfamiliar tokenisation concepts, while
-                      Engineering Bot structures confirmed requirements into the shared Product Setup record.
+                      Start with rough notes or questions. ZiLi-OS routes each message to the right advisor and
+                      engineering lenses behind the scenes.
                     </p>
                   </div>
                   <span className="gate-badge draft">{productSetupReadModel.statusLabel}</span>
@@ -2653,7 +2670,7 @@ export function App() {
                   <article>
                     <span>ZiLi-OS roles</span>
                     <strong>Advisor Bot + Engineering Bot</strong>
-                    <p>Advisor explains and discusses. Engineering structures requirements and proposes updates for confirmation.</p>
+                    <p>Advisor explains concepts. Engineering structures requirements and proposes updates for confirmation.</p>
                   </article>
                 </div>
 
@@ -2669,11 +2686,11 @@ export function App() {
                     <button type="button" className="workflow-button" onClick={() => setQuestion('We are tokenising a USD private credit portfolio for 25 investors. USDC subscriptions, whitelisted wallets only, quarterly redemption, payout may take 10 business days.')}>
                       Use rough product note
                     </button>
-                    <button type="button" className="workflow-button" onClick={() => setQuestion('Advisor Bot, explain admin wallet and redemption wallet before I provide addresses.')}>
-                      Ask Advisor Bot
+                    <button type="button" className="workflow-button" onClick={() => setQuestion('Explain admin wallet and redemption wallet before I provide addresses.')}>
+                      Explain wallet roles
                     </button>
-                    <button type="button" className="workflow-button" onClick={() => setQuestion('Engineering Bot, map my product to the best protocol base and list missing deployment blockers.')}>
-                      Ask Engineering Bot
+                    <button type="button" className="workflow-button" onClick={() => setQuestion('Map my product to the best protocol base and list missing deployment blockers.')}>
+                      Map protocol fit
                     </button>
                   </div>
                 </section>
@@ -3877,61 +3894,45 @@ export function App() {
               </section>
             )}
 
-            <section className="bot-workspace ai-workspace" aria-label="Engineering Bot workspace">
+            <section className="bot-workspace ai-workspace" aria-label="ZiLi-OS Copilot workspace">
               <div className="bot-title-row">
                 <div className="bot-identity">
                   <div className="bot-avatar" aria-hidden="true">AI</div>
                   <div>
-                    <h3>{activeAssistantMode === 'engineering' ? 'Engineering Bot' : 'Advisor Bot'}</h3>
+                    <h3>ZiLi-OS Copilot</h3>
                     <p>
-                      {activeAssistantMode === 'engineering'
-                        ? 'Designs the tokenisation workflow, artifacts, smart-contract handoffs, and wallet operation next steps.'
-                        : 'Explains the lifecycle, tabs, evidence, and next actions in plain language without changing the workflow.'}
+                      Uses Advisor Bot and Engineering Bot behind the scenes. Advisor explains concepts; Engineering structures
+                      requirements, blockers, and next actions.
                     </p>
                   </div>
                 </div>
-                <div className="ai-mode-switch" aria-label="AI assistant mode">
-                  <button
-                    type="button"
-                    aria-pressed={activeAssistantMode === 'engineering'}
-                    onClick={() => setActiveAssistantMode('engineering')}
-                  >
-                    Engineering
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={activeAssistantMode === 'advisor'}
-                    onClick={() => setActiveAssistantMode('advisor')}
-                  >
-                    Advisor
-                  </button>
-                </div>
               </div>
 
-              <div className="bot-conversation" aria-label="Engineering Bot conversation">
+              <div className="bot-conversation" aria-label="ZiLi-OS Copilot conversation">
                 <div className="assistant-response" data-testid="engineer-answer">
                   <div className="conversation-history">
                     {engineeringBotConversation.map((turn) =>
                       turn.role === 'user' ? (
                         <article className="conversation-turn user-turn" key={turn.id}>
-                          <span className="turn-label">
-                            You to {turn.assistantMode === 'advisor' ? 'Advisor' : 'Engineering'}
-                          </span>
+                          <span className="turn-label">You</span>
                           <p>{turn.content}</p>
                         </article>
                       ) : (
                         <article className="conversation-turn assistant-turn" key={turn.id}>
-                          <span className="turn-label">
-                            {turn.assistantMode === 'advisor' ? 'Advisor Bot' : 'Engineering Bot'}
-                          </span>
+                          <span className="turn-label">ZiLi-OS Copilot</span>
+                          <div className="copilot-route-labels" aria-label="ZiLi-OS routing">
+                            {turn.routeLabels.map((label) => (
+                              <span key={label}>{label}</span>
+                            ))}
+                          </div>
                           {renderEngineerResponse(turn.response)}
                         </article>
                       ),
                     )}
                     {isBotReplyLoading && (
                       <article className="conversation-turn assistant-turn pending-turn" aria-live="polite">
-                        <span className="turn-label">{activeAssistantMode === 'advisor' ? 'Advisor Bot' : 'Engineering Bot'}</span>
-                        <p>Waiting for {activeAssistantMode === 'advisor' ? 'Advisor Bot' : 'Engineering Bot'} response...</p>
+                        <span className="turn-label">ZiLi-OS Copilot</span>
+                        <p>Routing your message to the right ZiLi-OS bot lens...</p>
                       </article>
                     )}
                   </div>
@@ -3992,15 +3993,11 @@ export function App() {
               </section>
 
               <label className="chat-composer ai-composer">
-                <span className="composer-title">{activeAssistantMode === 'advisor' ? 'Advisor Bot MILA' : 'Engineering Bot MILA'}</span>
+                <span className="composer-title">ZiLi-OS Copilot</span>
                 <div className="composer-shell">
                   <textarea
-                    aria-label={activeAssistantMode === 'advisor' ? 'Advisor Bot MILA' : 'Engineering Bot MILA'}
-                    placeholder={
-                      activeAssistantMode === 'advisor'
-                        ? 'Ask what a lifecycle step, button, artifact, or evidence status means...'
-                        : 'Ask MILA26 what to design, configure, or review next...'
-                    }
+                    aria-label="ZiLi-OS Copilot"
+                    placeholder="Describe your product, ask a question, or paste rough requirements..."
                     value={question}
                     onChange={(event) => setQuestion(event.target.value)}
                     onKeyDown={(event) => {
@@ -4015,7 +4012,7 @@ export function App() {
                     {isBotReplyLoading ? 'Sending...' : 'Send'}
                   </button>
                 </div>
-                <div className="composer-actions" aria-label="Engineering Bot actions">
+                <div className="composer-actions" aria-label="ZiLi-OS Copilot actions">
                   {secondaryWorkflowActions.map((action) => (
                     <button
                       type="button"

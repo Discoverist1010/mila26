@@ -278,8 +278,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Project status')).toBeVisible();
     expect(screen.getByLabelText('Tokenisation lifecycle tabs')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Overview' })).toBeVisible();
-    expect(screen.getByLabelText('Engineering Bot workspace')).toBeVisible();
-    expect(screen.getByText('Designs the tokenisation workflow, artifacts, smart-contract handoffs, and wallet operation next steps.')).toBeVisible();
+    expect(screen.getByLabelText('ZiLi-OS Copilot workspace')).toBeVisible();
+    expect(screen.getByText(/Uses Advisor Bot and Engineering Bot behind the scenes/i)).toBeVisible();
     expect(screen.getByText('Next best action')).toBeVisible();
     expect(screen.getByRole('button', { name: /Alpha Income Fund I/i })).toBeVisible();
     expect(screen.getByRole('button', { name: /Singapore REIT Token/i })).toBeVisible();
@@ -293,7 +293,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByRole('heading', { name: 'All projects' })).not.toBeInTheDocument();
     expect(screen.queryByText('Choose a project folder on the left to inspect its linked artifacts and evidence.')).not.toBeInTheDocument();
     expect(screen.getByText('Local preview shown until a backend response is available.')).toBeVisible();
-    expect(screen.getByLabelText('Engineering Bot actions')).toBeVisible();
+    expect(screen.getByLabelText('ZiLi-OS Copilot actions')).toBeVisible();
     expect(screen.queryByText('Recommendation')).not.toBeInTheDocument();
     expect(screen.queryByText('I am ready to create the Requirement Brief.')).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Create Requirement Doc' })).toHaveLength(1);
@@ -302,13 +302,14 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByRole('button', { name: 'Approve Brief and Run Coding Bot' })).not.toBeInTheDocument();
     expect(screen.queryByText('What I understand')).not.toBeInTheDocument();
     expect(screen.queryByText('Tokenisation goal')).not.toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Engineering Bot MILA' })).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Send' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Advisor' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Advisor' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Engineering' })).not.toBeInTheDocument();
     expect(screen.queryByText('Next Recommended Action')).not.toBeInTheDocument();
     expect(screen.queryByTestId('smart-contract-control')).not.toBeInTheDocument();
 
-    const botComposer = screen.getByRole('textbox', { name: 'Engineering Bot MILA' });
+    const botComposer = screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' });
     fireEvent.change(botComposer, {
       target: {
         value:
@@ -318,7 +319,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.keyDown(botComposer, { key: 'Enter', code: 'Enter' });
 
     expect(screen.getByRole('button', { name: 'Sending...' })).toBeDisabled();
-    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Waiting for Engineering Bot response...');
+    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Routing your message to the right ZiLi-OS bot lens...');
 
     await waitFor(() => {
       expect(screen.getByText('Backend response.')).toBeVisible();
@@ -363,7 +364,7 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     render(<App />);
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'Engineering Bot MILA' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' }), {
       target: { value: '   ' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
@@ -372,7 +373,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a question before asking the bot.');
   });
 
-  it('keeps Advisor mode in the same AI panel across tab switches', async () => {
+  it('routes explanation questions to Advisor without exposing a mode toggle or mutating Product Setup', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       createJsonResponse({
         ok: true,
@@ -391,10 +392,10 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Advisor' }));
-    expect(screen.getByRole('textbox', { name: 'Advisor Bot MILA' })).toBeVisible();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Advisor Bot MILA' }), {
-      target: { value: 'Where do redemption delays belong?' },
+    expect(screen.queryByRole('button', { name: 'Advisor' })).not.toBeInTheDocument();
+    const composer = screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' });
+    fireEvent.change(composer, {
+      target: { value: 'Explain redemption delay.' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
@@ -403,12 +404,14 @@ describe('App Blockchain Engineer Bot panel', () => {
     });
     const requestBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(requestBody.assistantMode).toBe('advisor');
-    expect(screen.getByText('You to Advisor')).toBeVisible();
-    expect(screen.getAllByText('Advisor Bot').length).toBeGreaterThan(0);
+    expect(screen.getByText('You')).toBeVisible();
+    expect(screen.getAllByLabelText('ZiLi-OS routing').at(-1)).toHaveTextContent('Advisor view');
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Redemption/ }));
-    expect(screen.getByRole('textbox', { name: 'Advisor Bot MILA' })).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' })).toBeVisible();
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Advisor view: use Redemption');
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    expect(screen.queryByLabelText('Product Setup suggested updates')).not.toBeInTheDocument();
   });
 
   it('shows a safe error and local fallback when the backend is unavailable', async () => {
@@ -416,7 +419,7 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     render(<App />);
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'Engineering Bot MILA' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' }), {
       target: { value: 'How should deployment work?' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
@@ -1324,7 +1327,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Receipt returned');
     expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Local-session evidence');
     expect(screen.getByLabelText('Contract Ops summary')).toHaveTextContent('Gated operations available');
-    expect(within(screen.getByLabelText('Engineering Bot actions')).queryByRole('button', { name: /Record NAV/i })).not.toBeInTheDocument();
+    expect(within(screen.getByLabelText('ZiLi-OS Copilot actions')).queryByRole('button', { name: /Record NAV/i })).not.toBeInTheDocument();
     expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Record NAV Event' })).toBeEnabled();
     expect(screen.queryByText(/durable evidence|persistent evidence|permanent evidence/i)).not.toBeInTheDocument();
     expect(within(screen.getByLabelText('Project status')).queryByRole('button', { name: /deploy/i })).not.toBeInTheDocument();
@@ -1355,7 +1358,7 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Record NAV Event' })).toBeEnabled();
     });
 
-    expect(within(screen.getByLabelText('Engineering Bot actions')).queryByRole('button', { name: /Record NAV/i })).not.toBeInTheDocument();
+    expect(within(screen.getByLabelText('ZiLi-OS Copilot actions')).queryByRole('button', { name: /Record NAV/i })).not.toBeInTheDocument();
     expect(within(screen.getByLabelText('Project status')).queryByRole('button', { name: /Record NAV/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Operation transaction hash: 0x/i)).not.toBeInTheDocument();
 
@@ -1412,7 +1415,7 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeDisabled();
     });
 
-    expect(within(screen.getByLabelText('Engineering Bot actions')).queryByRole('button', { name: /Whitelist/i })).not.toBeInTheDocument();
+    expect(within(screen.getByLabelText('ZiLi-OS Copilot actions')).queryByRole('button', { name: /Whitelist/i })).not.toBeInTheDocument();
     expect(within(screen.getByLabelText('Project status')).queryByRole('button', { name: /Whitelist/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Whitelist transaction hash: 0x/i)).not.toBeInTheDocument();
 
