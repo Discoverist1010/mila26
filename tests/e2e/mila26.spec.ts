@@ -34,12 +34,19 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Product Setup/ }).click();
 
   const productSetup = page.getByLabel('Product Setup workspace');
-  await expect(productSetup.getByRole('heading', { name: 'Conversation-first Product Setup' })).toBeVisible();
-  await expect(productSetup).toContainText('ZiLi-OS routes each message to the right advisor and');
-  await expect(productSetup).toContainText('Engineering structures requirements and proposes updates');
-  await expect(productSetup).toContainText('Recommended architecture target; current executable prototype is Sepolia restricted ERC-20-compatible.');
+  await expect(productSetup.getByRole('heading', { name: 'Canonical setup inputs' })).toBeVisible();
+  await expect(productSetup.getByLabel('Expected investors')).toBeVisible();
+  await expect(productSetup.getByLabel('Product Setup canonical inputs')).toContainText(
+    'Missing values warn before deployment but do not block navigation.',
+  );
+  await expect(productSetup).not.toContainText('Conversation-first Product Setup');
+  await expect(productSetup).not.toContainText('ZiLi-OS understanding');
+  await expect(productSetup).not.toContainText('MVP readiness');
+  await expect(productSetup).not.toContainText('Advisor Bot + Engineering Bot');
 
-  await productSetup.getByRole('button', { name: 'Use rough product note' }).click();
+  await page
+    .getByRole('textbox', { name: 'ZiLi-OS Copilot' })
+    .fill('We are tokenising a USD private credit portfolio for 25 investors. USDC subscriptions, whitelisted wallets only, quarterly redemption, payout may take 10 business days.');
   await expect(page.getByRole('textbox', { name: 'ZiLi-OS Copilot' })).toHaveValue(/private credit portfolio/i);
   await page.getByRole('button', { name: 'Send' }).click();
 
@@ -232,7 +239,7 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByText('Tokenisation goal')).toHaveCount(0);
   await expect(page.getByText('Lifecycle snapshot')).toBeVisible();
   await expect(page.getByTestId('engineer-answer')).toContainText('Requirement Brief');
-  await expect(page.getByText(/Local preview shown until a backend response is available/i)).toBeVisible();
+  await expect(page.getByText(/Local preview|Live model|Local fallback/i)).toHaveCount(0);
 
   await page.getByRole('button', { name: /Singapore REIT Token/i }).click();
   await expect(page.getByRole('heading', { name: 'Singapore REIT Token' }).first()).toBeVisible();
@@ -308,7 +315,6 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(generatedArtifacts.getByText('Not audited. No production approval. Wallet connection alone does not execute deployment or operations.')).toBeVisible();
   await expect(page.getByTestId('engineer-answer')).toContainText('Smart contract preparation is complete for demo review');
   await expect(page.getByTestId('engineer-answer')).toContainText('known local compile/test foundation as passed');
-  await expect(page.getByText('Backend artifacts generated.')).toBeVisible();
   const scp = page.getByTestId('smart-contract-control');
   await expect(scp.getByText('Artifact preview generated').first()).toBeVisible();
   await expect(generatedArtifacts).toContainText('Smart Contract Spec');

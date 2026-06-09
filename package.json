@@ -13,6 +13,7 @@
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:live-openai": "tsx scripts/live-openai-chat.ts",
     "test:live-sepolia": "tsx scripts/live-sepolia-readiness.ts",
     "test:e2e": "playwright test",
     "bundle:size": "node scripts/check-bundle-size.mjs",

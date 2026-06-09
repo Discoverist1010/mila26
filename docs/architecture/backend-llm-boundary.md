@@ -15,10 +15,12 @@ Backend LLM configuration uses these exact names:
 | Variable | Default | Behavior |
 |---|---:|---|
 | `MILA26_LLM_PROVIDER` | `mock` | `mock` is deterministic/default. `openai` enables backend-only OpenAI provider construction. |
-| `MILA26_LLM_MODEL` | `mila26-mock-model` for mock; required for OpenAI | Model label used by the selected provider. OpenAI mode has no runtime default; set an operator-selected model explicitly. Current recommended OpenAI model: `gpt-5.5` if the account supports it. |
+| `MILA26_LLM_MODEL` | `mila26-mock-model` for mock; required for OpenAI | Model label used by the selected provider. OpenAI mode has no runtime default; set an operator-selected model explicitly. Product Setup chat can start with `gpt-5.4-mini` for lower-latency live testing; `gpt-5.5` is the latest main model option for heavier workflows if the account supports it. |
 | `MILA26_LLM_TIMEOUT_MS` | `30000` | Parsed as a positive integer; invalid values fall back to the default. |
 | `MILA26_LLM_MAX_OUTPUT_TOKENS` | `2000` | Parsed as a positive integer; invalid values fall back to the default. |
 | `OPENAI_API_KEY` | none | Required only when `MILA26_LLM_PROVIDER=openai`; not required for mock mode. |
+| `LIVE_OPENAI` | `0` | Set to `1` only when intentionally running limited live OpenAI chat checks. Normal tests do not make live OpenAI calls. |
+| `MILA26_LIVE_OPENAI_CALL_LIMIT` | `5` | Live OpenAI chat harness call count. Values are capped at 10. |
 
 Do not create `VITE_` LLM variables. Vite environment variables are public to the browser bundle and must not be used for backend LLM secrets.
 
@@ -74,6 +76,7 @@ The boundary does not return secrets or raw provider configuration to frontend A
 - `openai` requires `MILA26_LLM_MODEL`; model choice is operator-configured and example model names are not runtime defaults.
 - The OpenAI provider uses the Responses API with `store: false`, concise `text.verbosity`, and optional `text.format` structured outputs.
 - Automated tests mock the OpenAI client and do not make live OpenAI calls.
+- `npm run test:live-openai` is opt-in behind `LIVE_OPENAI=1`, defaults to five chat calls, caps at ten, and verifies the real `/api/chat/blockchain-engineer` flow without exposing secrets or raw provider details.
 - `POST /api/prd/engineering-brief` remains deterministic in mock/default mode and may use a real provider only when configured.
 - `POST /api/chat/blockchain-engineer` remains deterministic in mock/default mode and may use a real provider only when configured.
 

@@ -187,7 +187,7 @@ type DemoProjectFolder = {
   marketScope: string;
 };
 
-type EngineerAnswerSource = 'local' | 'backend' | 'generated_artifacts' | 'wallet';
+type EngineerAnswerSource = 'local' | 'backend' | 'live_model' | 'generated_artifacts' | 'wallet';
 
 type EngineeringBotConversationTurn =
   | {
@@ -585,10 +585,9 @@ export function App() {
       source: 'local',
       assistantMode: 'engineering',
       copilotRoute: 'engineering',
-      routeLabels: ['Engineering view'],
+      routeLabels: ['Engineering Bot'],
     },
   ]);
-  const [engineerAnswerSource, setEngineerAnswerSource] = useState<EngineerAnswerSource>('local');
   const [botChatError, setBotChatError] = useState<string | undefined>();
   const [isBotReplyLoading, setIsBotReplyLoading] = useState(false);
   const [isLeftRailOpen, setIsLeftRailOpen] = useState(true);
@@ -951,6 +950,7 @@ export function App() {
     requirementBriefContract?.tokenModel.assumption ?? 'Token model will be confirmed in the Requirement Brief.';
   const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
   const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
+  const visibleSecondaryWorkflowActions = secondaryWorkflowActions.filter((action) => action.enabled);
   const nextBestActionText =
     lifecycleReadModel.investorRegistry.entryCount === 0
       ? 'Start by registering investor wallet addresses so subscription, whitelisting, servicing, and evidence can use the same lifecycle state.'
@@ -1197,9 +1197,8 @@ export function App() {
     source: EngineerAnswerSource,
     assistantMode: AssistantMode = 'engineering',
     copilotRoute: ZiLiOSCopilotRouteKind = 'engineering',
-    routeLabels: string[] = ['Engineering view'],
+    routeLabels: string[] = ['Engineering Bot'],
   ) {
-    setEngineerAnswerSource(source);
     setEngineeringBotConversation((turns) => [
       ...turns,
       {
@@ -1269,7 +1268,6 @@ export function App() {
     const submittedQuestion = question.trim();
     if (!submittedQuestion) {
       setBotChatError('Enter a question before asking the bot.');
-      setEngineerAnswerSource('local');
       return;
     }
 
@@ -1291,6 +1289,11 @@ export function App() {
       copilotRoute.shouldExtractRequirements ? createProductSetupSuggestionsFromText(submittedQuestion, chatSourceRef) : [];
     const unsupportedRequirementDecisions =
       copilotRoute.shouldExtractRequirements ? createUnsupportedRequirementDecisionsFromText(submittedQuestion, chatSourceRef) : [];
+    if (productSetupSuggestions.length > 0 || unsupportedRequirementDecisions.length > 0) {
+      setProductSetupRecord((current) =>
+        setUnsupportedRequirementDecisions(setProductSetupSuggestedUpdates(current, productSetupSuggestions), unsupportedRequirementDecisions),
+      );
+    }
 
     const result = await askBlockchainEngineer({
       userMessage: submittedQuestion,
@@ -1312,18 +1315,18 @@ export function App() {
     setIsBotReplyLoading(false);
 
     if (result.ok) {
-      setProductSetupRecord((current) =>
-        setUnsupportedRequirementDecisions(setProductSetupSuggestedUpdates(current, productSetupSuggestions), unsupportedRequirementDecisions),
+      publishEngineerResponse(
+        result.data,
+        result.data.responseSource === 'live_model' ? 'live_model' : 'backend',
+        copilotRoute.assistantMode,
+        copilotRoute.route,
+        copilotRoute.labels,
       );
-      publishEngineerResponse(result.data, 'backend', copilotRoute.assistantMode, copilotRoute.route, copilotRoute.labels);
       setQuestion('');
       return;
     }
 
     setBotChatError(result.message);
-    setProductSetupRecord((current) =>
-      setUnsupportedRequirementDecisions(setProductSetupSuggestedUpdates(current, productSetupSuggestions), unsupportedRequirementDecisions),
-    );
     publishEngineerResponse(
       createLocalEngineerResponse(answerAsBlockchainEngineer(submittedQuestion, brief)),
       'local',
@@ -2390,6 +2393,19 @@ export function App() {
     });
   }
 
+  function updateExpectedInvestorCountFromInput(value: string) {
+    if (value.trim() === '') {
+      updateProductSetupFieldFromTab('expected_investor_count', undefined, 'edited_in_product_setup_tab');
+      return;
+    }
+
+    const parsedValue = Number(value);
+    if (!Number.isFinite(parsedValue)) return;
+
+    const normalizedValue = Math.max(0, Math.min(50, Math.trunc(parsedValue)));
+    updateProductSetupFieldFromTab('expected_investor_count', normalizedValue, 'edited_in_product_setup_tab');
+  }
+
   function updateProductSetupWalletField(
     fieldKey: Extract<ProductSetupFieldKey, 'admin_wallet' | 'redemption_wallet' | 'subscription_receiving_wallet'>,
     value: string,
@@ -2642,64 +2658,11 @@ export function App() {
 
             {activeWorkspaceTab.id === 'requirements' && (
               <section className="product-setup-panel" aria-label="Product Setup workspace">
-                <div className="registry-panel-heading">
-                  <div>
-                    <h3>Conversation-first Product Setup</h3>
-                    <p>
-                      Start with rough notes or questions. ZiLi-OS routes each message to the right advisor and
-                      engineering lenses behind the scenes.
-                    </p>
-                  </div>
-                  <span className="gate-badge draft">{productSetupReadModel.statusLabel}</span>
-                </div>
-
-                <div className="product-setup-summary" aria-label="Product Setup understanding">
-                  <article>
-                    <span>ZiLi-OS understanding</span>
-                    <strong>{productSetupReadModel.protocolRecommendation.recommendedProtocol}</strong>
-                    <p>{productSetupReadModel.understandingSummary}</p>
-                    <small>{productSetupReadModel.protocolRecommendation.executablePrototypeLabel}</small>
-                  </article>
-                  <article>
-                    <span>MVP readiness</span>
-                    <strong>{productSetupReadModel.readinessLabel}</strong>
-                    <p>
-                      Draft work can continue without every field. Deployment blockers stay visible until filled or deliberately deferred.
-                    </p>
-                  </article>
-                  <article>
-                    <span>ZiLi-OS roles</span>
-                    <strong>Advisor Bot + Engineering Bot</strong>
-                    <p>Advisor explains concepts. Engineering structures requirements and proposes updates for confirmation.</p>
-                  </article>
-                </div>
-
-                <section className="product-setup-guidance" aria-label="Product Setup guidance">
-                  <div>
-                    <h4>How to start</h4>
-                    <p>
-                      Tell ZiLi-OS what you are trying to tokenise in plain language. The chat can be incomplete; ZiLi-OS will
-                      extract possible requirements and ask focused follow-ups.
-                    </p>
-                  </div>
-                  <div className="product-setup-chip-row" aria-label="Product Setup prompt examples">
-                    <button type="button" className="workflow-button" onClick={() => setQuestion('We are tokenising a USD private credit portfolio for 25 investors. USDC subscriptions, whitelisted wallets only, quarterly redemption, payout may take 10 business days.')}>
-                      Use rough product note
-                    </button>
-                    <button type="button" className="workflow-button" onClick={() => setQuestion('Explain admin wallet and redemption wallet before I provide addresses.')}>
-                      Explain wallet roles
-                    </button>
-                    <button type="button" className="workflow-button" onClick={() => setQuestion('Map my product to the best protocol base and list missing deployment blockers.')}>
-                      Map protocol fit
-                    </button>
-                  </div>
-                </section>
-
                 <section className="parameter-panel product-setup-direct-inputs" aria-label="Product Setup canonical inputs">
                   <div className="registry-panel-heading compact-subsection-heading">
                     <div>
                       <h3>Canonical setup inputs</h3>
-                      <p>These fields feed the later tabs. Downstream edits write back here with provenance.</p>
+                      <p>Fill these before moving on where possible. Missing values warn before deployment but do not block navigation.</p>
                     </div>
                   </div>
 
@@ -2722,6 +2685,21 @@ export function App() {
                         <option value="ERC-3643">ERC-3643</option>
                         <option value="Custom ERC-20 with rebasing">Custom ERC-20 with rebasing</option>
                       </select>
+                    </label>
+
+                    <label htmlFor="product-setup-expected-investors">
+                      Expected investors
+                      <input
+                        id="product-setup-expected-investors"
+                        type="number"
+                        inputMode="numeric"
+                        min="0"
+                        max="50"
+                        step="1"
+                        value={String(productSetupRecord.fields.expected_investor_count.value ?? '')}
+                        onChange={(event) => updateExpectedInvestorCountFromInput(event.target.value)}
+                        placeholder="0-50"
+                      />
                     </label>
 
                     <label htmlFor="product-setup-investor-wallet-rule">
@@ -3920,10 +3898,12 @@ export function App() {
                       ) : (
                         <article className="conversation-turn assistant-turn" key={turn.id}>
                           <span className="turn-label">ZiLi-OS Copilot</span>
-                          <div className="copilot-route-labels" aria-label="ZiLi-OS routing">
-                            {turn.routeLabels.map((label) => (
-                              <span key={label}>{label}</span>
-                            ))}
+                          <div className="copilot-turn-meta">
+                            <div className="copilot-route-labels" aria-label="ZiLi-OS routing">
+                              {turn.routeLabels.map((label) => (
+                                <span key={label}>{label}</span>
+                              ))}
+                            </div>
                           </div>
                           {renderEngineerResponse(turn.response)}
                         </article>
@@ -3938,6 +3918,44 @@ export function App() {
                   </div>
                 </div>
               </div>
+
+              <section className="chat-composer ai-composer" aria-label="ZiLi-OS Copilot composer">
+                <label className="composer-title" htmlFor="zilios-copilot-composer">ZiLi-OS Copilot</label>
+                <div className="composer-shell">
+                  <textarea
+                    id="zilios-copilot-composer"
+                    aria-label="ZiLi-OS Copilot"
+                    placeholder="Describe your product, ask a question, or paste rough requirements..."
+                    value={question}
+                    onChange={(event) => setQuestion(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault();
+                        void askBot();
+                      }
+                    }}
+                    rows={2}
+                  />
+                  <button className="send-button" data-action-id={uiActions.askQuestion} onClick={() => void askBot()} disabled={isBotReplyLoading}>
+                    {isBotReplyLoading ? 'Sending...' : 'Send'}
+                  </button>
+                </div>
+                {visibleSecondaryWorkflowActions.length > 0 && (
+                  <div className="composer-actions" aria-label="ZiLi-OS Copilot actions">
+                    {visibleSecondaryWorkflowActions.map((action) => (
+                      <button
+                        type="button"
+                        className="workflow-button"
+                        data-action-id={action.id}
+                        key={action.id}
+                        onClick={() => runCockpitAction(action.id)}
+                      >
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
 
               <section className="next-action-panel" aria-label="Next suggested action">
                 <h3>Next best action</h3>
@@ -3992,43 +4010,6 @@ export function App() {
                 )}
               </section>
 
-              <label className="chat-composer ai-composer">
-                <span className="composer-title">ZiLi-OS Copilot</span>
-                <div className="composer-shell">
-                  <textarea
-                    aria-label="ZiLi-OS Copilot"
-                    placeholder="Describe your product, ask a question, or paste rough requirements..."
-                    value={question}
-                    onChange={(event) => setQuestion(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' && !event.shiftKey) {
-                        event.preventDefault();
-                        void askBot();
-                      }
-                    }}
-                    rows={2}
-                  />
-                  <button className="send-button" data-action-id={uiActions.askQuestion} onClick={() => void askBot()} disabled={isBotReplyLoading}>
-                    {isBotReplyLoading ? 'Sending...' : 'Send'}
-                  </button>
-                </div>
-                <div className="composer-actions" aria-label="ZiLi-OS Copilot actions">
-                  {secondaryWorkflowActions.map((action) => (
-                    <button
-                      type="button"
-                      className="workflow-button"
-                      data-action-id={action.id}
-                      disabled={!action.enabled}
-                      key={action.id}
-                      onClick={() => runCockpitAction(action.id)}
-                      title={action.disabledReason}
-                    >
-                      {action.label}
-                    </button>
-                  ))}
-                </div>
-              </label>
-
               {smartContractGenerationStatus === 'error' && smartContractGenerationError && (
                 <p className="error-text" role="alert">
                   {smartContractGenerationError}
@@ -4044,17 +4025,6 @@ export function App() {
                   {engineeringBriefError}
                 </p>
               )}
-              <p className="chat-status">
-                {isBotReplyLoading
-                  ? 'Calling backend route.'
-                  : engineerAnswerSource === 'backend'
-                    ? 'Backend response.'
-                    : engineerAnswerSource === 'generated_artifacts'
-                      ? 'Backend artifacts generated.'
-                      : engineerAnswerSource === 'wallet'
-                        ? 'Wallet status updated.'
-                        : 'Local preview shown until a backend response is available.'}
-              </p>
             </section>
 
             <section className="lifecycle-snapshot" aria-label="Lifecycle snapshot">

@@ -15,6 +15,12 @@ function createJsonResponse(body: unknown, init: ResponseInit = {}): Response {
   });
 }
 
+function expectCopilotActionsNotToContainButton(name: RegExp) {
+  const actions = screen.queryByLabelText('ZiLi-OS Copilot actions');
+  if (!actions) return;
+  expect(within(actions).queryByRole('button', { name })).not.toBeInTheDocument();
+}
+
 function createTestProductSetupRecord() {
   return createInitialProductSetupRecord({
     fundName: 'Alpha Income Fund I',
@@ -237,7 +243,7 @@ function acknowledgeContractOpsProductSetupWarnings() {
 }
 
 describe('App Blockchain Engineer Bot panel', () => {
-  it('shows local preview before asking and then renders a backend answer', async () => {
+  it('shows the initial Copilot answer before asking and then renders a backend answer', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       createJsonResponse({
         ok: true,
@@ -264,6 +270,7 @@ describe('App Blockchain Engineer Bot panel', () => {
           openQuestions: ['Should every approved investor hold identical share units?'],
           riskNotes: ['Backend must not hold private keys.'],
           nextRecommendedAction: 'Confirm the recommended protocol base before approving the Requirement Brief.',
+          responseSource: 'live_model',
           createdAt: '2026-05-21T00:00:00.000Z',
         },
       }),
@@ -292,13 +299,20 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByText('Need help? Ask the Engineering Bot')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'All projects' })).not.toBeInTheDocument();
     expect(screen.queryByText('Choose a project folder on the left to inspect its linked artifacts and evidence.')).not.toBeInTheDocument();
-    expect(screen.getByText('Local preview shown until a backend response is available.')).toBeVisible();
-    expect(screen.getByLabelText('ZiLi-OS Copilot actions')).toBeVisible();
+    expect(screen.queryByText(/Local preview/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Live model/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Local fallback/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('ZiLi-OS Copilot actions')).not.toBeInTheDocument();
+    expect(
+      screen
+        .getByLabelText('ZiLi-OS Copilot composer')
+        .compareDocumentPosition(screen.getByLabelText('Next suggested action')) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.queryByText('Recommendation')).not.toBeInTheDocument();
     expect(screen.queryByText('I am ready to create the Requirement Brief.')).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Create Requirement Doc' })).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Create Requirement Doc' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Review assumptions' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Review assumptions' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Approve Brief and Run Coding Bot' })).not.toBeInTheDocument();
     expect(screen.queryByText('What I understand')).not.toBeInTheDocument();
     expect(screen.queryByText('Tokenisation goal')).not.toBeInTheDocument();
@@ -322,7 +336,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Routing your message to the right ZiLi-OS bot lens...');
 
     await waitFor(() => {
-      expect(screen.getByText('Backend response.')).toBeVisible();
+      expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Backend mock says ERC-3643');
     });
     expect(botComposer).toHaveValue('');
     expect(
@@ -373,6 +387,27 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a question before asking the bot.');
   });
 
+  it('lets Product Setup capture expected investors without blocking tab navigation', () => {
+    render(<App />);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    expect(screen.getByLabelText('Product Setup canonical inputs')).toHaveTextContent(
+      'Fill these before moving on where possible. Missing values warn before deployment but do not block navigation.',
+    );
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
+    expect(screen.getByRole('heading', { name: 'Subscription' })).toBeVisible();
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    const expectedInvestorsInput = screen.getByLabelText('Expected investors');
+    fireEvent.change(expectedInvestorsInput, { target: { value: '52' } });
+
+    expect(expectedInvestorsInput).toHaveValue(50);
+    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('Expected investors');
+    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('50');
+    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('user confirmed');
+  });
+
   it('routes explanation questions to Advisor without exposing a mode toggle or mutating Product Setup', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       createJsonResponse({
@@ -380,7 +415,7 @@ describe('App Blockchain Engineer Bot panel', () => {
         data: {
           messageId: 'advisor-response-1',
           agentId: 'blockchain-engineer',
-          content: 'Advisor view: use Redemption for delay terms and Evidence Vault for provider-derived proof.',
+          content: 'Advisor Bot: use Redemption for delay terms and Evidence Vault for provider-derived proof.',
           openQuestions: ['Which lifecycle step should I explain next?'],
           riskNotes: ['Explanatory guidance only.'],
           nextRecommendedAction: 'Ask a plain-language question about the current lifecycle state.',
@@ -400,21 +435,21 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Advisor view: use Redemption');
+      expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Advisor Bot: use Redemption');
     });
     const requestBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(requestBody.assistantMode).toBe('advisor');
     expect(screen.getByText('You')).toBeVisible();
-    expect(screen.getAllByLabelText('ZiLi-OS routing').at(-1)).toHaveTextContent('Advisor view');
+    expect(screen.getAllByLabelText('ZiLi-OS routing').at(-1)).toHaveTextContent('Advisor Bot');
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Redemption/ }));
     expect(screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' })).toBeVisible();
-    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Advisor view: use Redemption');
+    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Advisor Bot: use Redemption');
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
     expect(screen.queryByLabelText('Product Setup suggested updates')).not.toBeInTheDocument();
   });
 
-  it('shows a safe error and local fallback when the backend is unavailable', async () => {
+  it('shows a safe error and deterministic Copilot answer when the backend is unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('ECONNREFUSED')));
 
     render(<App />);
@@ -429,7 +464,8 @@ describe('App Blockchain Engineer Bot panel', () => {
         'Could not reach the MILA26 API. Check that the local API server is running.',
       );
     });
-    expect(screen.getByText('Local preview shown until a backend response is available.')).toBeVisible();
+    expect(screen.queryByText(/Local preview/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Deployment should stay in simulation mode');
   });
 
   it('generates and renders an Engineering Brief artifact from the Requirement Brief', async () => {
@@ -1119,7 +1155,6 @@ describe('App Blockchain Engineer Bot panel', () => {
     const connectWalletButton = screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' });
     expect(connectWalletButton).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Connect Wallet for Sepolia Check' })).toBeVisible();
-    expect(screen.getByText('Backend artifacts generated.')).toBeVisible();
     expect(screen.getByText('Smart contract preparation review')).toBeVisible();
     expect(screen.getByText('Preview')).toBeVisible();
     expect(generatedArtifacts.getByText('Smart Contract Spec')).toBeVisible();
@@ -1327,7 +1362,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Receipt returned');
     expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Local-session evidence');
     expect(screen.getByLabelText('Contract Ops summary')).toHaveTextContent('Gated operations available');
-    expect(within(screen.getByLabelText('ZiLi-OS Copilot actions')).queryByRole('button', { name: /Record NAV/i })).not.toBeInTheDocument();
+    expectCopilotActionsNotToContainButton(/Record NAV/i);
     expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Record NAV Event' })).toBeEnabled();
     expect(screen.queryByText(/durable evidence|persistent evidence|permanent evidence/i)).not.toBeInTheDocument();
     expect(within(screen.getByLabelText('Project status')).queryByRole('button', { name: /deploy/i })).not.toBeInTheDocument();
@@ -1358,7 +1393,7 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Record NAV Event' })).toBeEnabled();
     });
 
-    expect(within(screen.getByLabelText('ZiLi-OS Copilot actions')).queryByRole('button', { name: /Record NAV/i })).not.toBeInTheDocument();
+    expectCopilotActionsNotToContainButton(/Record NAV/i);
     expect(within(screen.getByLabelText('Project status')).queryByRole('button', { name: /Record NAV/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Operation transaction hash: 0x/i)).not.toBeInTheDocument();
 
@@ -1415,7 +1450,7 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Whitelist Wallet' })).toBeDisabled();
     });
 
-    expect(within(screen.getByLabelText('ZiLi-OS Copilot actions')).queryByRole('button', { name: /Whitelist/i })).not.toBeInTheDocument();
+    expectCopilotActionsNotToContainButton(/Whitelist/i);
     expect(within(screen.getByLabelText('Project status')).queryByRole('button', { name: /Whitelist/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Whitelist transaction hash: 0x/i)).not.toBeInTheDocument();
 

@@ -53,11 +53,12 @@ Implemented fields:
 - Mock provider is required for tests.
 - OpenAI provider integration is opt-in via backend env config.
 - OpenAI provider calls the Responses API with `store: false`.
-- Current recommended OpenAI model is `gpt-5.5`, but runtime OpenAI model selection remains explicit through `MILA26_LLM_MODEL`.
+- Product Setup chat can start with `gpt-5.4-mini` for lower-latency live testing; `gpt-5.5` is the latest main model option for heavier workflows. Runtime OpenAI model selection remains explicit through `MILA26_LLM_MODEL`.
 - Provider-specific fields must not leak into stable frontend route contracts unless deliberately mapped.
 - Environment variables must use `MILA26_LLM_PROVIDER`, `MILA26_LLM_MODEL`, `MILA26_LLM_TIMEOUT_MS`, and `MILA26_LLM_MAX_OUTPUT_TOKENS`.
 - `OPENAI_API_KEY` is required only when `MILA26_LLM_PROVIDER=openai`.
 - `MILA26_LLM_MODEL` is required when `MILA26_LLM_PROVIDER=openai`; OpenAI model choice is operator-configured and examples are not runtime defaults.
+- `npm run test:live-openai` is opt-in through `LIVE_OPENAI=1`, defaults to five calls, caps at ten calls, and must not run inside normal deterministic checks.
 - Do not introduce `VITE_` LLM variables.
 
 ## Latency Rules

@@ -9,10 +9,10 @@ test('website exposes company, product, access, and contact information without 
   );
   const companyCopy = page.getByLabel('Company positioning').locator('.website-company-copy p');
   await expect(companyCopy.nth(0)).toContainText(
-    'ZilIOS is for builders who want to move tokenised finance forward responsibly, from structured workflow to testnet proof.',
+    'ZilIOS is for builders who want to move tokenised finance forward responsibly.',
   );
   await expect(companyCopy.nth(1)).toContainText(
-    'We seek to facilitate adoption and enable new growth by combining AI-guided structuring, blockchain workflows, and post-trade domain expertise.',
+    'We seek to help create new growth path, and facilitate the launch and adoption of tokenised products with AI-guided structuring, blockchain-informed workflows, and post-trade domain expertise.',
   );
   await expect(page.getByLabel('Workflow path')).toContainText('From product intent to a reviewable Sepolia operation path');
   await expect(page.getByLabel('Workflow path')).toContainText('Prove the Sepolia path');

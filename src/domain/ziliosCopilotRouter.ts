@@ -58,7 +58,7 @@ export function routeZiLiOSCopilotMessage(message: string): ZiLiOSCopilotRoute {
       route: 'mixed',
       assistantMode: 'engineering',
       shouldExtractRequirements: true,
-      labels: ['Advisor view', 'Engineering view'],
+      labels: ['Advisor Bot', 'Engineering Bot'],
     };
   }
 
@@ -67,7 +67,7 @@ export function routeZiLiOSCopilotMessage(message: string): ZiLiOSCopilotRoute {
       route: 'advisor',
       assistantMode: 'advisor',
       shouldExtractRequirements: false,
-      labels: ['Advisor view'],
+      labels: ['Advisor Bot'],
     };
   }
 
@@ -75,6 +75,6 @@ export function routeZiLiOSCopilotMessage(message: string): ZiLiOSCopilotRoute {
     route: 'engineering',
     assistantMode: 'engineering',
     shouldExtractRequirements: true,
-    labels: ['Engineering view'],
+    labels: ['Engineering Bot'],
   };
 }

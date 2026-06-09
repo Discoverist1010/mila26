@@ -66,7 +66,8 @@ export async function requestJson<TData>(
       body: JSON.stringify(body),
     });
 
-    const payload: unknown = await response.json().catch(() => undefined);
+    const contentType = response.headers.get('Content-Type') ?? '';
+    const payload: unknown = contentType.includes('application/json') ? await response.json().catch(() => undefined) : undefined;
 
     if (isApiErrorEnvelope(payload)) {
       return { ok: false, code: payload.error.code, message: payload.error.message };
@@ -74,6 +75,14 @@ export async function requestJson<TData>(
 
     if (!response.ok) {
       return { ok: false, message: 'The MILA26 API returned an unexpected error.' };
+    }
+
+    if (!contentType.includes('application/json')) {
+      return {
+        ok: false,
+        message:
+          'The MILA26 API did not return JSON. Check that the backend API is running on the configured API port, not the Vite app.',
+      };
     }
 
     if (isApiSuccessEnvelope<TData>(payload)) {

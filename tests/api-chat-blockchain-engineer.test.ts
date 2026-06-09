@@ -35,6 +35,49 @@ describe('blockchain engineer chat api', () => {
     expect(body.data.createdAt).toEqual(expect.any(String));
   });
 
+  it('treats rough Product Setup intent as guided intake before implementation planning', async () => {
+    const response = await postChat('I want to create a tokenised portfolio with 22 investors.');
+    const body = response.json();
+    const serialized = JSON.stringify(body);
+
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.content).toMatch(/Captured so far/i);
+    expect(body.data.content).toMatch(/22/);
+    expect(body.data.content).toMatch(/Before I recommend protocol settings or deployment steps/i);
+    expect(body.data.content).toMatch(/not treat this as a fixed three-question form/i);
+    expect(body.data.content).toMatch(/Product Setup Pack/i);
+    expect(body.data.content).toMatch(/protocol-fit view/i);
+    expect(body.data.openQuestions).toEqual([
+      'What is the underlying product or asset pool?',
+      'How should investors subscribe?',
+      'Should only approved wallets be allowed to hold or receive the token?',
+    ]);
+    expect(body.data.suggestedRequirementUpdates).toEqual([
+      expect.objectContaining({
+        field: 'expected_investors',
+        proposedValue: '22',
+      }),
+    ]);
+    expect(serialized).not.toMatch(/Deploy ERC-20|mint tokens|KYC\/AML|legal entity/i);
+  });
+
+  it('treats user mind changes as Product Setup revisions to consolidate', async () => {
+    const response = await postChat('Actually make it a credit fund instead of a mixed portfolio.');
+    const body = response.json();
+
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.content).toMatch(/revision to the working Product Setup/i);
+    expect(body.data.content).toMatch(/not as a separate product/i);
+    expect(body.data.content).toMatch(/which earlier requirement changed/i);
+    expect(body.data.content).toMatch(/refresh the protocol-fit view/i);
+    expect(body.data.openQuestions).toEqual([
+      'Which earlier requirement should this replace?',
+      'Should the older assumption be removed, kept as an alternative, or marked as deferred?',
+    ]);
+  });
+
   it('explains the four supported protocol bases and ERC-721 as out of scope', async () => {
     const response = await postChat('Which ERC protocol should this whitelisted portfolio token use?', 'protocol_choice');
     const body = response.json();
@@ -152,15 +195,26 @@ describe('blockchain engineer chat api', () => {
         expect(request.messages[0]).toMatchObject({
           role: 'system',
         });
-        expect(request.messages[0]?.content).toMatch(/short opening summary/i);
+        expect(request.messages[0]?.content).toMatch(/conversation-first intake agent/i);
+        expect(request.messages[0]?.content).toMatch(/replay your understanding/i);
+        expect(request.messages[0]?.content).toMatch(/ask a small focused batch/i);
+        expect(request.messages[0]?.content).toMatch(/Do not treat three questions as a hard limit/i);
+        expect(request.messages[0]?.content).toMatch(/If the user changes their mind/i);
+        expect(request.messages[0]?.content).toMatch(/attempt to consolidate/i);
+        expect(request.messages[0]?.content).toMatch(/Do not jump straight to deployment/i);
+        expect(request.messages[0]?.content).toMatch(/Product Setup Pack/i);
+        expect(request.messages[0]?.content).toMatch(/recommended or selected ERC protocol base must guide later tab questions/i);
+        expect(request.messages[0]?.content).toMatch(/Sepolia-only/i);
+        expect(request.messages[0]?.content).toMatch(/recommended architecture target/i);
+        expect(request.messages[0]?.content).toMatch(/current executable prototype/i);
         expect(request.messages[0]?.content).toMatch(/Do not return one long paragraph/i);
         expect(request.messages.at(-1)).toMatchObject({
           role: 'user',
           content: 'Can we deploy this tokenized fund?',
         });
         expect(request.temperature).toBeUndefined();
-        expect(request.maxOutputTokens).toBe(500);
-        expect(request.reasoningEffort).toBe('minimal');
+        expect(request.maxOutputTokens).toBeUndefined();
+        expect(request.reasoningEffort).toBe('low');
         expect(request.textVerbosity).toBe('low');
         expect(request.metadata).toEqual(
           expect.objectContaining({
@@ -201,6 +255,7 @@ describe('blockchain engineer chat api', () => {
     expect(response.statusCode).toBe(200);
     expect(body.ok).toBe(true);
     expect(body.data.agentId).toBe('blockchain-engineer');
+    expect(body.data.responseSource).toBe('live_model');
     expect(body.data.content).toContain('Provider answer');
     expect(JSON.stringify(body)).not.toContain('test-model');
     expect(JSON.stringify(body)).not.toContain('rawProviderDebug');
@@ -247,6 +302,7 @@ describe('blockchain engineer chat api', () => {
 
     expect(response.statusCode).toBe(200);
     expect(body.ok).toBe(true);
+    expect(body.data.responseSource).toBe('live_model');
     expect(capturedMessages.at(-1)).toEqual({
       role: 'user',
       content: 'Current user message must remain intact.',
@@ -284,6 +340,7 @@ describe('blockchain engineer chat api', () => {
     expect(providerCalled).toBe(false);
     expect(response.statusCode).toBe(200);
     expect(body.ok).toBe(true);
+    expect(body.data.responseSource).toBe('local_fallback');
     expect(body.data.content).toMatch(/Deployment should stay Sepolia testnet-only/i);
   });
 
@@ -311,6 +368,7 @@ describe('blockchain engineer chat api', () => {
 
     expect(response.statusCode).toBe(200);
     expect(body.ok).toBe(true);
+    expect(body.data.responseSource).toBe('local_fallback');
     expect(body.data.content).toMatch(/Deployment should stay Sepolia testnet-only/i);
     expect(body.data.content).toMatch(/user wallet must sign/i);
     expect(serialized).not.toContain('OPENAI_API_KEY');
@@ -346,6 +404,7 @@ describe('blockchain engineer chat api', () => {
 
     expect(response.statusCode).toBe(200);
     expect(body.ok).toBe(true);
+    expect(body.data.responseSource).toBe('local_fallback');
     expect(body.data.content).toMatch(/ERC-20/i);
     expect(body.data.content).toMatch(/ERC-3643/i);
     expect(JSON.stringify(body)).not.toContain('test-model');
@@ -379,6 +438,7 @@ describe('blockchain engineer chat api', () => {
 
     expect(response.statusCode).toBe(200);
     expect(body.ok).toBe(true);
+    expect(body.data.responseSource).toBe('local_fallback');
     expect(body.data.content).toMatch(/Deployment should stay Sepolia testnet-only/i);
     expect(serialized).not.toContain('OPENAI_API_KEY');
     expect(serialized).not.toContain('sk-test-secret');

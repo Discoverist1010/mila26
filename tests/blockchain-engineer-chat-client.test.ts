@@ -78,6 +78,23 @@ describe('blockchain engineer chat client', () => {
     });
   });
 
+  it('maps non-json app-shell responses to a useful local API setup error', async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response('<!doctype html><div id="root"></div>', {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' },
+      }),
+    );
+
+    const result = await askBlockchainEngineer({ userMessage: 'Hello' }, { baseUrl: 'http://api.test', fetcher });
+
+    expect(result).toEqual({
+      ok: false,
+      message:
+        'The MILA26 API did not return JSON. Check that the backend API is running on the configured API port, not the Vite app.',
+    });
+  });
+
   it('guards blank input before calling fetch', async () => {
     const fetcher = vi.fn();
 

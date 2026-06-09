@@ -193,11 +193,10 @@ export function WebsiteLanding() {
         </div>
         <div className="website-company-copy">
           <p>
-            ZilIOS is for builders who want to move tokenised finance forward responsibly, from structured workflow to
-            testnet proof.
+            ZilIOS is for builders who want to move tokenised finance forward responsibly.
           </p>
           <p>
-            We seek to facilitate adoption and enable new growth by combining AI-guided structuring, blockchain
+            We seek to help create new growth path, and facilitate the launch and adoption of tokenised products with AI-guided structuring, blockchain-informed
             workflows, and post-trade domain expertise.
           </p>
         </div>

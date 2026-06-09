@@ -14,14 +14,32 @@ function includesAny(value: string, terms: string[]): boolean {
   return terms.some((term) => value.includes(term));
 }
 
+function extractInvestorCount(value: string): string | undefined {
+  const match = value.match(/\b(\d{1,3})(?:\s*-\s*\d{1,3}|\s+to\s+\d{1,3})?\s+investors?\b/i);
+  return match?.[1];
+}
+
+function looksLikeEarlyProductSetupIntent(value: string): boolean {
+  return (
+    includesAny(value, ['tokenise', 'tokenize', 'tokenised', 'tokenized', 'create a token', 'create token']) ||
+    (includesAny(value, ['portfolio', 'fund', 'product']) && includesAny(value, ['create', 'setup', 'set up', 'build']))
+  );
+}
+
+function looksLikeRequirementRevision(value: string): boolean {
+  return includesAny(value, ['actually', 'instead', 'change my mind', 'changed my mind', 'rather than', 'make it']);
+}
+
 export function answerWithBlockchainEngineerMock(
   request: BlockchainEngineerChatRequest,
 ): BlockchainEngineerChatResponse {
   const lower = request.userMessage.toLowerCase();
+  const investorCount = extractInvestorCount(request.userMessage);
   const createdAt = new Date().toISOString();
   const base = {
     messageId: createMessageId(),
     agentId,
+    responseSource: 'local_fallback' as const,
     createdAt,
   };
 
@@ -33,6 +51,81 @@ export function answerWithBlockchainEngineerMock(
       openQuestions: ['Which tokenisation concept or missing Product Setup field should I explain first?'],
       riskNotes: ['This is explanatory product guidance, not legal, tax, accounting, investment, or formal audit advice.'],
       nextRecommendedAction: 'Ask Advisor Bot to explain a concept, or switch to Engineering Bot to structure the next Product Setup requirement.',
+    });
+  }
+
+  if (!request.requestedFocus && looksLikeRequirementRevision(lower)) {
+    return BlockchainEngineerChatResponseSchema.parse({
+      ...base,
+      content: [
+        'Engineering Bot view: understood. I will treat this as a revision to the working Product Setup, not as a separate product.',
+        '',
+        'Next I would replay the affected assumptions, mark which earlier requirement changed, and ask only the clarification needed to keep the canonical Product Setup record coherent.',
+        '',
+        'Revision questions:',
+        '- Which earlier requirement should this replace: product type, investor count, subscription method, transfer rule, redemption handling, or protocol preference?',
+        '- Should the older assumption be removed, kept as an alternative, or marked as deferred?',
+        '',
+        'Once the revision is clear, ZiLi-OS should consolidate the draft requirements again and refresh the protocol-fit view before later tabs rely on it.',
+      ].join('\n'),
+      openQuestions: [
+        'Which earlier requirement should this replace?',
+        'Should the older assumption be removed, kept as an alternative, or marked as deferred?',
+      ],
+      riskNotes: ['Confirmed Product Setup changes should keep visible provenance instead of silently overwriting prior user intent.'],
+      nextRecommendedAction: 'Clarify the changed requirement, then review the consolidated Product Setup before downstream tab work continues.',
+    });
+  }
+
+  if (!request.requestedFocus && looksLikeEarlyProductSetupIntent(lower)) {
+    const productShape = lower.includes('portfolio')
+      ? 'portfolio-like tokenised product'
+      : lower.includes('fund')
+        ? 'fund-like tokenised product'
+        : 'tokenised product';
+    const capturedFields = [
+      `product shape: ${productShape}`,
+      investorCount ? `expected investors: ${investorCount}` : 'expected investors: not confirmed yet',
+    ];
+
+    return BlockchainEngineerChatResponseSchema.parse({
+      ...base,
+      content: [
+        'Engineering Bot view: I understand you want ZiLi-OS to help shape the product before we move into contract configuration.',
+        '',
+        'Captured so far:',
+        `- ${capturedFields.join('\n- ')}`,
+        '',
+        'Before I recommend protocol settings or deployment steps, I need an initial focused batch of Product Setup details. These answers will become reviewable requirement updates and can later feed the Product Setup Pack.',
+        '',
+        'I will not treat this as a fixed three-question form. If your answers change the direction, I will revise the working interpretation. After a few Product Setup exchanges, I should replay the draft requirements, flag remaining crucial gaps, and ask whether to confirm, revise, or defer them.',
+        '',
+        'Questions:',
+        '- What is the underlying product or asset pool: private credit, listed securities, real estate, mixed portfolio, or something else?',
+        '- How should investors subscribe: USDC, another stablecoin, bank transfer recorded off-chain, manual allocation, or not sure yet?',
+        '- Should only approved wallets be allowed to hold or receive the token?',
+        '',
+        'Before Product Setup is treated as sufficient for later tabs, ZiLi-OS should also propose a protocol-fit view: recommended architecture target, current executable prototype, and any unsupported/custom requirements.',
+        '',
+        'If any term is unclear, ask me and I will explain it before we continue.',
+      ].join('\n'),
+      suggestedRequirementUpdates: investorCount
+        ? [
+            {
+              field: 'expected_investors',
+              proposedValue: investorCount,
+              rationale: 'User described the expected investor count in the Product Setup chat.',
+              confidence: 0.88,
+            },
+          ]
+        : [],
+      openQuestions: [
+        'What is the underlying product or asset pool?',
+        'How should investors subscribe?',
+        'Should only approved wallets be allowed to hold or receive the token?',
+      ],
+      riskNotes: ['This is Product Setup intake, not legal, investment, tax, or formal audit advice.'],
+      nextRecommendedAction: 'Answer the next Product Setup questions so ZiLi-OS can update the canonical requirements record.',
     });
   }
 
@@ -66,7 +159,7 @@ export function answerWithBlockchainEngineerMock(
     });
   }
 
-  if (request.requestedFocus === 'whitelist' || includesAny(lower, ['whitelist', 'wallet', '20', '50', 'address'])) {
+  if (request.requestedFocus === 'whitelist' || includesAny(lower, ['whitelist', 'wallet', 'address'])) {
     return BlockchainEngineerChatResponseSchema.parse({
       ...base,
       content:
@@ -157,13 +250,13 @@ export function answerWithBlockchainEngineerMock(
   return BlockchainEngineerChatResponseSchema.parse({
     ...base,
     content:
-      'Engineering Bot view: I can help turn unstructured asset-manager intent into Product Setup requirements. The next useful decisions are protocol base, whitelisted wallet rules for up to 50 investors, subscription stablecoins, redemption delay, admin wallet, redemption wallet, and the wallet-signed Sepolia deployment gate. I will propose updates for user confirmation instead of silently changing the Product Setup record.',
+      'Engineering Bot view: I can help turn unstructured asset-manager intent into Product Setup requirements. I will first replay what I understand, capture likely fields for review, then ask focused questions before moving into protocol or deployment details. The question count is not fixed: if you revise the product or a crucial field is still missing, I will clarify and then consolidate the draft requirements. I will propose updates for user confirmation instead of silently changing the Product Setup record.',
     openQuestions: [
-      'Do only approved wallets need to hold or receive tokens?',
-      'Do you already have the investor wallet addresses and allocation percentages?',
-      'Which stablecoins and redemption delay should ZiLi-OS capture first?',
+      'What are you trying to tokenise?',
+      'How many investors or wallets should ZiLi-OS plan for?',
+      'Should only approved wallets be allowed to hold or receive the token?',
     ],
     riskNotes: ['This is engineering planning guidance, not legal, investment, tax, or formal audit advice.'],
-    nextRecommendedAction: 'Choose a focus: protocol choice, whitelist, valuation update, deployment, or security.',
+    nextRecommendedAction: 'Share rough Product Setup notes so ZiLi-OS can extract requirements, consolidate them, and propose a protocol-fit view for later tabs.',
   });
 }

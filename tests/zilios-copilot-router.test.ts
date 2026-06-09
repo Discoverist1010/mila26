@@ -7,7 +7,7 @@ describe('ZiLi-OS Copilot router', () => {
       route: 'advisor',
       assistantMode: 'advisor',
       shouldExtractRequirements: false,
-      labels: ['Advisor view'],
+      labels: ['Advisor Bot'],
     });
   });
 
@@ -16,7 +16,7 @@ describe('ZiLi-OS Copilot router', () => {
       route: 'advisor',
       assistantMode: 'advisor',
       shouldExtractRequirements: false,
-      labels: ['Advisor view'],
+      labels: ['Advisor Bot'],
     });
   });
 
@@ -29,7 +29,7 @@ describe('ZiLi-OS Copilot router', () => {
       route: 'engineering',
       assistantMode: 'engineering',
       shouldExtractRequirements: true,
-      labels: ['Engineering view'],
+      labels: ['Engineering Bot'],
     });
   });
 
@@ -42,7 +42,7 @@ describe('ZiLi-OS Copilot router', () => {
       route: 'mixed',
       assistantMode: 'engineering',
       shouldExtractRequirements: true,
-      labels: ['Advisor view', 'Engineering view'],
+      labels: ['Advisor Bot', 'Engineering Bot'],
     });
   });
 
@@ -51,7 +51,7 @@ describe('ZiLi-OS Copilot router', () => {
       route: 'engineering',
       assistantMode: 'engineering',
       shouldExtractRequirements: true,
-      labels: ['Engineering view'],
+      labels: ['Engineering Bot'],
     });
   });
 });

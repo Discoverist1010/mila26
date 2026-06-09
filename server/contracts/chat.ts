@@ -41,6 +41,7 @@ export const BlockchainEngineerChatResponseSchema = z.object({
   messageId: z.string().min(1),
   agentId: z.literal('blockchain-engineer'),
   content: z.string().min(1),
+  responseSource: z.enum(['live_model', 'local_fallback']).optional(),
   suggestedRequirementUpdates: z.array(SuggestedRequirementUpdateSchema).optional(),
   openQuestions: z.array(z.string()).optional(),
   protocolComparison: z

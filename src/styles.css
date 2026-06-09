@@ -446,7 +446,7 @@ h3 {
 }
 
 .bot-reply > span,
-.chat-composer > span {
+.composer-title {
   color: #68798c;
   font-size: 12px;
   font-weight: 850;
@@ -513,6 +513,13 @@ h3 {
   padding: 4px 8px;
 }
 
+.copilot-turn-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .user-turn {
   border-left: 3px solid #2fb8aa;
   color: #1d2738;
@@ -571,6 +578,8 @@ h3 {
   border: 1px solid #cfe1df;
   border-radius: 8px;
   background: #fbfefd;
+  display: grid;
+  gap: 10px;
   margin-top: 2px;
   padding: 12px;
 }
@@ -2051,7 +2060,6 @@ summary {
   padding: 18px;
 }
 
-.product-setup-summary,
 .product-setup-board,
 .product-setup-prompt-grid {
   display: grid;
@@ -2059,10 +2067,8 @@ summary {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.product-setup-summary article,
 .product-setup-board article,
 .product-setup-prompt-grid article,
-.product-setup-guidance,
 .product-setup-review,
 .product-setup-blockers,
 .product-setup-direct-inputs,
@@ -2076,7 +2082,6 @@ summary {
   padding: 12px;
 }
 
-.product-setup-summary span,
 .product-setup-update-list span {
   color: #68798c;
   font-size: 11px;
@@ -2085,9 +2090,7 @@ summary {
   text-transform: uppercase;
 }
 
-.product-setup-summary strong,
 .product-setup-board h4,
-.product-setup-guidance h4,
 .product-setup-blockers h4,
 .product-setup-direct-inputs h3,
 .product-setup-wallet-capture h3,
@@ -2096,9 +2099,6 @@ summary {
   color: #0f172a;
 }
 
-.product-setup-summary p,
-.product-setup-summary small,
-.product-setup-guidance p,
 .product-setup-direct-inputs p,
 .product-setup-wallet-capture p,
 .product-setup-prompt-grid p,
@@ -2110,7 +2110,6 @@ summary {
   margin: 0;
 }
 
-.product-setup-chip-row,
 .product-setup-defer-actions {
   align-items: center;
   display: flex;
@@ -2886,7 +2885,6 @@ summary {
     grid-template-columns: 1fr;
   }
 
-  .product-setup-summary,
   .product-setup-board,
   .product-setup-prompt-grid {
     grid-template-columns: 1fr;
