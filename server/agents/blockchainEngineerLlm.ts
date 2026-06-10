@@ -24,6 +24,8 @@ const blockchainEngineerSystemInstruction = [
   'Lead the user toward a downloadable Product Setup Pack / product requirements document by progressively capturing requirements from chat.',
   'Before concluding Product Setup, provide a protocol-fit view with "recommended architecture target", "current executable prototype", and any "unsupported/custom requirement" notes.',
   'The recommended or selected ERC protocol base must guide later tab questions, including Investor Wallets, Subscription, Redemption, Asset Servicing, Maturity, Contract Ops, and Evidence Vault.',
+  'Use the Current workspace context when provided. If activeTab is Product Setup, do not tell the user to open Product Setup; continue the Product Setup conversation in place.',
+  'Prioritize missing canonical Product Setup inputs in follow-up questions, including protocol base, expected investors, subscription cadence, redemption cadence, income payout cadence, redemption payout cadence, NAV cadence/source, wallet rule, subscription stablecoins, and burn/lock rule.',
   'From time to time, naturally ask whether the user wants any concept clarified before moving on, but do not use a rigid checkpoint or repeat the same check-in every answer.',
   'MILA26 execution is Sepolia-only for this prototype; do not mention Goerli, Polygon, Arbitrum, Amoy, or mainnet as current execution choices.',
   'Product Setup supports ERC-20, ERC-4626, ERC-3643, and custom ERC-20 with rebasing as active protocol bases.',
@@ -46,6 +48,8 @@ const advisorSystemInstruction = [
   'Explain the current lifecycle, tabs, buttons, evidence, and next actions in plain language for an asset manager.',
   'Use just-in-time explanations in Product Setup: explain what a technical term means, why it is needed, what to provide, and any wallet safety warning.',
   'Use shorter operational language for later tabs after terms have already been introduced.',
+  'Product Setup supports ERC-20, ERC-4626, ERC-3643, and custom ERC-20 with rebasing as active protocol bases. If asked to explain ERC differences, focus on these four; ERC-721 may be mentioned only as out of MVP scope. Do not introduce ERC-1155, ERC-777, ERC-1400, ERC-3475, or other standards unless the user explicitly asks about them.',
+  'Use the Current workspace context when provided. If activeTab is Product Setup, do not tell the user to open Product Setup; answer within the current Product Setup workflow.',
   'Do not generate code, legal advice, tax advice, investment advice, audit conclusions, mainnet instructions, or custody recommendations.',
   'When useful, point the user to the correct activity tab: Product Setup, Investor Wallets, Subscription, Contract Ops, Asset Servicing, Redemption, Maturity, or Evidence Vault.',
   'Keep answers concise, calm, and easy to scan.',
@@ -79,11 +83,34 @@ function toLlmResponse(
     responseSource: 'live_model',
     openQuestions: [],
     riskNotes: ['This is engineering planning guidance, not legal, investment, tax, or formal audit advice.'],
-    nextRecommendedAction: request.requestedFocus
-      ? 'Review the answer against the approved PRD before implementation.'
-      : 'Choose a focus: protocol choice, whitelist, valuation update, deployment, or security.',
+    nextRecommendedAction: toNextRecommendedAction(request),
     createdAt: new Date().toISOString(),
   });
+}
+
+function toNextRecommendedAction(request: BlockchainEngineerChatRequest): string {
+  const activeTabLabel = activeTabLabelFromContext(request.projectContext);
+
+  if (activeTabLabel === 'Product Setup') {
+    return 'Continue Product Setup by confirming captured updates or answering the next missing setup question.';
+  }
+
+  if (request.requestedFocus) {
+    return 'Review the answer against the approved PRD before implementation.';
+  }
+
+  return `Continue in ${activeTabLabel ?? 'the current workspace'} with the next missing setup item.`;
+}
+
+function activeTabLabelFromContext(context: BlockchainEngineerChatRequest['projectContext']): string | undefined {
+  const activeTab = typeof context?.activeTab === 'object' && context.activeTab !== null ? context.activeTab : undefined;
+  const label = activeTab && 'label' in activeTab ? activeTab.label : undefined;
+  return typeof label === 'string' ? label : undefined;
+}
+
+function toWorkspaceContextInstruction(context: BlockchainEngineerChatRequest['projectContext']): string {
+  if (!context) return '';
+  return `\n\nCurrent workspace context:\n${JSON.stringify(context).slice(0, 4000)}`;
 }
 
 function includesUnsafeProviderText(content: string): boolean {
@@ -106,7 +133,7 @@ export async function answerWithBlockchainEngineerLlm(
 
   try {
     const promptMessages = buildBudgetedChatPromptMessages({
-      systemInstruction: request.assistantMode === 'advisor' ? advisorSystemInstruction : blockchainEngineerSystemInstruction,
+      systemInstruction: `${request.assistantMode === 'advisor' ? advisorSystemInstruction : blockchainEngineerSystemInstruction}${toWorkspaceContextInstruction(request.projectContext)}`,
       historyMessages: toBlockchainEngineerHistoryMessages(request),
       userMessage: request.userMessage,
     });

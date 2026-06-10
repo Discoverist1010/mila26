@@ -41,11 +41,36 @@ describe('Product Setup record', () => {
         'expected_investor_count',
         'subscription_stablecoins',
         'whitelisted_wallets_required',
+        'redemption_cadence',
         'redemption_schedule',
         'redemption_payout_delay',
       ]),
     );
     expect(withSuggestions.fields.expected_investor_count.status).toBe('missing');
+  });
+
+  it('starts protocol base blank while still offering a separate protocol recommendation', () => {
+    const record = createInitialProductSetupRecord(facts);
+    const readModel = toProductSetupReadModel(record);
+
+    expect(record.fields.protocol_base.status).toBe('missing');
+    expect(record.fields.protocol_base.value).toBeUndefined();
+    expect(readModel.protocolRecommendation.recommendedProtocol).toBe('ERC-3643');
+  });
+
+  it('extracts cadence fields from Product Setup conversation without cross-attaching unrelated cadence', () => {
+    const suggestions = createProductSetupSuggestionsFromText(
+      'I want to tokenise an investment fund and distribute to 33 investors. Valuation will be monthly. Subscribe and redeem monthly. On-chain distribution monthly too.',
+      'chat_turn_cadence',
+    );
+    const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
+
+    expect(byField.get('expected_investor_count')).toBe(33);
+    expect(byField.get('nav_cadence')).toBe('Monthly');
+    expect(byField.get('subscription_cadence')).toBe('Monthly');
+    expect(byField.get('redemption_cadence')).toBe('Monthly');
+    expect(byField.get('income_payout_cadence')).toBe('Monthly');
+    expect(byField.has('redemption_payout_cadence')).toBe(false);
   });
 
   it('promotes a suggested field only after user confirmation', () => {

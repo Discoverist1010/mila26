@@ -172,7 +172,11 @@ describe('workspace persistence repository', () => {
     };
 
     delete legacyRecord.fields.investor_wallet_rule;
+    delete legacyRecord.fields.subscription_cadence;
     delete legacyRecord.fields.subscription_receiving_wallet;
+    delete legacyRecord.fields.redemption_cadence;
+    delete legacyRecord.fields.income_payout_cadence;
+    delete legacyRecord.fields.redemption_payout_cadence;
     delete legacyRecord.fields.nav_cadence;
     delete legacyRecord.fields.nav_source;
     delete legacyRecord.fields.investor_update_rule;
@@ -193,6 +197,10 @@ describe('workspace persistence repository', () => {
       sourceRef: 'migration_default',
     });
     expect(parsed.fields.nav_cadence.status).toBe('missing');
+    expect(parsed.fields.subscription_cadence.status).toBe('missing');
+    expect(parsed.fields.redemption_cadence.status).toBe('missing');
+    expect(parsed.fields.income_payout_cadence.status).toBe('missing');
+    expect(parsed.fields.redemption_payout_cadence.status).toBe('missing');
     expect(parsed.fields.maturity_closeout_rule.status).toBe('missing');
     expect(parsed.deploymentWarningAcknowledgements).toEqual([]);
   });

@@ -80,12 +80,12 @@ const userMeaningItems = [
   {
     title: 'Less coordination burden',
     description:
-      'ZiLiOS brings AI workflow support, blockchain execution planning, and servicing operations into one workspace so fewer details fall between teams.',
+      'Move from product idea to testnet workflow before relying on larger teams or outside developers, allowing confidentiality, avoidable coordination time, and reducing blind reliance on smart-contract work.',
   },
   {
     title: 'Safer technical path',
     description:
-      'The app keeps mainnet, custody, audit, legal, and advice claims out of the MVP while real wallet actions remain user-signed on Sepolia.',
+      'The app keeps mainnet, custody, audit, legal, and advice claims out of the MVP while real wallet actions remain user-signed on testnet.',
   },
   {
     title: 'Less throwaway effort',
@@ -111,19 +111,19 @@ const statusItems = [
     label: 'Working MVP',
     title: 'Local/Sepolia workflow',
     detail:
-      'Guided Product Setup, investor wallet registry, subscription/redemption parameters, wallet-signed Sepolia operations, and backend-backed project/evidence records.',
+      'Guided Product Setup, investor wallet registry, subscription/redemption parameters, wallet-signed operations, and backend-backed project/evidence records.',
   },
   {
     label: 'Controlled boundary',
     title: 'Private beta access',
     detail:
-      'Invited users can evaluate the workflow and evidence path. The website does not collect lifecycle data or turn the MVP into public production software.',
+      'Invited users can evaluate the workflow and their ideas. The website does not collect lifecycle data or turn the MVP into public production software.',
   },
   {
     label: 'Still gated',
     title: 'Production-grade launch items',
     detail:
-      'Mainnet deployment, live subscription/redemption payments, custody, legal/compliance approval, full auth, payments, and production audit remain outside this MVP.',
+      'Mainnet deployment, live subscription/redemption payments, custody, legal/compliance approval, full auth, payments, and production audit remain outside this version.',
   },
 ];
 
@@ -208,7 +208,7 @@ export function WebsiteLanding() {
           <h2>Less uncertainty between product idea and technical proof.</h2>
           <p className="website-section-copy">
             Tokenising a product creates practical questions about code safety, effort reuse, investor communications,
-            redemption mechanics, and review evidence. ZiLiOS makes those questions visible before they become expensive.
+            redemption mechanics, and review evidence. ZiLiOS helps users address those questions before they become expensive.
           </p>
         </div>
         <div className="website-card-grid">

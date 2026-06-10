@@ -176,6 +176,9 @@ const starterFacts: FundFacts = {
 
 const initialBotQuestion = 'I want investors to subscribe with stablecoins and redeem later after a delay.';
 
+const cadenceOptions = ['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-yearly', 'Yearly', 'Not sure yet'] as const;
+const payoutCadenceOptions = ['Intraday', ...cadenceOptions] as const;
+
 type ProjectDirectorySelection = 'workspace' | 'usequities' | 'sgequities' | 'mixedportfolio';
 
 type DemoProjectFolder = {
@@ -506,6 +509,16 @@ function walletWhitelistTargetsMatch(left?: string, right?: string) {
   const normalizedLeft = normalizeWalletWhitelistTargetAddress(left);
   const normalizedRight = normalizeWalletWhitelistTargetAddress(right);
   return Boolean(normalizedLeft && normalizedRight && normalizedLeft.toLowerCase() === normalizedRight.toLowerCase());
+}
+
+function toChatHistory(turns: EngineeringBotConversationTurn[]) {
+  return turns.slice(-6).map((turn) => ({
+    messageId: turn.id,
+    role: turn.role,
+    content: turn.role === 'user' ? turn.content : turn.response.content,
+    createdAt: new Date().toISOString(),
+    ...(turn.role === 'assistant' ? { agentId: turn.response.agentId } : {}),
+  }));
 }
 
 export function App() {
@@ -941,6 +954,54 @@ export function App() {
   );
   const activeWorkspaceTab =
     workspacePresentation.tabs.find((tab) => tab.id === selectedWorkspaceTab) ?? workspacePresentation.tabs[0];
+  const productSetupChatContext = useMemo(() => {
+    const canonicalFieldKeys: ProductSetupFieldKey[] = [
+      'protocol_base',
+      'expected_investor_count',
+      'investor_wallet_rule',
+      'subscription_cadence',
+      'redemption_cadence',
+      'income_payout_cadence',
+      'redemption_payout_cadence',
+      'subscription_stablecoins',
+      'burn_lock_rule',
+      'nav_cadence',
+      'nav_source',
+      'maturity_date',
+    ];
+
+    return {
+      activeTab: {
+        id: activeWorkspaceTab.id,
+        label: activeWorkspaceTab.label,
+      },
+      productSetup: {
+        status: productSetupRecord.status,
+        selectedProtocolBase: fieldDisplayValue(productSetupRecord.fields.protocol_base) || null,
+        recommendedProtocol: productSetupReadModel.protocolRecommendation.recommendedProtocol,
+        currentExecutablePrototype: productSetupReadModel.protocolRecommendation.executablePrototypeLabel,
+        missingCanonicalInputs: productSetupReadModel.missingEssentials.map((field) => field.label),
+        pendingSuggestedUpdates: productSetupRecord.pendingSuggestedUpdates.slice(0, 8).map((update) => ({
+          field: productSetupRecord.fields[update.fieldKey].label,
+          proposedValue: Array.isArray(update.proposedValue) ? update.proposedValue.join(', ') : String(update.proposedValue),
+          confidence: update.confidence,
+        })),
+        canonicalFields: Object.fromEntries(
+          canonicalFieldKeys.map((fieldKey) => {
+            const field = productSetupRecord.fields[fieldKey];
+            return [
+              fieldKey,
+              {
+                label: field.label,
+                value: fieldDisplayValue(field) || field.rolePlaceholder || null,
+                status: field.status,
+              },
+            ];
+          }),
+        ),
+      },
+    };
+  }, [activeWorkspaceTab.id, activeWorkspaceTab.label, productSetupReadModel, productSetupRecord]);
   const shouldShowSmartContractControl = false;
   const subscriptionRedemptionTemplate = lifecycleReadModel.subscriptionRedemptionTemplate;
   const hasSubscriptionRedemptionTemplateInput = subscriptionRedemptionTemplate.status !== 'needs_parameters';
@@ -1297,6 +1358,7 @@ export function App() {
 
     const result = await askBlockchainEngineer({
       userMessage: submittedQuestion,
+      conversationHistory: toChatHistory(engineeringBotConversation),
       assistantMode: copilotRoute.assistantMode,
       projectContext: brief
         ? {
@@ -1304,11 +1366,13 @@ export function App() {
             tokenSymbol: brief.fundFacts.tokenSymbol,
             jurisdiction: brief.fundFacts.jurisdiction,
             selectedModules: brief.modules.filter((module) => module.enabled).map((module) => module.id),
+            ...productSetupChatContext,
           }
         : {
             fundName: facts.fundName,
             tokenSymbol: facts.tokenSymbol,
             jurisdiction: facts.jurisdiction,
+            ...productSetupChatContext,
           },
     });
 
@@ -1829,6 +1893,9 @@ export function App() {
         ...nextParameters,
       },
     }));
+    if (nextParameters.subscriptionCadence !== undefined) {
+      updateProductSetupFieldFromTab('subscription_cadence', nextParameters.subscriptionCadence, 'edited_in_subscription_tab');
+    }
     if (nextParameters.permittedStablecoins) {
       updateProductSetupFieldFromTab('subscription_stablecoins', nextParameters.permittedStablecoins, 'edited_in_subscription_tab');
     }
@@ -1845,8 +1912,18 @@ export function App() {
         ...nextParameters,
       },
     }));
+    if (nextParameters.redemptionCadence !== undefined) {
+      updateProductSetupFieldFromTab('redemption_cadence', nextParameters.redemptionCadence, 'edited_in_redemption_tab');
+    }
     if (nextParameters.redemptionWindow !== undefined) {
       updateProductSetupFieldFromTab('redemption_schedule', nextParameters.redemptionWindow, 'edited_in_redemption_tab');
+    }
+    if (nextParameters.redemptionPayoutCadence !== undefined) {
+      updateProductSetupFieldFromTab(
+        'redemption_payout_cadence',
+        nextParameters.redemptionPayoutCadence,
+        'edited_in_redemption_tab',
+      );
     }
     if (nextParameters.redemptionDelayValue !== undefined || nextParameters.redemptionDelayUnit !== undefined) {
       const nextDelayValue = nextParameters.redemptionDelayValue ?? lifecycleState.redemptionParameters.redemptionDelayValue;
@@ -1878,6 +1955,13 @@ export function App() {
     }
     if (nextParameters.navSource !== undefined) {
       updateProductSetupFieldFromTab('nav_source', nextParameters.navSource, 'edited_in_asset_servicing_tab');
+    }
+    if (nextParameters.incomePayoutCadence !== undefined) {
+      updateProductSetupFieldFromTab(
+        'income_payout_cadence',
+        nextParameters.incomePayoutCadence,
+        'edited_in_asset_servicing_tab',
+      );
     }
     if (nextParameters.investorUpdateRule !== undefined) {
       updateProductSetupFieldFromTab('investor_update_rule', nextParameters.investorUpdateRule, 'edited_in_asset_servicing_tab');
@@ -2315,6 +2399,13 @@ export function App() {
       updateSubscriptionParameters({ permittedStablecoins: stablecoins });
     }
 
+    if (update.fieldKey === 'subscription_cadence' && typeof update.proposedValue === 'string') {
+      updateSubscriptionParameters({
+        subscriptionCadence: update.proposedValue,
+        subscriptionWindow: update.proposedValue,
+      });
+    }
+
     if (update.fieldKey === 'subscription_receiving_wallet' && typeof update.proposedValue === 'string') {
       updateSubscriptionParameters({ paymentAddress: update.proposedValue });
     }
@@ -2325,6 +2416,17 @@ export function App() {
 
     if (update.fieldKey === 'redemption_schedule' && typeof update.proposedValue === 'string') {
       updateRedemptionParameters({ redemptionWindow: update.proposedValue });
+    }
+
+    if (update.fieldKey === 'redemption_cadence' && typeof update.proposedValue === 'string') {
+      updateRedemptionParameters({
+        redemptionCadence: update.proposedValue,
+        redemptionWindow: update.proposedValue,
+      });
+    }
+
+    if (update.fieldKey === 'redemption_payout_cadence' && typeof update.proposedValue === 'string') {
+      updateRedemptionParameters({ redemptionPayoutCadence: update.proposedValue });
     }
 
     if (update.fieldKey === 'redemption_payout_delay' && typeof update.proposedValue === 'string') {
@@ -2353,6 +2455,10 @@ export function App() {
 
     if (update.fieldKey === 'nav_source' && typeof update.proposedValue === 'string') {
       updateAssetServicingParameters({ navSource: update.proposedValue });
+    }
+
+    if (update.fieldKey === 'income_payout_cadence' && typeof update.proposedValue === 'string') {
+      updateAssetServicingParameters({ incomePayoutCadence: update.proposedValue });
     }
 
     if (update.fieldKey === 'investor_update_rule' && typeof update.proposedValue === 'string') {
@@ -2680,6 +2786,7 @@ export function App() {
                           )
                         }
                       >
+                        <option value="">Choose protocol</option>
                         <option value="ERC-20">ERC-20</option>
                         <option value="ERC-4626">ERC-4626</option>
                         <option value="ERC-3643">ERC-3643</option>
@@ -2720,6 +2827,44 @@ export function App() {
                       </select>
                     </label>
 
+                    <label htmlFor="product-setup-subscription-cadence">
+                      Subscription cadence
+                      <select
+                        id="product-setup-subscription-cadence"
+                        value={String(productSetupRecord.fields.subscription_cadence.value ?? '')}
+                        onChange={(event) =>
+                          updateSubscriptionParameters({
+                            subscriptionCadence: event.target.value || undefined,
+                            subscriptionWindow: event.target.value || undefined,
+                          })
+                        }
+                      >
+                        <option value="">Choose cadence</option>
+                        {cadenceOptions.map((cadence) => (
+                          <option value={cadence} key={cadence}>{cadence}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label htmlFor="product-setup-redemption-cadence">
+                      Redemption cadence
+                      <select
+                        id="product-setup-redemption-cadence"
+                        value={String(productSetupRecord.fields.redemption_cadence.value ?? '')}
+                        onChange={(event) =>
+                          updateRedemptionParameters({
+                            redemptionCadence: event.target.value || undefined,
+                            redemptionWindow: event.target.value || undefined,
+                          })
+                        }
+                      >
+                        <option value="">Choose cadence</option>
+                        {cadenceOptions.map((cadence) => (
+                          <option value={cadence} key={cadence}>{cadence}</option>
+                        ))}
+                      </select>
+                    </label>
+
                     <label htmlFor="product-setup-burn-lock-rule">
                       Redemption handling
                       <select
@@ -2757,6 +2902,38 @@ export function App() {
                         onChange={(event) => updateAssetServicingParameters({ navSource: event.target.value })}
                         placeholder="e.g. Uploaded file"
                       />
+                    </label>
+
+                    <label htmlFor="product-setup-income-payout-cadence">
+                      Income payout cadence
+                      <select
+                        id="product-setup-income-payout-cadence"
+                        value={String(productSetupRecord.fields.income_payout_cadence.value ?? '')}
+                        onChange={(event) =>
+                          updateAssetServicingParameters({ incomePayoutCadence: event.target.value || undefined })
+                        }
+                      >
+                        <option value="">Choose cadence</option>
+                        {payoutCadenceOptions.map((cadence) => (
+                          <option value={cadence} key={cadence}>{cadence}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label htmlFor="product-setup-redemption-payout-cadence">
+                      Redemption payout cadence
+                      <select
+                        id="product-setup-redemption-payout-cadence"
+                        value={String(productSetupRecord.fields.redemption_payout_cadence.value ?? '')}
+                        onChange={(event) =>
+                          updateRedemptionParameters({ redemptionPayoutCadence: event.target.value || undefined })
+                        }
+                      >
+                        <option value="">Choose cadence</option>
+                        {payoutCadenceOptions.map((cadence) => (
+                          <option value={cadence} key={cadence}>{cadence}</option>
+                        ))}
+                      </select>
                     </label>
 
                     <label htmlFor="product-setup-maturity-date">

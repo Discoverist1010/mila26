@@ -35,7 +35,12 @@ test('product setup turns unstructured chat into reviewable requirements', async
 
   const productSetup = page.getByLabel('Product Setup workspace');
   await expect(productSetup.getByRole('heading', { name: 'Canonical setup inputs' })).toBeVisible();
+  await expect(productSetup.getByLabel('Protocol base')).toHaveValue('');
   await expect(productSetup.getByLabel('Expected investors')).toBeVisible();
+  await expect(productSetup.getByLabel('Subscription cadence')).toBeVisible();
+  await expect(productSetup.getByLabel('Redemption cadence')).toBeVisible();
+  await expect(productSetup.getByLabel('Income payout cadence')).toBeVisible();
+  await expect(productSetup.getByLabel('Redemption payout cadence')).toBeVisible();
   await expect(productSetup.getByLabel('Product Setup canonical inputs')).toContainText(
     'Missing values warn before deployment but do not block navigation.',
   );

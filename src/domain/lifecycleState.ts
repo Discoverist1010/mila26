@@ -15,6 +15,7 @@ export type InvestorRegistryEntry = {
 
 export type SubscriptionParameters = {
   permittedStablecoins: string[];
+  subscriptionCadence?: string;
   subscriptionWindow?: string;
   minimumSubscriptionAmount?: string;
   paymentAddress?: string;
@@ -22,7 +23,9 @@ export type SubscriptionParameters = {
 };
 
 export type RedemptionParameters = {
+  redemptionCadence?: string;
   redemptionWindow?: string;
+  redemptionPayoutCadence?: string;
   redemptionDelayUnit?: 'minutes' | 'hours' | 'days';
   redemptionDelayValue?: number;
   redemptionWalletAddress?: string;
@@ -34,6 +37,7 @@ export type RedemptionParameters = {
 export type AssetServicingParameters = {
   navCadence?: string;
   navSource?: string;
+  incomePayoutCadence?: string;
   investorUpdateRule?: string;
 };
 
@@ -111,11 +115,14 @@ export type SubscriptionRedemptionTemplateReadModel = {
   canGenerateTemplateParameters: boolean;
   parameterSummary: {
     permittedStablecoins: string[];
+    subscriptionCadence?: string;
     subscriptionWindow?: string;
     minimumSubscriptionAmount?: string;
     paymentAddress?: string;
     paymentPerToken?: string;
     redemptionWindow?: string;
+    redemptionCadence?: string;
+    redemptionPayoutCadence?: string;
     redemptionDelay?: string;
     redemptionWalletAddress?: string;
     payoutStablecoin?: string;
@@ -259,6 +266,7 @@ function toSubscriptionParametersReadModel(parameters: SubscriptionParameters): 
   const validationMessages: string[] = [];
   const hasAnyInput =
     normalizedPermittedStablecoins.length > 0 ||
+    Boolean(parameters.subscriptionCadence?.trim()) ||
     Boolean(parameters.subscriptionWindow?.trim()) ||
     Boolean(parameters.minimumSubscriptionAmount?.trim()) ||
     Boolean(parameters.paymentAddress?.trim()) ||
@@ -285,7 +293,9 @@ function toSubscriptionParametersReadModel(parameters: SubscriptionParameters): 
 function toRedemptionParametersReadModel(parameters: RedemptionParameters): RedemptionParametersReadModel {
   const validationMessages: string[] = [];
   const hasAnyInput =
+    Boolean(parameters.redemptionCadence?.trim()) ||
     Boolean(parameters.redemptionWindow?.trim()) ||
+    Boolean(parameters.redemptionPayoutCadence?.trim()) ||
     Boolean(parameters.redemptionDelayUnit) ||
     Boolean(parameters.redemptionDelayValue) ||
     Boolean(parameters.redemptionWalletAddress?.trim()) ||
@@ -345,12 +355,15 @@ function toSubscriptionRedemptionTemplateReadModel(
     validationMessages,
     canGenerateTemplateParameters: status === 'ready',
     parameterSummary: {
-      permittedStablecoins: subscription.normalizedPermittedStablecoins,
+    permittedStablecoins: subscription.normalizedPermittedStablecoins,
+      subscriptionCadence: normalizedOptional(subscriptionParameters.subscriptionCadence),
       subscriptionWindow: normalizedOptional(subscriptionParameters.subscriptionWindow),
       minimumSubscriptionAmount: normalizedOptional(subscriptionParameters.minimumSubscriptionAmount),
       paymentAddress: normalizedOptional(subscriptionParameters.paymentAddress),
       paymentPerToken: normalizedOptional(subscriptionParameters.paymentPerToken),
       redemptionWindow: normalizedOptional(redemptionParameters.redemptionWindow),
+      redemptionCadence: normalizedOptional(redemptionParameters.redemptionCadence),
+      redemptionPayoutCadence: normalizedOptional(redemptionParameters.redemptionPayoutCadence),
       redemptionDelay:
         redemptionParameters.redemptionDelayValue && redemptionParameters.redemptionDelayUnit
           ? `${redemptionParameters.redemptionDelayValue} ${redemptionParameters.redemptionDelayUnit}`

@@ -27,6 +27,7 @@ export const InvestorRegistryEntryPersistenceSchema = z
 export const SubscriptionParametersPersistenceSchema = z
   .object({
     permittedStablecoins: z.array(z.string().trim().min(1).max(24)).max(10),
+    subscriptionCadence: z.string().trim().min(1).max(80).optional(),
     subscriptionWindow: z.string().trim().min(1).max(240).optional(),
     minimumSubscriptionAmount: z.string().trim().min(1).max(80).optional(),
     paymentAddress: z.string().trim().min(1).max(80).optional(),
@@ -36,7 +37,9 @@ export const SubscriptionParametersPersistenceSchema = z
 
 export const RedemptionParametersPersistenceSchema = z
   .object({
+    redemptionCadence: z.string().trim().min(1).max(80).optional(),
     redemptionWindow: z.string().trim().min(1).max(240).optional(),
+    redemptionPayoutCadence: z.string().trim().min(1).max(80).optional(),
     redemptionDelayUnit: z.enum(['minutes', 'hours', 'days']).optional(),
     redemptionDelayValue: z.number().finite().positive().optional(),
     redemptionWalletAddress: z.string().trim().min(1).max(80).optional(),
@@ -50,6 +53,7 @@ export const AssetServicingParametersPersistenceSchema = z
   .object({
     navCadence: z.string().trim().min(1).max(120).optional(),
     navSource: z.string().trim().min(1).max(240).optional(),
+    incomePayoutCadence: z.string().trim().min(1).max(80).optional(),
     investorUpdateRule: z.string().trim().min(1).max(240).optional(),
   })
   .strict();
@@ -77,10 +81,14 @@ const ProductSetupFieldKeyPersistenceSchema = z.enum([
   'expected_investor_count',
   'investor_wallet_rule',
   'whitelisted_wallets_required',
+  'subscription_cadence',
   'subscription_stablecoins',
   'subscription_receiving_wallet',
+  'redemption_cadence',
   'redemption_schedule',
   'redemption_payout_delay',
+  'income_payout_cadence',
+  'redemption_payout_cadence',
   'redemption_wallet',
   'admin_wallet',
   'burn_lock_rule',
@@ -188,6 +196,14 @@ const ProductSetupFieldsPersistenceSchema = z
       }),
     ),
     whitelisted_wallets_required: ProductSetupFieldPersistenceSchema,
+    subscription_cadence: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'subscription_cadence',
+        label: 'Subscription cadence',
+        usedByTabs: ['Subscription', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
     subscription_stablecoins: ProductSetupFieldPersistenceSchema,
     subscription_receiving_wallet: ProductSetupFieldPersistenceSchema.default(() =>
       defaultProductSetupField({
@@ -197,8 +213,32 @@ const ProductSetupFieldsPersistenceSchema = z
         smartContractRelevance: 'contract_parameter',
       }),
     ),
+    redemption_cadence: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'redemption_cadence',
+        label: 'Redemption cadence',
+        usedByTabs: ['Redemption', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
     redemption_schedule: ProductSetupFieldPersistenceSchema,
     redemption_payout_delay: ProductSetupFieldPersistenceSchema,
+    income_payout_cadence: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'income_payout_cadence',
+        label: 'Income payout cadence',
+        usedByTabs: ['Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    redemption_payout_cadence: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'redemption_payout_cadence',
+        label: 'Redemption payout cadence',
+        usedByTabs: ['Redemption', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
     redemption_wallet: ProductSetupFieldPersistenceSchema,
     admin_wallet: ProductSetupFieldPersistenceSchema,
     burn_lock_rule: ProductSetupFieldPersistenceSchema,

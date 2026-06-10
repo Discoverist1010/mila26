@@ -364,8 +364,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Redemption payout delay');
     fireEvent.click(
       within(screen.getByLabelText('Product Setup suggested updates'))
-        .getAllByRole('button', { name: 'Confirm' })
-        .at(-1) as HTMLElement,
+        .getAllByText('Redemption payout delay')[0]
+        .closest('article')
+        ?.querySelector('button') as HTMLElement,
     );
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Redemption/ }));
     expect(screen.getByLabelText('Redemption delay unit')).toHaveValue('days');
@@ -400,11 +401,27 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
     const expectedInvestorsInput = screen.getByLabelText('Expected investors');
+    expect(screen.getByLabelText('Protocol base')).toHaveValue('');
+    expect(screen.getByLabelText('Subscription cadence')).toHaveValue('');
+    expect(screen.getByLabelText('Redemption cadence')).toHaveValue('');
+    expect(screen.getByLabelText('Income payout cadence')).toHaveValue('');
+    expect(screen.getByLabelText('Redemption payout cadence')).toHaveValue('');
+
     fireEvent.change(expectedInvestorsInput, { target: { value: '52' } });
+    fireEvent.change(screen.getByLabelText('Subscription cadence'), { target: { value: 'Monthly' } });
+    fireEvent.change(screen.getByLabelText('Redemption cadence'), { target: { value: 'Monthly' } });
+    fireEvent.change(screen.getByLabelText('Income payout cadence'), { target: { value: 'Quarterly' } });
+    fireEvent.change(screen.getByLabelText('Redemption payout cadence'), { target: { value: 'Weekly' } });
 
     expect(expectedInvestorsInput).toHaveValue(50);
+    expect(screen.getByLabelText('Subscription cadence')).toHaveValue('Monthly');
+    expect(screen.getByLabelText('Redemption cadence')).toHaveValue('Monthly');
+    expect(screen.getByLabelText('Income payout cadence')).toHaveValue('Quarterly');
+    expect(screen.getByLabelText('Redemption payout cadence')).toHaveValue('Weekly');
     expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('Expected investors');
     expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('50');
+    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('Subscription cadence');
+    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('Redemption cadence');
     expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('user confirmed');
   });
 
@@ -428,6 +445,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     render(<App />);
 
     expect(screen.queryByRole('button', { name: 'Advisor' })).not.toBeInTheDocument();
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
     const composer = screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' });
     fireEvent.change(composer, {
       target: { value: 'Explain redemption delay.' },
@@ -439,8 +457,60 @@ describe('App Blockchain Engineer Bot panel', () => {
     });
     const requestBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(requestBody.assistantMode).toBe('advisor');
+    expect(requestBody.projectContext.activeTab).toEqual({
+      id: 'requirements',
+      label: 'Product Setup',
+    });
+    expect(requestBody.projectContext.productSetup.selectedProtocolBase).toBeNull();
+    expect(requestBody.projectContext.productSetup.missingCanonicalInputs).toContain('Protocol base');
+    expect(requestBody.projectContext.productSetup.canonicalFields).toEqual(
+      expect.objectContaining({
+        protocol_base: expect.objectContaining({ status: 'missing', value: null }),
+        subscription_cadence: expect.objectContaining({ status: 'missing', value: null }),
+        redemption_cadence: expect.objectContaining({ status: 'missing', value: null }),
+        income_payout_cadence: expect.objectContaining({ status: 'missing', value: null }),
+        redemption_payout_cadence: expect.objectContaining({ status: 'missing', value: null }),
+      }),
+    );
+    expect(requestBody.conversationHistory).toEqual([
+      expect.objectContaining({
+        role: 'assistant',
+        content:
+          'I will translate the business goal into a Requirement Brief, then the Coding Bot can generate artifacts from that approved brief. I will flag security, audit, and deployment implications in plain language.',
+        agentId: 'blockchain-engineer',
+      }),
+    ]);
     expect(screen.getByText('You')).toBeVisible();
     expect(screen.getAllByLabelText('ZiLi-OS routing').at(-1)).toHaveTextContent('Advisor Bot');
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' }), {
+      target: { value: 'Explain ERC differences too.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+    const secondRequestBody = JSON.parse((fetchMock.mock.calls[1][1] as RequestInit).body as string);
+    expect(secondRequestBody.assistantMode).toBe('advisor');
+    expect(secondRequestBody.projectContext.activeTab.label).toBe('Product Setup');
+    expect(secondRequestBody.conversationHistory).toEqual([
+      expect.objectContaining({
+        role: 'assistant',
+        content:
+          'I will translate the business goal into a Requirement Brief, then the Coding Bot can generate artifacts from that approved brief. I will flag security, audit, and deployment implications in plain language.',
+        agentId: 'blockchain-engineer',
+      }),
+      expect.objectContaining({
+        role: 'user',
+        content: 'Explain redemption delay.',
+      }),
+      expect.objectContaining({
+        role: 'assistant',
+        content: 'Advisor Bot: use Redemption for delay terms and Evidence Vault for provider-derived proof.',
+        agentId: 'blockchain-engineer',
+      }),
+    ]);
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Redemption/ }));
     expect(screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' })).toBeVisible();
@@ -799,7 +869,7 @@ describe('App Blockchain Engineer Bot panel', () => {
             status: 'system_default',
           },
           protocol_base: {
-            value: 'ERC-3643',
+            status: 'missing',
           },
           prototype_network: {
             value: 'Sepolia testnet',

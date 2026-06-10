@@ -93,6 +93,21 @@ describe('blockchain engineer chat api', () => {
     expect(body.data.protocolComparison.erc721OutOfScope).toMatch(/not an active|out of.*scope/i);
   });
 
+  it('keeps Advisor protocol explanations scoped to ZiLi-OS active protocol bases', async () => {
+    const response = await postChat('Explain the differences between the different ERC protocols.', undefined, 'advisor');
+    const body = response.json();
+    const serialized = JSON.stringify(body);
+
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.content).toMatch(/ERC-20/i);
+    expect(body.data.content).toMatch(/ERC-4626/i);
+    expect(body.data.content).toMatch(/ERC-3643/i);
+    expect(body.data.content).toMatch(/rebasing/i);
+    expect(body.data.content).toMatch(/ERC-721.*out of MVP scope/i);
+    expect(serialized).not.toMatch(/ERC-1155|ERC-777|ERC-1400|ERC-3475/i);
+  });
+
   it('covers whitelist and allocation requirements', async () => {
     const response = await postChat('We need a whitelist for 50 wallet addresses and allocations.', 'whitelist');
     const body = response.json();
@@ -132,7 +147,7 @@ describe('blockchain engineer chat api', () => {
     expect(body.ok).toBe(true);
     expect(body.data.content).toMatch(/Advisor Bot view/i);
     expect(body.data.content).toMatch(/redemption/i);
-    expect(body.data.nextRecommendedAction).toMatch(/Advisor Bot|Engineering Bot/i);
+    expect(body.data.nextRecommendedAction).toMatch(/Product Setup|current tab/i);
   });
 
   it('covers OpenZeppelin and QA/security review', async () => {
@@ -204,6 +219,8 @@ describe('blockchain engineer chat api', () => {
         expect(request.messages[0]?.content).toMatch(/Do not jump straight to deployment/i);
         expect(request.messages[0]?.content).toMatch(/Product Setup Pack/i);
         expect(request.messages[0]?.content).toMatch(/recommended or selected ERC protocol base must guide later tab questions/i);
+        expect(request.messages[0]?.content).toMatch(/Current workspace context/i);
+        expect(request.messages[0]?.content).toMatch(/"label":"Product Setup"/i);
         expect(request.messages[0]?.content).toMatch(/Sepolia-only/i);
         expect(request.messages[0]?.content).toMatch(/recommended architecture target/i);
         expect(request.messages[0]?.content).toMatch(/current executable prototype/i);
@@ -247,6 +264,17 @@ describe('blockchain engineer chat api', () => {
       payload: {
         userMessage: 'Can we deploy this tokenized fund?',
         requestedFocus: 'deployment',
+        projectContext: {
+          activeTab: {
+            id: 'requirements',
+            label: 'Product Setup',
+          },
+          productSetup: {
+            selectedProtocolBase: null,
+            recommendedProtocol: 'ERC-3643',
+            missingCanonicalInputs: ['Protocol base'],
+          },
+        },
       },
     });
     await app.close();
@@ -257,6 +285,7 @@ describe('blockchain engineer chat api', () => {
     expect(body.data.agentId).toBe('blockchain-engineer');
     expect(body.data.responseSource).toBe('live_model');
     expect(body.data.content).toContain('Provider answer');
+    expect(body.data.nextRecommendedAction).toMatch(/Continue Product Setup/i);
     expect(JSON.stringify(body)).not.toContain('test-model');
     expect(JSON.stringify(body)).not.toContain('rawProviderDebug');
   });

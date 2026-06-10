@@ -44,13 +44,24 @@ export function answerWithBlockchainEngineerMock(
   };
 
   if (request.assistantMode === 'advisor') {
+    if (includesAny(lower, ['erc', 'protocol', 'standard'])) {
+      return BlockchainEngineerChatResponseSchema.parse({
+        ...base,
+        content:
+          'Advisor Bot view: for ZiLi-OS Product Setup, compare the four active protocol bases only. ERC-20 is the simplest fungible-token base. ERC-4626 fits vault-share behaviour when investors deposit an ERC-20 asset and receive shares. ERC-3643 fits approved-wallet and transfer-restricted products. Custom ERC-20 with rebasing fits products where balances adjust after NAV, yield, or value updates. ERC-721 can be explained if needed, but it is out of MVP scope for ZiLi-OS.',
+        openQuestions: ['Do you want a simple comparison, or should I map these four options to your current Product Setup?'],
+        riskNotes: ['Protocol fit is product-engineering guidance, not legal, tax, accounting, investment, or formal audit advice.'],
+        nextRecommendedAction: 'Use the Product Setup protocol-fit view to choose or confirm the architecture target.',
+      });
+    }
+
     return BlockchainEngineerChatResponseSchema.parse({
       ...base,
       content:
         'Advisor Bot view: start by telling ZiLi-OS what you are trying to tokenise, even if the details are incomplete. I can explain protocol fit, wallet roles, minting, burning, redemption handling, and evidence in plain language while the Engineering Bot structures confirmed requirements in the same shared Product Setup context.',
       openQuestions: ['Which tokenisation concept or missing Product Setup field should I explain first?'],
       riskNotes: ['This is explanatory product guidance, not legal, tax, accounting, investment, or formal audit advice.'],
-      nextRecommendedAction: 'Ask Advisor Bot to explain a concept, or switch to Engineering Bot to structure the next Product Setup requirement.',
+      nextRecommendedAction: 'Ask a concept question, or continue the Product Setup conversation from the current tab.',
     });
   }
 

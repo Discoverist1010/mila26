@@ -41,10 +41,14 @@ export type ProductSetupFieldKey =
   | 'expected_investor_count'
   | 'investor_wallet_rule'
   | 'whitelisted_wallets_required'
+  | 'subscription_cadence'
   | 'subscription_stablecoins'
   | 'subscription_receiving_wallet'
+  | 'redemption_cadence'
   | 'redemption_schedule'
   | 'redemption_payout_delay'
+  | 'income_payout_cadence'
+  | 'redemption_payout_cadence'
   | 'redemption_wallet'
   | 'admin_wallet'
   | 'burn_lock_rule'
@@ -171,6 +175,8 @@ const essentialFieldKeys: ProductSetupFieldKey[] = [
   'protocol_base',
   'expected_investor_count',
   'investor_wallet_rule',
+  'subscription_cadence',
+  'redemption_cadence',
   'subscription_stablecoins',
   'burn_lock_rule',
   'prototype_network',
@@ -182,6 +188,8 @@ const deploymentFieldKeys: ProductSetupFieldKey[] = [
   'redemption_wallet',
   'protocol_base',
   'investor_wallet_rule',
+  'subscription_cadence',
+  'redemption_cadence',
   'subscription_stablecoins',
   'burn_lock_rule',
   'expected_investor_count',
@@ -242,11 +250,7 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
       protocol_base: createField({
         key: 'protocol_base',
         label: 'Protocol base',
-        value: 'ERC-3643',
-        status: 'inferred',
-        sourceType: 'assistant_inference',
-        sourceRef: 'default_permissioned_workflow',
-        confidence: 0.82,
+        status: 'missing',
         usedByTabs: ['Contract Ops', 'Investor Wallets', 'Subscription', 'Redemption'],
         smartContractRelevance: 'contract_parameter',
       }),
@@ -279,6 +283,13 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
         usedByTabs: ['Investor Wallets', 'Contract Ops'],
         smartContractRelevance: 'contract_parameter',
       }),
+      subscription_cadence: createField({
+        key: 'subscription_cadence',
+        label: 'Subscription cadence',
+        status: 'missing',
+        usedByTabs: ['Subscription', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
       subscription_stablecoins: createField({
         key: 'subscription_stablecoins',
         label: 'Subscription stablecoins',
@@ -293,6 +304,13 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
         usedByTabs: ['Subscription', 'Contract Ops', 'Evidence Vault'],
         smartContractRelevance: 'contract_parameter',
       }),
+      redemption_cadence: createField({
+        key: 'redemption_cadence',
+        label: 'Redemption cadence',
+        status: 'missing',
+        usedByTabs: ['Redemption', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
       redemption_schedule: createField({
         key: 'redemption_schedule',
         label: 'Redemption schedule',
@@ -303,6 +321,20 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
       redemption_payout_delay: createField({
         key: 'redemption_payout_delay',
         label: 'Redemption payout delay',
+        status: 'missing',
+        usedByTabs: ['Redemption', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      income_payout_cadence: createField({
+        key: 'income_payout_cadence',
+        label: 'Income payout cadence',
+        status: 'missing',
+        usedByTabs: ['Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      redemption_payout_cadence: createField({
+        key: 'redemption_payout_cadence',
+        label: 'Redemption payout cadence',
         status: 'missing',
         usedByTabs: ['Redemption', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
@@ -466,11 +498,11 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
       },
       {
         title: 'Subscription and redemption',
-        fields: (['subscription_stablecoins', 'subscription_receiving_wallet', 'redemption_schedule', 'redemption_payout_delay', 'redemption_wallet', 'burn_lock_rule'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
+        fields: (['subscription_cadence', 'subscription_stablecoins', 'subscription_receiving_wallet', 'redemption_cadence', 'redemption_schedule', 'redemption_payout_delay', 'redemption_payout_cadence', 'redemption_wallet', 'burn_lock_rule'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
       },
       {
         title: 'Asset servicing and maturity',
-        fields: (['nav_cadence', 'nav_source', 'investor_update_rule', 'maturity_date', 'maturity_closeout_rule'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
+        fields: (['nav_cadence', 'nav_source', 'income_payout_cadence', 'investor_update_rule', 'maturity_date', 'maturity_closeout_rule'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
       },
       {
         title: 'Contract operations',
@@ -542,6 +574,10 @@ export function likelyDeploymentErrorForField(fieldKey: ProductSetupFieldKey): s
       return 'Smart contract architecture may be generated against the wrong token pattern.';
     case 'investor_wallet_rule':
       return 'Transfer restrictions may not match how investors are meant to hold or transfer tokens.';
+    case 'subscription_cadence':
+      return 'Subscription workflows may not know how often investors can enter the product.';
+    case 'redemption_cadence':
+      return 'Redemption workflows may not know how often investors can exit the product.';
     case 'subscription_stablecoins':
       return 'Subscription parameters cannot identify the accepted payment token.';
     case 'burn_lock_rule':
@@ -558,11 +594,12 @@ export function likelyDeploymentErrorForField(fieldKey: ProductSetupFieldKey): s
 function createUnderstandingSummary(record: ProductSetupRecord, recommendedProtocol: ProductSetupProtocolBase): string {
   const investors = fieldDisplayValue(record.fields.expected_investor_count) || 'an investor count still to confirm';
   const stablecoins = fieldDisplayValue(record.fields.subscription_stablecoins) || 'stablecoins still to confirm';
-  const redemption = fieldDisplayValue(record.fields.redemption_schedule) || 'redemption timing still to confirm';
+  const subscriptionCadence = fieldDisplayValue(record.fields.subscription_cadence) || 'subscription cadence still to confirm';
+  const redemption = fieldDisplayValue(record.fields.redemption_cadence) || fieldDisplayValue(record.fields.redemption_schedule) || 'redemption timing still to confirm';
   const delay = fieldDisplayValue(record.fields.redemption_payout_delay) || 'payout delay still to confirm';
   const investorWalletRule = fieldDisplayValue(record.fields.investor_wallet_rule) || 'wallet transfer rules still to confirm';
 
-  return `ZiLi-OS currently understands this as a ${fieldDisplayValue(record.fields.base_currency) || 'base-currency'} ${fieldDisplayValue(record.fields.product_type) || 'tokenised product'} for ${investors}. Investors subscribe using ${stablecoins}, wallet rule is ${investorWalletRule}, redemption is ${redemption}, and payout delay is ${delay}. Recommended protocol base: ${recommendedProtocol}.`;
+  return `ZiLi-OS currently understands this as a ${fieldDisplayValue(record.fields.base_currency) || 'base-currency'} ${fieldDisplayValue(record.fields.product_type) || 'tokenised product'} for ${investors}. Investors subscribe ${subscriptionCadence} using ${stablecoins}, wallet rule is ${investorWalletRule}, redemption is ${redemption}, and payout delay is ${delay}. Recommended protocol base: ${recommendedProtocol}.`;
 }
 
 export function fieldDisplayValue(field: ProductSetupField): string {
@@ -651,6 +688,11 @@ export function createProductSetupSuggestionsFromText(
   const updates: ProductSetupSuggestedUpdate[] = [];
   const investorMatch = normalized.match(/(?:about\s*)?(\d{1,3})(?:\s*-\s*\d{1,3})?\s+(?:investors|wallets)|(\d{1,3})\s*-\s*(\d{1,3})\s+investors/);
   const delayMatch = normalized.match(/(\d{1,3})\s*(?:business\s*)?(?:day|days|hour|hours|week|weeks)/);
+  const valuationCadence = extractCadenceNear(normalized, '(?:valuation|nav)');
+  const subscriptionCadence = extractCadenceNear(normalized, '(?:subscrib\\w*|subscription\\w*)');
+  const redemptionCadence = extractCadenceNear(normalized, '(?:redeem\\w*|redemption\\w*)');
+  const incomePayoutCadence = extractCadenceNear(normalized, '(?:distribution\\w*|dividend\\w*|coupon\\w*|income payout|cash distribution)');
+  const redemptionPayoutCadence = extractCadenceNear(normalized, '(?:redemption payout|settle\\w*|settlement\\w*)');
 
   if (investorMatch?.[1] || investorMatch?.[3]) {
     updates.push(createSuggestedUpdate('expected_investor_count', Number(investorMatch[1] ?? investorMatch[3]), 'User described expected investor scale.', sourceRef, 0.88));
@@ -674,11 +716,20 @@ export function createProductSetupSuggestionsFromText(
   if (delayMatch?.[0]) {
     updates.push(createSuggestedUpdate('redemption_payout_delay', delayMatch[0], 'User described a redemption payout delay.', sourceRef, 0.84));
   }
-  if (/valuation|nav/.test(normalized) && /quarter/.test(normalized)) {
-    updates.push(createSuggestedUpdate('nav_cadence', 'Quarterly', 'User described quarterly valuation or NAV updates.', sourceRef, 0.82));
+  if (valuationCadence) {
+    updates.push(createSuggestedUpdate('nav_cadence', valuationCadence, `User described ${valuationCadence.toLowerCase()} valuation or NAV updates.`, sourceRef, 0.84));
   }
-  if (/valuation|nav/.test(normalized) && /weekly/.test(normalized)) {
-    updates.push(createSuggestedUpdate('nav_cadence', 'Weekly', 'User described weekly valuation or NAV updates.', sourceRef, 0.78));
+  if (subscriptionCadence) {
+    updates.push(createSuggestedUpdate('subscription_cadence', subscriptionCadence, `User described ${subscriptionCadence.toLowerCase()} subscription timing.`, sourceRef, 0.83));
+  }
+  if (redemptionCadence) {
+    updates.push(createSuggestedUpdate('redemption_cadence', redemptionCadence, `User described ${redemptionCadence.toLowerCase()} redemption timing.`, sourceRef, 0.83));
+  }
+  if (incomePayoutCadence) {
+    updates.push(createSuggestedUpdate('income_payout_cadence', incomePayoutCadence, `User described ${incomePayoutCadence.toLowerCase()} income or distribution payout timing.`, sourceRef, 0.78));
+  }
+  if (redemptionPayoutCadence) {
+    updates.push(createSuggestedUpdate('redemption_payout_cadence', redemptionPayoutCadence, `User described ${redemptionPayoutCadence.toLowerCase()} redemption payout settlement timing.`, sourceRef, 0.78));
   }
   if (/uploaded file|upload file|file upload|uploaded via a file|ingested from uploaded file/.test(normalized)) {
     updates.push(createSuggestedUpdate('nav_source', 'Uploaded file', 'User described NAV or valuation coming from an uploaded file.', sourceRef, 0.84));
@@ -691,6 +742,27 @@ export function createProductSetupSuggestionsFromText(
   }
 
   return updates;
+}
+
+function extractCadenceNear(value: string, contextPattern: string): string | undefined {
+  const cadenceTerms: Array<[RegExp, string]> = [
+    [/\bintraday\b/, 'Intraday'],
+    [/\bdaily\b|\beach day\b/, 'Daily'],
+    [/\bweekly\b|\beach week\b/, 'Weekly'],
+    [/\bmonthly\b|\beach month\b/, 'Monthly'],
+    [/\bquarterly\b|\beach quarter\b|\bquarter\b/, 'Quarterly'],
+    [/\bhalf[-\s]?yearly\b|\bsemi[-\s]?annual(?:ly)?\b/, 'Half-yearly'],
+    [/\byearly\b|\bannually\b|\bannual\b/, 'Yearly'],
+  ];
+
+  for (const [termPattern, label] of cadenceTerms) {
+    const termSource = `(?:${termPattern.source})`;
+    const cadenceBeforeContext = new RegExp(`${termSource}(?:\\s+\\w+){0,4}\\s+${contextPattern}`, 'i');
+    const contextBeforeCadence = new RegExp(`${contextPattern}(?:\\s+\\w+){0,4}\\s+${termSource}`, 'i');
+    if (cadenceBeforeContext.test(value) || contextBeforeCadence.test(value)) return label;
+  }
+
+  return undefined;
 }
 
 function createSuggestedUpdate(
@@ -980,6 +1052,10 @@ export function createProductSetupPackPayload(record: ProductSetupRecord, readMo
     'Burn: permanently remove tokens from circulation, usually after redemption or maturity.',
     'Whitelisted wallet: wallet address approved to receive or hold the product token.',
     'Protocol base: token contract pattern used to represent the product on-chain.',
+    'Subscription cadence: how often investors can subscribe into the product.',
+    'Redemption cadence: how often investors can request redemption.',
+    'Income payout cadence: how often distributions, dividends, coupons, or income-like payouts are expected.',
+    'Redemption payout cadence: how often redemption cash or stablecoin payouts are settled.',
   ];
   const fields = Object.values(record.fields).map((field) => ({
     requirement: field.label,
