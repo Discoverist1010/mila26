@@ -51,10 +51,8 @@ import {
   createProductSetupSuggestionsFromText,
   createUnsupportedRequirementDecisionsFromText,
   decideUnsupportedRequirement,
-  deferProductSetupField,
   fieldDisplayValue,
   handleProductSetupWalletInput,
-  markTermExplained,
   setProductSetupSuggestedUpdates,
   setUnsupportedRequirementDecisions,
   toProductSetupReadModel,
@@ -578,8 +576,6 @@ export function App() {
   const [contractOpsDeploymentWarningMessage, setContractOpsDeploymentWarningMessage] = useState<string | undefined>();
   const [productSetupWalletInputs, setProductSetupWalletInputs] = useState({
     admin_wallet: '',
-    subscription_receiving_wallet: '',
-    redemption_wallet: '',
   });
   const [durableEvidenceRecords, setDurableEvidenceRecords] = useState<WorkspaceEvidenceRecord[]>([]);
   const [durableArtifactRecords, setDurableArtifactRecords] = useState<WorkspaceArtifactRecord[]>([]);
@@ -1012,8 +1008,30 @@ export function App() {
   const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
   const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
   const visibleSecondaryWorkflowActions = secondaryWorkflowActions.filter((action) => action.enabled);
+  const activeProductSetupPendingCustomDecisionCount = productSetupReadModel.unsupportedRequirementDecisions.filter(
+    (item) => item.decision === 'pending',
+  ).length;
+  const productSetupNextActionKind =
+    productSetupRecord.pendingSuggestedUpdates.length > 0
+      ? 'review_updates'
+      : productSetupReadModel.missingEssentials.length > 0
+        ? 'answer_missing'
+        : activeProductSetupPendingCustomDecisionCount > 0
+          ? 'resolve_custom'
+          : 'download_pack';
+  const nextMissingProductSetupField = productSetupReadModel.missingEssentials[0];
+  const productSetupNextActionText =
+    productSetupNextActionKind === 'review_updates'
+      ? `ZiLi-OS captured ${productSetupRecord.pendingSuggestedUpdates.length} possible requirement update(s) from the conversation. Review the correct ones first so the setup summary can advance.`
+      : productSetupNextActionKind === 'answer_missing'
+        ? `Next Product Setup detail to clarify: ${nextMissingProductSetupField?.label ?? 'the remaining setup input'}. Answer naturally in the chat, or use the setup fields as a shortcut.`
+        : productSetupNextActionKind === 'resolve_custom'
+          ? 'Resolve the pending unsupported or custom requirement decision before treating the Product Setup Pack as ready.'
+          : 'Product Setup has the essentials needed for a draft pack. Review or download the Product Setup Pack, or ask ZiLi-OS to clarify anything before moving on.';
   const nextBestActionText =
-    lifecycleReadModel.investorRegistry.entryCount === 0
+    activeWorkspaceTab.id === 'requirements'
+      ? productSetupNextActionText
+      : lifecycleReadModel.investorRegistry.entryCount === 0
       ? 'Start by registering investor wallet addresses so subscription, whitelisting, servicing, and evidence can use the same lifecycle state.'
       : lifecycleReadModel.subscription.status !== 'ready'
         ? 'Define subscription parameters so the subscription-redemption template can use permitted stablecoins, payment address, and payment-per-token terms.'
@@ -1506,13 +1524,7 @@ export function App() {
       setProductSetupRecord(loadedProductSetupRecord);
       setPermittedStablecoinsInput(nextLifecycleState.subscriptionParameters.permittedStablecoins.join(', '));
       setProductSetupWalletInputs({
-        admin_wallet: fieldDisplayValue(loadedProductSetupRecord.fields.admin_wallet),
-        subscription_receiving_wallet:
-          nextLifecycleState.subscriptionParameters.paymentAddress ??
-          fieldDisplayValue(loadedProductSetupRecord.fields.subscription_receiving_wallet),
-        redemption_wallet:
-          nextLifecycleState.redemptionParameters.redemptionWalletAddress ??
-          fieldDisplayValue(loadedProductSetupRecord.fields.redemption_wallet),
+        admin_wallet: fieldDisplayValue(loadedProductSetupRecord.fields.admin_wallet) || loadedProductSetupRecord.fields.admin_wallet.rolePlaceholder || '',
       });
       clearLocalOnlyWorkspaceArtifactsAfterLoad();
       setSelectedWorkspaceTab('overview');
@@ -2363,6 +2375,13 @@ export function App() {
     }
   }
 
+  function focusWorkspaceElement(elementId: string) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    element.focus({ preventScroll: true });
+  }
+
   function cockpitActionLabel(actionId: Mila26UiActionId, fallbackLabel: string) {
     if (actionId === 'generate_engineering_brief' && isEngineeringBriefLoading) return 'Generating Engineering Brief...';
     if (actionId === 'prepare_smart_contract_spec' && smartContractGenerationStatus === 'loading') {
@@ -2474,14 +2493,6 @@ export function App() {
     }
   }
 
-  function deferProductSetupBlocker(fieldKey: ProductSetupFieldKey) {
-    setProductSetupRecord((current) => deferProductSetupField(current, fieldKey));
-  }
-
-  function showProductSetupTerm(termKey: string) {
-    setProductSetupRecord((current) => markTermExplained(current, termKey));
-  }
-
   function updateProductSetupFieldFromTab(
     fieldKey: ProductSetupFieldKey,
     value: string | number | boolean | string[] | undefined,
@@ -2512,22 +2523,11 @@ export function App() {
     updateProductSetupFieldFromTab('expected_investor_count', normalizedValue, 'edited_in_product_setup_tab');
   }
 
-  function updateProductSetupWalletField(
-    fieldKey: Extract<ProductSetupFieldKey, 'admin_wallet' | 'redemption_wallet' | 'subscription_receiving_wallet'>,
-    value: string,
-  ) {
+  function updateProductSetupWalletField(fieldKey: Extract<ProductSetupFieldKey, 'admin_wallet'>, value: string) {
     const resultRef = `product_setup_${fieldKey}_input`;
     const result = handleProductSetupWalletInput(productSetupRecord, fieldKey, value, resultRef);
     setProductSetupRecord(result.record);
     setProductSetupWalletMessage(result.message);
-
-    if (fieldKey === 'subscription_receiving_wallet' && isValidNonZeroEvmAddress(value.trim())) {
-      updateSubscriptionParameters({ paymentAddress: value.trim() });
-    }
-
-    if (fieldKey === 'redemption_wallet' && isValidNonZeroEvmAddress(value.trim())) {
-      updateRedemptionParameters({ redemptionWalletAddress: value.trim() });
-    }
   }
 
   function generateProductSetupPack(format: 'markdown' | 'json' | 'pdf') {
@@ -2764,7 +2764,46 @@ export function App() {
 
             {activeWorkspaceTab.id === 'requirements' && (
               <section className="product-setup-panel" aria-label="Product Setup workspace">
-                <section className="parameter-panel product-setup-direct-inputs" aria-label="Product Setup canonical inputs">
+                <section className="product-setup-summary" aria-label="Product Setup compact summary">
+                  <div className="registry-panel-heading compact-subsection-heading">
+                    <div>
+                      <h3>Setup summary</h3>
+                      <p>Review the key Product Setup state without duplicating the later workflow tabs.</p>
+                    </div>
+                  </div>
+                  <div className="product-setup-summary-grid">
+                    <article>
+                      <span>Readiness</span>
+                      <strong>{productSetupReadModel.readinessLabel}</strong>
+                    </article>
+                    <article>
+                      <span>Protocol base</span>
+                      <strong>{fieldDisplayValue(productSetupRecord.fields.protocol_base) || 'Not selected'}</strong>
+                    </article>
+                    <article>
+                      <span>Expected investors</span>
+                      <strong>{fieldDisplayValue(productSetupRecord.fields.expected_investor_count) || 'Missing'}</strong>
+                    </article>
+                    <article>
+                      <span>Top missing items</span>
+                      <strong>
+                        {productSetupReadModel.missingEssentials.length > 0
+                          ? productSetupReadModel.missingEssentials
+                              .slice(0, 4)
+                              .map((field) => field.label)
+                              .join(', ')
+                          : 'No essential gaps'}
+                      </strong>
+                    </article>
+                  </div>
+                </section>
+
+                <section
+                  className="parameter-panel product-setup-direct-inputs"
+                  id="product-setup-canonical-inputs"
+                  tabIndex={-1}
+                  aria-label="Product Setup canonical inputs"
+                >
                   <div className="registry-panel-heading compact-subsection-heading">
                     <div>
                       <h3>Canonical setup inputs</h3>
@@ -2948,44 +2987,13 @@ export function App() {
                   </div>
                 </section>
 
-                <section className="product-setup-wallet-capture" aria-label="Product Setup wallet capture">
-                  <div className="registry-panel-heading compact-subsection-heading">
-                    <div>
-                      <h3>Wallets needed before deployment</h3>
-                      <p>Paste public wallet addresses only. Role names are saved as placeholders but remain missing before deployment.</p>
-                    </div>
-                  </div>
-                  <div className="parameter-grid">
-                    {(['admin_wallet', 'subscription_receiving_wallet', 'redemption_wallet'] as const).map((fieldKey) => (
-                      <label htmlFor={`product-setup-${fieldKey}`} key={fieldKey}>
-                        {productSetupRecord.fields[fieldKey].label}
-                        <input
-                          id={`product-setup-${fieldKey}`}
-                          value={productSetupWalletInputs[fieldKey]}
-                          onChange={(event) =>
-                            setProductSetupWalletInputs((current) => ({
-                              ...current,
-                              [fieldKey]: event.target.value,
-                            }))
-                          }
-                          placeholder="0x... or role placeholder"
-                          autoComplete="off"
-                        />
-                        <button
-                          type="button"
-                          className="workflow-button compact"
-                          onClick={() => updateProductSetupWalletField(fieldKey, productSetupWalletInputs[fieldKey])}
-                        >
-                          Save wallet
-                        </button>
-                      </label>
-                    ))}
-                  </div>
-                  {productSetupWalletMessage && <p className="chat-status">{productSetupWalletMessage}</p>}
-                </section>
-
                 {productSetupRecord.pendingSuggestedUpdates.length > 0 && (
-                  <section className="product-setup-review" aria-label="Product Setup suggested updates">
+                  <section
+                    className="product-setup-review"
+                    id="product-setup-suggested-updates"
+                    tabIndex={-1}
+                    aria-label="Product Setup suggested updates"
+                  >
                     <div className="registry-panel-heading compact-subsection-heading">
                       <div>
                         <h3>Suggested requirement updates</h3>
@@ -3012,7 +3020,12 @@ export function App() {
                 )}
 
                 {productSetupReadModel.unsupportedRequirementDecisions.length > 0 && (
-                  <section className="product-setup-review" aria-label="Product Setup unsupported requirements">
+                  <section
+                    className="product-setup-review"
+                    id="product-setup-unsupported-requirements"
+                    tabIndex={-1}
+                    aria-label="Product Setup unsupported requirements"
+                  >
                     <div className="registry-panel-heading compact-subsection-heading">
                       <div>
                         <h3>Unsupported or custom requirements</h3>
@@ -3057,86 +3070,6 @@ export function App() {
                     </div>
                   </section>
                 )}
-
-                <section className="product-setup-board" aria-label="Product requirements board">
-                  {productSetupReadModel.requirementSections.map((section) => (
-                    <article key={section.title}>
-                      <h4>{section.title}</h4>
-                      <ul className="artifact-list">
-                        {section.fields.map((field) => (
-                          <li key={field.key}>
-                            <span className={field.status === 'user_confirmed' || field.status === 'system_default' ? 'available' : 'draft'}>
-                              {field.status.replaceAll('_', ' ')}
-                            </span>
-                            {field.label}
-                            <small>
-                              {fieldDisplayValue(field) || field.rolePlaceholder || field.deferralReason || 'Missing'}
-                            </small>
-                          </li>
-                        ))}
-                      </ul>
-                    </article>
-                  ))}
-                </section>
-
-                <section className="product-setup-explanations" aria-label="Product Setup just-in-time explanations">
-                  <div className="registry-panel-heading compact-subsection-heading">
-                    <div>
-                      <h3>Just-in-time explanations</h3>
-                      <p>Product Setup explains terms before asking for technical inputs. Later tabs use shorter labels and tooltips.</p>
-                    </div>
-                  </div>
-                  <div className="product-setup-prompt-grid">
-                    {productSetupReadModel.firstTimePrompts.map((prompt) => (
-                      <article key={prompt.termKey}>
-                        <strong>{productSetupRecord.fields[prompt.fieldKey].label}</strong>
-                        <p>{prompt.prompt}</p>
-                        <small>
-                          Shown {productSetupRecord.termExplanations[prompt.termKey]?.timesShown ?? 0} time(s) in Product Setup.
-                        </small>
-                        <button type="button" className="workflow-button" onClick={() => showProductSetupTerm(prompt.termKey)}>
-                          Mark explained
-                        </button>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="product-setup-blockers" aria-label="Product Setup missing fields">
-                  <div>
-                    <h4>Missing before deployment</h4>
-                    {productSetupReadModel.deploymentWarnings.length > 0 ? (
-                      <ul className="registry-warnings">
-                        {productSetupReadModel.deploymentWarnings.map((warning) => (
-                          <li key={warning.fieldKey}>
-                            {warning.message} Likely error: {warning.likelyError}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p>No Product Setup deployment blockers are currently open.</p>
-                    )}
-                    {productSetupReadModel.latestDeploymentWarningAcknowledgement && (
-                      <p className="chat-status">
-                        Proceed-with-warnings recorded at {productSetupReadModel.latestDeploymentWarningAcknowledgement.acknowledgedAtIso}.
-                      </p>
-                    )}
-                  </div>
-                  <div className="product-setup-defer-actions">
-                    <button type="button" className="workflow-button" onClick={() => deferProductSetupBlocker('admin_wallet')}>
-                      Defer admin wallet
-                    </button>
-                    <button type="button" className="workflow-button" onClick={() => deferProductSetupBlocker('subscription_receiving_wallet')}>
-                      Defer subscription receiving wallet
-                    </button>
-                    <button type="button" className="workflow-button" onClick={() => deferProductSetupBlocker('redemption_wallet')}>
-                      Defer redemption wallet
-                    </button>
-                    <button type="button" className="workflow-button" onClick={acknowledgeDeploymentWarnings}>
-                      Record proceed-with-warnings decision
-                    </button>
-                  </div>
-                </section>
 
                 <section className="product-setup-pack" aria-label="Product Setup Pack">
                   <div>
@@ -3376,8 +3309,9 @@ export function App() {
                   <div>
                     <h3>Subscription parameters</h3>
                     <p>
-                      Configure the permitted stablecoins, subscription window, payment destination, and payment-per-token terms
-                      for the subscription-redemption smart-contract template. This does not move stablecoins.
+                      Configure the permitted stablecoins, subscription window, public subscription receiving wallet, and
+                      payment-per-token terms for the subscription-redemption smart-contract template. This does not move
+                      stablecoins.
                     </p>
                   </div>
                   <span className={`gate-badge ${lifecycleReadModel.subscription.status === 'ready' ? 'ready' : 'draft'}`}>
@@ -3421,7 +3355,7 @@ export function App() {
                     />
                   </label>
                   <label htmlFor="subscription-payment-address">
-                    Payment wallet / contract address
+                    Subscription receiving wallet address
                     <input
                       id="subscription-payment-address"
                       value={lifecycleState.subscriptionParameters.paymentAddress ?? ''}
@@ -3463,7 +3397,7 @@ export function App() {
                   <div>
                     <h3>Redemption parameters</h3>
                     <p>
-                      Configure the redemption window, redemption wallet, payout stablecoin, payout-per-token amount, and
+                      Configure the redemption window, public redemption wallet, payout stablecoin, payout-per-token amount, and
                       liquidation delay before stablecoin payout. This is parameter capture only.
                     </p>
                   </div>
@@ -3610,6 +3544,43 @@ export function App() {
                       Proceed with warnings
                     </button>
                   )}
+                </section>
+
+                <section className="contract-ops-role-panel" aria-label="Contract Ops deployment roles">
+                  <div className="registry-panel-heading compact-subsection-heading">
+                    <div>
+                      <h4>Deployment role wallet</h4>
+                      <p>
+                        Save the public admin wallet address or a role placeholder. Never paste private keys, seed phrases, or
+                        recovery phrases.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="parameter-grid">
+                    <label htmlFor="contract-ops-admin-wallet">
+                      Admin wallet
+                      <input
+                        id="contract-ops-admin-wallet"
+                        value={productSetupWalletInputs.admin_wallet}
+                        onChange={(event) =>
+                          setProductSetupWalletInputs((current) => ({
+                            ...current,
+                            admin_wallet: event.target.value,
+                          }))
+                        }
+                        placeholder="0x... or issuer operations wallet"
+                        autoComplete="off"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="workflow-button primary-action"
+                      onClick={() => updateProductSetupWalletField('admin_wallet', productSetupWalletInputs.admin_wallet)}
+                    >
+                      Save admin wallet
+                    </button>
+                  </div>
+                  {productSetupWalletMessage && <p className="chat-status">{productSetupWalletMessage}</p>}
                 </section>
 
                 <div className="contract-ops-summary" aria-label="Contract Ops summary">
@@ -4137,52 +4108,120 @@ export function App() {
               <section className="next-action-panel" aria-label="Next suggested action">
                 <h3>Next best action</h3>
                 <p>{nextBestActionText}</p>
-                <div className="suggested-action-row">
-                  <button
-                    type="button"
-                    className="workflow-button primary-action"
-                    data-action-id={primaryWorkflowAction.id}
-                    disabled={
-                      !primaryWorkflowAction.enabled ||
-                      isEngineeringBriefLoading ||
-                      smartContractGenerationStatus === 'loading' ||
-                      walletConnectionReadModel.walletConnectionStatus === 'connecting' ||
-                      (primaryWorkflowAction.id === 'connect_wallet' && isWalletConnectionComplete)
-                    }
-                    onClick={() => runCockpitAction(primaryWorkflowAction.id)}
-                    title={primaryWorkflowAction.disabledReason}
-                  >
-                    {cockpitActionLabel(primaryWorkflowAction.id, primaryWorkflowAction.label)}
-                  </button>
-                  <button type="button" className="workflow-button" onClick={() => setSelectedWorkspaceTab('subscription')}>
-                    Define permitted stablecoins
-                  </button>
-                  <button type="button" className="workflow-button" onClick={() => setSelectedWorkspaceTab('redemption')}>
-                    Set redemption delay
-                  </button>
-                  <button type="button" className="workflow-button" onClick={() => setSelectedWorkspaceTab('investor_registry')}>
-                    Review investor wallet registry
-                  </button>
-                  {smartContractGenerationStatus === 'ready' && (
+                {activeWorkspaceTab.id === 'requirements' ? (
+                  <div className="suggested-action-row">
+                    {productSetupNextActionKind === 'review_updates' && (
+                      <button
+                        type="button"
+                        className="workflow-button primary-action"
+                        onClick={() => focusWorkspaceElement('product-setup-suggested-updates')}
+                      >
+                        Review captured updates
+                      </button>
+                    )}
+                    {productSetupNextActionKind === 'answer_missing' && (
+                      <button
+                        type="button"
+                        className="workflow-button primary-action"
+                        onClick={() => focusWorkspaceElement('zilios-copilot-composer')}
+                      >
+                        Ask ZiLi-OS
+                      </button>
+                    )}
+                    {productSetupNextActionKind === 'resolve_custom' && (
+                      <button
+                        type="button"
+                        className="workflow-button primary-action"
+                        onClick={() => focusWorkspaceElement('product-setup-unsupported-requirements')}
+                      >
+                        Review custom decisions
+                      </button>
+                    )}
+                    {productSetupNextActionKind === 'download_pack' && (
+                      <button
+                        type="button"
+                        className="workflow-button primary-action"
+                        onClick={() => generateProductSetupPack('markdown')}
+                      >
+                        Download Product Setup Pack
+                      </button>
+                    )}
+                    {productSetupNextActionKind !== 'answer_missing' && (
+                      <button
+                        type="button"
+                        className="workflow-button"
+                        onClick={() => focusWorkspaceElement('zilios-copilot-composer')}
+                      >
+                        Ask ZiLi-OS
+                      </button>
+                    )}
+                    {productSetupNextActionKind !== 'review_updates' && productSetupRecord.pendingSuggestedUpdates.length > 0 && (
+                      <button
+                        type="button"
+                        className="workflow-button"
+                        onClick={() => focusWorkspaceElement('product-setup-suggested-updates')}
+                      >
+                        Review captured updates
+                      </button>
+                    )}
+                    {productSetupNextActionKind !== 'download_pack' && (
+                      <button
+                        type="button"
+                        className="workflow-button"
+                        onClick={() => focusWorkspaceElement('product-setup-canonical-inputs')}
+                      >
+                        Fill setup inputs
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="suggested-action-row">
                     <button
                       type="button"
-                      className="workflow-button"
-                      data-action-id={uiActions.deployToSepolia}
-                      disabled={!canRequestSepoliaDeployment}
-                      onClick={() => void requestSepoliaDeployment()}
-                      title={canRequestSepoliaDeployment ? undefined : deploymentActionDisabledReason}
+                      className="workflow-button primary-action"
+                      data-action-id={primaryWorkflowAction.id}
+                      disabled={
+                        !primaryWorkflowAction.enabled ||
+                        isEngineeringBriefLoading ||
+                        smartContractGenerationStatus === 'loading' ||
+                        walletConnectionReadModel.walletConnectionStatus === 'connecting' ||
+                        (primaryWorkflowAction.id === 'connect_wallet' && isWalletConnectionComplete)
+                      }
+                      onClick={() => runCockpitAction(primaryWorkflowAction.id)}
+                      title={primaryWorkflowAction.disabledReason}
                     >
-                      {walletSignedDeploymentState.deploymentStatus === 'awaiting_wallet_confirmation'
-                        ? 'Awaiting Wallet Confirmation...'
-                        : walletSignedDeploymentState.deploymentStatus === 'submitted'
-                          ? 'Deployment Submitted to Sepolia'
-                          : walletSignedDeploymentState.deploymentStatus === 'confirmed'
-                            ? 'Deployment Confirmed on Sepolia'
-                            : 'Deploy to Sepolia with Wallet'}
+                      {cockpitActionLabel(primaryWorkflowAction.id, primaryWorkflowAction.label)}
                     </button>
-                  )}
-                </div>
-                {!primaryWorkflowAction.enabled && primaryWorkflowAction.disabledReason && (
+                    <button type="button" className="workflow-button" onClick={() => setSelectedWorkspaceTab('subscription')}>
+                      Define permitted stablecoins
+                    </button>
+                    <button type="button" className="workflow-button" onClick={() => setSelectedWorkspaceTab('redemption')}>
+                      Set redemption delay
+                    </button>
+                    <button type="button" className="workflow-button" onClick={() => setSelectedWorkspaceTab('investor_registry')}>
+                      Review investor wallet registry
+                    </button>
+                    {smartContractGenerationStatus === 'ready' && (
+                      <button
+                        type="button"
+                        className="workflow-button"
+                        data-action-id={uiActions.deployToSepolia}
+                        disabled={!canRequestSepoliaDeployment}
+                        onClick={() => void requestSepoliaDeployment()}
+                        title={canRequestSepoliaDeployment ? undefined : deploymentActionDisabledReason}
+                      >
+                        {walletSignedDeploymentState.deploymentStatus === 'awaiting_wallet_confirmation'
+                          ? 'Awaiting Wallet Confirmation...'
+                          : walletSignedDeploymentState.deploymentStatus === 'submitted'
+                            ? 'Deployment Submitted to Sepolia'
+                            : walletSignedDeploymentState.deploymentStatus === 'confirmed'
+                              ? 'Deployment Confirmed on Sepolia'
+                              : 'Deploy to Sepolia with Wallet'}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {activeWorkspaceTab.id !== 'requirements' && !primaryWorkflowAction.enabled && primaryWorkflowAction.disabledReason && (
                   <p className="action-disabled-reason">{primaryWorkflowAction.disabledReason}</p>
                 )}
               </section>

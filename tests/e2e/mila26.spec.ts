@@ -34,6 +34,8 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Product Setup/ }).click();
 
   const productSetup = page.getByLabel('Product Setup workspace');
+  await expect(productSetup.getByLabel('Product Setup compact summary')).toBeVisible();
+  await expect(productSetup.getByLabel('Product Setup compact summary')).toContainText('Setup summary');
   await expect(productSetup.getByRole('heading', { name: 'Canonical setup inputs' })).toBeVisible();
   await expect(productSetup.getByLabel('Protocol base')).toHaveValue('');
   await expect(productSetup.getByLabel('Expected investors')).toBeVisible();
@@ -48,6 +50,10 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await expect(productSetup).not.toContainText('ZiLi-OS understanding');
   await expect(productSetup).not.toContainText('MVP readiness');
   await expect(productSetup).not.toContainText('Advisor Bot + Engineering Bot');
+  await expect(page.getByLabel('Next suggested action')).toContainText('Next Product Setup detail to clarify');
+  await expect(page.getByLabel('Next suggested action').getByRole('button', { name: 'Ask ZiLi-OS' })).toBeVisible();
+  await expect(page.getByLabel('Next suggested action').getByRole('button', { name: 'Fill setup inputs' })).toBeVisible();
+  await expect(page.getByLabel('Next suggested action').getByRole('button', { name: 'Review investor wallet registry' })).toHaveCount(0);
 
   await page
     .getByRole('textbox', { name: 'ZiLi-OS Copilot' })
@@ -62,6 +68,8 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await expect(suggestedUpdates).toContainText('USDC');
   await expect(suggestedUpdates).toContainText('Redemption schedule');
   await expect(suggestedUpdates).toContainText('Quarterly');
+  await expect(page.getByLabel('Next suggested action')).toContainText('possible requirement update');
+  await expect(page.getByLabel('Next suggested action').getByRole('button', { name: 'Review captured updates' })).toBeVisible();
 
   await suggestedUpdates
     .locator('article')
@@ -69,18 +77,13 @@ test('product setup turns unstructured chat into reviewable requirements', async
     .getByRole('button', { name: 'Confirm' })
     .click();
 
-  const requirementsBoard = page.getByLabel('Product requirements board');
-  const expectedInvestors = requirementsBoard.locator('li').filter({ hasText: 'Expected investors' });
-  await expect(expectedInvestors).toContainText('user confirmed');
-  await expect(expectedInvestors).toContainText('25');
-
-  const explanations = page.getByLabel('Product Setup just-in-time explanations');
-  const adminWalletExplanation = explanations.locator('article').filter({ hasText: 'Admin wallet' });
-  await expect(adminWalletExplanation).toContainText('I need the admin wallet.');
-  await expect(adminWalletExplanation).toContainText('paste the public wallet address');
-  await expect(adminWalletExplanation).toContainText('do not provide a private key, seed phrase, or recovery phrase');
-  await adminWalletExplanation.getByRole('button', { name: 'Mark explained' }).click();
-  await expect(adminWalletExplanation).toContainText('Shown 1 time(s) in Product Setup.');
+  const setupSummary = page.getByLabel('Product Setup compact summary');
+  await expect(setupSummary).toContainText('Expected investors');
+  await expect(setupSummary).toContainText('25');
+  await expect(productSetup.getByLabel('Product requirements board')).toHaveCount(0);
+  await expect(productSetup.getByLabel('Product Setup wallet capture')).toHaveCount(0);
+  await expect(productSetup.getByLabel('Product Setup just-in-time explanations')).toHaveCount(0);
+  await expect(productSetup.getByLabel('Product Setup missing fields')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Download Product Setup Pack' }).click();
   await expect(productSetup).toContainText('Draft Product Setup Pack generated in session.');
@@ -398,7 +401,7 @@ test('subscription redemption parameters update shared lifecycle state and templ
   await subscription.getByLabel('Permitted stablecoins').fill('usdc, usdt, usdc');
   await subscription.getByLabel('Subscription window').fill('Monthly: first five business days');
   await subscription.getByLabel('Minimum subscription amount').fill('25000');
-  await subscription.getByLabel('Payment wallet / contract address').fill(paymentWallet);
+  await subscription.getByLabel('Subscription receiving wallet address').fill(paymentWallet);
   await subscription.getByLabel('Payment per token').fill('1.025');
   await expect(subscription.getByText('Subscription parameters are ready for template handoff.')).toBeVisible();
   await expect(page.getByText(
@@ -465,7 +468,7 @@ test('allocation mint readiness uses shared investor registry and subscription s
   await subscription.getByLabel('Permitted stablecoins').fill('usdc');
   await subscription.getByLabel('Subscription window').fill('Monthly: first five business days');
   await subscription.getByLabel('Minimum subscription amount').fill('25000');
-  await subscription.getByLabel('Payment wallet / contract address').fill(paymentWallet);
+  await subscription.getByLabel('Subscription receiving wallet address').fill(paymentWallet);
   await subscription.getByLabel('Payment per token').fill('1.025');
 
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Contract Ops/ }).click();
@@ -519,7 +522,7 @@ test('test wallet lab generates investor wallets for allocation mint prototype d
   await subscription.getByLabel('Permitted stablecoins').fill('usdc');
   await subscription.getByLabel('Subscription window').fill('Monthly: first five business days');
   await subscription.getByLabel('Minimum subscription amount').fill('25000');
-  await subscription.getByLabel('Payment wallet / contract address').fill(paymentWallet);
+  await subscription.getByLabel('Subscription receiving wallet address').fill(paymentWallet);
   await subscription.getByLabel('Payment per token').fill('1.025');
 
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Contract Ops/ }).click();

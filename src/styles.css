@@ -2060,19 +2060,11 @@ summary {
   padding: 18px;
 }
 
-.product-setup-board,
-.product-setup-prompt-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.product-setup-board article,
-.product-setup-prompt-grid article,
 .product-setup-review,
 .product-setup-blockers,
 .product-setup-direct-inputs,
-.product-setup-wallet-capture,
+.product-setup-summary,
+.contract-ops-role-panel,
 .product-setup-pack {
   border: 1px solid #e6edf6;
   border-radius: 8px;
@@ -2090,36 +2082,23 @@ summary {
   text-transform: uppercase;
 }
 
-.product-setup-board h4,
 .product-setup-blockers h4,
 .product-setup-direct-inputs h3,
-.product-setup-wallet-capture h3,
+.product-setup-summary h3,
+.contract-ops-role-panel h4,
 .product-setup-pack h4,
-.product-setup-prompt-grid strong {
+.product-setup-summary-grid strong {
   color: #0f172a;
 }
 
 .product-setup-direct-inputs p,
-.product-setup-wallet-capture p,
-.product-setup-prompt-grid p,
-.product-setup-prompt-grid small,
+.product-setup-summary p,
+.contract-ops-role-panel p,
 .product-setup-pack p,
 .product-setup-update-list p,
 .product-setup-update-list small {
   color: #506079;
   margin: 0;
-}
-
-.product-setup-defer-actions {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.product-setup-wallet-capture label {
-  display: grid;
-  gap: 8px;
 }
 
 .workflow-button.compact {
@@ -2148,9 +2127,32 @@ summary {
   padding: 12px;
 }
 
-.product-setup-explanations {
+.product-setup-summary-grid {
   display: grid;
-  gap: 10px;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.product-setup-summary-grid article {
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  gap: 6px;
+  min-height: 84px;
+  padding: 12px;
+}
+
+.product-setup-summary-grid span {
+  color: #68798c;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.contract-ops-role-panel .parameter-grid {
+  align-items: end;
 }
 
 .parameter-grid {
@@ -2885,8 +2887,7 @@ summary {
     grid-template-columns: 1fr;
   }
 
-  .product-setup-board,
-  .product-setup-prompt-grid {
+  .product-setup-summary-grid {
     grid-template-columns: 1fr;
   }
 

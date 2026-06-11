@@ -359,6 +359,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('Confirm the recommended protocol base before approving the Requirement Brief.')).toBeVisible();
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    expect(screen.getByLabelText('Next suggested action')).toHaveTextContent('possible requirement update');
+    expect(screen.getByRole('button', { name: 'Review captured updates' })).toBeVisible();
+    expect(within(screen.getByLabelText('Next suggested action')).queryByRole('button', { name: 'Review investor wallet registry' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Expected investors');
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Subscription stablecoins');
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Redemption payout delay');
@@ -392,6 +395,15 @@ describe('App Blockchain Engineer Bot panel', () => {
     render(<App />);
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    expect(
+      screen
+        .getByLabelText('Product Setup compact summary')
+        .compareDocumentPosition(screen.getByLabelText('Product Setup canonical inputs')) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByLabelText('Next suggested action')).toHaveTextContent('Next Product Setup detail to clarify');
+    expect(screen.getByRole('button', { name: 'Ask ZiLi-OS' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Fill setup inputs' })).toBeVisible();
+    expect(within(screen.getByLabelText('Next suggested action')).queryByRole('button', { name: 'Review investor wallet registry' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Product Setup canonical inputs')).toHaveTextContent(
       'Fill these before moving on where possible. Missing values warn before deployment but do not block navigation.',
     );
@@ -418,11 +430,35 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Redemption cadence')).toHaveValue('Monthly');
     expect(screen.getByLabelText('Income payout cadence')).toHaveValue('Quarterly');
     expect(screen.getByLabelText('Redemption payout cadence')).toHaveValue('Weekly');
-    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('Expected investors');
-    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('50');
-    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('Subscription cadence');
-    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('Redemption cadence');
-    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('user confirmed');
+    expect(screen.queryByLabelText('Product requirements board')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Product Setup wallet capture')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Product Setup just-in-time explanations')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Product Setup missing fields')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('Expected investors');
+    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('50');
+    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('Protocol base');
+    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('Not selected');
+  });
+
+  it('captures the admin wallet from Contract Ops instead of Product Setup', () => {
+    render(<App />);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    expect(screen.queryByLabelText('Product Setup wallet capture')).not.toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Contract Ops/ }));
+    const deploymentRoles = screen.getByLabelText('Contract Ops deployment roles');
+    const adminWallet = within(deploymentRoles).getByLabelText('Admin wallet');
+
+    fireEvent.change(adminWallet, { target: { value: 'Issuer operations wallet' } });
+    fireEvent.click(within(deploymentRoles).getByRole('button', { name: 'Save admin wallet' }));
+    expect(deploymentRoles).toHaveTextContent('Role placeholder saved. Add the public wallet address before deployment.');
+
+    fireEvent.change(adminWallet, {
+      target: { value: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
+    });
+    fireEvent.click(within(deploymentRoles).getByRole('button', { name: 'Save admin wallet' }));
+    expect(deploymentRoles).toHaveTextContent('Do not paste private keys, seed phrases, or recovery phrases.');
   });
 
   it('routes explanation questions to Advisor without exposing a mode toggle or mutating Product Setup', async () => {
@@ -665,7 +701,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.change(within(subscription).getByLabelText('Permitted stablecoins'), { target: { value: 'usdc' } });
     fireEvent.change(within(subscription).getByLabelText('Subscription window'), { target: { value: 'Monthly: first five business days' } });
     fireEvent.change(within(subscription).getByLabelText('Minimum subscription amount'), { target: { value: '25000' } });
-    fireEvent.change(within(subscription).getByLabelText('Payment wallet / contract address'), { target: { value: paymentWallet } });
+    fireEvent.change(within(subscription).getByLabelText('Subscription receiving wallet address'), { target: { value: paymentWallet } });
     fireEvent.change(within(subscription).getByLabelText('Payment per token'), { target: { value: '1.025' } });
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Contract Ops/ }));
@@ -699,7 +735,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.change(within(subscription).getByLabelText('Permitted stablecoins'), { target: { value: 'usdc, usdt, usdc' } });
     fireEvent.change(within(subscription).getByLabelText('Subscription window'), { target: { value: 'Monthly: first five business days' } });
     fireEvent.change(within(subscription).getByLabelText('Minimum subscription amount'), { target: { value: '25000' } });
-    fireEvent.change(within(subscription).getByLabelText('Payment wallet / contract address'), { target: { value: paymentWallet } });
+    fireEvent.change(within(subscription).getByLabelText('Subscription receiving wallet address'), { target: { value: paymentWallet } });
     fireEvent.change(within(subscription).getByLabelText('Payment per token'), { target: { value: '1.025' } });
 
     expect(within(subscription).getByText('Subscription parameters are ready for template handoff.')).toBeVisible();
@@ -769,7 +805,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.change(within(subscription).getByLabelText('Permitted stablecoins'), { target: { value: 'usdc' } });
     fireEvent.change(within(subscription).getByLabelText('Subscription window'), { target: { value: 'Monthly: first five business days' } });
     fireEvent.change(within(subscription).getByLabelText('Minimum subscription amount'), { target: { value: '25000' } });
-    fireEvent.change(within(subscription).getByLabelText('Payment wallet / contract address'), { target: { value: paymentWallet } });
+    fireEvent.change(within(subscription).getByLabelText('Subscription receiving wallet address'), { target: { value: paymentWallet } });
     fireEvent.change(within(subscription).getByLabelText('Payment per token'), { target: { value: '1.025' } });
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Contract Ops/ }));
@@ -967,15 +1003,14 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Investor Wallets workspace')).toHaveTextContent(investorWallet);
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
     expect(screen.getByLabelText('Permitted stablecoins')).toHaveValue('USDC');
+    expect(screen.getByLabelText('Subscription receiving wallet address')).toHaveValue(
+      '0x4444444444444444444444444444444444444444',
+    );
     expect(screen.getByLabelText('Subscription workspace')).toHaveTextContent('Subscription parameters are ready for template handoff.');
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
-    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('Subscription stablecoins');
-    expect(screen.getByLabelText('Product requirements board')).toHaveTextContent('USDC');
-    const walletCapture = within(screen.getByLabelText('Product Setup wallet capture'));
-    const subscriptionWalletInput = walletCapture.getByLabelText('Subscription receiving wallet');
-    expect(subscriptionWalletInput).toHaveValue('0x4444444444444444444444444444444444444444');
-    fireEvent.change(subscriptionWalletInput, { target: { value: '' } });
-    expect(subscriptionWalletInput).toHaveValue('');
+    expect(screen.queryByLabelText('Product requirements board')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Product Setup wallet capture')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('Setup summary');
   });
 
   it('saves generated artifacts from the Evidence tab after establishing a workspace snapshot', async () => {
@@ -1669,7 +1704,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.change(within(subscription).getByLabelText('Permitted stablecoins'), { target: { value: 'usdc' } });
     fireEvent.change(within(subscription).getByLabelText('Subscription window'), { target: { value: 'Monthly: first five business days' } });
     fireEvent.change(within(subscription).getByLabelText('Minimum subscription amount'), { target: { value: '25000' } });
-    fireEvent.change(within(subscription).getByLabelText('Payment wallet / contract address'), { target: { value: paymentWallet } });
+    fireEvent.change(within(subscription).getByLabelText('Subscription receiving wallet address'), { target: { value: paymentWallet } });
     fireEvent.change(within(subscription).getByLabelText('Payment per token'), { target: { value: '1.025' } });
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Contract Ops/ }));
@@ -1747,7 +1782,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.change(within(subscription).getByLabelText('Permitted stablecoins'), { target: { value: 'usdc' } });
     fireEvent.change(within(subscription).getByLabelText('Subscription window'), { target: { value: 'Monthly: first five business days' } });
     fireEvent.change(within(subscription).getByLabelText('Minimum subscription amount'), { target: { value: '25000' } });
-    fireEvent.change(within(subscription).getByLabelText('Payment wallet / contract address'), { target: { value: paymentWallet } });
+    fireEvent.change(within(subscription).getByLabelText('Subscription receiving wallet address'), { target: { value: paymentWallet } });
     fireEvent.change(within(subscription).getByLabelText('Payment per token'), { target: { value: '1.025' } });
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Contract Ops/ }));

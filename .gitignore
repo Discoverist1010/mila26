@@ -6,6 +6,9 @@ cache/
 coverage/
 playwright-report/
 test-results/
+.playwright-mcp/
+zilios-site-refresh-desktop.png
+zilios-site-refresh-mobile.png
 .env
 .env.*
 !.env.example
