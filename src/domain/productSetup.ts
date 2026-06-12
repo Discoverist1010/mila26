@@ -34,6 +34,7 @@ export type ProductSetupFieldSourceType =
 
 export type ProductSetupFieldKey =
   | 'product_name'
+  | 'token_symbol'
   | 'issuer_owner'
   | 'product_type'
   | 'base_currency'
@@ -170,6 +171,7 @@ export type ProductSetupReadModel = {
 
 const essentialFieldKeys: ProductSetupFieldKey[] = [
   'product_name',
+  'token_symbol',
   'product_type',
   'base_currency',
   'protocol_base',
@@ -204,6 +206,8 @@ function createField(input: Omit<ProductSetupField, 'confirmedByUser'> & { confi
 }
 
 export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupRecord {
+  void facts;
+
   return {
     id: 'product-setup-alpha-income-fund-i',
     status: 'draft',
@@ -211,12 +215,16 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
       product_name: createField({
         key: 'product_name',
         label: 'Product name',
-        value: facts.fundName,
-        status: 'system_default',
-        sourceType: 'system_default',
-        sourceRef: 'starter_facts',
+        status: 'missing',
         usedByTabs: ['Overview', 'Evidence Vault', 'Contract Ops'],
         smartContractRelevance: 'operational_metadata',
+      }),
+      token_symbol: createField({
+        key: 'token_symbol',
+        label: 'Token symbol',
+        status: 'missing',
+        usedByTabs: ['Overview', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'contract_parameter',
       }),
       issuer_owner: createField({
         key: 'issuer_owner',
@@ -414,6 +422,31 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
   };
 }
 
+export function normalizeProductSetupRecord(record: ProductSetupRecord): ProductSetupRecord {
+  const fields = { ...record.fields };
+  const starterDefaultIdentityFields = ['product_name', 'token_symbol'] satisfies ProductSetupFieldKey[];
+
+  for (const fieldKey of starterDefaultIdentityFields) {
+    const field = fields[fieldKey];
+    if (field.status === 'system_default' && field.sourceRef === 'starter_facts') {
+      fields[fieldKey] = {
+        ...field,
+        value: undefined,
+        status: 'missing',
+        sourceType: undefined,
+        sourceRef: undefined,
+        confidence: undefined,
+        confirmedByUser: false,
+      };
+    }
+  }
+
+  return {
+    ...record,
+    fields,
+  };
+}
+
 export function recommendProductSetupProtocol(record: ProductSetupRecord): ProductSetupReadModel['protocolRecommendation'] {
   const whitelistRequired = record.fields.whitelisted_wallets_required.value === true;
   const stablecoins = record.fields.subscription_stablecoins.value;
@@ -490,7 +523,7 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
     requirementSections: [
       {
         title: 'Product snapshot',
-        fields: (['product_name', 'issuer_owner', 'product_type', 'base_currency'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
+        fields: (['product_name', 'token_symbol', 'issuer_owner', 'product_type', 'base_currency'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
       },
       {
         title: 'Protocol and token model',
@@ -689,8 +722,14 @@ export function createProductSetupSuggestionsFromText(
   const investorMatch = normalized.match(/(?:about\s*)?(\d{1,3})(?:\s*-\s*\d{1,3})?\s+(?:investors|wallets)|(\d{1,3})\s*-\s*(\d{1,3})\s+investors/);
   const delayMatch = normalized.match(/(\d{1,3})\s*(?:business\s*)?(?:day|days|hour|hours|week|weeks)/);
   const valuationCadence = extractCadenceNear(normalized, '(?:valuation|nav)');
-  const subscriptionCadence = extractCadenceNear(normalized, '(?:subscrib\\w*|subscription\\w*)');
-  const redemptionCadence = extractCadenceNear(normalized, '(?:redeem\\w*|redemption\\w*)');
+  const subscriptionCadence = extractCadenceNear(
+    normalized,
+    '(?:subscrib\\w*|subscription\\w*|new\\s+investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join)|investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join)|accept\\s+new\\s+investors?|new\\s+money\\s+comes?\\s+in)',
+  );
+  const redemptionCadence = extractCadenceNear(
+    normalized,
+    '(?:redeem\\w*|redemption\\w*|existing\\s+investors?\\s+(?:can\\s+)?(?:sell\\s+out|exit|cash\\s+out|withdraw)|investors?\\s+(?:can\\s+)?(?:sell\\s+out|exit|cash\\s+out|withdraw)|sell\\s+out|cash\\s+out|withdraw)',
+  );
   const incomePayoutCadence = extractCadenceNear(normalized, '(?:distribution\\w*|dividend\\w*|coupon\\w*|income payout|cash distribution)');
   const redemptionPayoutCadence = extractCadenceNear(normalized, '(?:redemption payout|settle\\w*|settlement\\w*)');
 

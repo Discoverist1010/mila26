@@ -172,6 +172,7 @@ describe('workspace persistence repository', () => {
     };
 
     delete legacyRecord.fields.investor_wallet_rule;
+    delete legacyRecord.fields.token_symbol;
     delete legacyRecord.fields.subscription_cadence;
     delete legacyRecord.fields.subscription_receiving_wallet;
     delete legacyRecord.fields.redemption_cadence;
@@ -195,6 +196,11 @@ describe('workspace persistence repository', () => {
       key: 'investor_wallet_rule',
       status: 'inferred',
       sourceRef: 'migration_default',
+    });
+    expect(parsed.fields.token_symbol).toMatchObject({
+      key: 'token_symbol',
+      status: 'missing',
+      usedByTabs: ['Overview', 'Contract Ops', 'Evidence Vault'],
     });
     expect(parsed.fields.nav_cadence.status).toBe('missing');
     expect(parsed.fields.subscription_cadence.status).toBe('missing');

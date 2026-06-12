@@ -10,6 +10,7 @@ import {
   deferProductSetupField,
   handleProductSetupWalletInput,
   markTermExplained,
+  normalizeProductSetupRecord,
   recommendProductSetupProtocol,
   setUnsupportedRequirementDecisions,
   setProductSetupSuggestedUpdates,
@@ -53,9 +54,48 @@ describe('Product Setup record', () => {
     const record = createInitialProductSetupRecord(facts);
     const readModel = toProductSetupReadModel(record);
 
+    expect(record.fields.product_name.status).toBe('missing');
+    expect(record.fields.product_name.value).toBeUndefined();
+    expect(record.fields.token_symbol.status).toBe('missing');
+    expect(record.fields.token_symbol.value).toBeUndefined();
     expect(record.fields.protocol_base.status).toBe('missing');
     expect(record.fields.protocol_base.value).toBeUndefined();
     expect(readModel.protocolRecommendation.recommendedProtocol).toBe('ERC-3643');
+  });
+
+  it('normalizes old starter identity defaults back to missing Product Setup inputs', () => {
+    const legacyRecord = createInitialProductSetupRecord(facts);
+    legacyRecord.fields.product_name = {
+      ...legacyRecord.fields.product_name,
+      value: 'MILA Income Fund',
+      status: 'system_default',
+      sourceType: 'system_default',
+      sourceRef: 'starter_facts',
+    };
+    legacyRecord.fields.token_symbol = {
+      ...legacyRecord.fields.token_symbol,
+      value: 'MILA',
+      status: 'system_default',
+      sourceType: 'system_default',
+      sourceRef: 'starter_facts',
+    };
+
+    const normalized = normalizeProductSetupRecord(legacyRecord);
+
+    expect(normalized.fields.product_name).toMatchObject({
+      status: 'missing',
+      value: undefined,
+      sourceType: undefined,
+      sourceRef: undefined,
+      confirmedByUser: false,
+    });
+    expect(normalized.fields.token_symbol).toMatchObject({
+      status: 'missing',
+      value: undefined,
+      sourceType: undefined,
+      sourceRef: undefined,
+      confirmedByUser: false,
+    });
   });
 
   it('extracts cadence fields from Product Setup conversation without cross-attaching unrelated cadence', () => {
@@ -71,6 +111,18 @@ describe('Product Setup record', () => {
     expect(byField.get('redemption_cadence')).toBe('Monthly');
     expect(byField.get('income_payout_cadence')).toBe('Monthly');
     expect(byField.has('redemption_payout_cadence')).toBe(false);
+  });
+
+  it('extracts monthly subscription and redemption cadence from natural entry and exit wording', () => {
+    const suggestions = createProductSetupSuggestionsFromText(
+      'I want to create a tokenised product to distribute to 24 investors. New investors can come in on a monthly basis. Existing investors can sell out on the same monthly basis too.',
+      'chat_turn_entry_exit',
+    );
+    const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
+
+    expect(byField.get('expected_investor_count')).toBe(24);
+    expect(byField.get('subscription_cadence')).toBe('Monthly');
+    expect(byField.get('redemption_cadence')).toBe('Monthly');
   });
 
   it('promotes a suggested field only after user confirmation', () => {

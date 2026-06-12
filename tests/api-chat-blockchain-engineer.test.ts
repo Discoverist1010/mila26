@@ -219,8 +219,23 @@ describe('blockchain engineer chat api', () => {
         expect(request.messages[0]?.content).toMatch(/Do not jump straight to deployment/i);
         expect(request.messages[0]?.content).toMatch(/Product Setup Pack/i);
         expect(request.messages[0]?.content).toMatch(/recommended or selected ERC protocol base must guide later tab questions/i);
+        expect(request.messages[0]?.content).toMatch(/currentTurnExtractedFacts as the only facts captured from the latest user message/i);
+        expect(request.messages[0]?.content).toMatch(/workspaceDefaults as existing workspace defaults/i);
+        expect(request.messages[0]?.content).toMatch(/system_default or inferred as defaults or assumptions/i);
+        expect(request.messages[0]?.content).toMatch(/Only describe a field as user-stated/i);
+        expect(request.messages[0]?.content).toMatch(/Do not invent or prefill Product Setup identity/i);
+        expect(request.messages[0]?.content).toMatch(/Approved workspace context/i);
+        expect(request.messages[0]?.content).toMatch(/Captured from your message/i);
+        expect(request.messages[0]?.content).toMatch(/Please confirm/i);
+        expect(request.messages[0]?.content).toMatch(/Next details to complete Product Setup/i);
+        expect(request.messages[0]?.content).toMatch(/protocol base means the smart-contract pattern/i);
+        expect(request.messages[0]?.content).toMatch(/Sepolia is Ethereum test network/i);
+        expect(request.messages[0]?.content).toMatch(/Avoid abrupt instruction copy/i);
+        expect(request.messages[0]?.content).toMatch(/selected protocol base.*protocol_base is user_confirmed/i);
         expect(request.messages[0]?.content).toMatch(/Current workspace context/i);
         expect(request.messages[0]?.content).toMatch(/"label":"Product Setup"/i);
+        expect(request.messages[0]?.content).toMatch(/"currentTurnExtractedFacts":/i);
+        expect(request.messages[0]?.content).toMatch(/"workspaceDefaults":/i);
         expect(request.messages[0]?.content).toMatch(/Sepolia-only/i);
         expect(request.messages[0]?.content).toMatch(/recommended architecture target/i);
         expect(request.messages[0]?.content).toMatch(/current executable prototype/i);
@@ -273,7 +288,49 @@ describe('blockchain engineer chat api', () => {
             selectedProtocolBase: null,
             recommendedProtocol: 'ERC-3643',
             missingCanonicalInputs: ['Protocol base'],
+            canonicalFields: {
+              protocol_base: {
+                label: 'Protocol base',
+                value: null,
+                status: 'missing',
+                sourceType: null,
+                confirmedByUser: false,
+              },
+            },
+            protocolRecommendationCaveat:
+              'This is a recommendation only. Treat protocol_base as selected only after the user confirms the Protocol base field.',
           },
+          currentTurnExtractedFacts: [
+            {
+              fieldKey: 'expected_investor_count',
+              label: 'Expected investors',
+              value: '24',
+              sourceType: 'user_message',
+              sourceRef: 'chat_turn_test',
+              confidence: 0.88,
+            },
+          ],
+          workspaceDefaults: {
+            productName: {
+              value: 'MILA Income Fund',
+              sourceType: 'approved_requirement_brief',
+              sourceRef: 'brief-1',
+            },
+            tokenSymbol: {
+              value: 'MILA',
+              sourceType: 'approved_requirement_brief',
+              sourceRef: 'brief-1',
+            },
+            jurisdiction: {
+              value: 'Singapore',
+              sourceType: 'approved_requirement_brief',
+              sourceRef: 'brief-1',
+            },
+          },
+          contextRules: [
+            'currentTurnExtractedFacts are the only facts captured from the latest user message.',
+            'workspaceDefaults are existing workspace defaults or approved prior artifacts; do not describe them as user-stated unless confirmed.',
+          ],
         },
       },
     });

@@ -74,6 +74,7 @@ export const AllocationMintParametersPersistenceSchema = z
 
 const ProductSetupFieldKeyPersistenceSchema = z.enum([
   'product_name',
+  'token_symbol',
   'issuer_owner',
   'product_type',
   'base_currency',
@@ -177,6 +178,14 @@ function defaultProductSetupField(input: {
 const ProductSetupFieldsPersistenceSchema = z
   .object({
     product_name: ProductSetupFieldPersistenceSchema,
+    token_symbol: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'token_symbol',
+        label: 'Token symbol',
+        usedByTabs: ['Overview', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'contract_parameter',
+      }),
+    ),
     issuer_owner: ProductSetupFieldPersistenceSchema,
     product_type: ProductSetupFieldPersistenceSchema,
     base_currency: ProductSetupFieldPersistenceSchema,

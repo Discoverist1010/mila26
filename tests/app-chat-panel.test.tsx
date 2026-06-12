@@ -501,13 +501,21 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(requestBody.projectContext.productSetup.missingCanonicalInputs).toContain('Protocol base');
     expect(requestBody.projectContext.productSetup.canonicalFields).toEqual(
       expect.objectContaining({
-        protocol_base: expect.objectContaining({ status: 'missing', value: null }),
-        subscription_cadence: expect.objectContaining({ status: 'missing', value: null }),
-        redemption_cadence: expect.objectContaining({ status: 'missing', value: null }),
-        income_payout_cadence: expect.objectContaining({ status: 'missing', value: null }),
-        redemption_payout_cadence: expect.objectContaining({ status: 'missing', value: null }),
+        product_name: expect.objectContaining({ status: 'missing', value: null, sourceType: null, confirmedByUser: false }),
+        token_symbol: expect.objectContaining({ status: 'missing', value: null, sourceType: null, confirmedByUser: false }),
+        protocol_base: expect.objectContaining({ status: 'missing', value: null, sourceType: null, confirmedByUser: false }),
+        subscription_cadence: expect.objectContaining({ status: 'missing', value: null, sourceType: null, confirmedByUser: false }),
+        redemption_cadence: expect.objectContaining({ status: 'missing', value: null, sourceType: null, confirmedByUser: false }),
+        income_payout_cadence: expect.objectContaining({ status: 'missing', value: null, sourceType: null, confirmedByUser: false }),
+        redemption_payout_cadence: expect.objectContaining({ status: 'missing', value: null, sourceType: null, confirmedByUser: false }),
       }),
     );
+    expect(requestBody.projectContext.workspaceDefaults).toBeUndefined();
+    expect(requestBody.projectContext.currentTurnExtractedFacts).toEqual([]);
+    expect(requestBody.projectContext.contextRules.join(' ')).toMatch(/workspaceDefaults are existing workspace defaults/i);
+    expect(requestBody.projectContext.fundName).toBeUndefined();
+    expect(requestBody.projectContext.tokenSymbol).toBeUndefined();
+    expect(requestBody.projectContext.jurisdiction).toBeUndefined();
     expect(requestBody.conversationHistory).toEqual([
       expect.objectContaining({
         role: 'assistant',
@@ -553,6 +561,84 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Advisor Bot: use Redemption');
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
     expect(screen.queryByLabelText('Product Setup suggested updates')).not.toBeInTheDocument();
+  });
+
+  it('sends only user-stated Product Setup facts and does not prefill starter identity', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse({
+        ok: true,
+        data: {
+          messageId: 'engineering-response-provenance',
+          agentId: 'blockchain-engineer',
+          content: 'Engineering Bot: captured expected investors only. Defaults should be confirmed separately.',
+          openQuestions: ['What product name should we use?'],
+          riskNotes: [],
+          nextRecommendedAction: 'Confirm captured updates in Product Setup.',
+          createdAt: '2026-05-21T00:00:00.000Z',
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' }), {
+      target: {
+        value:
+          'I want to create a tokenised product to distribute to 24 investors. New investors can come in on a monthly basis. Existing investors can sell out on the same monthly basis too.',
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+    const requestBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+
+    expect(requestBody.projectContext.currentTurnExtractedFacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldKey: 'expected_investor_count',
+          label: 'Expected investors',
+          value: 24,
+          sourceType: 'user_message',
+          confidence: 0.88,
+        }),
+        expect.objectContaining({
+          fieldKey: 'subscription_cadence',
+          label: 'Subscription cadence',
+          value: 'Monthly',
+          sourceType: 'user_message',
+        }),
+        expect.objectContaining({
+          fieldKey: 'redemption_cadence',
+          label: 'Redemption cadence',
+          value: 'Monthly',
+          sourceType: 'user_message',
+        }),
+      ]),
+    );
+    expect(requestBody.projectContext.currentTurnExtractedFacts).toHaveLength(3);
+    expect(requestBody.projectContext.workspaceDefaults).toBeUndefined();
+    expect(requestBody.projectContext.fundName).toBeUndefined();
+    expect(requestBody.projectContext.tokenSymbol).toBeUndefined();
+    expect(requestBody.projectContext.jurisdiction).toBeUndefined();
+    expect(requestBody.projectContext.productSetup.canonicalFields.product_name).toEqual(
+      expect.objectContaining({ status: 'missing', value: null, confirmedByUser: false }),
+    );
+    expect(requestBody.projectContext.productSetup.canonicalFields.token_symbol).toEqual(
+      expect.objectContaining({ status: 'missing', value: null, confirmedByUser: false }),
+    );
+    expect(requestBody.projectContext.productSetup.canonicalFields.expected_investor_count).toEqual(
+      expect.objectContaining({ status: 'missing', value: null, confirmedByUser: false }),
+    );
+    expect(requestBody.projectContext.productSetup.protocolRecommendationCaveat).toMatch(/selected only after the user confirms/i);
+    expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Expected investors');
+    expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('24');
+    expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Subscription cadence');
+    expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Redemption cadence');
+    expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('3 pending');
   });
 
   it('shows a safe error and deterministic Copilot answer when the backend is unavailable', async () => {
@@ -901,8 +987,10 @@ describe('App Blockchain Engineer Bot panel', () => {
       productSetupRecord: {
         fields: {
           product_name: {
-            value: 'MILA Income Fund',
-            status: 'system_default',
+            status: 'missing',
+          },
+          token_symbol: {
+            status: 'missing',
           },
           protocol_base: {
             status: 'missing',

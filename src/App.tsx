@@ -53,6 +53,7 @@ import {
   decideUnsupportedRequirement,
   fieldDisplayValue,
   handleProductSetupWalletInput,
+  normalizeProductSetupRecord,
   setProductSetupSuggestedUpdates,
   setUnsupportedRequirementDecisions,
   toProductSetupReadModel,
@@ -952,6 +953,8 @@ export function App() {
     workspacePresentation.tabs.find((tab) => tab.id === selectedWorkspaceTab) ?? workspacePresentation.tabs[0];
   const productSetupChatContext = useMemo(() => {
     const canonicalFieldKeys: ProductSetupFieldKey[] = [
+      'product_name',
+      'token_symbol',
       'protocol_base',
       'expected_investor_count',
       'investor_wallet_rule',
@@ -979,6 +982,7 @@ export function App() {
         missingCanonicalInputs: productSetupReadModel.missingEssentials.map((field) => field.label),
         pendingSuggestedUpdates: productSetupRecord.pendingSuggestedUpdates.slice(0, 8).map((update) => ({
           field: productSetupRecord.fields[update.fieldKey].label,
+          fieldKey: update.fieldKey,
           proposedValue: Array.isArray(update.proposedValue) ? update.proposedValue.join(', ') : String(update.proposedValue),
           confidence: update.confidence,
         })),
@@ -991,10 +995,16 @@ export function App() {
                 label: field.label,
                 value: fieldDisplayValue(field) || field.rolePlaceholder || null,
                 status: field.status,
+                sourceType: field.sourceType ?? null,
+                sourceRef: field.sourceRef ?? null,
+                confirmedByUser: field.confirmedByUser,
               },
             ];
           }),
         ),
+        protocolRecommendationSource: 'derived_from_current_canonical_fields',
+        protocolRecommendationCaveat:
+          'This is a recommendation only. Treat protocol_base as selected only after the user confirms the Protocol base field.',
       },
     };
   }, [activeWorkspaceTab.id, activeWorkspaceTab.label, productSetupReadModel, productSetupRecord]);
@@ -1368,30 +1378,59 @@ export function App() {
       copilotRoute.shouldExtractRequirements ? createProductSetupSuggestionsFromText(submittedQuestion, chatSourceRef) : [];
     const unsupportedRequirementDecisions =
       copilotRoute.shouldExtractRequirements ? createUnsupportedRequirementDecisionsFromText(submittedQuestion, chatSourceRef) : [];
+    const currentTurnExtractedFacts = productSetupSuggestions.map((update) => ({
+      fieldKey: update.fieldKey,
+      label: productSetupRecord.fields[update.fieldKey].label,
+      value: update.proposedValue,
+      sourceType: update.sourceType,
+      sourceRef: update.sourceRef,
+      confidence: update.confidence,
+    }));
     if (productSetupSuggestions.length > 0 || unsupportedRequirementDecisions.length > 0) {
       setProductSetupRecord((current) =>
         setUnsupportedRequirementDecisions(setProductSetupSuggestedUpdates(current, productSetupSuggestions), unsupportedRequirementDecisions),
       );
     }
 
+    const workspaceDefaults = brief
+      ? {
+          productName: {
+            value: brief.fundFacts.fundName,
+            sourceType: 'approved_requirement_brief',
+            sourceRef: brief.id,
+          },
+          tokenSymbol: {
+            value: brief.fundFacts.tokenSymbol,
+            sourceType: 'approved_requirement_brief',
+            sourceRef: brief.id,
+          },
+          jurisdiction: {
+            value: brief.fundFacts.jurisdiction,
+            sourceType: 'approved_requirement_brief',
+            sourceRef: brief.id,
+          },
+          selectedModules: {
+            value: brief.modules.filter((module) => module.enabled).map((module) => module.id),
+            sourceType: 'approved_requirement_brief',
+            sourceRef: brief.id,
+          },
+        }
+      : undefined;
+
     const result = await askBlockchainEngineer({
       userMessage: submittedQuestion,
       conversationHistory: toChatHistory(engineeringBotConversation),
       assistantMode: copilotRoute.assistantMode,
-      projectContext: brief
-        ? {
-            fundName: brief.fundFacts.fundName,
-            tokenSymbol: brief.fundFacts.tokenSymbol,
-            jurisdiction: brief.fundFacts.jurisdiction,
-            selectedModules: brief.modules.filter((module) => module.enabled).map((module) => module.id),
-            ...productSetupChatContext,
-          }
-        : {
-            fundName: facts.fundName,
-            tokenSymbol: facts.tokenSymbol,
-            jurisdiction: facts.jurisdiction,
-            ...productSetupChatContext,
-          },
+      projectContext: {
+        ...productSetupChatContext,
+        currentTurnExtractedFacts,
+        workspaceDefaults,
+        contextRules: [
+          'currentTurnExtractedFacts are the only facts captured from the latest user message.',
+          'workspaceDefaults are existing workspace defaults or approved prior artifacts; do not describe them as user-stated unless confirmed.',
+          'canonicalFields with status system_default or inferred are assumptions/defaults to confirm, not facts the user just stated.',
+        ],
+      },
     });
 
     setIsBotReplyLoading(false);
@@ -1520,7 +1559,9 @@ export function App() {
       };
       syncInvestorRegistrySequenceFromState(nextLifecycleState);
       setLifecycleState(nextLifecycleState);
-      const loadedProductSetupRecord = result.data.snapshot.productSetupRecord ?? createInitialProductSetupRecord(starterFacts);
+      const loadedProductSetupRecord = normalizeProductSetupRecord(
+        result.data.snapshot.productSetupRecord ?? createInitialProductSetupRecord(starterFacts),
+      );
       setProductSetupRecord(loadedProductSetupRecord);
       setPermittedStablecoinsInput(nextLifecycleState.subscriptionParameters.permittedStablecoins.join(', '));
       setProductSetupWalletInputs({
