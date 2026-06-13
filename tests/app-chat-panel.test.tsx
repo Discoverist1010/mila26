@@ -359,12 +359,16 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('Confirm the recommended protocol base before approving the Requirement Brief.')).toBeVisible();
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
-    expect(screen.getByLabelText('Next suggested action')).toHaveTextContent('possible requirement update');
-    expect(screen.getByRole('button', { name: 'Review captured updates' })).toBeVisible();
-    expect(within(screen.getByLabelText('Next suggested action')).queryByRole('button', { name: 'Review investor wallet registry' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Next suggested action')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Expected investors');
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Subscription stablecoins');
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Redemption payout delay');
+    expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Review captured setup details');
+    expect(
+      screen
+        .getByLabelText('Product Setup suggested updates')
+        .compareDocumentPosition(screen.getByLabelText('Product Setup compact summary')) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     fireEvent.click(
       within(screen.getByLabelText('Product Setup suggested updates'))
         .getAllByText('Redemption payout delay')[0]
@@ -400,10 +404,7 @@ describe('App Blockchain Engineer Bot panel', () => {
         .getByLabelText('Product Setup compact summary')
         .compareDocumentPosition(screen.getByLabelText('Product Setup canonical inputs')) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(screen.getByLabelText('Next suggested action')).toHaveTextContent('Next Product Setup detail to clarify');
-    expect(screen.getByRole('button', { name: 'Ask ZiLi-OS' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Fill setup inputs' })).toBeVisible();
-    expect(within(screen.getByLabelText('Next suggested action')).queryByRole('button', { name: 'Review investor wallet registry' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Next suggested action')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Product Setup canonical inputs')).toHaveTextContent(
       'Fill these before moving on where possible. Missing values warn before deployment but do not block navigation.',
     );
@@ -492,7 +493,7 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Advisor Bot: use Redemption');
     });
     expect(screen.queryByText('Ask a plain-language question about the current lifecycle state.')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Next suggested action')).toBeVisible();
+    expect(screen.queryByLabelText('Next suggested action')).not.toBeInTheDocument();
     const requestBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(requestBody.assistantMode).toBe('advisor');
     expect(requestBody.projectContext.activeTab).toEqual({
@@ -641,6 +642,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Subscription cadence');
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Redemption cadence');
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('3 pending');
+    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('3 pending review');
+    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('Pending: 24');
+    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('Product name, Token symbol');
   });
 
   it('shows a safe error and deterministic Copilot answer when the backend is unavailable', async () => {

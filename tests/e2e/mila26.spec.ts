@@ -50,10 +50,7 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await expect(productSetup).not.toContainText('ZiLi-OS understanding');
   await expect(productSetup).not.toContainText('MVP readiness');
   await expect(productSetup).not.toContainText('Advisor Bot + Engineering Bot');
-  await expect(page.getByLabel('Next suggested action')).toContainText('Next Product Setup detail to clarify');
-  await expect(page.getByLabel('Next suggested action').getByRole('button', { name: 'Ask ZiLi-OS' })).toBeVisible();
-  await expect(page.getByLabel('Next suggested action').getByRole('button', { name: 'Fill setup inputs' })).toBeVisible();
-  await expect(page.getByLabel('Next suggested action').getByRole('button', { name: 'Review investor wallet registry' })).toHaveCount(0);
+  await expect(page.getByLabel('Next suggested action')).toHaveCount(0);
 
   await page
     .getByRole('textbox', { name: 'ZiLi-OS Copilot' })
@@ -68,8 +65,10 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await expect(suggestedUpdates).toContainText('USDC');
   await expect(suggestedUpdates).toContainText('Redemption schedule');
   await expect(suggestedUpdates).toContainText('Quarterly');
-  await expect(page.getByLabel('Next suggested action')).toContainText('possible requirement update');
-  await expect(page.getByLabel('Next suggested action').getByRole('button', { name: 'Review captured updates' })).toBeVisible();
+  await expect(suggestedUpdates).toContainText('Review captured setup details');
+  await expect(page.getByLabel('Next suggested action')).toHaveCount(0);
+  await expect(page.getByLabel('Product Setup compact summary')).toContainText('pending review');
+  await expect(page.getByLabel('Product Setup compact summary')).toContainText('Pending: 25');
 
   await suggestedUpdates
     .locator('article')

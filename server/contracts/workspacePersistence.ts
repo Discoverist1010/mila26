@@ -96,6 +96,8 @@ const ProductSetupFieldKeyPersistenceSchema = z.enum([
   'nav_cadence',
   'nav_source',
   'investor_update_rule',
+  'initial_distribution_date',
+  'initial_investor_register_rule',
   'maturity_date',
   'maturity_closeout_rule',
   'prototype_network',
@@ -272,6 +274,22 @@ const ProductSetupFieldsPersistenceSchema = z
         key: 'investor_update_rule',
         label: 'Investor update rule',
         usedByTabs: ['Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    initial_distribution_date: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'initial_distribution_date',
+        label: 'Initial distribution date',
+        usedByTabs: ['Product Setup', 'Subscription', 'Investor Wallets', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    initial_investor_register_rule: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'initial_investor_register_rule',
+        label: 'Initial investor register',
+        usedByTabs: ['Product Setup', 'Investor Wallets', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
       }),
     ),

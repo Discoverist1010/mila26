@@ -125,6 +125,25 @@ describe('Product Setup record', () => {
     expect(byField.get('redemption_cadence')).toBe('Monthly');
   });
 
+  it('extracts named product setup details from a richer Product Setup answer', () => {
+    const suggestions = createProductSetupSuggestionsFromText(
+      'The product name is MILA and symbol is MIA. It is a pooled fund with USD as a base currency. New and existing investors can buy on a quarterly basis after launch. Before launch i.e. "IPO", an initial register of 27 investors will be book build and tokens distributed to them on IPO date tentatively on 8 Nov 2026. NAV is monthly. Income payout is quarterly.',
+      'chat_turn_rich_setup',
+    );
+    const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
+
+    expect(byField.get('product_name')).toBe('MILA');
+    expect(byField.get('token_symbol')).toBe('MIA');
+    expect(byField.get('product_type')).toBe('Pooled Fund');
+    expect(byField.get('base_currency')).toBe('USD');
+    expect(byField.get('expected_investor_count')).toBe(27);
+    expect(byField.get('subscription_cadence')).toBe('Quarterly');
+    expect(byField.get('nav_cadence')).toBe('Monthly');
+    expect(byField.get('income_payout_cadence')).toBe('Quarterly');
+    expect(byField.get('initial_distribution_date')).toBe('2026-11-08');
+    expect(String(byField.get('initial_investor_register_rule'))).toMatch(/initial register of 27 investors/i);
+  });
+
   it('promotes a suggested field only after user confirmation', () => {
     const record = setProductSetupSuggestedUpdates(
       createInitialProductSetupRecord(facts),

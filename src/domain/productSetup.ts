@@ -56,6 +56,8 @@ export type ProductSetupFieldKey =
   | 'nav_cadence'
   | 'nav_source'
   | 'investor_update_rule'
+  | 'initial_distribution_date'
+  | 'initial_investor_register_rule'
   | 'maturity_date'
   | 'maturity_closeout_rule'
   | 'prototype_network';
@@ -389,6 +391,20 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
         usedByTabs: ['Asset Servicing', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
       }),
+      initial_distribution_date: createField({
+        key: 'initial_distribution_date',
+        label: 'Initial distribution date',
+        status: 'missing',
+        usedByTabs: ['Product Setup', 'Subscription', 'Investor Wallets', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      initial_investor_register_rule: createField({
+        key: 'initial_investor_register_rule',
+        label: 'Initial investor register',
+        status: 'missing',
+        usedByTabs: ['Product Setup', 'Investor Wallets', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
       maturity_date: createField({
         key: 'maturity_date',
         label: 'Maturity date',
@@ -423,7 +439,8 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
 }
 
 export function normalizeProductSetupRecord(record: ProductSetupRecord): ProductSetupRecord {
-  const fields = { ...record.fields };
+  const baselineFields = createInitialProductSetupRecord({} as FundFacts).fields;
+  const fields = { ...baselineFields, ...record.fields };
   const starterDefaultIdentityFields = ['product_name', 'token_symbol'] satisfies ProductSetupFieldKey[];
 
   for (const fieldKey of starterDefaultIdentityFields) {
@@ -535,7 +552,7 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
       },
       {
         title: 'Asset servicing and maturity',
-        fields: (['nav_cadence', 'nav_source', 'income_payout_cadence', 'investor_update_rule', 'maturity_date', 'maturity_closeout_rule'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
+        fields: (['nav_cadence', 'nav_source', 'income_payout_cadence', 'investor_update_rule', 'initial_distribution_date', 'initial_investor_register_rule', 'maturity_date', 'maturity_closeout_rule'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
       },
       {
         title: 'Contract operations',
@@ -719,12 +736,19 @@ export function createProductSetupSuggestionsFromText(
 ): ProductSetupSuggestedUpdate[] {
   const normalized = text.toLowerCase();
   const updates: ProductSetupSuggestedUpdate[] = [];
+  const original = text.trim();
+  const productNameMatch = original.match(/\bproduct\s+name\s+is\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s+(?:and|with|as|it\s+is|symbol\s+is)|[.?!,]|$)/i);
+  const tokenSymbolMatch = original.match(/\b(?:token\s+)?symbol\s+is\s+([A-Z][A-Z0-9]{1,11})\b/i);
+  const baseCurrencyMatch = normalized.match(/\b(?:with\s+)?([a-z]{3,6})\s+as\s+(?:a\s+)?base\s+currency\b/);
+  const productTypeMatch = normalized.match(/\b(?:it\s+is\s+)?(?:a\s+)?(pooled\s+fund|private\s+credit\s+fund|credit\s+fund|investment\s+fund|fund|note|bond|portfolio)\b/);
   const investorMatch = normalized.match(/(?:about\s*)?(\d{1,3})(?:\s*-\s*\d{1,3})?\s+(?:investors|wallets)|(\d{1,3})\s*-\s*(\d{1,3})\s+investors/);
   const delayMatch = normalized.match(/(\d{1,3})\s*(?:business\s*)?(?:day|days|hour|hours|week|weeks)/);
+  const ipoDateMatch = original.match(/\b(?:ipo|launch|initial\s+distribution)\s+date(?:\s+\w+){0,3}\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
+  const initialRegisterMatch = original.match(/\binitial\s+register\s+of\s+(\d{1,3})\s+investors?\s+will\s+be\s+([^.,;]+)/i);
   const valuationCadence = extractCadenceNear(normalized, '(?:valuation|nav)');
   const subscriptionCadence = extractCadenceNear(
     normalized,
-    '(?:subscrib\\w*|subscription\\w*|new\\s+investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join)|investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join)|accept\\s+new\\s+investors?|new\\s+money\\s+comes?\\s+in)',
+    '(?:subscrib\\w*|subscription\\w*|buy|new\\s+investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|accept\\s+new\\s+investors?|new\\s+money\\s+comes?\\s+in)',
   );
   const redemptionCadence = extractCadenceNear(
     normalized,
@@ -733,8 +757,26 @@ export function createProductSetupSuggestionsFromText(
   const incomePayoutCadence = extractCadenceNear(normalized, '(?:distribution\\w*|dividend\\w*|coupon\\w*|income payout|cash distribution)');
   const redemptionPayoutCadence = extractCadenceNear(normalized, '(?:redemption payout|settle\\w*|settlement\\w*)');
 
+  if (productNameMatch?.[1]) {
+    updates.push(createSuggestedUpdate('product_name', productNameMatch[1].trim(), 'User stated the product name.', sourceRef, 0.9));
+  }
+  if (tokenSymbolMatch?.[1]) {
+    updates.push(createSuggestedUpdate('token_symbol', tokenSymbolMatch[1].trim(), 'User stated the token symbol.', sourceRef, 0.9));
+  }
+  if (productTypeMatch?.[1]) {
+    updates.push(createSuggestedUpdate('product_type', titleCaseProductSetupValue(productTypeMatch[1]), 'User described the product type.', sourceRef, 0.84));
+  }
+  if (baseCurrencyMatch?.[1]) {
+    updates.push(createSuggestedUpdate('base_currency', baseCurrencyMatch[1].toUpperCase(), 'User stated the base currency.', sourceRef, 0.88));
+  }
   if (investorMatch?.[1] || investorMatch?.[3]) {
     updates.push(createSuggestedUpdate('expected_investor_count', Number(investorMatch[1] ?? investorMatch[3]), 'User described expected investor scale.', sourceRef, 0.88));
+  }
+  if (ipoDateMatch?.[1]) {
+    updates.push(createSuggestedUpdate('initial_distribution_date', normalizeProductSetupDate(ipoDateMatch[1]), 'User described the tentative initial distribution or IPO date.', sourceRef, 0.8));
+  }
+  if (initialRegisterMatch?.[1] && initialRegisterMatch[2]) {
+    updates.push(createSuggestedUpdate('initial_investor_register_rule', `Initial register of ${initialRegisterMatch[1]} investors will be ${initialRegisterMatch[2].trim()}.`, 'User described the initial investor register process.', sourceRef, 0.78));
   }
   if (normalized.includes('usdc')) {
     updates.push(createSuggestedUpdate('subscription_stablecoins', ['USDC'], 'User mentioned USDC subscription or payout rails.', sourceRef, 0.9));
@@ -781,6 +823,40 @@ export function createProductSetupSuggestionsFromText(
   }
 
   return updates;
+}
+
+function titleCaseProductSetupValue(value: string): string {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(' ');
+}
+
+function normalizeProductSetupDate(value: string): string {
+  const match = value.trim().match(/^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/);
+  if (match?.[1] && match[2] && match[3]) {
+    const monthIndex = [
+      'jan',
+      'feb',
+      'mar',
+      'apr',
+      'may',
+      'jun',
+      'jul',
+      'aug',
+      'sep',
+      'oct',
+      'nov',
+      'dec',
+    ].indexOf(match[2].slice(0, 3).toLowerCase());
+    if (monthIndex >= 0) {
+      return `${match[3]}-${String(monthIndex + 1).padStart(2, '0')}-${String(Number(match[1])).padStart(2, '0')}`;
+    }
+  }
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return value.trim();
+  return new Date(parsed).toISOString().slice(0, 10);
 }
 
 function extractCadenceNear(value: string, contextPattern: string): string | undefined {

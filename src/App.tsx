@@ -782,6 +782,42 @@ export function App() {
   );
   const lifecycleReadModel = useMemo(() => toMila26LifecycleReadModel(lifecycleState), [lifecycleState]);
   const productSetupReadModel = useMemo(() => toProductSetupReadModel(productSetupRecord), [productSetupRecord]);
+  const productSetupPendingUpdatesByField = useMemo(() => {
+    const byField = new Map<ProductSetupFieldKey, ProductSetupSuggestedUpdate>();
+    productSetupRecord.pendingSuggestedUpdates.forEach((update) => {
+      if (!byField.has(update.fieldKey)) byField.set(update.fieldKey, update);
+    });
+    return byField;
+  }, [productSetupRecord.pendingSuggestedUpdates]);
+  const productSetupPendingReviewCount = productSetupRecord.pendingSuggestedUpdates.length;
+  const productSetupReadinessSummary =
+    productSetupPendingReviewCount > 0
+      ? `${productSetupReadModel.completedEssentialCount}/${productSetupReadModel.requiredEssentialCount} essentials confirmed, defaulted, or deferred; ${productSetupPendingReviewCount} pending review`
+      : productSetupReadModel.readinessLabel;
+  const productSetupMissingWithoutPending = productSetupReadModel.missingEssentials.filter(
+    (field) => !productSetupPendingUpdatesByField.has(field.key),
+  );
+  const productSetupTopMissingSummary =
+    productSetupMissingWithoutPending.length > 0
+      ? productSetupMissingWithoutPending
+          .slice(0, 4)
+          .map((field) => field.label)
+          .join(', ')
+      : productSetupPendingReviewCount > 0
+        ? 'Pending captured details need review'
+        : 'No essential gaps';
+  function productSetupSummaryFieldValue(fieldKey: ProductSetupFieldKey, missingLabel: string): string {
+    const confirmedValue = fieldDisplayValue(productSetupRecord.fields[fieldKey]);
+    if (confirmedValue) return confirmedValue;
+    const pendingUpdate = productSetupPendingUpdatesByField.get(fieldKey);
+    if (pendingUpdate) {
+      const pendingValue = Array.isArray(pendingUpdate.proposedValue)
+        ? pendingUpdate.proposedValue.join(', ')
+        : String(pendingUpdate.proposedValue);
+      return `Pending: ${pendingValue}`;
+    }
+    return missingLabel;
+  }
   const allocationMint = lifecycleReadModel.allocationMint;
   const selectedAllocationMintRegistryEntry = useMemo(
     () =>
@@ -966,6 +1002,8 @@ export function App() {
       'burn_lock_rule',
       'nav_cadence',
       'nav_source',
+      'initial_distribution_date',
+      'initial_investor_register_rule',
       'maturity_date',
     ];
 
@@ -1018,30 +1056,8 @@ export function App() {
   const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
   const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
   const visibleSecondaryWorkflowActions = secondaryWorkflowActions.filter((action) => action.enabled);
-  const activeProductSetupPendingCustomDecisionCount = productSetupReadModel.unsupportedRequirementDecisions.filter(
-    (item) => item.decision === 'pending',
-  ).length;
-  const productSetupNextActionKind =
-    productSetupRecord.pendingSuggestedUpdates.length > 0
-      ? 'review_updates'
-      : productSetupReadModel.missingEssentials.length > 0
-        ? 'answer_missing'
-        : activeProductSetupPendingCustomDecisionCount > 0
-          ? 'resolve_custom'
-          : 'download_pack';
-  const nextMissingProductSetupField = productSetupReadModel.missingEssentials[0];
-  const productSetupNextActionText =
-    productSetupNextActionKind === 'review_updates'
-      ? `ZiLi-OS captured ${productSetupRecord.pendingSuggestedUpdates.length} possible requirement update(s) from the conversation. Review the correct ones first so the setup summary can advance.`
-      : productSetupNextActionKind === 'answer_missing'
-        ? `Next Product Setup detail to clarify: ${nextMissingProductSetupField?.label ?? 'the remaining setup input'}. Answer naturally in the chat, or use the setup fields as a shortcut.`
-        : productSetupNextActionKind === 'resolve_custom'
-          ? 'Resolve the pending unsupported or custom requirement decision before treating the Product Setup Pack as ready.'
-          : 'Product Setup has the essentials needed for a draft pack. Review or download the Product Setup Pack, or ask ZiLi-OS to clarify anything before moving on.';
   const nextBestActionText =
-    activeWorkspaceTab.id === 'requirements'
-      ? productSetupNextActionText
-      : lifecycleReadModel.investorRegistry.entryCount === 0
+    lifecycleReadModel.investorRegistry.entryCount === 0
       ? 'Start by registering investor wallet addresses so subscription, whitelisting, servicing, and evidence can use the same lifecycle state.'
       : lifecycleReadModel.subscription.status !== 'ready'
         ? 'Define subscription parameters so the subscription-redemption template can use permitted stablecoins, payment address, and payment-per-token terms.'
@@ -2421,13 +2437,6 @@ export function App() {
     }
   }
 
-  function focusWorkspaceElement(elementId: string) {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    element.focus({ preventScroll: true });
-  }
-
   function cockpitActionLabel(actionId: Mila26UiActionId, fallbackLabel: string) {
     if (actionId === 'generate_engineering_brief' && isEngineeringBriefLoading) return 'Generating Engineering Brief...';
     if (actionId === 'prepare_smart_contract_spec' && smartContractGenerationStatus === 'loading') {
@@ -2810,6 +2819,38 @@ export function App() {
 
             {activeWorkspaceTab.id === 'requirements' && (
               <section className="product-setup-panel" aria-label="Product Setup workspace">
+                {productSetupRecord.pendingSuggestedUpdates.length > 0 && (
+                  <section
+                    className="product-setup-review"
+                    id="product-setup-suggested-updates"
+                    tabIndex={-1}
+                    aria-label="Product Setup suggested updates"
+                  >
+                    <div className="registry-panel-heading compact-subsection-heading">
+                      <div>
+                        <h3>Review captured setup details</h3>
+                        <p>ZiLi-OS extracted these from the chat. Confirm only the details that should become part of the canonical Product Setup record.</p>
+                      </div>
+                      <span>{productSetupRecord.pendingSuggestedUpdates.length} pending</span>
+                    </div>
+                    <div className="product-setup-update-list">
+                      {productSetupRecord.pendingSuggestedUpdates.map((update) => (
+                        <article key={update.id}>
+                          <div>
+                            <span>{productSetupRecord.fields[update.fieldKey].label}</span>
+                            <strong>{Array.isArray(update.proposedValue) ? update.proposedValue.join(', ') : String(update.proposedValue)}</strong>
+                            <p>{update.rationale}</p>
+                            <small>{Math.round(update.confidence * 100)}% confidence · source: {update.sourceType}</small>
+                          </div>
+                          <button type="button" className="workflow-button primary-action" onClick={() => confirmProductSetupSuggestion(update)}>
+                            Confirm
+                          </button>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
                 <section className="product-setup-summary" aria-label="Product Setup compact summary">
                   <div className="registry-panel-heading compact-subsection-heading">
                     <div>
@@ -2820,26 +2861,19 @@ export function App() {
                   <div className="product-setup-summary-grid">
                     <article>
                       <span>Readiness</span>
-                      <strong>{productSetupReadModel.readinessLabel}</strong>
+                      <strong>{productSetupReadinessSummary}</strong>
                     </article>
                     <article>
                       <span>Protocol base</span>
-                      <strong>{fieldDisplayValue(productSetupRecord.fields.protocol_base) || 'Not selected'}</strong>
+                      <strong>{productSetupSummaryFieldValue('protocol_base', 'Not selected')}</strong>
                     </article>
                     <article>
                       <span>Expected investors</span>
-                      <strong>{fieldDisplayValue(productSetupRecord.fields.expected_investor_count) || 'Missing'}</strong>
+                      <strong>{productSetupSummaryFieldValue('expected_investor_count', 'Missing')}</strong>
                     </article>
                     <article>
                       <span>Top missing items</span>
-                      <strong>
-                        {productSetupReadModel.missingEssentials.length > 0
-                          ? productSetupReadModel.missingEssentials
-                              .slice(0, 4)
-                              .map((field) => field.label)
-                              .join(', ')
-                          : 'No essential gaps'}
-                      </strong>
+                      <strong>{productSetupTopMissingSummary}</strong>
                     </article>
                   </div>
                 </section>
@@ -3032,38 +3066,6 @@ export function App() {
                     </label>
                   </div>
                 </section>
-
-                {productSetupRecord.pendingSuggestedUpdates.length > 0 && (
-                  <section
-                    className="product-setup-review"
-                    id="product-setup-suggested-updates"
-                    tabIndex={-1}
-                    aria-label="Product Setup suggested updates"
-                  >
-                    <div className="registry-panel-heading compact-subsection-heading">
-                      <div>
-                        <h3>Suggested requirement updates</h3>
-                        <p>These came from chat interpretation. Confirming one writes it to the canonical Product Setup record.</p>
-                      </div>
-                      <span>{productSetupRecord.pendingSuggestedUpdates.length} pending</span>
-                    </div>
-                    <div className="product-setup-update-list">
-                      {productSetupRecord.pendingSuggestedUpdates.map((update) => (
-                        <article key={update.id}>
-                          <div>
-                            <span>{productSetupRecord.fields[update.fieldKey].label}</span>
-                            <strong>{Array.isArray(update.proposedValue) ? update.proposedValue.join(', ') : String(update.proposedValue)}</strong>
-                            <p>{update.rationale}</p>
-                            <small>{Math.round(update.confidence * 100)}% confidence · source: {update.sourceType}</small>
-                          </div>
-                          <button type="button" className="workflow-button primary-action" onClick={() => confirmProductSetupSuggestion(update)}>
-                            Confirm
-                          </button>
-                        </article>
-                      ))}
-                    </div>
-                  </section>
-                )}
 
                 {productSetupReadModel.unsupportedRequirementDecisions.length > 0 && (
                   <section
@@ -4151,76 +4153,10 @@ export function App() {
                 )}
               </section>
 
-              <section className="next-action-panel" aria-label="Next suggested action">
-                <h3>Next best action</h3>
-                <p>{nextBestActionText}</p>
-                {activeWorkspaceTab.id === 'requirements' ? (
-                  <div className="suggested-action-row">
-                    {productSetupNextActionKind === 'review_updates' && (
-                      <button
-                        type="button"
-                        className="workflow-button primary-action"
-                        onClick={() => focusWorkspaceElement('product-setup-suggested-updates')}
-                      >
-                        Review captured updates
-                      </button>
-                    )}
-                    {productSetupNextActionKind === 'answer_missing' && (
-                      <button
-                        type="button"
-                        className="workflow-button primary-action"
-                        onClick={() => focusWorkspaceElement('zilios-copilot-composer')}
-                      >
-                        Ask ZiLi-OS
-                      </button>
-                    )}
-                    {productSetupNextActionKind === 'resolve_custom' && (
-                      <button
-                        type="button"
-                        className="workflow-button primary-action"
-                        onClick={() => focusWorkspaceElement('product-setup-unsupported-requirements')}
-                      >
-                        Review custom decisions
-                      </button>
-                    )}
-                    {productSetupNextActionKind === 'download_pack' && (
-                      <button
-                        type="button"
-                        className="workflow-button primary-action"
-                        onClick={() => generateProductSetupPack('markdown')}
-                      >
-                        Download Product Setup Pack
-                      </button>
-                    )}
-                    {productSetupNextActionKind !== 'answer_missing' && (
-                      <button
-                        type="button"
-                        className="workflow-button"
-                        onClick={() => focusWorkspaceElement('zilios-copilot-composer')}
-                      >
-                        Ask ZiLi-OS
-                      </button>
-                    )}
-                    {productSetupNextActionKind !== 'review_updates' && productSetupRecord.pendingSuggestedUpdates.length > 0 && (
-                      <button
-                        type="button"
-                        className="workflow-button"
-                        onClick={() => focusWorkspaceElement('product-setup-suggested-updates')}
-                      >
-                        Review captured updates
-                      </button>
-                    )}
-                    {productSetupNextActionKind !== 'download_pack' && (
-                      <button
-                        type="button"
-                        className="workflow-button"
-                        onClick={() => focusWorkspaceElement('product-setup-canonical-inputs')}
-                      >
-                        Fill setup inputs
-                      </button>
-                    )}
-                  </div>
-                ) : (
+              {activeWorkspaceTab.id !== 'requirements' && (
+                <section className="next-action-panel" aria-label="Next suggested action">
+                  <h3>Next best action</h3>
+                  <p>{nextBestActionText}</p>
                   <div className="suggested-action-row">
                     <button
                       type="button"
@@ -4266,11 +4202,11 @@ export function App() {
                       </button>
                     )}
                   </div>
-                )}
-                {activeWorkspaceTab.id !== 'requirements' && !primaryWorkflowAction.enabled && primaryWorkflowAction.disabledReason && (
-                  <p className="action-disabled-reason">{primaryWorkflowAction.disabledReason}</p>
-                )}
-              </section>
+                  {!primaryWorkflowAction.enabled && primaryWorkflowAction.disabledReason && (
+                    <p className="action-disabled-reason">{primaryWorkflowAction.disabledReason}</p>
+                  )}
+                </section>
+              )}
 
               {smartContractGenerationStatus === 'error' && smartContractGenerationError && (
                 <p className="error-text" role="alert">
