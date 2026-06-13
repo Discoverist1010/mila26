@@ -116,6 +116,32 @@ export type ProductSetupDeploymentWarningAcknowledgement = {
   sourceRef: string;
 };
 
+export type ProductSetupHandoffTarget =
+  | 'investor_wallets'
+  | 'subscription'
+  | 'contract_ops'
+  | 'asset_servicing'
+  | 'redemption'
+  | 'maturity';
+
+export type ProductSetupHandoffStatus =
+  | 'draft_note_ready'
+  | 'needs_clarification'
+  | 'sent_as_draft_note'
+  | 'reviewed_in_target_tab';
+
+export type ProductSetupHandoffNote = {
+  id: string;
+  target: ProductSetupHandoffTarget;
+  title: string;
+  detail: string;
+  sourceFieldKeys: ProductSetupFieldKey[];
+  sourceRef: string;
+  status: ProductSetupHandoffStatus;
+  createdAtIso: string;
+  sentAtIso?: string;
+};
+
 export type ProductSetupRecord = {
   id: string;
   status: 'draft' | 'ready_for_engineering' | 'locked';
@@ -124,6 +150,7 @@ export type ProductSetupRecord = {
   termExplanations: Record<string, TermExplanationState>;
   unsupportedRequirementDecisions: UnsupportedRequirementDecision[];
   deploymentWarningAcknowledgements: ProductSetupDeploymentWarningAcknowledgement[];
+  downstreamHandoffNotes: ProductSetupHandoffNote[];
   updatedAtIso: string;
 };
 
@@ -153,6 +180,15 @@ export type ProductSetupReadModel = {
   deploymentWarnings: ProductSetupDeploymentWarning[];
   hasUnacknowledgedDeploymentWarnings: boolean;
   latestDeploymentWarningAcknowledgement?: ProductSetupDeploymentWarningAcknowledgement;
+  profileRows: Array<{
+    id: string;
+    label: string;
+    value: string;
+    provenanceLabel: 'Stated' | 'Assumed' | 'Inferred' | 'Needs review' | 'Missing';
+    fieldKeys: ProductSetupFieldKey[];
+    whyItMatters?: string;
+  }>;
+  downstreamHandoffs: ProductSetupHandoffNote[];
   requirementSections: Array<{
     title: string;
     fields: ProductSetupField[];
@@ -434,6 +470,7 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
     termExplanations: {},
     unsupportedRequirementDecisions: [],
     deploymentWarningAcknowledgements: [],
+    downstreamHandoffNotes: [],
     updatedAtIso: new Date().toISOString(),
   };
 }
@@ -461,6 +498,7 @@ export function normalizeProductSetupRecord(record: ProductSetupRecord): Product
   return {
     ...record,
     fields,
+    downstreamHandoffNotes: record.downstreamHandoffNotes ?? [],
   };
 }
 
@@ -537,6 +575,8 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
     deploymentWarnings,
     hasUnacknowledgedDeploymentWarnings,
     latestDeploymentWarningAcknowledgement,
+    profileRows: toProductSetupProfileRows(record, protocolRecommendation),
+    downstreamHandoffs: toProductSetupDownstreamHandoffs(record),
     requirementSections: [
       {
         title: 'Product snapshot',
@@ -657,6 +697,295 @@ export function fieldDisplayValue(field: ProductSetupField): string {
   if (typeof field.value === 'boolean') return field.value ? 'Yes' : 'No';
   if (field.value === undefined || field.value === null || field.value === '') return '';
   return String(field.value);
+}
+
+function toProductSetupProfileRows(
+  record: ProductSetupRecord,
+  protocolRecommendation: ProductSetupReadModel['protocolRecommendation'],
+): ProductSetupReadModel['profileRows'] {
+  return [
+    profileRow(record, {
+      id: 'instrument',
+      label: 'Instrument / structure',
+      fieldKeys: ['product_type', 'product_name'],
+      fallback: 'Missing',
+      whyItMatters: 'This anchors the PRD and helps later tabs decide which workflows are in scope.',
+    }),
+    profileRow(record, {
+      id: 'asset_class',
+      label: 'Asset class',
+      fieldKeys: ['product_type'],
+      fallback: 'Missing',
+      whyItMatters: 'Asset class informs valuation, servicing, and disclosure assumptions.',
+    }),
+    profileRow(record, {
+      id: 'base_currency',
+      label: 'Base currency',
+      fieldKeys: ['base_currency'],
+      fallback: 'Missing',
+    }),
+    {
+      id: 'income_treatment',
+      label: 'Income treatment',
+      value: fieldDisplayValue(record.fields.income_payout_cadence)
+        ? `Payout cadence: ${fieldDisplayValue(record.fields.income_payout_cadence)}`
+        : 'Missing',
+      provenanceLabel: provenanceLabelForFields([record.fields.income_payout_cadence]),
+      fieldKeys: ['income_payout_cadence'],
+      whyItMatters: 'Income treatment determines whether Asset Servicing needs distribution workflows.',
+    },
+    {
+      id: 'term',
+      label: 'Term',
+      value: fieldDisplayValue(record.fields.maturity_date) || 'Missing',
+      provenanceLabel: provenanceLabelForFields([record.fields.maturity_date]),
+      fieldKeys: ['maturity_date'],
+      whyItMatters: 'A maturity or wind-down date activates closeout planning later.',
+    },
+    {
+      id: 'settlement_transfer',
+      label: 'Settlement & transfer',
+      value: compactText([
+        fieldDisplayValue(record.fields.subscription_stablecoins),
+        fieldDisplayValue(record.fields.investor_wallet_rule),
+      ]) || 'Missing',
+      provenanceLabel: provenanceLabelForFields([record.fields.subscription_stablecoins, record.fields.investor_wallet_rule]),
+      fieldKeys: ['subscription_stablecoins', 'investor_wallet_rule'],
+      whyItMatters: 'Settlement and transfer assumptions determine which Subscription, Investor Wallets, and Contract Ops workflows are needed.',
+    },
+    {
+      id: 'protocol_target',
+      label: 'Protocol target',
+      value:
+        fieldDisplayValue(record.fields.protocol_base) ||
+        `${protocolRecommendation.recommendedProtocol} recommended; not selected`,
+      provenanceLabel: fieldDisplayValue(record.fields.protocol_base)
+        ? provenanceLabelForFields([record.fields.protocol_base])
+        : 'Needs review',
+      fieldKeys: ['protocol_base'],
+      whyItMatters: 'Protocol target guides later questions, while executable prototype capability remains separate.',
+    },
+    {
+      id: 'subscription_switch',
+      label: 'Subscription',
+      value: fieldDisplayValue(record.fields.subscription_cadence)
+        ? `Enabled: ${fieldDisplayValue(record.fields.subscription_cadence)}`
+        : 'Missing',
+      provenanceLabel: provenanceLabelForFields([record.fields.subscription_cadence]),
+      fieldKeys: ['subscription_cadence'],
+    },
+    {
+      id: 'redemption_switch',
+      label: 'Redemption',
+      value: fieldDisplayValue(record.fields.redemption_cadence) || fieldDisplayValue(record.fields.redemption_schedule)
+        ? `Enabled: ${fieldDisplayValue(record.fields.redemption_cadence) || fieldDisplayValue(record.fields.redemption_schedule)}`
+        : 'Missing',
+      provenanceLabel: provenanceLabelForFields([record.fields.redemption_cadence, record.fields.redemption_schedule]),
+      fieldKeys: ['redemption_cadence', 'redemption_schedule'],
+    },
+    {
+      id: 'servicing_switch',
+      label: 'Servicing required',
+      value: compactText([
+        fieldDisplayValue(record.fields.nav_cadence) && `NAV: ${fieldDisplayValue(record.fields.nav_cadence)}`,
+        fieldDisplayValue(record.fields.nav_source) && `Source: ${fieldDisplayValue(record.fields.nav_source)}`,
+      ]) || 'Missing',
+      provenanceLabel: provenanceLabelForFields([record.fields.nav_cadence, record.fields.nav_source]),
+      fieldKeys: ['nav_cadence', 'nav_source'],
+    },
+    {
+      id: 'wind_down_switch',
+      label: 'Maturity / wind-down',
+      value: fieldDisplayValue(record.fields.maturity_closeout_rule) || fieldDisplayValue(record.fields.maturity_date) || 'Missing',
+      provenanceLabel: provenanceLabelForFields([record.fields.maturity_closeout_rule, record.fields.maturity_date]),
+      fieldKeys: ['maturity_closeout_rule', 'maturity_date'],
+    },
+  ];
+}
+
+function profileRow(
+  record: ProductSetupRecord,
+  input: {
+    id: string;
+    label: string;
+    fieldKeys: ProductSetupFieldKey[];
+    fallback: string;
+    whyItMatters?: string;
+  },
+): ProductSetupReadModel['profileRows'][number] {
+  const fields = input.fieldKeys.map((fieldKey) => record.fields[fieldKey]);
+  return {
+    id: input.id,
+    label: input.label,
+    value: compactText(fields.map(fieldDisplayValue)) || input.fallback,
+    provenanceLabel: provenanceLabelForFields(fields),
+    fieldKeys: input.fieldKeys,
+    whyItMatters: input.whyItMatters,
+  };
+}
+
+function provenanceLabelForFields(fields: ProductSetupField[]): ProductSetupReadModel['profileRows'][number]['provenanceLabel'] {
+  const populated = fields.filter((field) => fieldDisplayValue(field) || field.rolePlaceholder);
+  if (populated.length === 0) return 'Missing';
+  if (populated.some((field) => field.status === 'conflicting' || field.status === 'deferred')) return 'Needs review';
+  if (populated.some((field) => field.status === 'user_confirmed' || field.status === 'user_stated')) return 'Stated';
+  if (populated.some((field) => field.status === 'inferred')) return 'Inferred';
+  if (populated.some((field) => field.status === 'system_default')) return 'Assumed';
+  return 'Needs review';
+}
+
+function compactText(parts: Array<string | undefined | false>): string {
+  return parts.filter((part): part is string => Boolean(part && part.trim())).join(' · ');
+}
+
+function toProductSetupDownstreamHandoffs(record: ProductSetupRecord): ProductSetupHandoffNote[] {
+  const existingById = new Map(record.downstreamHandoffNotes.map((note) => [note.id, note]));
+  return createProductSetupHandoffCandidates(record).map((candidate) => existingById.get(candidate.id) ?? candidate);
+}
+
+function createProductSetupHandoffCandidates(record: ProductSetupRecord): ProductSetupHandoffNote[] {
+  const createdAtIso = record.updatedAtIso;
+  return [
+    handoffCandidate(record, {
+      id: 'investor-wallets-rules',
+      target: 'investor_wallets',
+      title: 'Investor eligibility and wallet rules',
+      fieldKeys: ['expected_investor_count', 'investor_wallet_rule', 'whitelisted_wallets_required', 'initial_investor_register_rule'],
+      sourceRef: 'product_setup_investor_rules',
+      createdAtIso,
+    }),
+    handoffCandidate(record, {
+      id: 'subscription-mechanics',
+      target: 'subscription',
+      title: 'Subscription mechanics',
+      fieldKeys: ['subscription_cadence', 'subscription_stablecoins', 'initial_distribution_date'],
+      sourceRef: 'product_setup_subscription_mechanics',
+      createdAtIso,
+    }),
+    handoffCandidate(record, {
+      id: 'contract-roles-protocol',
+      target: 'contract_ops',
+      title: 'Protocol and contract role assumptions',
+      fieldKeys: ['protocol_base', 'admin_wallet', 'investor_wallet_rule', 'burn_lock_rule', 'prototype_network'],
+      sourceRef: 'product_setup_contract_ops',
+      createdAtIso,
+    }),
+    handoffCandidate(record, {
+      id: 'asset-servicing-schedule',
+      target: 'asset_servicing',
+      title: 'Distribution, NAV, and corporate-action servicing',
+      fieldKeys: ['nav_cadence', 'nav_source', 'income_payout_cadence', 'investor_update_rule'],
+      sourceRef: 'product_setup_asset_servicing',
+      createdAtIso,
+    }),
+    handoffCandidate(record, {
+      id: 'redemption-windows',
+      target: 'redemption',
+      title: 'Redemption windows and payout handling',
+      fieldKeys: ['redemption_cadence', 'redemption_schedule', 'redemption_payout_delay', 'redemption_payout_cadence', 'burn_lock_rule'],
+      sourceRef: 'product_setup_redemption_windows',
+      createdAtIso,
+    }),
+    handoffCandidate(record, {
+      id: 'maturity-wind-down',
+      target: 'maturity',
+      title: 'Maturity and wind-down',
+      fieldKeys: ['maturity_date', 'maturity_closeout_rule'],
+      sourceRef: 'product_setup_maturity_wind_down',
+      createdAtIso,
+    }),
+  ].filter((candidate) => candidate.detail.length > 0);
+}
+
+function handoffCandidate(
+  record: ProductSetupRecord,
+  input: {
+    id: string;
+    target: ProductSetupHandoffTarget;
+    title: string;
+    fieldKeys: ProductSetupFieldKey[];
+    sourceRef: string;
+    createdAtIso: string;
+  },
+): ProductSetupHandoffNote {
+  const detailParts = input.fieldKeys
+    .map((fieldKey) => {
+      const field = record.fields[fieldKey];
+      const value = fieldDisplayValue(field) || field.rolePlaceholder;
+      if (!value || field.status === 'missing' || !isProductSetupHandoffEligibleField(field)) return undefined;
+      return { fieldKey, detail: `${field.label}: ${value}` };
+    })
+    .filter((part): part is { fieldKey: ProductSetupFieldKey; detail: string } => Boolean(part));
+  const detail = detailParts.map((part) => part.detail).join('; ');
+
+  return {
+    id: input.id,
+    target: input.target,
+    title: input.title,
+    detail,
+    sourceFieldKeys: detailParts.length > 0 ? detailParts.map((part) => part.fieldKey) : input.fieldKeys,
+    sourceRef: input.sourceRef,
+    status: detail ? 'draft_note_ready' : 'needs_clarification',
+    createdAtIso: input.createdAtIso,
+  };
+}
+
+function isProductSetupHandoffEligibleField(field: ProductSetupField): boolean {
+  if (field.status === 'user_confirmed' || field.status === 'user_stated' || field.status === 'deferred' || field.status === 'conflicting') {
+    return true;
+  }
+  if (field.sourceType === 'direct_form_input' || field.sourceType === 'user_message' || field.sourceType === 'user_confirmation') {
+    return true;
+  }
+  return field.status === 'inferred' && field.sourceRef !== 'starter_context';
+}
+
+export function sendProductSetupHandoffNote(record: ProductSetupRecord, handoffId: string): ProductSetupRecord {
+  const candidate = toProductSetupDownstreamHandoffs(record).find((note) => note.id === handoffId);
+  if (!candidate || candidate.status === 'sent_as_draft_note' || candidate.status === 'reviewed_in_target_tab') return record;
+  const sentNote: ProductSetupHandoffNote = {
+    ...candidate,
+    status: 'sent_as_draft_note',
+    sentAtIso: new Date().toISOString(),
+  };
+  const notesById = new Map(record.downstreamHandoffNotes.map((note) => [note.id, note]));
+  notesById.set(sentNote.id, sentNote);
+
+  return {
+    ...record,
+    downstreamHandoffNotes: [...notesById.values()],
+    updatedAtIso: new Date().toISOString(),
+  };
+}
+
+export function reviewProductSetupHandoffNote(record: ProductSetupRecord, handoffId: string): ProductSetupRecord {
+  const existingNote = record.downstreamHandoffNotes.find((note) => note.id === handoffId);
+  if (!existingNote || existingNote.status !== 'sent_as_draft_note') return record;
+
+  return {
+    ...record,
+    downstreamHandoffNotes: record.downstreamHandoffNotes.map((note) =>
+      note.id === handoffId ? { ...note, status: 'reviewed_in_target_tab' } : note,
+    ),
+    updatedAtIso: new Date().toISOString(),
+  };
+}
+
+export function productSetupHandoffTargetLabel(target: ProductSetupHandoffTarget): string {
+  switch (target) {
+    case 'investor_wallets':
+      return 'Investor Wallets';
+    case 'subscription':
+      return 'Subscription';
+    case 'contract_ops':
+      return 'Contract Ops';
+    case 'asset_servicing':
+      return 'Asset Servicing';
+    case 'redemption':
+      return 'Redemption';
+    case 'maturity':
+      return 'Maturity';
+  }
 }
 
 export function productSetupPromptForTerm(termKey: string): string {
@@ -1190,6 +1519,8 @@ export function createProductSetupPackPayload(record: ProductSetupRecord, readMo
     recommendedArchitectureTarget: readModel.protocolRecommendation.recommendedProtocol,
     currentExecutablePrototype: readModel.protocolRecommendation.executablePrototypeLabel,
     definitions,
+    profileRows: readModel.profileRows,
+    downstreamHandoffs: readModel.downstreamHandoffs,
     fields,
     deploymentWarnings: readModel.deploymentWarnings,
     deploymentWarningAcknowledgements: record.deploymentWarningAcknowledgements,
@@ -1208,6 +1539,12 @@ export function createProductSetupPackMarkdown(record: ProductSetupRecord): stri
   const unsupportedRows = payload.unsupportedRequirementDecisions.length > 0
     ? payload.unsupportedRequirementDecisions.map((decision) => `- ${decision.requirement}: ${decision.decision}. ${decision.nearestEquivalent ?? decision.mismatchReason}`).join('\n')
     : '- No unsupported/custom requirements recorded.';
+  const profileRows = payload.profileRows
+    .map((row) => `| ${row.label} | ${row.value} | ${row.provenanceLabel} |`)
+    .join('\n');
+  const handoffRows = payload.downstreamHandoffs.length > 0
+    ? payload.downstreamHandoffs.map((handoff) => `| ${handoff.title} | ${productSetupHandoffTargetLabel(handoff.target)} | ${handoff.status.replaceAll('_', ' ')} | ${handoff.detail} |`).join('\n')
+    : '| None | - | - | No downstream handoffs recorded. |';
 
   return [
     '# ZiLi-OS Product Setup Pack',
@@ -1220,6 +1557,18 @@ export function createProductSetupPackMarkdown(record: ProductSetupRecord): stri
     '',
     `- Recommended architecture target: ${payload.recommendedArchitectureTarget}`,
     `- Current executable prototype: ${payload.currentExecutablePrototype}`,
+    '',
+    '## What Is This Product?',
+    '',
+    '| Attribute | Value | Provenance |',
+    '| --- | --- | --- |',
+    profileRows,
+    '',
+    '## Downstream Handoff Register',
+    '',
+    '| Detail | Destination tab | Status | Draft note |',
+    '| --- | --- | --- | --- |',
+    handoffRows,
     '',
     '## Definitions Used In This Product Setup',
     '',
@@ -1253,6 +1602,15 @@ export function createProductSetupPackPrintableHtml(record: ProductSetupRecord):
   const rows = payload.fields
     .map((field) => `<tr><td>${escapeHtml(field.requirement)}</td><td>${escapeHtml(field.userInput)}</td><td>${escapeHtml(field.interpretation)}</td><td>${escapeHtml(field.source)}</td><td>${escapeHtml(field.status)}</td></tr>`)
     .join('');
+  const profileRows = payload.profileRows
+    .map((row) => `<tr><td>${escapeHtml(row.label)}</td><td>${escapeHtml(row.value)}</td><td>${escapeHtml(row.provenanceLabel)}</td></tr>`)
+    .join('');
+  const handoffRows =
+    payload.downstreamHandoffs.length > 0
+      ? payload.downstreamHandoffs
+          .map((handoff) => `<tr><td>${escapeHtml(handoff.title)}</td><td>${escapeHtml(productSetupHandoffTargetLabel(handoff.target))}</td><td>${escapeHtml(handoff.status.replaceAll('_', ' '))}</td><td>${escapeHtml(handoff.detail)}</td></tr>`)
+          .join('')
+      : '<tr><td>None</td><td>-</td><td>-</td><td>No downstream handoffs recorded.</td></tr>';
 
   return [
     '<!doctype html>',
@@ -1265,6 +1623,14 @@ export function createProductSetupPackPrintableHtml(record: ProductSetupRecord):
     '<h2>Protocol Fit</h2>',
     `<p><strong>Recommended architecture target:</strong> ${escapeHtml(payload.recommendedArchitectureTarget)}</p>`,
     `<p><strong>Current executable prototype:</strong> ${escapeHtml(payload.currentExecutablePrototype)}</p>`,
+    '<h2>What Is This Product?</h2>',
+    '<table><thead><tr><th>Attribute</th><th>Value</th><th>Provenance</th></tr></thead><tbody>',
+    profileRows,
+    '</tbody></table>',
+    '<h2>Downstream Handoff Register</h2>',
+    '<table><thead><tr><th>Detail</th><th>Destination tab</th><th>Status</th><th>Draft note</th></tr></thead><tbody>',
+    handoffRows,
+    '</tbody></table>',
     '<h2>Definitions</h2>',
     `<ul>${payload.definitions.map((definition) => `<li>${escapeHtml(definition)}</li>`).join('')}</ul>`,
     '<h2>Requirements And Provenance</h2>',

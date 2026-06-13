@@ -54,14 +54,17 @@ import {
   fieldDisplayValue,
   handleProductSetupWalletInput,
   normalizeProductSetupRecord,
+  productSetupHandoffTargetLabel,
+  reviewProductSetupHandoffNote,
+  sendProductSetupHandoffNote,
   setProductSetupSuggestedUpdates,
   setUnsupportedRequirementDecisions,
   toProductSetupReadModel,
   updateProductSetupField,
   type ProductSetupFieldKey,
+  type ProductSetupHandoffTarget,
   type ProductSetupRecord,
   type ProductSetupSuggestedUpdate,
-  type ProductSetupProtocolBase,
 } from './domain/productSetup';
 import { toRequirementBriefContract } from './domain/requirementBrief';
 import { routeZiLiOSCopilotMessage, type ZiLiOSCopilotRouteKind } from './domain/ziliosCopilotRouter';
@@ -174,9 +177,6 @@ const starterFacts: FundFacts = {
 };
 
 const initialBotQuestion = 'I want investors to subscribe with stablecoins and redeem later after a delay.';
-
-const cadenceOptions = ['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-yearly', 'Yearly', 'Not sure yet'] as const;
-const payoutCadenceOptions = ['Intraday', ...cadenceOptions] as const;
 
 type ProjectDirectorySelection = 'workspace' | 'usequities' | 'sgequities' | 'mixedportfolio';
 
@@ -782,42 +782,17 @@ export function App() {
   );
   const lifecycleReadModel = useMemo(() => toMila26LifecycleReadModel(lifecycleState), [lifecycleState]);
   const productSetupReadModel = useMemo(() => toProductSetupReadModel(productSetupRecord), [productSetupRecord]);
-  const productSetupPendingUpdatesByField = useMemo(() => {
-    const byField = new Map<ProductSetupFieldKey, ProductSetupSuggestedUpdate>();
-    productSetupRecord.pendingSuggestedUpdates.forEach((update) => {
-      if (!byField.has(update.fieldKey)) byField.set(update.fieldKey, update);
-    });
-    return byField;
-  }, [productSetupRecord.pendingSuggestedUpdates]);
   const productSetupPendingReviewCount = productSetupRecord.pendingSuggestedUpdates.length;
-  const productSetupReadinessSummary =
-    productSetupPendingReviewCount > 0
-      ? `${productSetupReadModel.completedEssentialCount}/${productSetupReadModel.requiredEssentialCount} essentials confirmed, defaulted, or deferred; ${productSetupPendingReviewCount} pending review`
-      : productSetupReadModel.readinessLabel;
-  const productSetupMissingWithoutPending = productSetupReadModel.missingEssentials.filter(
-    (field) => !productSetupPendingUpdatesByField.has(field.key),
+  const productSetupDraftedProfileRows = productSetupReadModel.profileRows.filter((row) => row.provenanceLabel !== 'Missing');
+  const productSetupRowsNeedingReview = productSetupReadModel.profileRows.filter((row) =>
+    ['Inferred', 'Assumed', 'Needs review'].includes(row.provenanceLabel),
   );
-  const productSetupTopMissingSummary =
-    productSetupMissingWithoutPending.length > 0
-      ? productSetupMissingWithoutPending
-          .slice(0, 4)
-          .map((field) => field.label)
-          .join(', ')
-      : productSetupPendingReviewCount > 0
-        ? 'Pending captured details need review'
-        : 'No essential gaps';
-  function productSetupSummaryFieldValue(fieldKey: ProductSetupFieldKey, missingLabel: string): string {
-    const confirmedValue = fieldDisplayValue(productSetupRecord.fields[fieldKey]);
-    if (confirmedValue) return confirmedValue;
-    const pendingUpdate = productSetupPendingUpdatesByField.get(fieldKey);
-    if (pendingUpdate) {
-      const pendingValue = Array.isArray(pendingUpdate.proposedValue)
-        ? pendingUpdate.proposedValue.join(', ')
-        : String(pendingUpdate.proposedValue);
-      return `Pending: ${pendingValue}`;
-    }
-    return missingLabel;
-  }
+  const productSetupProgressPercent = Math.round(
+    (productSetupDraftedProfileRows.length / Math.max(productSetupReadModel.profileRows.length, 1)) * 100,
+  );
+  const productSetupProgressLabel =
+    `${productSetupDraftedProfileRows.length} of ${productSetupReadModel.profileRows.length} drafted` +
+    (productSetupRowsNeedingReview.length > 0 ? ` · ${productSetupRowsNeedingReview.length} need review` : '');
   const allocationMint = lifecycleReadModel.allocationMint;
   const selectedAllocationMintRegistryEntry = useMemo(
     () =>
@@ -1341,6 +1316,52 @@ export function App() {
           </section>
         ))}
       </div>
+    );
+  }
+
+  function sendProductSetupHandoff(handoffId: string) {
+    setProductSetupRecord((current) => sendProductSetupHandoffNote(current, handoffId));
+  }
+
+  function reviewProductSetupHandoff(handoffId: string) {
+    setProductSetupRecord((current) => reviewProductSetupHandoffNote(current, handoffId));
+  }
+
+  function renderProductSetupDraftNotes(target: ProductSetupHandoffTarget) {
+    const notes = productSetupRecord.downstreamHandoffNotes.filter(
+      (note) => note.target === target && (note.status === 'sent_as_draft_note' || note.status === 'reviewed_in_target_tab'),
+    );
+    if (notes.length === 0) return null;
+
+    return (
+      <section className="product-setup-draft-notes" aria-label={`${productSetupHandoffTargetLabel(target)} Product Setup draft notes`}>
+        <div className="registry-panel-heading compact-subsection-heading">
+          <div>
+            <h4>Product Setup draft notes</h4>
+            <p>Review these notes when you are ready. They do not change this tab's confirmed settings until you apply them here.</p>
+          </div>
+          <span>{notes.length} note(s)</span>
+        </div>
+        <div className="product-setup-handoff-list">
+          {notes.map((note) => (
+            <article key={note.id}>
+              <div>
+                <span>{note.title}</span>
+                <p>{note.detail}</p>
+                <small>Source: Product Setup PRD · {note.sentAtIso ? `Sent ${note.sentAtIso}` : 'Draft note'}</small>
+              </div>
+              <button
+                type="button"
+                className="workflow-button"
+                disabled={note.status === 'reviewed_in_target_tab'}
+                onClick={() => reviewProductSetupHandoff(note.id)}
+              >
+                {note.status === 'reviewed_in_target_tab' ? 'Reviewed in this tab' : 'Mark reviewed in this tab'}
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
     );
   }
 
@@ -2455,97 +2476,6 @@ export function App() {
 
   function confirmProductSetupSuggestion(update: ProductSetupSuggestedUpdate) {
     setProductSetupRecord((current) => confirmProductSetupUpdate(current, update.id));
-
-    if (update.fieldKey === 'protocol_base' && typeof update.proposedValue === 'string') {
-      setProductSetupRecord((current) =>
-        updateProductSetupField(current, {
-          fieldKey: 'protocol_base',
-          value: update.proposedValue as ProductSetupProtocolBase,
-          sourceType: 'user_confirmation',
-          sourceRef: update.sourceRef,
-        }),
-      );
-    }
-
-    if (update.fieldKey === 'subscription_stablecoins' && Array.isArray(update.proposedValue)) {
-      const stablecoins = update.proposedValue.map(String);
-      setPermittedStablecoinsInput(stablecoins.join(', '));
-      updateSubscriptionParameters({ permittedStablecoins: stablecoins });
-    }
-
-    if (update.fieldKey === 'subscription_cadence' && typeof update.proposedValue === 'string') {
-      updateSubscriptionParameters({
-        subscriptionCadence: update.proposedValue,
-        subscriptionWindow: update.proposedValue,
-      });
-    }
-
-    if (update.fieldKey === 'subscription_receiving_wallet' && typeof update.proposedValue === 'string') {
-      updateSubscriptionParameters({ paymentAddress: update.proposedValue });
-    }
-
-    if (update.fieldKey === 'investor_wallet_rule' && typeof update.proposedValue === 'string') {
-      updateProductSetupFieldFromTab('investor_wallet_rule', update.proposedValue, 'confirmed_in_product_setup');
-    }
-
-    if (update.fieldKey === 'redemption_schedule' && typeof update.proposedValue === 'string') {
-      updateRedemptionParameters({ redemptionWindow: update.proposedValue });
-    }
-
-    if (update.fieldKey === 'redemption_cadence' && typeof update.proposedValue === 'string') {
-      updateRedemptionParameters({
-        redemptionCadence: update.proposedValue,
-        redemptionWindow: update.proposedValue,
-      });
-    }
-
-    if (update.fieldKey === 'redemption_payout_cadence' && typeof update.proposedValue === 'string') {
-      updateRedemptionParameters({ redemptionPayoutCadence: update.proposedValue });
-    }
-
-    if (update.fieldKey === 'redemption_payout_delay' && typeof update.proposedValue === 'string') {
-      const delayMatch = update.proposedValue.match(/(\d{1,3})\s*(?:business\s*)?(day|days|hour|hours|week|weeks)/i);
-      if (delayMatch?.[1] && delayMatch[2]) {
-        const rawValue = Number(delayMatch[1]);
-        const rawUnit = delayMatch[2].toLowerCase();
-        updateRedemptionParameters({
-          redemptionDelayValue: rawUnit.startsWith('week') ? rawValue * 7 : rawValue,
-          redemptionDelayUnit: rawUnit.startsWith('hour') ? 'hours' : 'days',
-        });
-      }
-    }
-
-    if (update.fieldKey === 'redemption_wallet' && typeof update.proposedValue === 'string') {
-      updateRedemptionParameters({ redemptionWalletAddress: update.proposedValue });
-    }
-
-    if (update.fieldKey === 'burn_lock_rule' && typeof update.proposedValue === 'string') {
-      updateRedemptionParameters({ redemptionHandlingRule: update.proposedValue });
-    }
-
-    if (update.fieldKey === 'nav_cadence' && typeof update.proposedValue === 'string') {
-      updateAssetServicingParameters({ navCadence: update.proposedValue });
-    }
-
-    if (update.fieldKey === 'nav_source' && typeof update.proposedValue === 'string') {
-      updateAssetServicingParameters({ navSource: update.proposedValue });
-    }
-
-    if (update.fieldKey === 'income_payout_cadence' && typeof update.proposedValue === 'string') {
-      updateAssetServicingParameters({ incomePayoutCadence: update.proposedValue });
-    }
-
-    if (update.fieldKey === 'investor_update_rule' && typeof update.proposedValue === 'string') {
-      updateAssetServicingParameters({ investorUpdateRule: update.proposedValue });
-    }
-
-    if (update.fieldKey === 'maturity_date' && typeof update.proposedValue === 'string') {
-      updateMaturityParameters({ maturityDate: update.proposedValue });
-    }
-
-    if (update.fieldKey === 'maturity_closeout_rule' && typeof update.proposedValue === 'string') {
-      updateMaturityParameters({ closeoutMethod: update.proposedValue });
-    }
   }
 
   function updateProductSetupFieldFromTab(
@@ -2563,19 +2493,6 @@ export function App() {
         sourceRef,
       });
     });
-  }
-
-  function updateExpectedInvestorCountFromInput(value: string) {
-    if (value.trim() === '') {
-      updateProductSetupFieldFromTab('expected_investor_count', undefined, 'edited_in_product_setup_tab');
-      return;
-    }
-
-    const parsedValue = Number(value);
-    if (!Number.isFinite(parsedValue)) return;
-
-    const normalizedValue = Math.max(0, Math.min(50, Math.trunc(parsedValue)));
-    updateProductSetupFieldFromTab('expected_investor_count', normalizedValue, 'edited_in_product_setup_tab');
   }
 
   function updateProductSetupWalletField(fieldKey: Extract<ProductSetupFieldKey, 'admin_wallet'>, value: string) {
@@ -2818,346 +2735,21 @@ export function App() {
             </div>
 
             {activeWorkspaceTab.id === 'requirements' && (
-              <section className="product-setup-panel" aria-label="Product Setup workspace">
-                {productSetupRecord.pendingSuggestedUpdates.length > 0 && (
-                  <section
-                    className="product-setup-review"
-                    id="product-setup-suggested-updates"
-                    tabIndex={-1}
-                    aria-label="Product Setup suggested updates"
-                  >
-                    <div className="registry-panel-heading compact-subsection-heading">
-                      <div>
-                        <h3>Review captured setup details</h3>
-                        <p>ZiLi-OS extracted these from the chat. Confirm only the details that should become part of the canonical Product Setup record.</p>
-                      </div>
-                      <span>{productSetupRecord.pendingSuggestedUpdates.length} pending</span>
-                    </div>
-                    <div className="product-setup-update-list">
-                      {productSetupRecord.pendingSuggestedUpdates.map((update) => (
-                        <article key={update.id}>
-                          <div>
-                            <span>{productSetupRecord.fields[update.fieldKey].label}</span>
-                            <strong>{Array.isArray(update.proposedValue) ? update.proposedValue.join(', ') : String(update.proposedValue)}</strong>
-                            <p>{update.rationale}</p>
-                            <small>{Math.round(update.confidence * 100)}% confidence · source: {update.sourceType}</small>
-                          </div>
-                          <button type="button" className="workflow-button primary-action" onClick={() => confirmProductSetupSuggestion(update)}>
-                            Confirm
-                          </button>
-                        </article>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                <section className="product-setup-summary" aria-label="Product Setup compact summary">
-                  <div className="registry-panel-heading compact-subsection-heading">
-                    <div>
-                      <h3>Setup summary</h3>
-                      <p>Review the key Product Setup state without duplicating the later workflow tabs.</p>
-                    </div>
-                  </div>
-                  <div className="product-setup-summary-grid">
-                    <article>
-                      <span>Readiness</span>
-                      <strong>{productSetupReadinessSummary}</strong>
-                    </article>
-                    <article>
-                      <span>Protocol base</span>
-                      <strong>{productSetupSummaryFieldValue('protocol_base', 'Not selected')}</strong>
-                    </article>
-                    <article>
-                      <span>Expected investors</span>
-                      <strong>{productSetupSummaryFieldValue('expected_investor_count', 'Missing')}</strong>
-                    </article>
-                    <article>
-                      <span>Top missing items</span>
-                      <strong>{productSetupTopMissingSummary}</strong>
-                    </article>
-                  </div>
-                </section>
-
-                <section
-                  className="parameter-panel product-setup-direct-inputs"
-                  id="product-setup-canonical-inputs"
-                  tabIndex={-1}
-                  aria-label="Product Setup canonical inputs"
-                >
-                  <div className="registry-panel-heading compact-subsection-heading">
-                    <div>
-                      <h3>Canonical setup inputs</h3>
-                      <p>Fill these before moving on where possible. Missing values warn before deployment but do not block navigation.</p>
-                    </div>
-                  </div>
-
-                  <div className="parameter-grid">
-                    <label htmlFor="product-setup-protocol-base">
-                      Protocol base
-                      <select
-                        id="product-setup-protocol-base"
-                        value={String(productSetupRecord.fields.protocol_base.value ?? '')}
-                        onChange={(event) =>
-                          updateProductSetupFieldFromTab(
-                            'protocol_base',
-                            event.target.value as ProductSetupProtocolBase,
-                            'edited_in_product_setup_tab',
-                          )
-                        }
-                      >
-                        <option value="">Choose protocol</option>
-                        <option value="ERC-20">ERC-20</option>
-                        <option value="ERC-4626">ERC-4626</option>
-                        <option value="ERC-3643">ERC-3643</option>
-                        <option value="Custom ERC-20 with rebasing">Custom ERC-20 with rebasing</option>
-                      </select>
-                    </label>
-
-                    <label htmlFor="product-setup-expected-investors">
-                      Expected investors
-                      <input
-                        id="product-setup-expected-investors"
-                        type="number"
-                        inputMode="numeric"
-                        min="0"
-                        max="50"
-                        step="1"
-                        value={String(productSetupRecord.fields.expected_investor_count.value ?? '')}
-                        onChange={(event) => updateExpectedInvestorCountFromInput(event.target.value)}
-                        placeholder="0-50"
-                      />
-                    </label>
-
-                    <label htmlFor="product-setup-investor-wallet-rule">
-                      Investor wallet rule
-                      <select
-                        id="product-setup-investor-wallet-rule"
-                        value={String(productSetupRecord.fields.investor_wallet_rule.value ?? '')}
-                        onChange={(event) =>
-                          updateProductSetupFieldFromTab('investor_wallet_rule', event.target.value, 'edited_in_product_setup_tab')
-                        }
-                      >
-                        <option value="">Choose rule</option>
-                        <option value="Approved wallets only; transfers should stay between approved wallets.">Approved wallets only</option>
-                        <option value="Approved investors may transfer peer-to-peer only to other approved wallets.">Approved P2P transfers</option>
-                        <option value="Issuer/admin transfers only except redemption and maturity operations.">Issuer/admin transfers only</option>
-                        <option value="Open transfer to any EVM wallet; review suitability before deployment.">Open transfers</option>
-                        <option value="Not sure yet">Not sure yet</option>
-                      </select>
-                    </label>
-
-                    <label htmlFor="product-setup-subscription-cadence">
-                      Subscription cadence
-                      <select
-                        id="product-setup-subscription-cadence"
-                        value={String(productSetupRecord.fields.subscription_cadence.value ?? '')}
-                        onChange={(event) =>
-                          updateSubscriptionParameters({
-                            subscriptionCadence: event.target.value || undefined,
-                            subscriptionWindow: event.target.value || undefined,
-                          })
-                        }
-                      >
-                        <option value="">Choose cadence</option>
-                        {cadenceOptions.map((cadence) => (
-                          <option value={cadence} key={cadence}>{cadence}</option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label htmlFor="product-setup-redemption-cadence">
-                      Redemption cadence
-                      <select
-                        id="product-setup-redemption-cadence"
-                        value={String(productSetupRecord.fields.redemption_cadence.value ?? '')}
-                        onChange={(event) =>
-                          updateRedemptionParameters({
-                            redemptionCadence: event.target.value || undefined,
-                            redemptionWindow: event.target.value || undefined,
-                          })
-                        }
-                      >
-                        <option value="">Choose cadence</option>
-                        {cadenceOptions.map((cadence) => (
-                          <option value={cadence} key={cadence}>{cadence}</option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label htmlFor="product-setup-burn-lock-rule">
-                      Redemption handling
-                      <select
-                        id="product-setup-burn-lock-rule"
-                        value={String(productSetupRecord.fields.burn_lock_rule.value ?? '')}
-                        onChange={(event) => {
-                          updateProductSetupFieldFromTab('burn_lock_rule', event.target.value, 'edited_in_product_setup_tab');
-                          updateRedemptionParameters({ redemptionHandlingRule: event.target.value || undefined });
-                        }}
-                      >
-                        <option value="">Choose handling</option>
-                        <option value="Burn after tokens are received">Burn after tokens are received</option>
-                        <option value="Lock until stablecoin payout is complete, then burn">Lock until payout, then burn</option>
-                        <option value="Burn only after payout is complete">Burn only after payout is complete</option>
-                        <option value="Do not automate this for MVP">Do not automate for MVP</option>
-                        <option value="Not sure yet">Not sure yet</option>
-                      </select>
-                    </label>
-
-                    <label htmlFor="product-setup-nav-cadence">
-                      NAV cadence
-                      <input
-                        id="product-setup-nav-cadence"
-                        value={lifecycleState.assetServicingParameters.navCadence ?? ''}
-                        onChange={(event) => updateAssetServicingParameters({ navCadence: event.target.value })}
-                        placeholder="e.g. Quarterly"
-                      />
-                    </label>
-
-                    <label htmlFor="product-setup-nav-source">
-                      NAV source
-                      <input
-                        id="product-setup-nav-source"
-                        value={lifecycleState.assetServicingParameters.navSource ?? ''}
-                        onChange={(event) => updateAssetServicingParameters({ navSource: event.target.value })}
-                        placeholder="e.g. Uploaded file"
-                      />
-                    </label>
-
-                    <label htmlFor="product-setup-income-payout-cadence">
-                      Income payout cadence
-                      <select
-                        id="product-setup-income-payout-cadence"
-                        value={String(productSetupRecord.fields.income_payout_cadence.value ?? '')}
-                        onChange={(event) =>
-                          updateAssetServicingParameters({ incomePayoutCadence: event.target.value || undefined })
-                        }
-                      >
-                        <option value="">Choose cadence</option>
-                        {payoutCadenceOptions.map((cadence) => (
-                          <option value={cadence} key={cadence}>{cadence}</option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label htmlFor="product-setup-redemption-payout-cadence">
-                      Redemption payout cadence
-                      <select
-                        id="product-setup-redemption-payout-cadence"
-                        value={String(productSetupRecord.fields.redemption_payout_cadence.value ?? '')}
-                        onChange={(event) =>
-                          updateRedemptionParameters({ redemptionPayoutCadence: event.target.value || undefined })
-                        }
-                      >
-                        <option value="">Choose cadence</option>
-                        {payoutCadenceOptions.map((cadence) => (
-                          <option value={cadence} key={cadence}>{cadence}</option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label htmlFor="product-setup-maturity-date">
-                      Maturity date
-                      <input
-                        id="product-setup-maturity-date"
-                        value={lifecycleState.maturityParameters.maturityDate ?? ''}
-                        onChange={(event) => updateMaturityParameters({ maturityDate: event.target.value })}
-                        placeholder="e.g. 2028-12-31"
-                      />
-                    </label>
-                  </div>
-                </section>
-
-                {productSetupReadModel.unsupportedRequirementDecisions.length > 0 && (
-                  <section
-                    className="product-setup-review"
-                    id="product-setup-unsupported-requirements"
-                    tabIndex={-1}
-                    aria-label="Product Setup unsupported requirements"
-                  >
-                    <div className="registry-panel-heading compact-subsection-heading">
-                      <div>
-                        <h3>Unsupported or custom requirements</h3>
-                        <p>ZiLi-OS can document these, propose a nearest equivalent, or exclude them from MVP execution.</p>
-                      </div>
-                      <span>{productSetupReadModel.unsupportedRequirementDecisions.length} item(s)</span>
-                    </div>
-                    <div className="product-setup-update-list">
-                      {productSetupReadModel.unsupportedRequirementDecisions.map((item) => (
-                        <article key={item.id}>
-                          <div>
-                            <span>{item.requirement}</span>
-                            <strong>{item.decision.replaceAll('_', ' ')}</strong>
-                            <p>{item.mismatchReason}</p>
-                            {item.nearestEquivalent && <small>Nearest equivalent: {item.nearestEquivalent}</small>}
-                          </div>
-                          <div className="registry-actions">
-                            <button
-                              type="button"
-                              className="workflow-button"
-                              onClick={() => setProductSetupRecord((current) => decideUnsupportedRequirement(current, item.id, 'accepted_equivalent'))}
-                            >
-                              Accept equivalent
-                            </button>
-                            <button
-                              type="button"
-                              className="workflow-button"
-                              onClick={() => setProductSetupRecord((current) => decideUnsupportedRequirement(current, item.id, 'rejected_equivalent'))}
-                            >
-                              Reject
-                            </button>
-                            <button
-                              type="button"
-                              className="workflow-button"
-                              onClick={() => setProductSetupRecord((current) => decideUnsupportedRequirement(current, item.id, 'excluded_from_mvp'))}
-                            >
-                              Exclude from MVP
-                            </button>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                <section className="product-setup-pack" aria-label="Product Setup Pack">
+              <section className="product-setup-prd-header" aria-label="Product Setup workspace">
+                <div>
+                  <span className="section-kicker">Product PRD</span>
+                  <h3>Product setup</h3>
+                  <p>ZiLi-OS drafts the product brief first, then stages operational details as draft notes for the focused tabs.</p>
+                </div>
+                <div className="product-setup-progress" aria-label="Product Setup PRD progress">
                   <div>
-                    <h4>Product Setup Pack</h4>
-                    <p>{productSetupReadModel.packPreview.warning}</p>
-                    <ul className="artifact-list">
-                      {productSetupReadModel.packPreview.includedDocuments.map((document) => (
-                        <li key={document}>
-                          <span>Included</span>
-                          {document}
-                        </li>
-                      ))}
-                    </ul>
+                    <span>{productSetupProgressLabel}</span>
+                    {productSetupPendingReviewCount > 0 && <strong>{productSetupPendingReviewCount} captured detail(s) pending</strong>}
                   </div>
-                  <button
-                    type="button"
-                    className="workflow-button primary-action"
-                    onClick={() => generateProductSetupPack('markdown')}
-                  >
-                    Download Product Setup Pack
-                  </button>
-                  <button
-                    type="button"
-                    className="workflow-button"
-                    onClick={() => generateProductSetupPack('json')}
-                  >
-                    Download JSON
-                  </button>
-                  <button
-                    type="button"
-                    className="workflow-button"
-                    onClick={() => generateProductSetupPack('pdf')}
-                  >
-                    Download PDF-readable
-                  </button>
-                  {productSetupPackGeneratedAtIso && (
-                    <p className="chat-status">Draft Product Setup Pack generated in session. Save generated artifacts to persist it.</p>
-                  )}
-                  {productSetupPackStatus && <p className="chat-status">{productSetupPackStatus}</p>}
-                </section>
+                  <div className="product-setup-progress-track" aria-hidden="true">
+                    <span style={{ width: `${productSetupProgressPercent}%` }} />
+                  </div>
+                </div>
               </section>
             )}
 
@@ -3173,6 +2765,7 @@ export function App() {
                   </div>
                   <span className="gate-badge draft">{lifecycleReadModel.investorRegistry.statusLabel}</span>
                 </div>
+                {renderProductSetupDraftNotes('investor_wallets')}
 
                 <div className="registry-summary" aria-label="Investor Wallets summary">
                   <article>
@@ -3366,6 +2959,7 @@ export function App() {
                     {lifecycleReadModel.subscription.statusLabel}
                   </span>
                 </div>
+                {renderProductSetupDraftNotes('subscription')}
 
                 <div className="parameter-grid">
                   <label htmlFor="subscription-stablecoins">
@@ -3453,6 +3047,7 @@ export function App() {
                     {lifecycleReadModel.redemption.statusLabel}
                   </span>
                 </div>
+                {renderProductSetupDraftNotes('redemption')}
 
                 <div className="parameter-grid">
                   <label htmlFor="redemption-window">
@@ -3570,6 +3165,7 @@ export function App() {
                     {smartContractControlPanel.statusLabel}
                   </span>
                 </div>
+                {renderProductSetupDraftNotes('contract_ops')}
 
                 <section className="product-setup-blockers" aria-label="Contract Ops Product Setup warnings">
                   <div>
@@ -3891,6 +3487,7 @@ export function App() {
                   </div>
                   <span className="gate-badge draft">Parameter setup</span>
                 </div>
+                {renderProductSetupDraftNotes('asset_servicing')}
 
                 <div className="parameter-grid">
                   <label htmlFor="asset-servicing-nav-cadence">
@@ -3946,6 +3543,7 @@ export function App() {
                     {lifecycleReadModel.maturityStatus === 'draft' ? 'Maturity draft' : 'Maturity parameters needed'}
                   </span>
                 </div>
+                {renderProductSetupDraftNotes('maturity')}
 
                 <div className="parameter-grid">
                   <label htmlFor="maturity-date">
@@ -4069,23 +3667,34 @@ export function App() {
             )}
 
             <section className="bot-workspace ai-workspace" aria-label="ZiLi-OS Copilot workspace">
-              <div className="bot-title-row">
-                <div className="bot-identity">
-                  <div className="bot-avatar" aria-hidden="true">AI</div>
-                  <div>
-                    <h3>ZiLi-OS Copilot</h3>
-                    <p>
-                      Uses Advisor Bot and Engineering Bot behind the scenes. Advisor explains concepts; Engineering structures
-                      requirements, blockers, and next actions.
-                    </p>
+              {activeWorkspaceTab.id !== 'requirements' && (
+                <div className="bot-title-row">
+                  <div className="bot-identity">
+                    <div className="bot-avatar" aria-hidden="true">AI</div>
+                    <div>
+                      <h3>ZiLi-OS Copilot</h3>
+                      <p>
+                        Uses Advisor Bot and Engineering Bot behind the scenes. Advisor explains concepts; Engineering structures
+                        requirements, blockers, and next actions.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="bot-conversation" aria-label="ZiLi-OS Copilot conversation">
                 <div className="assistant-response" data-testid="engineer-answer">
                   <div className="conversation-history">
-                    {engineeringBotConversation.map((turn) =>
+                    {activeWorkspaceTab.id === 'requirements' &&
+                      engineeringBotConversation.every((turn) => turn.id === 'assistant-initial') && (
+                        <article className="conversation-turn assistant-turn product-setup-empty-turn">
+                          <span className="turn-label">ZiLi-OS</span>
+                          <p>Start with rough notes, a question, or pasted requirements. ZiLi-OS will draft the product profile and route operational details to the right tab.</p>
+                        </article>
+                      )}
+                    {engineeringBotConversation
+                      .filter((turn) => activeWorkspaceTab.id !== 'requirements' || turn.id !== 'assistant-initial')
+                      .map((turn) =>
                       turn.role === 'user' ? (
                         <article className="conversation-turn user-turn" key={turn.id}>
                           <span className="turn-label">You</span>
@@ -4116,12 +3725,18 @@ export function App() {
               </div>
 
               <section className="chat-composer ai-composer" aria-label="ZiLi-OS Copilot composer">
-                <label className="composer-title" htmlFor="zilios-copilot-composer">ZiLi-OS Copilot</label>
+                <label className="composer-title" htmlFor="zilios-copilot-composer">
+                  {activeWorkspaceTab.id === 'requirements' ? 'Product Setup chat' : 'ZiLi-OS Copilot'}
+                </label>
                 <div className="composer-shell">
                   <textarea
                     id="zilios-copilot-composer"
-                    aria-label="ZiLi-OS Copilot"
-                    placeholder="Describe your product, ask a question, or paste rough requirements..."
+                    aria-label={activeWorkspaceTab.id === 'requirements' ? 'Product Setup chat' : 'ZiLi-OS Copilot'}
+                    placeholder={
+                      activeWorkspaceTab.id === 'requirements'
+                        ? 'Refine a section, paste requirements, or ask a question...'
+                        : 'Describe your product, ask a question, or paste rough requirements...'
+                    }
                     value={question}
                     onChange={(event) => setQuestion(event.target.value)}
                     onKeyDown={(event) => {
@@ -4152,6 +3767,190 @@ export function App() {
                   </div>
                 )}
               </section>
+
+              {activeWorkspaceTab.id === 'requirements' && (
+                <section className="product-setup-artifact" aria-label="Product Setup PRD artifact">
+                  {productSetupRecord.pendingSuggestedUpdates.length > 0 && (
+                    <section
+                      className="product-setup-review"
+                      id="product-setup-suggested-updates"
+                      tabIndex={-1}
+                      aria-label="Product Setup suggested updates"
+                    >
+                      <div className="registry-panel-heading compact-subsection-heading">
+                        <div>
+                          <h3>Review captured details</h3>
+                          <p>Confirm the details ZiLi-OS should add to the setup brief.</p>
+                        </div>
+                        <span>{productSetupRecord.pendingSuggestedUpdates.length} pending</span>
+                      </div>
+                      <div className="product-setup-update-list">
+                        {productSetupRecord.pendingSuggestedUpdates.map((update) => (
+                          <article key={update.id}>
+                            <div>
+                              <span>{productSetupRecord.fields[update.fieldKey].label}</span>
+                              <strong>{Array.isArray(update.proposedValue) ? update.proposedValue.join(', ') : String(update.proposedValue)}</strong>
+                              <p>{update.rationale}</p>
+                              <small>{Math.round(update.confidence * 100)}% confidence · source: {update.sourceType}</small>
+                            </div>
+                            <button type="button" className="workflow-button primary-action" onClick={() => confirmProductSetupSuggestion(update)}>
+                              Confirm
+                            </button>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  <section className="product-setup-profile" aria-label="What is this product">
+                    <div className="registry-panel-heading compact-subsection-heading">
+                      <div>
+                        <span className="section-kicker">What is this product</span>
+                        <h3>Product profile</h3>
+                      </div>
+                    </div>
+                    <div className="product-profile-list">
+                      {productSetupReadModel.profileRows.map((row) => (
+                        <article key={row.id}>
+                          <span>{row.label}</span>
+                          <strong>{row.value}</strong>
+                          <small className={`product-setup-chip ${row.provenanceLabel.toLowerCase().replaceAll(' ', '-')}`}>
+                            {row.provenanceLabel}
+                          </small>
+                          {row.whyItMatters && <p>{row.whyItMatters}</p>}
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="product-setup-handoffs" aria-label="Product Setup downstream handoffs">
+                    <div className="registry-panel-heading compact-subsection-heading">
+                      <div>
+                        <h3>Downstream handoffs</h3>
+                        <p>Operational details stay as draft notes until the focused tab confirms them.</p>
+                      </div>
+                    </div>
+                    {productSetupReadModel.downstreamHandoffs.length === 0 ? (
+                      <p className="empty-registry">No downstream details captured yet.</p>
+                    ) : (
+                      <div className="product-setup-handoff-list">
+                        {productSetupReadModel.downstreamHandoffs.map((handoff) => (
+                          <article key={handoff.id}>
+                            <div>
+                              <span>{handoff.title}</span>
+                              <strong>{productSetupHandoffTargetLabel(handoff.target)}</strong>
+                              <p>{handoff.detail}</p>
+                              <small>Status: {handoff.status.replaceAll('_', ' ')}</small>
+                            </div>
+                            <button
+                              type="button"
+                              className="workflow-button"
+                              disabled={handoff.status === 'sent_as_draft_note'}
+                              onClick={() => sendProductSetupHandoff(handoff.id)}
+                            >
+                              {handoff.status === 'sent_as_draft_note'
+                                ? 'Draft note sent'
+                                : `Send to ${productSetupHandoffTargetLabel(handoff.target)}`}
+                            </button>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  {productSetupReadModel.unsupportedRequirementDecisions.length > 0 && (
+                    <section
+                      className="product-setup-review"
+                      id="product-setup-unsupported-requirements"
+                      tabIndex={-1}
+                      aria-label="Product Setup unsupported requirements"
+                    >
+                      <div className="registry-panel-heading compact-subsection-heading">
+                        <div>
+                          <h3>Unsupported or custom requirements</h3>
+                          <p>ZiLi-OS can document these, propose a nearest equivalent, or exclude them from MVP execution.</p>
+                        </div>
+                        <span>{productSetupReadModel.unsupportedRequirementDecisions.length} item(s)</span>
+                      </div>
+                      <div className="product-setup-update-list">
+                        {productSetupReadModel.unsupportedRequirementDecisions.map((item) => (
+                          <article key={item.id}>
+                            <div>
+                              <span>{item.requirement}</span>
+                              <strong>{item.decision.replaceAll('_', ' ')}</strong>
+                              <p>{item.mismatchReason}</p>
+                              {item.nearestEquivalent && <small>Nearest equivalent: {item.nearestEquivalent}</small>}
+                            </div>
+                            <div className="registry-actions">
+                              <button
+                                type="button"
+                                className="workflow-button"
+                                onClick={() => setProductSetupRecord((current) => decideUnsupportedRequirement(current, item.id, 'accepted_equivalent'))}
+                              >
+                                Accept equivalent
+                              </button>
+                              <button
+                                type="button"
+                                className="workflow-button"
+                                onClick={() => setProductSetupRecord((current) => decideUnsupportedRequirement(current, item.id, 'rejected_equivalent'))}
+                              >
+                                Reject
+                              </button>
+                              <button
+                                type="button"
+                                className="workflow-button"
+                                onClick={() => setProductSetupRecord((current) => decideUnsupportedRequirement(current, item.id, 'excluded_from_mvp'))}
+                              >
+                                Exclude from MVP
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  <section className="product-setup-pack" aria-label="Product Setup Pack">
+                    <div>
+                      <h4>Product Setup Pack</h4>
+                      <p>{productSetupReadModel.packPreview.warning}</p>
+                      <ul className="artifact-list">
+                        {productSetupReadModel.packPreview.includedDocuments.map((document) => (
+                          <li key={document}>
+                            <span>Included</span>
+                            {document}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <button
+                      type="button"
+                      className="workflow-button primary-action"
+                      onClick={() => generateProductSetupPack('markdown')}
+                    >
+                      Download Product Setup Pack
+                    </button>
+                    <button
+                      type="button"
+                      className="workflow-button"
+                      onClick={() => generateProductSetupPack('json')}
+                    >
+                      Download JSON
+                    </button>
+                    <button
+                      type="button"
+                      className="workflow-button"
+                      onClick={() => generateProductSetupPack('pdf')}
+                    >
+                      Download PDF-readable
+                    </button>
+                    {productSetupPackGeneratedAtIso && (
+                      <p className="chat-status">Draft Product Setup Pack generated in session. Save generated artifacts to persist it.</p>
+                    )}
+                    {productSetupPackStatus && <p className="chat-status">{productSetupPackStatus}</p>}
+                  </section>
+                </section>
+              )}
 
               {activeWorkspaceTab.id !== 'requirements' && (
                 <section className="next-action-panel" aria-label="Next suggested action">

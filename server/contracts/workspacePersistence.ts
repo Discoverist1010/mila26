@@ -357,6 +357,20 @@ const ProductSetupDeploymentWarningAcknowledgementPersistenceSchema = z
   })
   .strict();
 
+const ProductSetupHandoffNotePersistenceSchema = z
+  .object({
+    id: z.string().trim().min(1).max(180),
+    target: z.enum(['investor_wallets', 'subscription', 'contract_ops', 'asset_servicing', 'redemption', 'maturity']),
+    title: z.string().trim().min(1).max(180),
+    detail: z.string().trim().min(1).max(1000),
+    sourceFieldKeys: z.array(ProductSetupFieldKeyPersistenceSchema).min(1).max(12),
+    sourceRef: z.string().trim().min(1).max(180),
+    status: z.enum(['draft_note_ready', 'needs_clarification', 'sent_as_draft_note', 'reviewed_in_target_tab']),
+    createdAtIso: z.string().trim().min(1).max(80),
+    sentAtIso: z.string().trim().min(1).max(80).optional(),
+  })
+  .strict();
+
 export const ProductSetupRecordPersistenceSchema = z
   .object({
     id: z.string().trim().min(1).max(160),
@@ -366,6 +380,7 @@ export const ProductSetupRecordPersistenceSchema = z
     termExplanations: z.record(z.string().trim().min(1).max(120), TermExplanationPersistenceSchema),
     unsupportedRequirementDecisions: z.array(UnsupportedRequirementDecisionPersistenceSchema).max(40),
     deploymentWarningAcknowledgements: z.array(ProductSetupDeploymentWarningAcknowledgementPersistenceSchema).max(40).default([]),
+    downstreamHandoffNotes: z.array(ProductSetupHandoffNotePersistenceSchema).max(40).default([]),
     updatedAtIso: z.string().trim().min(1).max(80),
   })
   .strict();
@@ -568,6 +583,21 @@ const ProductSetupPackArtifactRecordSchema = z
         recommendedArchitectureTarget: z.enum(['ERC-20', 'ERC-4626', 'ERC-3643', 'Custom ERC-20 with rebasing']),
         currentExecutablePrototype: z.string().trim().min(1).max(420),
         definitions: z.array(z.string().trim().min(1).max(420)).min(1).max(20),
+        profileRows: z
+          .array(
+            z
+              .object({
+                id: z.string().trim().min(1).max(120),
+                label: z.string().trim().min(1).max(160),
+                value: z.string().trim().min(1).max(800),
+                provenanceLabel: z.enum(['Stated', 'Assumed', 'Inferred', 'Needs review', 'Missing']),
+                fieldKeys: z.array(ProductSetupFieldKeyPersistenceSchema).min(1).max(12),
+                whyItMatters: z.string().trim().min(1).max(500).optional(),
+              })
+              .strict(),
+          )
+          .max(20),
+        downstreamHandoffs: z.array(ProductSetupHandoffNotePersistenceSchema).max(40),
         fields: z
           .array(
             z

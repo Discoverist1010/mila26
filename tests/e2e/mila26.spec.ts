@@ -33,29 +33,22 @@ test('product setup turns unstructured chat into reviewable requirements', async
 
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Product Setup/ }).click();
 
-  const productSetup = page.getByLabel('Product Setup workspace');
-  await expect(productSetup.getByLabel('Product Setup compact summary')).toBeVisible();
-  await expect(productSetup.getByLabel('Product Setup compact summary')).toContainText('Setup summary');
-  await expect(productSetup.getByRole('heading', { name: 'Canonical setup inputs' })).toBeVisible();
-  await expect(productSetup.getByLabel('Protocol base')).toHaveValue('');
-  await expect(productSetup.getByLabel('Expected investors')).toBeVisible();
-  await expect(productSetup.getByLabel('Subscription cadence')).toBeVisible();
-  await expect(productSetup.getByLabel('Redemption cadence')).toBeVisible();
-  await expect(productSetup.getByLabel('Income payout cadence')).toBeVisible();
-  await expect(productSetup.getByLabel('Redemption payout cadence')).toBeVisible();
-  await expect(productSetup.getByLabel('Product Setup canonical inputs')).toContainText(
-    'Missing values warn before deployment but do not block navigation.',
-  );
-  await expect(productSetup).not.toContainText('Conversation-first Product Setup');
-  await expect(productSetup).not.toContainText('ZiLi-OS understanding');
-  await expect(productSetup).not.toContainText('MVP readiness');
-  await expect(productSetup).not.toContainText('Advisor Bot + Engineering Bot');
+  const productSetupHeader = page.getByLabel('Product Setup workspace');
+  const productSetupArtifact = page.getByLabel('Product Setup PRD artifact');
+  await expect(productSetupArtifact).toBeVisible();
+  await expect(productSetupArtifact.getByLabel('What is this product')).toContainText('Product profile');
+  await expect(productSetupArtifact.getByLabel('What is this product')).toContainText('Instrument / structure');
+  await expect(productSetupArtifact.getByLabel('Product Setup downstream handoffs')).toContainText('No downstream details captured yet.');
+  await expect(productSetupHeader).not.toContainText('Conversation-first Product Setup');
+  await expect(productSetupHeader).not.toContainText('ZiLi-OS understanding');
+  await expect(productSetupHeader).not.toContainText('MVP readiness');
+  await expect(productSetupHeader).not.toContainText('Advisor Bot + Engineering Bot');
   await expect(page.getByLabel('Next suggested action')).toHaveCount(0);
 
   await page
-    .getByRole('textbox', { name: 'ZiLi-OS Copilot' })
+    .getByRole('textbox', { name: 'Product Setup chat' })
     .fill('We are tokenising a USD private credit portfolio for 25 investors. USDC subscriptions, whitelisted wallets only, quarterly redemption, payout may take 10 business days.');
-  await expect(page.getByRole('textbox', { name: 'ZiLi-OS Copilot' })).toHaveValue(/private credit portfolio/i);
+  await expect(page.getByRole('textbox', { name: 'Product Setup chat' })).toHaveValue(/private credit portfolio/i);
   await page.getByRole('button', { name: 'Send' }).click();
 
   const suggestedUpdates = page.getByLabel('Product Setup suggested updates');
@@ -65,10 +58,8 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await expect(suggestedUpdates).toContainText('USDC');
   await expect(suggestedUpdates).toContainText('Redemption schedule');
   await expect(suggestedUpdates).toContainText('Quarterly');
-  await expect(suggestedUpdates).toContainText('Review captured setup details');
+  await expect(suggestedUpdates).toContainText('Review captured details');
   await expect(page.getByLabel('Next suggested action')).toHaveCount(0);
-  await expect(page.getByLabel('Product Setup compact summary')).toContainText('pending review');
-  await expect(page.getByLabel('Product Setup compact summary')).toContainText('Pending: 25');
 
   await suggestedUpdates
     .locator('article')
@@ -76,16 +67,30 @@ test('product setup turns unstructured chat into reviewable requirements', async
     .getByRole('button', { name: 'Confirm' })
     .click();
 
-  const setupSummary = page.getByLabel('Product Setup compact summary');
-  await expect(setupSummary).toContainText('Expected investors');
-  await expect(setupSummary).toContainText('25');
-  await expect(productSetup.getByLabel('Product requirements board')).toHaveCount(0);
-  await expect(productSetup.getByLabel('Product Setup wallet capture')).toHaveCount(0);
-  await expect(productSetup.getByLabel('Product Setup just-in-time explanations')).toHaveCount(0);
-  await expect(productSetup.getByLabel('Product Setup missing fields')).toHaveCount(0);
+  await expect(productSetupArtifact.getByLabel('Product Setup downstream handoffs')).toContainText('Investor eligibility and wallet rules');
+  await expect(productSetupArtifact.getByLabel('Product Setup downstream handoffs')).toContainText('Expected investors: 25');
+  await expect(productSetupArtifact.getByLabel('Product requirements board')).toHaveCount(0);
+  await expect(productSetupArtifact.getByLabel('Product Setup wallet capture')).toHaveCount(0);
+  await expect(productSetupArtifact.getByLabel('Product Setup just-in-time explanations')).toHaveCount(0);
+  await expect(productSetupArtifact.getByLabel('Product Setup missing fields')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Download Product Setup Pack' }).click();
-  await expect(productSetup).toContainText('Draft Product Setup Pack generated in session.');
+  await suggestedUpdates
+    .locator('article')
+    .filter({ hasText: 'Subscription stablecoins' })
+    .getByRole('button', { name: 'Confirm' })
+    .click();
+  await expect(productSetupArtifact.getByLabel('Product Setup downstream handoffs')).toContainText('Subscription mechanics');
+  await productSetupArtifact.getByLabel('Product Setup downstream handoffs').getByRole('button', { name: 'Send to Subscription' }).click();
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
+  await expect(page.getByLabel('Subscription Product Setup draft notes')).toContainText('Subscription mechanics');
+  await expect(page.getByLabel('Permitted stablecoins')).toHaveValue('');
+  await page.getByLabel('Subscription Product Setup draft notes').getByRole('button', { name: 'Mark reviewed in this tab' }).click();
+  await expect(page.getByLabel('Subscription Product Setup draft notes')).toContainText('Reviewed in this tab');
+  await expect(page.getByLabel('Permitted stablecoins')).toHaveValue('');
+  await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Product Setup/ }).click();
+
+  await productSetupArtifact.getByLabel('Product Setup Pack').getByRole('button', { name: 'Download Product Setup Pack' }).click();
+  await expect(productSetupArtifact).toContainText('Draft Product Setup Pack generated in session.');
 });
 
 test('guided beta journey creates requirements and exposes Engineering Brief action', async ({ page }) => {

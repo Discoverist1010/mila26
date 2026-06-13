@@ -363,11 +363,11 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Expected investors');
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Subscription stablecoins');
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Redemption payout delay');
-    expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Review captured setup details');
+    expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Review captured details');
     expect(
       screen
         .getByLabelText('Product Setup suggested updates')
-        .compareDocumentPosition(screen.getByLabelText('Product Setup compact summary')) & Node.DOCUMENT_POSITION_FOLLOWING,
+        .compareDocumentPosition(screen.getByLabelText('What is this product')) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     fireEvent.click(
       within(screen.getByLabelText('Product Setup suggested updates'))
@@ -375,9 +375,14 @@ describe('App Blockchain Engineer Bot panel', () => {
         .closest('article')
         ?.querySelector('button') as HTMLElement,
     );
+    expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Redemption windows and payout handling');
+    fireEvent.click(
+      within(screen.getByLabelText('Product Setup downstream handoffs')).getByRole('button', { name: 'Send to Redemption' }),
+    );
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Redemption/ }));
-    expect(screen.getByLabelText('Redemption delay unit')).toHaveValue('days');
-    expect(screen.getByLabelText('Redemption delay duration')).toHaveValue('10');
+    expect(screen.getByLabelText('Redemption Product Setup draft notes')).toHaveTextContent(/Redemption payout delay: 10 business days?/);
+    expect(screen.getByLabelText('Redemption delay unit')).toHaveValue('');
+    expect(screen.getByLabelText('Redemption delay duration')).toHaveValue('');
   });
 
   it('blocks blank input before calling fetch', async () => {
@@ -395,50 +400,78 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a question before asking the bot.');
   });
 
-  it('lets Product Setup capture expected investors without blocking tab navigation', () => {
+  it('keeps Product Setup focused on the PRD artifact without blocking tab navigation', () => {
     render(<App />);
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
-    expect(
-      screen
-        .getByLabelText('Product Setup compact summary')
-        .compareDocumentPosition(screen.getByLabelText('Product Setup canonical inputs')) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
     expect(screen.queryByLabelText('Next suggested action')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Product Setup canonical inputs')).toHaveTextContent(
-      'Fill these before moving on where possible. Missing values warn before deployment but do not block navigation.',
-    );
+    expect(screen.getByLabelText('Product Setup PRD artifact')).toBeVisible();
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Product profile');
+    expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('No downstream details captured yet.');
+    expect(screen.getByLabelText('Product Setup Pack')).toHaveTextContent('Product Setup Pack');
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
     expect(screen.getByRole('heading', { name: 'Subscription' })).toBeVisible();
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
-    const expectedInvestorsInput = screen.getByLabelText('Expected investors');
-    expect(screen.getByLabelText('Protocol base')).toHaveValue('');
-    expect(screen.getByLabelText('Subscription cadence')).toHaveValue('');
-    expect(screen.getByLabelText('Redemption cadence')).toHaveValue('');
-    expect(screen.getByLabelText('Income payout cadence')).toHaveValue('');
-    expect(screen.getByLabelText('Redemption payout cadence')).toHaveValue('');
-
-    fireEvent.change(expectedInvestorsInput, { target: { value: '52' } });
-    fireEvent.change(screen.getByLabelText('Subscription cadence'), { target: { value: 'Monthly' } });
-    fireEvent.change(screen.getByLabelText('Redemption cadence'), { target: { value: 'Monthly' } });
-    fireEvent.change(screen.getByLabelText('Income payout cadence'), { target: { value: 'Quarterly' } });
-    fireEvent.change(screen.getByLabelText('Redemption payout cadence'), { target: { value: 'Weekly' } });
-
-    expect(expectedInvestorsInput).toHaveValue(50);
-    expect(screen.getByLabelText('Subscription cadence')).toHaveValue('Monthly');
-    expect(screen.getByLabelText('Redemption cadence')).toHaveValue('Monthly');
-    expect(screen.getByLabelText('Income payout cadence')).toHaveValue('Quarterly');
-    expect(screen.getByLabelText('Redemption payout cadence')).toHaveValue('Weekly');
     expect(screen.queryByLabelText('Product requirements board')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Product Setup canonical inputs')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Product Setup wallet capture')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Product Setup just-in-time explanations')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Product Setup missing fields')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('Expected investors');
-    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('50');
-    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('Protocol base');
-    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('Not selected');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Instrument / structure');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Needs review');
+  });
+
+  it('sends confirmed Product Setup operational details as draft notes to the focused workflow tab', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        createJsonResponse({
+          ok: true,
+          data: {
+            content: 'Captured subscription terms for the Product Setup PRD.',
+            assistantMode: 'engineering',
+            nextRecommendedAction: 'Review captured details.',
+          },
+        }),
+      ),
+    );
+
+    render(<App />);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Product Setup chat' }), {
+      target: { value: 'USDC subscriptions are allowed.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Subscription stablecoins');
+    });
+    fireEvent.click(
+      within(screen.getByLabelText('Product Setup suggested updates'))
+        .getAllByText('Subscription stablecoins')[0]
+        .closest('article')
+        ?.querySelector('button') as HTMLElement,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Subscription mechanics');
+    });
+    fireEvent.click(within(screen.getByLabelText('Product Setup downstream handoffs')).getByRole('button', { name: 'Send to Subscription' }));
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
+    expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Subscription mechanics');
+    expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Subscription stablecoins: USDC');
+    expect(screen.getByLabelText('Permitted stablecoins')).toHaveValue('');
+    fireEvent.click(
+      within(screen.getByLabelText('Subscription Product Setup draft notes')).getByRole('button', {
+        name: 'Mark reviewed in this tab',
+      }),
+    );
+    expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Reviewed in this tab');
+    expect(screen.getByLabelText('Permitted stablecoins')).toHaveValue('');
   });
 
   it('captures the admin wallet from Contract Ops instead of Product Setup', () => {
@@ -483,7 +516,7 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     expect(screen.queryByRole('button', { name: 'Advisor' })).not.toBeInTheDocument();
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
-    const composer = screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' });
+    const composer = screen.getByRole('textbox', { name: 'Product Setup chat' });
     fireEvent.change(composer, {
       target: { value: 'Explain redemption delay.' },
     });
@@ -530,7 +563,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('You')).toBeVisible();
     expect(screen.getAllByLabelText('ZiLi-OS routing').at(-1)).toHaveTextContent('Advisor Bot');
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Product Setup chat' }), {
       target: { value: 'Explain ERC differences too.' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
@@ -586,7 +619,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     render(<App />);
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'ZiLi-OS Copilot' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Product Setup chat' }), {
       target: {
         value:
           'I want to create a tokenised product to distribute to 24 investors. New investors can come in on a monthly basis. Existing investors can sell out on the same monthly basis too.',
@@ -642,9 +675,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Subscription cadence');
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('Redemption cadence');
     expect(screen.getByLabelText('Product Setup suggested updates')).toHaveTextContent('3 pending');
-    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('3 pending review');
-    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('Pending: 24');
-    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('Product name, Token symbol');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Instrument / structure');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Needs review');
+    expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('No downstream details captured yet.');
   });
 
   it('shows a safe error and deterministic Copilot answer when the backend is unavailable', async () => {
@@ -1104,7 +1137,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
     expect(screen.queryByLabelText('Product requirements board')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Product Setup wallet capture')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Product Setup compact summary')).toHaveTextContent('Setup summary');
+    expect(screen.getByLabelText('Product Setup PRD artifact')).toHaveTextContent('Product profile');
+    expect(screen.getByLabelText('Product Setup PRD artifact')).toHaveTextContent('Product Setup Pack');
   });
 
   it('saves generated artifacts from the Evidence tab after establishing a workspace snapshot', async () => {

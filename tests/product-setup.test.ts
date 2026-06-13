@@ -12,8 +12,10 @@ import {
   markTermExplained,
   normalizeProductSetupRecord,
   recommendProductSetupProtocol,
+  reviewProductSetupHandoffNote,
   setUnsupportedRequirementDecisions,
   setProductSetupSuggestedUpdates,
+  sendProductSetupHandoffNote,
   toProductSetupReadModel,
   updateProductSetupField,
 } from '../src/domain/productSetup';
@@ -157,6 +159,45 @@ describe('Product Setup record', () => {
     expect(confirmed.fields.expected_investor_count.status).toBe('user_confirmed');
     expect(confirmed.fields.expected_investor_count.value).toBe(25);
     expect(confirmed.pendingSuggestedUpdates.some((update) => update.id === investorUpdate!.id)).toBe(false);
+  });
+
+  it('clusters operational Product Setup facts into downstream draft handoffs without mutating target tabs', () => {
+    let record = createInitialProductSetupRecord(facts);
+    record = updateProductSetupField(record, {
+      fieldKey: 'subscription_stablecoins',
+      value: ['USDC'],
+      sourceType: 'user_message',
+      sourceRef: 'chat_turn_handoff',
+    });
+    record = updateProductSetupField(record, {
+      fieldKey: 'redemption_cadence',
+      value: 'Quarterly',
+      sourceType: 'user_message',
+      sourceRef: 'chat_turn_handoff',
+    });
+
+    const readModel = toProductSetupReadModel(record);
+    const subscriptionHandoff = readModel.downstreamHandoffs.find((handoff) => handoff.target === 'subscription');
+    const redemptionHandoff = readModel.downstreamHandoffs.find((handoff) => handoff.target === 'redemption');
+
+    expect(subscriptionHandoff).toMatchObject({
+      status: 'draft_note_ready',
+      title: 'Subscription mechanics',
+    });
+    expect(subscriptionHandoff?.detail).toContain('Subscription stablecoins: USDC');
+    expect(redemptionHandoff?.detail).toContain('Redemption cadence: Quarterly');
+
+    const sent = sendProductSetupHandoffNote(record, subscriptionHandoff!.id);
+    expect(sent.downstreamHandoffNotes.find((note) => note.id === subscriptionHandoff!.id)).toMatchObject({
+      target: 'subscription',
+      status: 'sent_as_draft_note',
+    });
+
+    const reviewed = reviewProductSetupHandoffNote(sent, subscriptionHandoff!.id);
+    expect(reviewed.downstreamHandoffNotes.find((note) => note.id === subscriptionHandoff!.id)).toMatchObject({
+      target: 'subscription',
+      status: 'reviewed_in_target_tab',
+    });
   });
 
   it('recommends ERC-3643 for whitelisted wallet products and keeps executable prototype caveat visible', () => {
