@@ -491,6 +491,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     await waitFor(() => {
       expect(screen.getByTestId('engineer-answer')).toHaveTextContent('Advisor Bot: use Redemption');
     });
+    expect(screen.queryByText('Ask a plain-language question about the current lifecycle state.')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Next suggested action')).toBeVisible();
     const requestBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(requestBody.assistantMode).toBe('advisor');
     expect(requestBody.projectContext.activeTab).toEqual({

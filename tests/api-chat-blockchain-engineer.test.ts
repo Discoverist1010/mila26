@@ -47,7 +47,7 @@ describe('blockchain engineer chat api', () => {
     expect(body.data.content).toMatch(/Before I recommend protocol settings or deployment steps/i);
     expect(body.data.content).toMatch(/not treat this as a fixed three-question form/i);
     expect(body.data.content).toMatch(/Product Setup Pack/i);
-    expect(body.data.content).toMatch(/protocol-fit view/i);
+    expect(body.data.content).toMatch(/protocol recommendation/i);
     expect(body.data.openQuestions).toEqual([
       'What is the underlying product or asset pool?',
       'How should investors subscribe?',
@@ -71,7 +71,7 @@ describe('blockchain engineer chat api', () => {
     expect(body.data.content).toMatch(/revision to the working Product Setup/i);
     expect(body.data.content).toMatch(/not as a separate product/i);
     expect(body.data.content).toMatch(/which earlier requirement changed/i);
-    expect(body.data.content).toMatch(/refresh the protocol-fit view/i);
+    expect(body.data.content).toMatch(/refresh the protocol recommendation/i);
     expect(body.data.openQuestions).toEqual([
       'Which earlier requirement should this replace?',
       'Should the older assumption be removed, kept as an alternative, or marked as deferred?',
@@ -106,6 +106,24 @@ describe('blockchain engineer chat api', () => {
     expect(body.data.content).toMatch(/rebasing/i);
     expect(body.data.content).toMatch(/ERC-721.*out of MVP scope/i);
     expect(serialized).not.toMatch(/ERC-1155|ERC-777|ERC-1400|ERC-3475/i);
+  });
+
+  it('clarifies protocol confusion before pushing the user to choose ERC-3643 or ERC-20', async () => {
+    const response = await postChat(
+      'I am still confused by ERC-3643 or ERC-20. Why do you recommend 3643 when the executable prototype is ERC-20?',
+      undefined,
+      'advisor',
+    );
+    const body = response.json();
+    const serialized = JSON.stringify(body);
+
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.content).toMatch(/ERC-3643.*recommended architecture target/i);
+    expect(body.data.content).toMatch(/Sepolia.*ERC-20-compatible/i);
+    expect(body.data.content).toMatch(/do not need to choose/i);
+    expect(body.data.content).toMatch(/Does this clarify/i);
+    expect(serialized).not.toMatch(/protocol-fit view|choose or confirm the architecture target/i);
   });
 
   it('covers whitelist and allocation requirements', async () => {
@@ -218,6 +236,9 @@ describe('blockchain engineer chat api', () => {
         expect(systemInstruction).toMatch(/Do not invent or prefill product_name or token_symbol/i);
         expect(systemInstruction).toMatch(/recommended architecture target/i);
         expect(systemInstruction).toMatch(/selected protocol base.*user_confirmed/i);
+        expect(systemInstruction).toMatch(/pause requirement gathering and clarify/i);
+        expect(systemInstruction).toMatch(/Do not ask the user to choose a protocol/i);
+        expect(systemInstruction).toMatch(/protocol recommendation/i);
         expect(systemInstruction).toMatch(/Current workspace context, compact JSON/i);
         expect(systemInstruction).toMatch(/"label":"Product Setup"/i);
         expect(systemInstruction).toMatch(/"currentTurnExtractedFacts":/i);

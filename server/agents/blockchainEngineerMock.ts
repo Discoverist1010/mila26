@@ -14,6 +14,10 @@ function includesAny(value: string, terms: string[]): boolean {
   return terms.some((term) => value.includes(term));
 }
 
+function includesPattern(value: string, patterns: RegExp[]): boolean {
+  return patterns.some((pattern) => pattern.test(value));
+}
+
 function extractInvestorCount(value: string): string | undefined {
   const match = value.match(/\b(\d{1,3})(?:\s*-\s*\d{1,3}|\s+to\s+\d{1,3})?\s+investors?\b/i);
   return match?.[1];
@@ -30,6 +34,27 @@ function looksLikeRequirementRevision(value: string): boolean {
   return includesAny(value, ['actually', 'instead', 'change my mind', 'changed my mind', 'rather than', 'make it']);
 }
 
+function looksLikeProtocolConfusion(value: string): boolean {
+  const hasConfusion = includesPattern(value, [
+    /\bconfused\b/i,
+    /\bdon'?t\s+understand\b/i,
+    /\bnot\s+clear\b/i,
+    /\bunclear\b/i,
+    /\bwhy\b/i,
+    /\bwhat\s+do\s+you\s+mean\b/i,
+    /\bclarif(?:y|ication)\b/i,
+  ]);
+  const hasProtocolReference = includesPattern(value, [
+    /\berc-?\s*(?:20|4626|3643)\b/i,
+    /\berc\b/i,
+    /\bprotocol\b/i,
+    /\bsepolia\b/i,
+    /\bcurrent\s+executable\s+prototype\b/i,
+    /\barchitecture\s+target\b/i,
+  ]);
+  return hasConfusion && hasProtocolReference;
+}
+
 export function answerWithBlockchainEngineerMock(
   request: BlockchainEngineerChatRequest,
 ): BlockchainEngineerChatResponse {
@@ -44,6 +69,19 @@ export function answerWithBlockchainEngineerMock(
   };
 
   if (request.assistantMode === 'advisor') {
+    if (looksLikeProtocolConfusion(lower)) {
+      return BlockchainEngineerChatResponseSchema.parse({
+        ...base,
+        content:
+          'Advisor Bot view: the ERC-3643 and ERC-20 messages are about two different levels. ERC-3643 is the recommended architecture target when a product needs approved wallets and restricted transfers. The current executable prototype is the Sepolia ERC-20-compatible restricted token, which means this workspace can deploy and test that simpler prototype now while keeping ERC-3643 as the target design. You do not need to choose while this is unclear. Does this clarify the difference?',
+        openQuestions: [
+          'Does this clarify the difference between the ERC-3643 architecture target and the current Sepolia ERC-20-compatible prototype?',
+        ],
+        riskNotes: ['Protocol fit is product-engineering guidance, not legal, tax, accounting, investment, or formal audit advice.'],
+        nextRecommendedAction: 'Clarify the protocol distinction before continuing Product Setup.',
+      });
+    }
+
     if (includesAny(lower, ['erc', 'protocol', 'standard'])) {
       return BlockchainEngineerChatResponseSchema.parse({
         ...base,
@@ -51,7 +89,7 @@ export function answerWithBlockchainEngineerMock(
           'Advisor Bot view: for ZiLi-OS Product Setup, compare the four active protocol bases only. ERC-20 is the simplest fungible-token base. ERC-4626 fits vault-share behaviour when investors deposit an ERC-20 asset and receive shares. ERC-3643 fits approved-wallet and transfer-restricted products. Custom ERC-20 with rebasing fits products where balances adjust after NAV, yield, or value updates. ERC-721 can be explained if needed, but it is out of MVP scope for ZiLi-OS.',
         openQuestions: ['Do you want a simple comparison, or should I map these four options to your current Product Setup?'],
         riskNotes: ['Protocol fit is product-engineering guidance, not legal, tax, accounting, investment, or formal audit advice.'],
-        nextRecommendedAction: 'Use the Product Setup protocol-fit view to choose or confirm the architecture target.',
+        nextRecommendedAction: 'Ask ZiLi-OS to explain how the protocol recommendation maps to your Product Setup.',
       });
     }
 
@@ -77,7 +115,7 @@ export function answerWithBlockchainEngineerMock(
         '- Which earlier requirement should this replace: product type, investor count, subscription method, transfer rule, redemption handling, or protocol preference?',
         '- Should the older assumption be removed, kept as an alternative, or marked as deferred?',
         '',
-        'Once the revision is clear, ZiLi-OS should consolidate the draft requirements again and refresh the protocol-fit view before later tabs rely on it.',
+        'Once the revision is clear, ZiLi-OS should consolidate the draft requirements again and refresh the protocol recommendation before later tabs rely on it.',
       ].join('\n'),
       openQuestions: [
         'Which earlier requirement should this replace?',
@@ -116,7 +154,7 @@ export function answerWithBlockchainEngineerMock(
         '- How should investors subscribe: USDC, another stablecoin, bank transfer recorded off-chain, manual allocation, or not sure yet?',
         '- Should only approved wallets be allowed to hold or receive the token?',
         '',
-        'Before Product Setup is treated as sufficient for later tabs, ZiLi-OS should also propose a protocol-fit view: recommended architecture target, current executable prototype, and any unsupported/custom requirements.',
+        'Before Product Setup is treated as sufficient for later tabs, ZiLi-OS should also propose a protocol recommendation: recommended architecture target, current executable prototype, and any unsupported/custom requirements.',
         '',
         'If any term is unclear, ask me and I will explain it before we continue.',
       ].join('\n'),
@@ -268,6 +306,6 @@ export function answerWithBlockchainEngineerMock(
       'Should only approved wallets be allowed to hold or receive the token?',
     ],
     riskNotes: ['This is engineering planning guidance, not legal, investment, tax, or formal audit advice.'],
-    nextRecommendedAction: 'Share rough Product Setup notes so ZiLi-OS can extract requirements, consolidate them, and propose a protocol-fit view for later tabs.',
+    nextRecommendedAction: 'Share rough Product Setup notes so ZiLi-OS can extract requirements, consolidate them, and propose a protocol recommendation for later tabs.',
   });
 }

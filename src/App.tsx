@@ -1304,7 +1304,12 @@ export function App() {
 
   function renderEngineerResponse(response: BlockchainEngineerChatResponse) {
     const viewModel = toBlockchainEngineerResponseViewModel(response);
-    const visibleSections = viewModel.sections.filter((section) => section.kind !== 'risk_notes');
+    const suppressResponseNextAction = activeWorkspaceTab.id === 'requirements';
+    const visibleSections = viewModel.sections.filter(
+      (section) =>
+        section.kind !== 'risk_notes' &&
+        !(suppressResponseNextAction && section.kind === 'next_recommended_action'),
+    );
 
     return (
       <div className="engineer-response-view">

@@ -46,6 +46,19 @@ describe('ZiLi-OS Copilot router', () => {
     });
   });
 
+  it('routes protocol confusion to Advisor before extracting more Product Setup facts', () => {
+    expect(
+      routeZiLiOSCopilotMessage(
+        'I am still confused by ERC-3643 or ERC-20. Why do you recommend 3643 when the executable prototype is ERC-20?',
+      ),
+    ).toMatchObject({
+      route: 'advisor',
+      assistantMode: 'advisor',
+      shouldExtractRequirements: false,
+      labels: ['Advisor Bot'],
+    });
+  });
+
   it('defaults unclear input to Engineering so Product Setup keeps moving', () => {
     expect(routeZiLiOSCopilotMessage('hello')).toMatchObject({
       route: 'engineering',

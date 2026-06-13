@@ -44,14 +44,44 @@ const productFactPatterns = [
   /\bwallet address\b|\b0x[a-fA-F0-9]{6,}/,
 ];
 
+const protocolConfusionPatterns = [
+  /\bconfused\b/i,
+  /\bdon'?t\s+understand\b/i,
+  /\bnot\s+clear\b/i,
+  /\bunclear\b/i,
+  /\bwhy\b/i,
+  /\bwhat\s+do\s+you\s+mean\b/i,
+  /\bclarif(?:y|ication)\b/i,
+];
+
+const protocolReferencePatterns = [
+  /\berc-?\s*(?:20|4626|3643)\b/i,
+  /\berc\b/i,
+  /\bprotocol\b/i,
+  /\bsepolia\b/i,
+  /\bcurrent\s+executable\s+prototype\b/i,
+  /\barchitecture\s+target\b/i,
+];
+
 function hasAnyPattern(value: string, patterns: RegExp[]): boolean {
   return patterns.some((pattern) => pattern.test(value));
 }
 
 export function routeZiLiOSCopilotMessage(message: string): ZiLiOSCopilotRoute {
   const trimmed = message.trim();
+  const hasProtocolConfusion =
+    hasAnyPattern(trimmed, protocolConfusionPatterns) && hasAnyPattern(trimmed, protocolReferencePatterns);
   const hasAdvisorIntent = hasAnyPattern(trimmed, advisorPatterns);
   const hasProductFacts = hasAnyPattern(trimmed, productFactPatterns);
+
+  if (hasProtocolConfusion) {
+    return {
+      route: 'advisor',
+      assistantMode: 'advisor',
+      shouldExtractRequirements: false,
+      labels: ['Advisor Bot'],
+    };
+  }
 
   if (hasAdvisorIntent && hasProductFacts) {
     return {
