@@ -16,6 +16,7 @@
     "test:live-openai": "tsx scripts/live-openai-chat.ts",
     "test:live-sepolia": "tsx scripts/live-sepolia-readiness.ts",
     "test:e2e": "playwright test",
+    "test:release": "npm run check && npm run test:e2e && npm run contracts:build && npm run test:contracts",
     "bundle:size": "node scripts/check-bundle-size.mjs",
     "check": "npm run lint && npm run test && npm run build && npm run bundle:size"
   },

@@ -210,36 +210,22 @@ describe('blockchain engineer chat api', () => {
         expect(request.messages[0]).toMatchObject({
           role: 'system',
         });
-        expect(request.messages[0]?.content).toMatch(/conversation-first intake agent/i);
-        expect(request.messages[0]?.content).toMatch(/replay your understanding/i);
-        expect(request.messages[0]?.content).toMatch(/ask a small focused batch/i);
-        expect(request.messages[0]?.content).toMatch(/Do not treat three questions as a hard limit/i);
-        expect(request.messages[0]?.content).toMatch(/If the user changes their mind/i);
-        expect(request.messages[0]?.content).toMatch(/attempt to consolidate/i);
-        expect(request.messages[0]?.content).toMatch(/Do not jump straight to deployment/i);
-        expect(request.messages[0]?.content).toMatch(/Product Setup Pack/i);
-        expect(request.messages[0]?.content).toMatch(/recommended or selected ERC protocol base must guide later tab questions/i);
-        expect(request.messages[0]?.content).toMatch(/currentTurnExtractedFacts as the only facts captured from the latest user message/i);
-        expect(request.messages[0]?.content).toMatch(/workspaceDefaults as existing workspace defaults/i);
-        expect(request.messages[0]?.content).toMatch(/system_default or inferred as defaults or assumptions/i);
-        expect(request.messages[0]?.content).toMatch(/Only describe a field as user-stated/i);
-        expect(request.messages[0]?.content).toMatch(/Do not invent or prefill Product Setup identity/i);
-        expect(request.messages[0]?.content).toMatch(/Approved workspace context/i);
-        expect(request.messages[0]?.content).toMatch(/Captured from your message/i);
-        expect(request.messages[0]?.content).toMatch(/Please confirm/i);
-        expect(request.messages[0]?.content).toMatch(/Next details to complete Product Setup/i);
-        expect(request.messages[0]?.content).toMatch(/protocol base means the smart-contract pattern/i);
-        expect(request.messages[0]?.content).toMatch(/Sepolia is Ethereum test network/i);
-        expect(request.messages[0]?.content).toMatch(/Avoid abrupt instruction copy/i);
-        expect(request.messages[0]?.content).toMatch(/selected protocol base.*protocol_base is user_confirmed/i);
-        expect(request.messages[0]?.content).toMatch(/Current workspace context/i);
-        expect(request.messages[0]?.content).toMatch(/"label":"Product Setup"/i);
-        expect(request.messages[0]?.content).toMatch(/"currentTurnExtractedFacts":/i);
-        expect(request.messages[0]?.content).toMatch(/"workspaceDefaults":/i);
-        expect(request.messages[0]?.content).toMatch(/Sepolia-only/i);
-        expect(request.messages[0]?.content).toMatch(/recommended architecture target/i);
-        expect(request.messages[0]?.content).toMatch(/current executable prototype/i);
-        expect(request.messages[0]?.content).toMatch(/Do not return one long paragraph/i);
+        const systemInstruction = request.messages[0]?.content ?? '';
+        expect(systemInstruction).toMatch(/conversation-first intake/i);
+        expect(systemInstruction).toMatch(/Product Setup Pack/i);
+        expect(systemInstruction).toMatch(/currentTurnExtractedFacts/i);
+        expect(systemInstruction).toMatch(/workspaceDefaults/i);
+        expect(systemInstruction).toMatch(/Do not invent or prefill product_name or token_symbol/i);
+        expect(systemInstruction).toMatch(/recommended architecture target/i);
+        expect(systemInstruction).toMatch(/selected protocol base.*user_confirmed/i);
+        expect(systemInstruction).toMatch(/Current workspace context, compact JSON/i);
+        expect(systemInstruction).toMatch(/"label":"Product Setup"/i);
+        expect(systemInstruction).toMatch(/"currentTurnExtractedFacts":/i);
+        expect(systemInstruction).toMatch(/"workspaceDefaults":/i);
+        expect(systemInstruction).toMatch(/"canonicalFields":/i);
+        expect(systemInstruction).toMatch(/Sepolia\/testnet-only/i);
+        expect(systemInstruction).toMatch(/current executable prototype/i);
+        expect(systemInstruction.length).toBeLessThan(6_500);
         expect(request.messages.at(-1)).toMatchObject({
           role: 'user',
           content: 'Can we deploy this tokenized fund?',
