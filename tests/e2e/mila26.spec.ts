@@ -51,14 +51,14 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await expect(page.getByRole('textbox', { name: 'Product Setup chat' })).toHaveValue(/private credit portfolio/i);
   await page.getByRole('button', { name: 'Send' }).click();
 
-  const suggestedUpdates = page.getByLabel('Product Setup suggested updates');
+  const suggestedUpdates = page.getByLabel('Needs your review');
   await expect(suggestedUpdates).toContainText('Expected investors');
+  await suggestedUpdates.getByRole('button', { name: 'Review all' }).click();
   await expect(suggestedUpdates).toContainText('25');
   await expect(suggestedUpdates).toContainText('Subscription stablecoins');
   await expect(suggestedUpdates).toContainText('USDC');
   await expect(suggestedUpdates).toContainText('Redemption schedule');
   await expect(suggestedUpdates).toContainText('Quarterly');
-  await expect(suggestedUpdates).toContainText('Review captured details');
   await expect(page.getByLabel('Next suggested action')).toHaveCount(0);
 
   await suggestedUpdates
@@ -227,10 +227,27 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByLabel('Project navigation').getByText('MILA26', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Alpha Income Fund I' })).toBeVisible();
   await expect(page.getByLabel('Project navigation')).toBeVisible();
-  await expect(page.getByLabel('Project status')).toBeVisible();
+  await expect(page.getByLabel('ZiLi-OS console')).toBeVisible();
+  await expect(page.getByLabel('Needs your review')).toBeVisible();
+  await expect(page.getByLabel('Ask ZiLi-OS')).toBeVisible();
+  const consolePanel = page.getByRole('complementary', { name: 'ZiLi-OS console' });
+  const resizeHandle = page.getByRole('separator', { name: 'Resize right rail' });
+  const consolePanelBoxBeforeResize = await consolePanel.boundingBox();
+  const resizeHandleBox = await resizeHandle.boundingBox();
+  expect(consolePanelBoxBeforeResize?.width).toBeGreaterThan(400);
+  expect(resizeHandleBox).not.toBeNull();
+  await page.mouse.move(
+    (resizeHandleBox?.x ?? 0) + (resizeHandleBox?.width ?? 0) / 2,
+    (resizeHandleBox?.y ?? 0) + 80,
+  );
+  await page.mouse.down();
+  await page.mouse.move((resizeHandleBox?.x ?? 0) - 100, (resizeHandleBox?.y ?? 0) + 80, { steps: 5 });
+  await page.mouse.up();
+  const consolePanelBoxAfterResize = await consolePanel.boundingBox();
+  expect(consolePanelBoxAfterResize?.width).toBeGreaterThan((consolePanelBoxBeforeResize?.width ?? 0) + 50);
   await expect(page.getByLabel('Workspace controls').getByText(/Sepolia Testnet/i)).toBeVisible();
-  await expect(page.getByLabel('Project status').getByRole('heading', { name: 'All projects' })).toHaveCount(0);
-  await expect(page.getByLabel('Project status').getByText('Safety boundary')).toHaveCount(0);
+  await expect(page.getByLabel('ZiLi-OS console').getByRole('heading', { name: 'All projects' })).toHaveCount(0);
+  await expect(page.getByLabel('ZiLi-OS console').getByText('Safety boundary')).toHaveCount(0);
   await expect(page.getByText('Need help? Ask the Engineering Bot')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Alpha Income Fund I/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /Singapore REIT Token/i })).toBeVisible();
@@ -239,7 +256,7 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByLabel('Top stage progress')).toHaveCount(0);
   await expect(page.getByLabel('Current-stage activities')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
-  await expect(page.getByLabel('ZiLi-OS Copilot workspace')).toBeVisible();
+  await expect(page.getByLabel('ZiLi-OS Copilot workspace')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Create Requirement Doc' })).toBeVisible();
   await expect(page.getByText('Recommendation')).toHaveCount(0);
   await expect(page.getByText('I am ready to create the Requirement Brief.')).toHaveCount(0);
@@ -255,16 +272,16 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
 
   await page.getByRole('button', { name: /Singapore REIT Token/i }).click();
   await expect(page.getByRole('heading', { name: 'Singapore REIT Token' }).first()).toBeVisible();
-  await expect(page.getByLabel('Project status').getByText('Product Vault')).toBeVisible();
+  await expect(page.getByLabel('ZiLi-OS console').getByText('Product Vault')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Hide left navigation' }).click();
   await expect(page.getByLabel('Project navigation')).toBeHidden();
   await page.getByRole('button', { name: 'Show left navigation' }).click();
   await expect(page.getByLabel('Project navigation')).toBeVisible();
   await page.getByRole('button', { name: 'Hide right context' }).click();
-  await expect(page.getByLabel('Project status')).toBeHidden();
+  await expect(page.getByLabel('ZiLi-OS console')).toBeHidden();
   await page.getByRole('button', { name: 'Show right context' }).click();
-  await expect(page.getByLabel('Project status')).toBeVisible();
+  await expect(page.getByLabel('ZiLi-OS console')).toBeVisible();
 
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Contract Ops/ }).click();
   await expect(page.getByTestId('smart-contract-control')).toBeVisible();
@@ -363,7 +380,7 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByLabel('Contract Ops evidence summary')).toContainText('Wallet whitelist: Wallet whitelist not started');
   await expect(page.getByLabel('Contract Ops evidence summary')).toContainText('Allocation / Mint: Allocation / Mint not started');
   await expect(page.getByText(/txHash/i)).toHaveCount(0);
-  await expect(page.getByLabel('Project status').getByRole('button', { name: /wallet|sign/i })).toHaveCount(0);
+  await expect(page.getByLabel('ZiLi-OS console').getByRole('button', { name: /wallet|sign/i })).toHaveCount(0);
   await expect(page.getByText(/ready to sign|sign now|ready to deploy|ready for signature|production ready|mainnet ready/i)).toHaveCount(0);
   await expect(page.getByText(/^Wallet connected$/i)).toHaveCount(0);
   await expect(page.getByText(/^Submitted transaction:/i)).toHaveCount(0);
@@ -379,7 +396,7 @@ test('dashboard shell remains usable on a narrow viewport', async ({ page }) => 
   await expect(page.getByLabel('Project navigation').getByText('MILA26', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Alpha Income Fund I' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
-  await expect(page.getByLabel('Project status')).toBeVisible();
+  await expect(page.getByLabel('ZiLi-OS console')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Send' })).toBeVisible();
 
   const askButtonBox = await page.getByRole('button', { name: 'Send' }).boundingBox();
@@ -435,8 +452,7 @@ test('subscription redemption parameters update shared lifecycle state and templ
   await expect(handoff.getByText(redemptionWallet)).toBeVisible();
   await expect(handoff.getByText('14 days')).toBeVisible();
   await expect(handoff.getByText('Lock until stablecoin payout is complete, then burn')).toBeVisible();
-  await expect(page.getByLabel('Project status')).toContainText('Contract Template (Sub-Redemption)');
-  await expect(page.getByLabel('Project status')).toContainText('Available');
+  await expect(page.getByLabel('ZiLi-OS console')).toBeVisible();
   await expect(page.getByTestId('smart-contract-control')).toHaveCount(0);
 
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
@@ -445,7 +461,7 @@ test('subscription redemption parameters update shared lifecycle state and templ
   await expect(page.getByLabel('Template handoff blocking items')).toContainText(
     'Subscription: Payment per token must be greater than zero.',
   );
-  await expect(page.getByLabel('Project status')).toContainText('Draft');
+  await expect(page.getByLabel('ZiLi-OS console')).toBeVisible();
 });
 
 test('allocation mint readiness uses shared investor registry and subscription state without execution', async ({ page }) => {
@@ -465,7 +481,7 @@ test('allocation mint readiness uses shared investor registry and subscription s
   await expect(allocationMint.getByLabel('Allocation target wallet')).toHaveValue(investorWallet);
   await expect(allocationMint.getByText('Complete Subscription parameters before Allocation / Mint.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Contract operations' })).toBeVisible();
-  await expect(page.getByLabel('Project status')).toContainText('Allocation setup needs review');
+  await expect(page.getByLabel('ZiLi-OS console')).toBeVisible();
 
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
   const subscription = page.getByLabel('Subscription workspace');
@@ -481,8 +497,7 @@ test('allocation mint readiness uses shared investor registry and subscription s
   await expect(allocationMint.getByText(`Allocation ready for 1250 token(s) to ${investorWallet}.`)).toBeVisible();
   await expect(page.getByLabel('Lifecycle snapshot')).toContainText('Allocation / Mint');
   await expect(page.getByLabel('Lifecycle snapshot')).toContainText('Ready for review');
-  await expect(page.getByLabel('Project status')).toContainText('Allocation / Mint Parameters');
-  await expect(page.getByLabel('Project status')).toContainText('Available');
+  await expect(page.getByLabel('ZiLi-OS console')).toBeVisible();
   await expect(page.getByTestId('smart-contract-control').getByRole('button', { name: 'Mint' })).toBeDisabled();
 
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();

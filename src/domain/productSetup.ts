@@ -98,6 +98,13 @@ export type ProductSetupSuggestedUpdate = {
   confidence: number;
 };
 
+export type ProductSetupStructuredSuggestionInput = {
+  field: string;
+  proposedValue?: unknown;
+  rationale: string;
+  confidence: number;
+};
+
 export type UnsupportedRequirementDecision = {
   id: string;
   requirement: string;
@@ -236,6 +243,37 @@ const deploymentFieldKeys: ProductSetupFieldKey[] = [
   'prototype_network',
 ];
 
+const allProductSetupFieldKeys: ProductSetupFieldKey[] = [
+  'product_name',
+  'token_symbol',
+  'issuer_owner',
+  'product_type',
+  'base_currency',
+  'protocol_base',
+  'expected_investor_count',
+  'investor_wallet_rule',
+  'whitelisted_wallets_required',
+  'subscription_cadence',
+  'subscription_stablecoins',
+  'subscription_receiving_wallet',
+  'redemption_cadence',
+  'redemption_schedule',
+  'redemption_payout_delay',
+  'income_payout_cadence',
+  'redemption_payout_cadence',
+  'redemption_wallet',
+  'admin_wallet',
+  'burn_lock_rule',
+  'nav_cadence',
+  'nav_source',
+  'investor_update_rule',
+  'initial_distribution_date',
+  'initial_investor_register_rule',
+  'maturity_date',
+  'maturity_closeout_rule',
+  'prototype_network',
+];
+
 function createField(input: Omit<ProductSetupField, 'confirmedByUser'> & { confirmedByUser?: boolean }): ProductSetupField {
   return {
     ...input,
@@ -274,22 +312,14 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
       product_type: createField({
         key: 'product_type',
         label: 'Product type',
-        value: 'fund-like / portfolio-like',
-        status: 'inferred',
-        sourceType: 'assistant_inference',
-        sourceRef: 'starter_context',
-        confidence: 0.7,
+        status: 'missing',
         usedByTabs: ['Overview', 'Contract Ops', 'Asset Servicing', 'Maturity'],
         smartContractRelevance: 'operational_metadata',
       }),
       base_currency: createField({
         key: 'base_currency',
         label: 'Base currency',
-        value: 'USD',
-        status: 'inferred',
-        sourceType: 'assistant_inference',
-        sourceRef: 'starter_context',
-        confidence: 0.72,
+        status: 'missing',
         usedByTabs: ['Subscription', 'Redemption', 'Asset Servicing'],
         smartContractRelevance: 'operational_metadata',
       }),
@@ -310,22 +340,14 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
       investor_wallet_rule: createField({
         key: 'investor_wallet_rule',
         label: 'Investor wallet rule',
-        value: 'Approved wallets only; transfers should stay between approved wallets.',
-        status: 'inferred',
-        sourceType: 'assistant_inference',
-        sourceRef: 'starter_context',
-        confidence: 0.78,
+        status: 'missing',
         usedByTabs: ['Investor Wallets', 'Contract Ops', 'Redemption'],
         smartContractRelevance: 'contract_parameter',
       }),
       whitelisted_wallets_required: createField({
         key: 'whitelisted_wallets_required',
         label: 'Whitelisted wallets required',
-        value: true,
-        status: 'inferred',
-        sourceType: 'assistant_inference',
-        sourceRef: 'starter_context',
-        confidence: 0.84,
+        status: 'missing',
         usedByTabs: ['Investor Wallets', 'Contract Ops'],
         smartContractRelevance: 'contract_parameter',
       }),
@@ -443,7 +465,7 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
       }),
       maturity_date: createField({
         key: 'maturity_date',
-        label: 'Maturity date',
+        label: 'Maturity / term',
         status: 'missing',
         usedByTabs: ['Maturity', 'Redemption', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
@@ -478,11 +500,21 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
 export function normalizeProductSetupRecord(record: ProductSetupRecord): ProductSetupRecord {
   const baselineFields = createInitialProductSetupRecord({} as FundFacts).fields;
   const fields = { ...baselineFields, ...record.fields };
-  const starterDefaultIdentityFields = ['product_name', 'token_symbol'] satisfies ProductSetupFieldKey[];
+  const starterDefaultIdentityFields = [
+    'product_name',
+    'token_symbol',
+    'product_type',
+    'base_currency',
+    'investor_wallet_rule',
+    'whitelisted_wallets_required',
+  ] satisfies ProductSetupFieldKey[];
 
   for (const fieldKey of starterDefaultIdentityFields) {
     const field = fields[fieldKey];
-    if (field.status === 'system_default' && field.sourceRef === 'starter_facts') {
+    if (
+      (field.status === 'system_default' && field.sourceRef === 'starter_facts') ||
+      (field.status === 'inferred' && (field.sourceRef === 'starter_context' || field.sourceRef === 'migration_default'))
+    ) {
       fields[fieldKey] = {
         ...field,
         value: undefined,
@@ -703,42 +735,51 @@ function toProductSetupProfileRows(
   record: ProductSetupRecord,
   protocolRecommendation: ProductSetupReadModel['protocolRecommendation'],
 ): ProductSetupReadModel['profileRows'] {
+  const profileValue = (fieldKey: ProductSetupFieldKey) => fieldDisplayValueWithPending(record, fieldKey);
+  const hasProtocolRecommendationBasis = [
+    'product_type',
+    'subscription_stablecoins',
+    'investor_wallet_rule',
+    'whitelisted_wallets_required',
+    'burn_lock_rule',
+  ].some((fieldKey) => Boolean(profileValue(fieldKey as ProductSetupFieldKey)));
+
   return [
     profileRow(record, {
       id: 'instrument',
       label: 'Instrument / structure',
       fieldKeys: ['product_type', 'product_name'],
-      fallback: 'Missing',
+      fallback: 'To be filled',
       whyItMatters: 'This anchors the PRD and helps later tabs decide which workflows are in scope.',
     }),
     profileRow(record, {
       id: 'asset_class',
       label: 'Asset class',
       fieldKeys: ['product_type'],
-      fallback: 'Missing',
+      fallback: 'To be filled',
       whyItMatters: 'Asset class informs valuation, servicing, and disclosure assumptions.',
     }),
     profileRow(record, {
       id: 'base_currency',
       label: 'Base currency',
       fieldKeys: ['base_currency'],
-      fallback: 'Missing',
+      fallback: 'To be filled',
     }),
     {
       id: 'income_treatment',
       label: 'Income treatment',
-      value: fieldDisplayValue(record.fields.income_payout_cadence)
-        ? `Payout cadence: ${fieldDisplayValue(record.fields.income_payout_cadence)}`
-        : 'Missing',
-      provenanceLabel: provenanceLabelForFields([record.fields.income_payout_cadence]),
+      value: profileValue('income_payout_cadence')
+        ? `Payout cadence: ${profileValue('income_payout_cadence')}`
+        : 'To be filled',
+      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['income_payout_cadence']),
       fieldKeys: ['income_payout_cadence'],
       whyItMatters: 'Income treatment determines whether Asset Servicing needs distribution workflows.',
     },
     {
       id: 'term',
       label: 'Term',
-      value: fieldDisplayValue(record.fields.maturity_date) || 'Missing',
-      provenanceLabel: provenanceLabelForFields([record.fields.maturity_date]),
+      value: profileValue('maturity_date') || 'To be filled',
+      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['maturity_date']),
       fieldKeys: ['maturity_date'],
       whyItMatters: 'A maturity or wind-down date activates closeout planning later.',
     },
@@ -746,10 +787,10 @@ function toProductSetupProfileRows(
       id: 'settlement_transfer',
       label: 'Settlement & transfer',
       value: compactText([
-        fieldDisplayValue(record.fields.subscription_stablecoins),
-        fieldDisplayValue(record.fields.investor_wallet_rule),
-      ]) || 'Missing',
-      provenanceLabel: provenanceLabelForFields([record.fields.subscription_stablecoins, record.fields.investor_wallet_rule]),
+        profileValue('subscription_stablecoins'),
+        profileValue('investor_wallet_rule'),
+      ]) || 'To be filled',
+      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['subscription_stablecoins', 'investor_wallet_rule']),
       fieldKeys: ['subscription_stablecoins', 'investor_wallet_rule'],
       whyItMatters: 'Settlement and transfer assumptions determine which Subscription, Investor Wallets, and Contract Ops workflows are needed.',
     },
@@ -758,46 +799,48 @@ function toProductSetupProfileRows(
       label: 'Protocol target',
       value:
         fieldDisplayValue(record.fields.protocol_base) ||
-        `${protocolRecommendation.recommendedProtocol} recommended; not selected`,
+        (hasProtocolRecommendationBasis ? `${protocolRecommendation.recommendedProtocol} recommended; not selected` : 'To be filled'),
       provenanceLabel: fieldDisplayValue(record.fields.protocol_base)
         ? provenanceLabelForFields([record.fields.protocol_base])
-        : 'Needs review',
+        : hasProtocolRecommendationBasis
+          ? 'Needs review'
+          : 'Missing',
       fieldKeys: ['protocol_base'],
       whyItMatters: 'Protocol target guides later questions, while executable prototype capability remains separate.',
     },
     {
       id: 'subscription_switch',
       label: 'Subscription',
-      value: fieldDisplayValue(record.fields.subscription_cadence)
-        ? `Enabled: ${fieldDisplayValue(record.fields.subscription_cadence)}`
-        : 'Missing',
-      provenanceLabel: provenanceLabelForFields([record.fields.subscription_cadence]),
+      value: profileValue('subscription_cadence')
+        ? `Enabled: ${profileValue('subscription_cadence')}`
+        : 'To be filled',
+      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['subscription_cadence']),
       fieldKeys: ['subscription_cadence'],
     },
     {
       id: 'redemption_switch',
       label: 'Redemption',
-      value: fieldDisplayValue(record.fields.redemption_cadence) || fieldDisplayValue(record.fields.redemption_schedule)
-        ? `Enabled: ${fieldDisplayValue(record.fields.redemption_cadence) || fieldDisplayValue(record.fields.redemption_schedule)}`
-        : 'Missing',
-      provenanceLabel: provenanceLabelForFields([record.fields.redemption_cadence, record.fields.redemption_schedule]),
+      value: profileValue('redemption_cadence') || profileValue('redemption_schedule')
+        ? `Enabled: ${profileValue('redemption_cadence') || profileValue('redemption_schedule')}`
+        : 'To be filled',
+      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['redemption_cadence', 'redemption_schedule']),
       fieldKeys: ['redemption_cadence', 'redemption_schedule'],
     },
     {
       id: 'servicing_switch',
       label: 'Servicing required',
       value: compactText([
-        fieldDisplayValue(record.fields.nav_cadence) && `NAV: ${fieldDisplayValue(record.fields.nav_cadence)}`,
-        fieldDisplayValue(record.fields.nav_source) && `Source: ${fieldDisplayValue(record.fields.nav_source)}`,
-      ]) || 'Missing',
-      provenanceLabel: provenanceLabelForFields([record.fields.nav_cadence, record.fields.nav_source]),
+        profileValue('nav_cadence') && `NAV: ${profileValue('nav_cadence')}`,
+        profileValue('nav_source') && `Source: ${profileValue('nav_source')}`,
+      ]) || 'To be filled',
+      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['nav_cadence', 'nav_source']),
       fieldKeys: ['nav_cadence', 'nav_source'],
     },
     {
       id: 'wind_down_switch',
       label: 'Maturity / wind-down',
-      value: fieldDisplayValue(record.fields.maturity_closeout_rule) || fieldDisplayValue(record.fields.maturity_date) || 'Missing',
-      provenanceLabel: provenanceLabelForFields([record.fields.maturity_closeout_rule, record.fields.maturity_date]),
+      value: profileValue('maturity_closeout_rule') || profileValue('maturity_date') || 'To be filled',
+      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['maturity_closeout_rule', 'maturity_date']),
       fieldKeys: ['maturity_closeout_rule', 'maturity_date'],
     },
   ];
@@ -813,15 +856,38 @@ function profileRow(
     whyItMatters?: string;
   },
 ): ProductSetupReadModel['profileRows'][number] {
-  const fields = input.fieldKeys.map((fieldKey) => record.fields[fieldKey]);
   return {
     id: input.id,
     label: input.label,
-    value: compactText(fields.map(fieldDisplayValue)) || input.fallback,
-    provenanceLabel: provenanceLabelForFields(fields),
+    value: compactText(input.fieldKeys.map((fieldKey) => fieldDisplayValueWithPending(record, fieldKey))) || input.fallback,
+    provenanceLabel: provenanceLabelForFieldsWithPending(record, input.fieldKeys),
     fieldKeys: input.fieldKeys,
     whyItMatters: input.whyItMatters,
   };
+}
+
+function fieldDisplayValueWithPending(record: ProductSetupRecord, fieldKey: ProductSetupFieldKey): string {
+  const directValue = fieldDisplayValue(record.fields[fieldKey]);
+  if (directValue) return directValue;
+  const pendingUpdate = findPendingUpdateForField(record, fieldKey);
+  if (!pendingUpdate) return '';
+  if (Array.isArray(pendingUpdate.proposedValue)) return pendingUpdate.proposedValue.join(', ');
+  if (typeof pendingUpdate.proposedValue === 'boolean') return pendingUpdate.proposedValue ? 'Yes' : 'No';
+  return String(pendingUpdate.proposedValue);
+}
+
+function findPendingUpdateForField(record: ProductSetupRecord, fieldKey: ProductSetupFieldKey): ProductSetupSuggestedUpdate | undefined {
+  return [...record.pendingSuggestedUpdates].reverse().find((update) => update.fieldKey === fieldKey);
+}
+
+function provenanceLabelForFieldsWithPending(
+  record: ProductSetupRecord,
+  fieldKeys: ProductSetupFieldKey[],
+): ProductSetupReadModel['profileRows'][number]['provenanceLabel'] {
+  if (fieldKeys.some((fieldKey) => !fieldDisplayValue(record.fields[fieldKey]) && findPendingUpdateForField(record, fieldKey))) {
+    return 'Needs review';
+  }
+  return provenanceLabelForFields(fieldKeys.map((fieldKey) => record.fields[fieldKey]));
 }
 
 function provenanceLabelForFields(fields: ProductSetupField[]): ProductSetupReadModel['profileRows'][number]['provenanceLabel'] {
@@ -1068,12 +1134,15 @@ export function createProductSetupSuggestionsFromText(
   const original = text.trim();
   const productNameMatch = original.match(/\bproduct\s+name\s+is\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s+(?:and|with|as|it\s+is|symbol\s+is)|[.?!,]|$)/i);
   const tokenSymbolMatch = original.match(/\b(?:token\s+)?symbol\s+is\s+([A-Z][A-Z0-9]{1,11})\b/i);
-  const baseCurrencyMatch = normalized.match(/\b(?:with\s+)?([a-z]{3,6})\s+as\s+(?:a\s+)?base\s+currency\b/);
+  const baseCurrencyMatch =
+    normalized.match(/\b(?:with\s+)?([a-z]{3,6})\s+as\s+(?:a\s+)?base\s+currency\b/) ??
+    normalized.match(/\bbase\s+currency\s*(?:is|=|:)?\s*([a-z]{3,6})\b/);
   const productTypeMatch = normalized.match(/\b(?:it\s+is\s+)?(?:a\s+)?(pooled\s+fund|private\s+credit\s+fund|credit\s+fund|investment\s+fund|fund|note|bond|portfolio)\b/);
   const investorMatch = normalized.match(/(?:about\s*)?(\d{1,3})(?:\s*-\s*\d{1,3})?\s+(?:investors|wallets)|(\d{1,3})\s*-\s*(\d{1,3})\s+investors/);
   const delayMatch = normalized.match(/(\d{1,3})\s*(?:business\s*)?(?:day|days|hour|hours|week|weeks)/);
   const ipoDateMatch = original.match(/\b(?:ipo|launch|initial\s+distribution)\s+date(?:\s+\w+){0,3}\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
   const initialRegisterMatch = original.match(/\binitial\s+register\s+of\s+(\d{1,3})\s+investors?\s+will\s+be\s+([^.,;]+)/i);
+  const maturityTermMatch = normalized.match(/\bmaturity\s*(?:is|=|:)?\s*(\d{1,3}\s+(?:years?|months?|quarters?)\s+after\s+launch)\b/);
   const valuationCadence = extractCadenceNear(normalized, '(?:valuation|nav)');
   const subscriptionCadence = extractCadenceNear(
     normalized,
@@ -1085,6 +1154,12 @@ export function createProductSetupSuggestionsFromText(
   );
   const incomePayoutCadence = extractCadenceNear(normalized, '(?:distribution\\w*|dividend\\w*|coupon\\w*|income payout|cash distribution)');
   const redemptionPayoutCadence = extractCadenceNear(normalized, '(?:redemption payout|settle\\w*|settlement\\w*)');
+  const combinedSubscriptionRedemptionCadence =
+    extractCombinedSubscriptionRedemptionCadence(normalized) ??
+    extractCadenceNear(
+      normalized,
+      '(?:subscription\\s*/\\s*redemption|subscription\\s+and\\s+redemption|subscriptions\\s*/\\s*redemptions|subscribe\\s+and\\s+redeem)',
+    );
 
   if (productNameMatch?.[1]) {
     updates.push(createSuggestedUpdate('product_name', productNameMatch[1].trim(), 'User stated the product name.', sourceRef, 0.9));
@@ -1103,6 +1178,9 @@ export function createProductSetupSuggestionsFromText(
   }
   if (ipoDateMatch?.[1]) {
     updates.push(createSuggestedUpdate('initial_distribution_date', normalizeProductSetupDate(ipoDateMatch[1]), 'User described the tentative initial distribution or IPO date.', sourceRef, 0.8));
+  }
+  if (maturityTermMatch?.[1]) {
+    updates.push(createSuggestedUpdate('maturity_date', maturityTermMatch[1], 'User described the product maturity term.', sourceRef, 0.86));
   }
   if (initialRegisterMatch?.[1] && initialRegisterMatch[2]) {
     updates.push(createSuggestedUpdate('initial_investor_register_rule', `Initial register of ${initialRegisterMatch[1]} investors will be ${initialRegisterMatch[2].trim()}.`, 'User described the initial investor register process.', sourceRef, 0.78));
@@ -1135,6 +1213,12 @@ export function createProductSetupSuggestionsFromText(
   if (redemptionCadence) {
     updates.push(createSuggestedUpdate('redemption_cadence', redemptionCadence, `User described ${redemptionCadence.toLowerCase()} redemption timing.`, sourceRef, 0.83));
   }
+  if (combinedSubscriptionRedemptionCadence && !subscriptionCadence) {
+    updates.push(createSuggestedUpdate('subscription_cadence', combinedSubscriptionRedemptionCadence, `User described ${combinedSubscriptionRedemptionCadence.toLowerCase()} subscription timing.`, sourceRef, 0.82));
+  }
+  if (combinedSubscriptionRedemptionCadence && !redemptionCadence) {
+    updates.push(createSuggestedUpdate('redemption_cadence', combinedSubscriptionRedemptionCadence, `User described ${combinedSubscriptionRedemptionCadence.toLowerCase()} redemption timing.`, sourceRef, 0.82));
+  }
   if (incomePayoutCadence) {
     updates.push(createSuggestedUpdate('income_payout_cadence', incomePayoutCadence, `User described ${incomePayoutCadence.toLowerCase()} income or distribution payout timing.`, sourceRef, 0.78));
   }
@@ -1152,6 +1236,70 @@ export function createProductSetupSuggestionsFromText(
   }
 
   return updates;
+}
+
+export function createProductSetupSuggestionsFromStructuredUpdates(
+  updates: ProductSetupStructuredSuggestionInput[] | undefined,
+  sourceRef: string,
+): ProductSetupSuggestedUpdate[] {
+  if (!updates?.length) return [];
+
+  return updates.flatMap((update) => {
+    const fieldKeys = normalizeProductSetupFieldAliases(update.field);
+    const proposedValue = normalizeSuggestedUpdateValue(update.proposedValue);
+    if (fieldKeys.length === 0 || proposedValue === undefined) return [];
+
+    return fieldKeys.map((fieldKey) => ({
+      id: `${fieldKey}-${sourceRef}`,
+      fieldKey,
+      proposedValue,
+      rationale: update.rationale,
+      sourceType: 'assistant_inference',
+      sourceRef,
+      confidence: update.confidence,
+    }));
+  });
+}
+
+function normalizeProductSetupFieldAliases(field: string): ProductSetupFieldKey[] {
+  const normalized = field
+    .trim()
+    .replace(/([a-z])([A-Z])/g, '$1_$2')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  if (allProductSetupFieldKeys.includes(normalized as ProductSetupFieldKey)) return [normalized as ProductSetupFieldKey];
+
+  if (/subscription.*redemption.*cadence|redemption.*subscription.*cadence/.test(normalized)) {
+    return ['subscription_cadence', 'redemption_cadence'];
+  }
+
+  const aliases: Record<string, ProductSetupFieldKey> = {
+    expected_investors: 'expected_investor_count',
+    investor_count: 'expected_investor_count',
+    target_investors: 'expected_investor_count',
+    base_currency_denomination: 'base_currency',
+    maturity: 'maturity_date',
+    term: 'maturity_date',
+    launch_date_term: 'maturity_date',
+    subscription_frequency: 'subscription_cadence',
+    redemption_frequency: 'redemption_cadence',
+    valuation_cadence: 'nav_cadence',
+    valuation_update_requirement: 'nav_cadence',
+    nav_cadence_format: 'nav_cadence',
+    wallet_whitelist_requirement: 'whitelisted_wallets_required',
+    whitelist_requirement: 'whitelisted_wallets_required',
+    wallet_rule: 'investor_wallet_rule',
+    burn_rule: 'burn_lock_rule',
+  };
+
+  return aliases[normalized] ? [aliases[normalized]] : [];
+}
+
+function normalizeSuggestedUpdateValue(value: unknown): ProductSetupFieldValue | undefined {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+  if (Array.isArray(value) && value.every((item): item is string => typeof item === 'string')) return value;
+  return undefined;
 }
 
 function titleCaseProductSetupValue(value: string): string {
@@ -1209,6 +1357,26 @@ function extractCadenceNear(value: string, contextPattern: string): string | und
   return undefined;
 }
 
+function extractCombinedSubscriptionRedemptionCadence(value: string): string | undefined {
+  const match = value.match(
+    /(?:subscription\s*\/\s*redemption|subscription\s+and\s+redemption|subscriptions\s*\/\s*redemptions|subscribe\s+and\s+redeem)[^a-z0-9]{0,24}(?:cadence|frequency|timing)?[^a-z0-9]{0,24}(intraday|daily|weekly|monthly|quarterly|half[-\s]?yearly|yearly|annual|annually)\b/i,
+  );
+  if (!match?.[1]) return undefined;
+  return cadenceLabelFromTerm(match[1]);
+}
+
+function cadenceLabelFromTerm(term: string): string | undefined {
+  const normalized = term.toLowerCase().replace(/\s+/g, '-');
+  if (normalized === 'intraday') return 'Intraday';
+  if (normalized === 'daily') return 'Daily';
+  if (normalized === 'weekly') return 'Weekly';
+  if (normalized === 'monthly') return 'Monthly';
+  if (normalized === 'quarterly') return 'Quarterly';
+  if (normalized === 'half-yearly') return 'Half-yearly';
+  if (normalized === 'yearly' || normalized === 'annual' || normalized === 'annually') return 'Yearly';
+  return undefined;
+}
+
 function createSuggestedUpdate(
   fieldKey: ProductSetupFieldKey,
   proposedValue: ProductSetupFieldValue,
@@ -1263,6 +1431,19 @@ export function confirmProductSetupUpdate(
         confirmedByUser: true,
       },
     },
+    pendingSuggestedUpdates: record.pendingSuggestedUpdates.filter((candidate) => candidate.id !== updateId),
+    updatedAtIso: new Date().toISOString(),
+  };
+}
+
+export function dismissProductSetupSuggestedUpdate(
+  record: ProductSetupRecord,
+  updateId: string,
+): ProductSetupRecord {
+  if (!record.pendingSuggestedUpdates.some((candidate) => candidate.id === updateId)) return record;
+
+  return {
+    ...record,
     pendingSuggestedUpdates: record.pendingSuggestedUpdates.filter((candidate) => candidate.id !== updateId),
     updatedAtIso: new Date().toISOString(),
   };

@@ -5,6 +5,7 @@ import {
   confirmProductSetupUpdate,
   createProductSetupPackMarkdown,
   createInitialProductSetupRecord,
+  createProductSetupSuggestionsFromStructuredUpdates,
   createProductSetupSuggestionsFromText,
   createUnsupportedRequirementDecisionsFromText,
   deferProductSetupField,
@@ -55,14 +56,21 @@ describe('Product Setup record', () => {
   it('starts protocol base blank while still offering a separate protocol recommendation', () => {
     const record = createInitialProductSetupRecord(facts);
     const readModel = toProductSetupReadModel(record);
+    const protocolTargetRow = readModel.profileRows.find((row) => row.id === 'protocol_target');
 
     expect(record.fields.product_name.status).toBe('missing');
     expect(record.fields.product_name.value).toBeUndefined();
     expect(record.fields.token_symbol.status).toBe('missing');
     expect(record.fields.token_symbol.value).toBeUndefined();
+    expect(record.fields.product_type.status).toBe('missing');
+    expect(record.fields.product_type.value).toBeUndefined();
+    expect(record.fields.base_currency.status).toBe('missing');
+    expect(record.fields.base_currency.value).toBeUndefined();
+    expect(record.fields.investor_wallet_rule.status).toBe('missing');
+    expect(record.fields.investor_wallet_rule.value).toBeUndefined();
     expect(record.fields.protocol_base.status).toBe('missing');
     expect(record.fields.protocol_base.value).toBeUndefined();
-    expect(readModel.protocolRecommendation.recommendedProtocol).toBe('ERC-3643');
+    expect(protocolTargetRow).toMatchObject({ value: 'To be filled', provenanceLabel: 'Missing' });
   });
 
   it('normalizes old starter identity defaults back to missing Product Setup inputs', () => {
@@ -146,6 +154,63 @@ describe('Product Setup record', () => {
     expect(String(byField.get('initial_investor_register_rule'))).toMatch(/initial register of 27 investors/i);
   });
 
+  it('extracts base currency, maturity term, and approved-wallet rule from direct answers', () => {
+    const suggestions = createProductSetupSuggestionsFromText(
+      'The base currency is usd. Maturity is 3 years after launch. Yes, approved wallets only.',
+      'chat_turn_direct_answers',
+    );
+    const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
+
+    expect(byField.get('base_currency')).toBe('USD');
+    expect(byField.get('maturity_date')).toBe('3 years after launch');
+    expect(byField.get('whitelisted_wallets_required')).toBe(true);
+    expect(byField.get('investor_wallet_rule')).toMatch(/Approved wallets only/i);
+  });
+
+  it('splits combined subscription and redemption cadence into both canonical fields', () => {
+    const suggestions = createProductSetupSuggestionsFromText(
+      'Subscription/redemption cadence: quarterly post-IPO.',
+      'chat_turn_combined_cadence',
+    );
+    const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
+
+    expect(byField.get('subscription_cadence')).toBe('Quarterly');
+    expect(byField.get('redemption_cadence')).toBe('Quarterly');
+  });
+
+  it('normalizes structured backend suggestions and shows pending profile values without mutating fields', () => {
+    const record = createInitialProductSetupRecord(facts);
+    const withSuggestions = setProductSetupSuggestedUpdates(
+      record,
+      createProductSetupSuggestionsFromStructuredUpdates(
+        [
+          {
+            field: 'subscription/redemption cadence',
+            proposedValue: 'Quarterly',
+            rationale: 'The assistant extracted a shared cadence from the latest message.',
+            confidence: 0.82,
+          },
+          {
+            field: 'maturity',
+            proposedValue: '3 years after launch',
+            rationale: 'The assistant extracted a maturity term.',
+            confidence: 0.86,
+          },
+        ],
+        'chat_turn_structured',
+      ),
+    );
+    const readModel = toProductSetupReadModel(withSuggestions);
+    const subscriptionRow = readModel.profileRows.find((row) => row.id === 'subscription_switch');
+    const redemptionRow = readModel.profileRows.find((row) => row.id === 'redemption_switch');
+    const termRow = readModel.profileRows.find((row) => row.id === 'term');
+
+    expect(withSuggestions.fields.subscription_cadence.status).toBe('missing');
+    expect(subscriptionRow).toMatchObject({ value: 'Enabled: Quarterly', provenanceLabel: 'Needs review' });
+    expect(redemptionRow).toMatchObject({ value: 'Enabled: Quarterly', provenanceLabel: 'Needs review' });
+    expect(termRow).toMatchObject({ value: '3 years after launch', provenanceLabel: 'Needs review' });
+  });
+
   it('promotes a suggested field only after user confirmation', () => {
     const record = setProductSetupSuggestedUpdates(
       createInitialProductSetupRecord(facts),
@@ -201,7 +266,13 @@ describe('Product Setup record', () => {
   });
 
   it('recommends ERC-3643 for whitelisted wallet products and keeps executable prototype caveat visible', () => {
-    const record = createInitialProductSetupRecord(facts);
+    const record = updateProductSetupField(createInitialProductSetupRecord(facts), {
+      fieldKey: 'whitelisted_wallets_required',
+      value: true,
+      sourceType: 'user_message',
+      sourceRef: 'chat_turn_whitelist',
+      status: 'user_stated',
+    });
     const recommendation = recommendProductSetupProtocol(record);
 
     expect(recommendation.recommendedProtocol).toBe('ERC-3643');

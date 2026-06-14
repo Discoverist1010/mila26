@@ -197,11 +197,6 @@ const ProductSetupFieldsPersistenceSchema = z
       defaultProductSetupField({
         key: 'investor_wallet_rule',
         label: 'Investor wallet rule',
-        value: 'Approved wallets only; transfers should stay between approved wallets.',
-        status: 'inferred',
-        sourceType: 'assistant_inference',
-        sourceRef: 'migration_default',
-        confidence: 0.78,
         usedByTabs: ['Investor Wallets', 'Contract Ops', 'Redemption'],
         smartContractRelevance: 'contract_parameter',
       }),
@@ -296,7 +291,7 @@ const ProductSetupFieldsPersistenceSchema = z
     maturity_date: ProductSetupFieldPersistenceSchema.default(() =>
       defaultProductSetupField({
         key: 'maturity_date',
-        label: 'Maturity date',
+        label: 'Maturity / term',
         usedByTabs: ['Maturity', 'Redemption', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
       }),

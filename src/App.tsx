@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { askBlockchainEngineer } from './api/blockchainEngineerChat';
 import { generateEngineeringBrief } from './api/engineeringBrief';
 import { generateSmartContractArtifact } from './api/smartContractArtifact';
@@ -48,9 +48,11 @@ import {
   createProductSetupPackMarkdown,
   createProductSetupPackPayload,
   createProductSetupPackPrintableHtml,
+  createProductSetupSuggestionsFromStructuredUpdates,
   createProductSetupSuggestionsFromText,
   createUnsupportedRequirementDecisionsFromText,
   decideUnsupportedRequirement,
+  dismissProductSetupSuggestedUpdate,
   fieldDisplayValue,
   handleProductSetupWalletInput,
   normalizeProductSetupRecord,
@@ -92,7 +94,6 @@ import {
 import { toSmartContractControlPanelViewModel } from './domain/smartContractControlPanelViewModel';
 import {
   toWorkspacePresentation,
-  type ProductCapabilityStatus,
   type WorkspaceTabId,
 } from './domain/workspacePresentation';
 import {
@@ -449,15 +450,6 @@ function formatWalletChainStatus(status: string) {
   return 'Unknown';
 }
 
-function productCapabilityStatusLabel(status: ProductCapabilityStatus) {
-  if (status === 'available') return 'Available';
-  if (status === 'needs_parameters') return 'Needs parameters';
-  if (status === 'locked_for_later') return 'Needs prerequisites';
-  if (status === 'local_session_only') return 'Local session only';
-  if (status === 'active') return 'Active';
-  return 'Draft';
-}
-
 function tabStatusLabel(status: ReturnType<typeof toWorkspacePresentation>['tabs'][number]['status']) {
   if (status === 'in_progress') return 'In progress';
   if (status === 'needs_review') return 'Needs review';
@@ -602,6 +594,9 @@ export function App() {
   const [isBotReplyLoading, setIsBotReplyLoading] = useState(false);
   const [isLeftRailOpen, setIsLeftRailOpen] = useState(true);
   const [isRightRailOpen, setIsRightRailOpen] = useState(true);
+  const [rightRailWidth, setRightRailWidth] = useState(440);
+  const [isRightRailResizing, setIsRightRailResizing] = useState(false);
+  const [isRightRailReviewExpanded, setIsRightRailReviewExpanded] = useState(false);
   const [isBriefPreviewExpanded, setIsBriefPreviewExpanded] = useState(false);
   const deploymentAttemptSequenceRef = useRef(0);
   const deploymentAttemptIdRef = useRef('');
@@ -613,6 +608,15 @@ export function App() {
   const walletAllocationMintOperationAttemptIdRef = useRef('');
   const investorRegistrySequenceRef = useRef(0);
   const engineeringBotConversationSequenceRef = useRef(0);
+  const copilotConversationEndRef = useRef<HTMLDivElement | null>(null);
+
+  const rightRailMinWidth = 360;
+  const rightRailDefaultWidth = 440;
+
+  function clampRightRailWidth(width: number) {
+    const maxWidth = Math.max(rightRailMinWidth, Math.floor(window.innerWidth * 0.45));
+    return Math.min(Math.max(width, rightRailMinWidth), maxWidth);
+  }
 
   useEffect(() => {
     const provider = getBrowserEthereumProvider();
@@ -646,6 +650,30 @@ export function App() {
     },
     [],
   );
+
+  useEffect(() => {
+    const anchor = copilotConversationEndRef.current;
+    if (!anchor) return;
+    anchor.scrollIntoView?.({ block: 'end' });
+  }, [engineeringBotConversation.length, isBotReplyLoading]);
+
+  useEffect(() => {
+    if (!isRightRailResizing) return undefined;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      setRightRailWidth(clampRightRailWidth(window.innerWidth - event.clientX));
+    };
+    const handlePointerUp = () => {
+      setIsRightRailResizing(false);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [isRightRailResizing]);
 
   const requirementBriefContract = useMemo(
     () => (brief ? toRequirementBriefContract(brief, 'ready_for_approval') : undefined),
@@ -966,6 +994,8 @@ export function App() {
     const canonicalFieldKeys: ProductSetupFieldKey[] = [
       'product_name',
       'token_symbol',
+      'product_type',
+      'base_currency',
       'protocol_base',
       'expected_investor_count',
       'investor_wallet_rule',
@@ -1029,8 +1059,6 @@ export function App() {
   const tokenModelSummary =
     requirementBriefContract?.tokenModel.assumption ?? 'Token model will be confirmed in the Requirement Brief.';
   const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
-  const secondaryWorkflowActions = cockpitActionViewModel.secondaryEngineeringBotActions;
-  const visibleSecondaryWorkflowActions = secondaryWorkflowActions.filter((action) => action.enabled);
   const nextBestActionText =
     lifecycleReadModel.investorRegistry.entryCount === 0
       ? 'Start by registering investor wallet addresses so subscription, whitelisting, servicing, and evidence can use the same lifecycle state.'
@@ -1478,6 +1506,13 @@ export function App() {
     setIsBotReplyLoading(false);
 
     if (result.ok) {
+      const structuredProductSetupSuggestions = createProductSetupSuggestionsFromStructuredUpdates(
+        result.data.suggestedRequirementUpdates,
+        chatSourceRef,
+      );
+      if (structuredProductSetupSuggestions.length > 0) {
+        setProductSetupRecord((current) => setProductSetupSuggestedUpdates(current, structuredProductSetupSuggestions));
+      }
       publishEngineerResponse(
         result.data,
         result.data.responseSource === 'live_model' ? 'live_model' : 'backend',
@@ -2478,6 +2513,10 @@ export function App() {
     setProductSetupRecord((current) => confirmProductSetupUpdate(current, update.id));
   }
 
+  function dismissProductSetupSuggestion(update: ProductSetupSuggestedUpdate) {
+    setProductSetupRecord((current) => dismissProductSetupSuggestedUpdate(current, update.id));
+  }
+
   function updateProductSetupFieldFromTab(
     fieldKey: ProductSetupFieldKey,
     value: string | number | boolean | string[] | undefined,
@@ -2542,10 +2581,42 @@ export function App() {
     setContractOpsDeploymentWarningMessage('Proceed-with-warnings decision recorded in Product Setup.');
   }
 
+  const unsentProductSetupHandoffs = productSetupReadModel.downstreamHandoffs.filter(
+    (handoff) => handoff.status !== 'sent_as_draft_note' && handoff.status !== 'reviewed_in_target_tab',
+  );
+  const rightRailReviewCount = productSetupRecord.pendingSuggestedUpdates.length + unsentProductSetupHandoffs.length;
+  const visibleReviewLimit = isRightRailReviewExpanded ? rightRailReviewCount : 3;
+  const visibleReviewUpdates = isRightRailReviewExpanded
+    ? productSetupRecord.pendingSuggestedUpdates
+    : productSetupRecord.pendingSuggestedUpdates.slice(0, Math.min(2, visibleReviewLimit));
+  const visibleReviewHandoffs = isRightRailReviewExpanded
+    ? unsentProductSetupHandoffs
+    : unsentProductSetupHandoffs.slice(0, Math.max(0, visibleReviewLimit - visibleReviewUpdates.length));
+  const hiddenReviewCount = Math.max(0, rightRailReviewCount - visibleReviewUpdates.length - visibleReviewHandoffs.length);
+  const shellStyle = isRightRailOpen
+    ? ({ '--mila-right-rail-width': `${rightRailWidth}px` } as CSSProperties)
+    : undefined;
+
+  function formatReviewValue(value: ProductSetupSuggestedUpdate['proposedValue']) {
+    return Array.isArray(value) ? value.join(', ') : String(value);
+  }
+
+  function productSetupProfileProvenanceLabel(label: (typeof productSetupReadModel.profileRows)[number]['provenanceLabel']) {
+    return label === 'Missing' ? 'To be filled' : label;
+  }
+
+  function userFacingCopilotRouteLabel(label: string) {
+    const normalized = label.toLowerCase();
+    if (normalized.includes('advisor')) return 'Explainer';
+    if (normalized.includes('engineering')) return 'Engineering';
+    return label.replace(/\s*Bot$/u, '');
+  }
+
   return (
     <main className="cockpit-page">
       <section
         className={`cockpit-shell product-workspace-shell ${isLeftRailOpen ? '' : 'left-collapsed'} ${isRightRailOpen ? '' : 'right-collapsed'}`}
+        style={shellStyle}
         aria-label="MILA26 tokenisation workspace"
       >
         <button
@@ -3666,142 +3737,9 @@ export function App() {
               </section>
             )}
 
-            <section className="bot-workspace ai-workspace" aria-label="ZiLi-OS Copilot workspace">
-              {activeWorkspaceTab.id !== 'requirements' && (
-                <div className="bot-title-row">
-                  <div className="bot-identity">
-                    <div className="bot-avatar" aria-hidden="true">AI</div>
-                    <div>
-                      <h3>ZiLi-OS Copilot</h3>
-                      <p>
-                        Uses Advisor Bot and Engineering Bot behind the scenes. Advisor explains concepts; Engineering structures
-                        requirements, blockers, and next actions.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="bot-conversation" aria-label="ZiLi-OS Copilot conversation">
-                <div className="assistant-response" data-testid="engineer-answer">
-                  <div className="conversation-history">
-                    {activeWorkspaceTab.id === 'requirements' &&
-                      engineeringBotConversation.every((turn) => turn.id === 'assistant-initial') && (
-                        <article className="conversation-turn assistant-turn product-setup-empty-turn">
-                          <span className="turn-label">ZiLi-OS</span>
-                          <p>Start with rough notes, a question, or pasted requirements. ZiLi-OS will draft the product profile and route operational details to the right tab.</p>
-                        </article>
-                      )}
-                    {engineeringBotConversation
-                      .filter((turn) => activeWorkspaceTab.id !== 'requirements' || turn.id !== 'assistant-initial')
-                      .map((turn) =>
-                      turn.role === 'user' ? (
-                        <article className="conversation-turn user-turn" key={turn.id}>
-                          <span className="turn-label">You</span>
-                          <p>{turn.content}</p>
-                        </article>
-                      ) : (
-                        <article className="conversation-turn assistant-turn" key={turn.id}>
-                          <span className="turn-label">ZiLi-OS Copilot</span>
-                          <div className="copilot-turn-meta">
-                            <div className="copilot-route-labels" aria-label="ZiLi-OS routing">
-                              {turn.routeLabels.map((label) => (
-                                <span key={label}>{label}</span>
-                              ))}
-                            </div>
-                          </div>
-                          {renderEngineerResponse(turn.response)}
-                        </article>
-                      ),
-                    )}
-                    {isBotReplyLoading && (
-                      <article className="conversation-turn assistant-turn pending-turn" aria-live="polite">
-                        <span className="turn-label">ZiLi-OS Copilot</span>
-                        <p>Routing your message to the right ZiLi-OS bot lens...</p>
-                      </article>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <section className="chat-composer ai-composer" aria-label="ZiLi-OS Copilot composer">
-                <label className="composer-title" htmlFor="zilios-copilot-composer">
-                  {activeWorkspaceTab.id === 'requirements' ? 'Product Setup chat' : 'ZiLi-OS Copilot'}
-                </label>
-                <div className="composer-shell">
-                  <textarea
-                    id="zilios-copilot-composer"
-                    aria-label={activeWorkspaceTab.id === 'requirements' ? 'Product Setup chat' : 'ZiLi-OS Copilot'}
-                    placeholder={
-                      activeWorkspaceTab.id === 'requirements'
-                        ? 'Refine a section, paste requirements, or ask a question...'
-                        : 'Describe your product, ask a question, or paste rough requirements...'
-                    }
-                    value={question}
-                    onChange={(event) => setQuestion(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' && !event.shiftKey) {
-                        event.preventDefault();
-                        void askBot();
-                      }
-                    }}
-                    rows={2}
-                  />
-                  <button className="send-button" data-action-id={uiActions.askQuestion} onClick={() => void askBot()} disabled={isBotReplyLoading}>
-                    {isBotReplyLoading ? 'Sending...' : 'Send'}
-                  </button>
-                </div>
-                {visibleSecondaryWorkflowActions.length > 0 && (
-                  <div className="composer-actions" aria-label="ZiLi-OS Copilot actions">
-                    {visibleSecondaryWorkflowActions.map((action) => (
-                      <button
-                        type="button"
-                        className="workflow-button"
-                        data-action-id={action.id}
-                        key={action.id}
-                        onClick={() => runCockpitAction(action.id)}
-                      >
-                        {action.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </section>
-
+            <section className="center-work-artifact" aria-label="Active tab work artifact">
               {activeWorkspaceTab.id === 'requirements' && (
                 <section className="product-setup-artifact" aria-label="Product Setup PRD artifact">
-                  {productSetupRecord.pendingSuggestedUpdates.length > 0 && (
-                    <section
-                      className="product-setup-review"
-                      id="product-setup-suggested-updates"
-                      tabIndex={-1}
-                      aria-label="Product Setup suggested updates"
-                    >
-                      <div className="registry-panel-heading compact-subsection-heading">
-                        <div>
-                          <h3>Review captured details</h3>
-                          <p>Confirm the details ZiLi-OS should add to the setup brief.</p>
-                        </div>
-                        <span>{productSetupRecord.pendingSuggestedUpdates.length} pending</span>
-                      </div>
-                      <div className="product-setup-update-list">
-                        {productSetupRecord.pendingSuggestedUpdates.map((update) => (
-                          <article key={update.id}>
-                            <div>
-                              <span>{productSetupRecord.fields[update.fieldKey].label}</span>
-                              <strong>{Array.isArray(update.proposedValue) ? update.proposedValue.join(', ') : String(update.proposedValue)}</strong>
-                              <p>{update.rationale}</p>
-                              <small>{Math.round(update.confidence * 100)}% confidence · source: {update.sourceType}</small>
-                            </div>
-                            <button type="button" className="workflow-button primary-action" onClick={() => confirmProductSetupSuggestion(update)}>
-                              Confirm
-                            </button>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
                   <section className="product-setup-profile" aria-label="What is this product">
                     <div className="registry-panel-heading compact-subsection-heading">
                       <div>
@@ -3815,7 +3753,7 @@ export function App() {
                           <span>{row.label}</span>
                           <strong>{row.value}</strong>
                           <small className={`product-setup-chip ${row.provenanceLabel.toLowerCase().replaceAll(' ', '-')}`}>
-                            {row.provenanceLabel}
+                            {productSetupProfileProvenanceLabel(row.provenanceLabel)}
                           </small>
                           {row.whyItMatters && <p>{row.whyItMatters}</p>}
                         </article>
@@ -4012,16 +3950,6 @@ export function App() {
                   {smartContractGenerationError}
                 </p>
               )}
-              {botChatError && (
-                <p className="error-text" role="alert">
-                  {botChatError}
-                </p>
-              )}
-              {engineeringBriefError && (
-                <p className="error-text" role="alert">
-                  {engineeringBriefError}
-                </p>
-              )}
             </section>
 
             <section className="lifecycle-snapshot" aria-label="Lifecycle snapshot">
@@ -4203,78 +4131,191 @@ export function App() {
         </section>
 
           {isRightRailOpen && (
-            <aside className="right-rail mila-right-rail" id="right-rail" aria-label="Project status">
-              <section className="status-panel">
-                <h2>Workspace Status</h2>
-                <ul className="artifact-list">
-                  {workspacePresentation.workspaceStatus.map((item) => (
-                    <li key={item.label}>
-                      <span className={item.status}>{productCapabilityStatusLabel(item.status)}</span>
-                      {item.label}
-                    </li>
-                  ))}
-                </ul>
-              </section>
+            <>
+              <div
+                className={`right-rail-resize-handle ${isRightRailResizing ? 'active' : ''}`}
+                role="separator"
+                aria-label="Resize right rail"
+                aria-orientation="vertical"
+                aria-valuemin={rightRailMinWidth}
+                aria-valuemax={Math.max(rightRailMinWidth, Math.floor(window.innerWidth * 0.45))}
+                aria-valuenow={rightRailWidth}
+                tabIndex={0}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  setIsRightRailResizing(true);
+                }}
+                onDoubleClick={() => setRightRailWidth(rightRailDefaultWidth)}
+                onKeyDown={(event) => {
+                  if (event.key === 'ArrowLeft') {
+                    event.preventDefault();
+                    setRightRailWidth((current) => clampRightRailWidth(current + 24));
+                  }
+                  if (event.key === 'ArrowRight') {
+                    event.preventDefault();
+                    setRightRailWidth((current) => clampRightRailWidth(current - 24));
+                  }
+                  if (event.key === 'Home') {
+                    event.preventDefault();
+                    setRightRailWidth(rightRailMinWidth);
+                  }
+                  if (event.key === 'End') {
+                    event.preventDefault();
+                    setRightRailWidth(rightRailDefaultWidth);
+                  }
+                }}
+              />
+              <aside className="right-rail mila-right-rail zilio-console" id="right-rail" aria-label="ZiLi-OS console">
+                <section className="zilio-review-queue" aria-label="Needs your review">
+                  <div className="zilio-console-heading">
+                    <div>
+                      <span className="section-kicker">Needs your review</span>
+                      <h2>{rightRailReviewCount === 0 ? 'Nothing waiting' : `${rightRailReviewCount} item(s) waiting`}</h2>
+                    </div>
+                    {hiddenReviewCount > 0 || isRightRailReviewExpanded ? (
+                      <button
+                        type="button"
+                        className="link-button"
+                        onClick={() => setIsRightRailReviewExpanded((current) => !current)}
+                      >
+                        {isRightRailReviewExpanded ? 'Show less' : 'Review all'}
+                      </button>
+                    ) : null}
+                  </div>
+                  {rightRailReviewCount === 0 ? (
+                    <p className="empty-registry">Nothing waiting for review.</p>
+                  ) : (
+                    <div className="zilio-review-list">
+                      {visibleReviewUpdates.map((update) => (
+                        <article key={update.id}>
+                          <span>Captured fact</span>
+                          <strong>{productSetupRecord.fields[update.fieldKey].label}</strong>
+                          <p>{formatReviewValue(update.proposedValue)}</p>
+                          <small>{Math.round(update.confidence * 100)}% confidence · {update.sourceType}</small>
+                          <div className="zilio-review-actions">
+                            <button type="button" className="workflow-button primary-action compact" onClick={() => confirmProductSetupSuggestion(update)}>
+                              Confirm
+                            </button>
+                            <button type="button" className="workflow-button compact" onClick={() => dismissProductSetupSuggestion(update)}>
+                              Dismiss
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                      {visibleReviewHandoffs.map((handoff) => (
+                        <article key={handoff.id}>
+                          <span>Operational handoff</span>
+                          <strong>{productSetupHandoffTargetLabel(handoff.target)}</strong>
+                          <p>{handoff.detail}</p>
+                          <small>{handoff.status.replaceAll('_', ' ')}</small>
+                          <div className="zilio-review-actions">
+                            <button type="button" className="workflow-button compact" onClick={() => sendProductSetupHandoff(handoff.id)}>
+                              Send draft
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                      {hiddenReviewCount > 0 && (
+                        <p className="zilio-review-more">{hiddenReviewCount} more item(s) hidden. Use Review all to expand.</p>
+                      )}
+                    </div>
+                  )}
+                </section>
 
-              <section className="status-panel">
-                <h2>Capability Status</h2>
-                <ul className="artifact-list">
-                  {workspacePresentation.capabilityStatus.map((item) => (
-                    <li key={item.label}>
-                      <span className={item.status}>{productCapabilityStatusLabel(item.status)}</span>
-                      {item.label}
-                    </li>
-                  ))}
-                </ul>
-              </section>
+                <section className="zilio-chat-console" aria-label="Ask ZiLi-OS">
+                  <div className="zilio-console-heading compact">
+                    <div>
+                      <span className="section-kicker">Ask ZiLi-OS</span>
+                      <p className="zilio-active-tab-label">{activeWorkspaceTab.label}</p>
+                    </div>
+                  </div>
+                  <div className="bot-conversation zilio-chat-scroll" aria-label="ZiLi-OS Copilot conversation">
+                    <div className="assistant-response" data-testid="engineer-answer">
+                      <div className="conversation-history">
+                        {activeWorkspaceTab.id === 'requirements' &&
+                          engineeringBotConversation.every((turn) => turn.id === 'assistant-initial') && (
+                            <article className="conversation-turn assistant-turn product-setup-empty-turn">
+                              <span className="turn-label">ZiLi-OS</span>
+                              <p>
+                                Start with rough notes, a question, or pasted requirements. ZiLi-OS will draft the product profile
+                                and route operational details to the right tab.
+                              </p>
+                            </article>
+                          )}
+                        {engineeringBotConversation
+                          .filter((turn) => activeWorkspaceTab.id !== 'requirements' || turn.id !== 'assistant-initial')
+                          .map((turn) =>
+                            turn.role === 'user' ? (
+                              <article className="conversation-turn user-turn" key={turn.id}>
+                                <span className="turn-label">You</span>
+                                <p>{turn.content}</p>
+                              </article>
+                            ) : (
+                              <article className="conversation-turn assistant-turn" key={turn.id}>
+                                <span className="turn-label">ZiLi-OS</span>
+                                <div className="copilot-turn-meta">
+                                  <div className="copilot-route-labels" aria-label="ZiLi-OS routing">
+                                    {turn.routeLabels.map((label) => (
+                                      <span key={label}>{userFacingCopilotRouteLabel(label)}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                                {renderEngineerResponse(turn.response)}
+                              </article>
+                            ),
+                          )}
+                        {isBotReplyLoading && (
+                          <article className="conversation-turn assistant-turn pending-turn" aria-live="polite">
+                            <span className="turn-label">ZiLi-OS</span>
+                            <p>Routing your message with the current {activeWorkspaceTab.label} context...</p>
+                          </article>
+                        )}
+                        <div ref={copilotConversationEndRef} aria-hidden="true" />
+                      </div>
+                    </div>
+                  </div>
 
-              <section className="status-panel">
-                <div className="panel-title-row">
-                  <h2>Product Vault</h2>
-                  <button type="button" className="link-button" onClick={() => setSelectedWorkspaceTab('evidence')}>
-                    View all
-                  </button>
-                </div>
-                <ul className="artifact-list">
-                  {workspacePresentation.productVault.map((item) => (
-                    <li key={item.label}>
-                      <span>{item.status}</span>
-                      {item.label}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <section className="status-panel">
-                <div className="panel-title-row">
-                  <h2>Recent Activity</h2>
-                  <button type="button" className="link-button" onClick={() => setSelectedWorkspaceTab('evidence')}>
-                    View all
-                  </button>
-                </div>
-                <ul className="artifact-list">
-                  <li>
-                    <span>{recordNavOperationReadModel.operationStatus === 'confirmed' ? 'Done' : 'Pending'}</span>
-                    Record NAV Event
-                    <small>{recordNavOperationReadModel.statusLabel}</small>
-                  </li>
-                  <li>
-                    <span>{walletWhitelistOperationReadModel.operationStatus === 'confirmed' ? 'Done' : 'Pending'}</span>
-                    Wallet whitelisted
-                    <small>{walletWhitelistOperationReadModel.statusLabel}</small>
-                  </li>
-                  <li>
-                    <span>{deploymentEvidenceReadModel.status === 'confirmed' ? 'Done' : 'Pending'}</span>
-                    Sepolia deployment
-                    <small>{deploymentEvidenceReadModel.statusLabel}</small>
-                  </li>
-                </ul>
-              </section>
-
-              <section className="status-panel">
-                <p className="muted">All executable actions are wallet-signed. Backend never holds private keys. Sepolia testnet environment.</p>
-              </section>
-            </aside>
+                  <section className="chat-composer ai-composer zilio-console-composer" aria-label="ZiLi-OS Copilot composer">
+                    <label className="composer-title" htmlFor="zilios-copilot-composer">
+                      {activeWorkspaceTab.id === 'requirements' ? 'Product Setup chat' : 'ZiLi-OS Copilot'}
+                    </label>
+                    <div className="composer-shell">
+                      <textarea
+                        id="zilios-copilot-composer"
+                        aria-label={activeWorkspaceTab.id === 'requirements' ? 'Product Setup chat' : 'ZiLi-OS Copilot'}
+                        placeholder={
+                          activeWorkspaceTab.id === 'requirements'
+                            ? 'Refine a PRD section, paste requirements, or ask a question...'
+                            : `Ask about ${activeWorkspaceTab.label} or paste details for this stage...`
+                        }
+                        value={question}
+                        onChange={(event) => setQuestion(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' && !event.shiftKey) {
+                            event.preventDefault();
+                            void askBot();
+                          }
+                        }}
+                        rows={3}
+                      />
+                      <button className="send-button" data-action-id={uiActions.askQuestion} onClick={() => void askBot()} disabled={isBotReplyLoading}>
+                        {isBotReplyLoading ? 'Sending...' : 'Send'}
+                      </button>
+                    </div>
+                    {botChatError && (
+                      <p className="error-text" role="alert">
+                        {botChatError}
+                      </p>
+                    )}
+                    {engineeringBriefError && (
+                      <p className="error-text" role="alert">
+                        {engineeringBriefError}
+                      </p>
+                    )}
+                  </section>
+                </section>
+              </aside>
+            </>
           )}
       </section>
 

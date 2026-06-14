@@ -194,8 +194,7 @@ describe('workspace persistence repository', () => {
     });
     expect(parsed.fields.investor_wallet_rule).toMatchObject({
       key: 'investor_wallet_rule',
-      status: 'inferred',
-      sourceRef: 'migration_default',
+      status: 'missing',
     });
     expect(parsed.fields.token_symbol).toMatchObject({
       key: 'token_symbol',
