@@ -92,7 +92,7 @@ Future components:
 - `EvidenceSummary`
 - `LocalSessionEvidenceBadge`
 
-Purpose: show generated artifacts and evidence without turning the right rail into an action surface.
+Purpose: show generated artifacts and evidence without turning the right rail into a wallet/contract execution surface.
 
 ## 7. Smart Contract Control Panel Components
 

@@ -11,7 +11,7 @@ The implemented app is an AI-first lifecycle workspace:
 - visual lifecycle tab strip;
 - large Engineering Bot answer and conversation area;
 - suggested next action row;
-- passive right rail;
+- persistent ZiLi-OS right console;
 - Product Vault and Recent Activity;
 - Smart Contract Control Panel below the main AI workspace.
 
@@ -24,7 +24,7 @@ Tabs are visual only. They must not create separate state silos.
 - Shared lifecycle presentation state.
 - Engineering Bot conversation and safe rendering of backend responses.
 - Current project context display.
-- Product Vault and passive status rail.
+- Product Vault and ZiLi-OS console/status rail.
 - Generated artifact display.
 - Wallet connection and wallet-signed Sepolia actions through the browser provider.
 - SCP status/evidence/boundary/operation controls.
@@ -92,7 +92,7 @@ Each tab may render a different view, but the Engineering Bot should always see 
 
 ## Right Rail Rule
 
-The right rail is passive.
+The right rail is the persistent ZiLi-OS console. It may show captured facts, review actions, chat, and draft handoff staging. It must not contain wallet-signing, deployment, mint, whitelist, NAV, redemption execution, or other contract-operation controls.
 
 It can show:
 
@@ -115,7 +115,7 @@ It must not show:
 - Keep tests for:
   - lifecycle tabs visible;
   - center Engineering Bot workspace visible;
-  - right rail passive;
+  - right rail as the persistent ZiLi-OS console;
   - primary actions in center;
   - SCP owns wallet-signed operations;
   - no fake wallet/deployment/evidence claims.

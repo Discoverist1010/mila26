@@ -37,7 +37,7 @@ Scope:
 Acceptance:
 - Existing tests continue passing.
 - Add focused tests for investor registry state and UI.
-- Right rail remains passive.
+- Right rail remains free of wallet/contract execution controls.
 - SCP remains the only home for wallet-signed contract operations.
 - No internal track numbers appear in user-facing UI.
 ```
@@ -79,7 +79,7 @@ Acceptance:
 - User-entered subscription/redemption values persist in app state during the session and remain editable.
 - Engineering Bot, lifecycle snapshot, Product Vault, status panels, Subscription tab, Redemption tab, and template handoff all reflect the same shared lifecycle state.
 - Invalid, incomplete, and edited values update validation/status without stale summaries.
-- Right rail remains passive.
+- Right rail remains free of wallet/contract execution controls.
 - SCP remains the only home for wallet-signed contract operations.
 - No internal track numbers appear in user-facing UI.
 - No claim that stablecoin payment, redemption payout, or liquidity management is live.
@@ -120,7 +120,7 @@ Acceptance:
 - Existing tests continue passing.
 - Browser/e2e coverage proves Allocation/Mint execution gates survive cross-tab edits.
 - The Smart Contract tab remains readable and uncluttered.
-- The right rail remains passive.
+- The right rail remains free of wallet/contract execution controls.
 - No transaction hash, contract address, or confirmed mint status appears without provider evidence.
 - No internal track numbers appear in user-facing UI.
 ```

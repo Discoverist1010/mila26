@@ -200,19 +200,19 @@ const gateReadiness = assessGateReadiness(deploymentStatus);
 **Severity:** HIGH  
 **First caught:** 2026-05-31 (seeded from lifecycle workspace architecture review)
 **Catch count:** 0  
-**Description:** A workflow/action button appearing in the right rail instead of the central Engineering Bot surface. The right rail must remain passive status-only. Buttons like "Deploy," "Approve," "Sign," or "Generate" in the right rail violate the lifecycle workspace architecture where Engineering Bot is the sole lifecycle workflow decision orchestrator. Operation-specific SCP controls are only acceptable after the corresponding operation track approves and gates them.
-**Detection:** Check right-rail component JSX for `<button>`, `<Button>`, or any element with `onClick` that triggers a workflow action (not UI toggles like show/hide panels). UI toggles for panel visibility are acceptable.  
+**Description:** A wallet/contract workflow button appearing in the right rail instead of the focused Contract Ops or center-tab surface. The ZiLi-OS right console may contain captured-fact confirm/reject/edit controls and draft handoff staging because these only update reviewed Product Setup/lifecycle notes. Buttons like "Deploy," "Sign," "Mint," "Whitelist," "Record NAV," or "Generate contract artifact" in the right rail violate lifecycle workspace architecture.
+**Detection:** Check right-rail component JSX for `<button>`, `<Button>`, or any element with `onClick`. Confirm/reject/edit of captured chat facts and draft handoff staging are acceptable. Wallet signing, blockchain execution, contract artifact generation, or operation-specific controls are not. UI toggles for panel visibility are acceptable.
 **Example:**
 
 ```jsx
-// FLAGGED — workflow button in right rail
+// FLAGGED — wallet/contract operation button in right rail
 <div className="right-rail">
   <Button onClick={handleDeploy}>Deploy to Sepolia</Button>  // HIGH violation
 </div>
 
-// ACCEPTABLE — passive status display
+// ACCEPTABLE — captured-fact review in ZiLi-OS console
 <div className="right-rail">
-  <StatusBadge status={deploymentStatus} />
+  <Button onClick={confirmCapturedFact}>Confirm</Button>
 </div>
 ```
 

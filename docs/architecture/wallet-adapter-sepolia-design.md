@@ -209,9 +209,9 @@ Current sequence:
 
 ## UI Placement
 
-Future wallet workflow controls belong in the central Engineering Bot workflow surface.
+Future wallet workflow controls belong in Contract Ops or approved SCP operation controls after their gates are satisfied.
 
-Right rail remains passive status and safety.
+Right rail remains the ZiLi-OS console for chat, captured-fact review, and draft handoff staging. It must not contain wallet-signing, deployment, mint, whitelist, NAV, redemption execution, or other contract-operation controls.
 
 SCP remains status, evidence, boundary, health, and operation-specific controls. Future broad operations stay unavailable until individually implemented with adapters, gates, and evidence paths.
 

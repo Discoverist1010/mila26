@@ -178,7 +178,8 @@ MILA26's architecture uses typed artifacts, thin derived read models, and explic
 - [ ] Flag any violation as **CRITICAL — Architecture Violation**
 
 ### 3.2 — UI Architecture
-- [ ] Right rail contains NO workflow/action buttons (must be passive status only)
+- [ ] Right rail contains NO wallet-signing, deployment, mint, whitelist, NAV, redemption execution, or other contract-operation controls
+- [ ] Right rail review buttons are limited to captured-fact confirmation/rejection/editing and draft handoff staging; they must not bypass center-tab state ownership or lifecycle gates
 - [ ] SCP contains NO active operations before the corresponding operation track
 - [ ] Engineering Bot is the single visible workflow decision surface
 - [ ] Lifecycle and pre-operation workflow actions appear ONLY in the central Engineering Bot area
@@ -464,7 +465,7 @@ These checks apply based on the type of code being reviewed. Execute the relevan
 
 ### 9.4 — UI / Lifecycle Workspace Tracks (if applicable)
 - [ ] Engineering Bot is the single workflow decision surface — flag as **HIGH**, or **CRITICAL** if execution can bypass required approval/safety gates
-- [ ] Right rail contains no action buttons — flag as **HIGH**
+- [ ] Right rail action buttons are limited to captured-fact review/reject/edit and draft handoff staging; wallet-signing, deployment, mint, whitelist, NAV, redemption execution, or other contract-operation controls are **HIGH**
 - [ ] SCP shows only status/evidence/boundary (pre-deployment) or approved operations (post-deployment) — flag as **HIGH**, or **CRITICAL** if it exposes unapproved blockchain execution
 - [ ] New UI actions use typed `CockpitAction` pattern — flag as **MEDIUM**, or **HIGH** if the action changes workflow state
 - [ ] Visual tabs share lifecycle state and do not create per-tab state silos — flag as **HIGH**

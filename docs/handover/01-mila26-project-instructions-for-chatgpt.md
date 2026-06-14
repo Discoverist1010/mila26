@@ -33,7 +33,7 @@ MILA26 is a funding-demo-ready MVP foundation for an AI + blockchain tokenisatio
 - Testnet-only MVP.
 - Real-world investor names stay off-chain by default.
 - Lifecycle tabs are visual structure only; cross-stage data must flow through shared typed state/read models.
-- Right rail remains passive; workflow decisions stay in the Engineering Bot or approved SCP operation controls.
+- Right rail remains the persistent ZiLi-OS console; captured-fact review and draft handoff staging may happen there, but wallet signing, deployment, mint, whitelist, NAV, redemption execution, and other contract-operation controls stay in Contract Ops or approved SCP operation controls.
 
 ## Codex Guidance
 

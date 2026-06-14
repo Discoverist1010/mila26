@@ -19,7 +19,7 @@ The target product flow is:
 
 ## Current Implemented Capabilities
 
-- Lifecycle workspace UI with MILA26 branding, dark left rail, top project bar, visual stage tabs, large Engineering Bot answer area, next best actions, passive right rail, Product Vault, lifecycle snapshot, and SCP below the AI surface.
+- Lifecycle workspace UI with MILA26 branding, dark left rail, top project bar, visual stage tabs, active tab artifact center, persistent ZiLi-OS right console, Product Vault, lifecycle snapshot, and Contract Ops wallet-operation surfaces.
 - Shared frontend presentation model in `src/domain/workspacePresentation.ts` so stage status, capability status, vault artifacts, recent activity, and lifecycle snapshot are not hardcoded independently in each visual area.
 - Requirement Brief, Engineering Brief, Smart Contract Artifact Spec, deterministic artifact preview, check result, evidence-lite, and local compile/test read models.
 - MetaMask-first wallet connection and Sepolia verification.
@@ -54,8 +54,8 @@ The active UX direction is the lifecycle workspace mockup provided by the user a
 - left rail for project and engineering navigation.
 - top bar for product, network, wallet, guided/expert mode, and safety status.
 - visual tabs for `Overview`, `Requirements`, `Investor Registry`, `Subscription`, `Smart Contract`, `Asset Servicing`, `Redemption`, `Maturity`, and `Evidence`.
-- center column led by the Engineering Bot, with readable AI answers and suggested next actions.
-- right rail limited to passive status, Product Vault, capability status, recent activity, and evidence status.
+- center column led by the active tab artifact, with readable Product Setup/Investor Wallets/Subscription/Contract Ops work surfaces.
+- right rail as the persistent ZiLi-OS console: captured-fact review and draft-handoff confirmation are allowed; wallet signing, deployment, mint, whitelist, NAV, and other contract-operation controls are not.
 - SCP below the Engineering Bot for wallet-signed operations.
 
 Avoid exposing internal implementation labels such as track numbers to users. Track labels may remain in internal roadmap documents only.
@@ -112,4 +112,4 @@ Do not build broad SCP execution before each operation has browser coverage, foc
 - No subscription or redemption transaction execution before the parameter model and template handoff are coherent.
 - No batch allocation/mint, subscription execution, or redemption execution before the single-operation gates and evidence path are proven.
 - No per-tab state silos.
-- No broad UI redesign that reduces Engineering Bot readability or moves workflow decisions into the passive right rail.
+- No broad UI redesign that reduces ZiLi-OS readability or moves wallet/contract operation decisions into the right rail.

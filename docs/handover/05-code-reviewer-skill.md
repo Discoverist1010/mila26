@@ -191,7 +191,7 @@ MILA26 uses typed artifacts, thin derived read models, and explicit boundaries. 
 - Frontend LLM calls or `VITE_*LLM*` environment variables
 
 **What to flag as HIGH:**
-- Right rail containing workflow/action buttons (must be passive)
+- Right rail containing wallet-signing, deployment, mint, whitelist, NAV, redemption execution, or other contract-operation controls
 - SCP containing active operations before the corresponding operation track
 - Broad SCP operation suites when only one operation-specific track is approved
 - Cross-boundary imports that violate the architecture layers
@@ -417,7 +417,7 @@ Always produce a review in this exact structure. This ensures every review is co
 | No global state library added | PASS / FAIL | |
 | No monolithic context created | PASS / FAIL | |
 | Engineering Bot is sole decision orchestrator | PASS / FAIL | |
-| Right rail is passive (no workflow buttons) | PASS / FAIL | |
+| Right rail has only ZiLi-OS chat, captured-fact review, and draft handoff staging; no wallet/contract execution controls | PASS / FAIL | |
 | SCP is status/evidence only (pre-deployment tracks) | PASS / FAIL | |
 | Backend-only LLM calls | PASS / FAIL | |
 | No VITE_*LLM* variables | PASS / FAIL | |

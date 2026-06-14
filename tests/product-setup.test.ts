@@ -119,6 +119,7 @@ describe('Product Setup record', () => {
     expect(byField.get('nav_cadence')).toBe('Monthly');
     expect(byField.get('subscription_cadence')).toBe('Monthly');
     expect(byField.get('redemption_cadence')).toBe('Monthly');
+    expect(byField.get('income_treatment')).toBe('Distributing');
     expect(byField.get('income_payout_cadence')).toBe('Monthly');
     expect(byField.has('redemption_payout_cadence')).toBe(false);
   });
@@ -149,6 +150,7 @@ describe('Product Setup record', () => {
     expect(byField.get('expected_investor_count')).toBe(27);
     expect(byField.get('subscription_cadence')).toBe('Quarterly');
     expect(byField.get('nav_cadence')).toBe('Monthly');
+    expect(byField.get('income_treatment')).toBe('Distributing');
     expect(byField.get('income_payout_cadence')).toBe('Quarterly');
     expect(byField.get('initial_distribution_date')).toBe('2026-11-08');
     expect(String(byField.get('initial_investor_register_rule'))).toMatch(/initial register of 27 investors/i);
@@ -180,7 +182,8 @@ describe('Product Setup record', () => {
     const windDownRow = readModel.profileRows.find((row) => row.id === 'wind_down_switch');
 
     expect(byField.get('base_currency')).toBe('USD');
-    expect(byField.get('income_payout_cadence')).toBe('No income distribution');
+    expect(byField.get('income_treatment')).toBe('No income distribution');
+    expect(byField.has('income_payout_cadence')).toBe(false);
     expect(byField.get('maturity_date')).toBe('3 years after IPO');
     expect(incomeRow).toMatchObject({ value: 'No income distribution', provenanceLabel: 'Needs review' });
     expect(maturityRow).toMatchObject({ value: '3 years after IPO', provenanceLabel: 'Needs review' });

@@ -27,7 +27,7 @@ const productSetupDataRules = [
   'Treat canonical fields with system_default or inferred status as assumptions to confirm.',
   'Do not invent or prefill product_name or token_symbol. Ask for them when missing.',
   'Say "recommended architecture target" for inferred protocol recommendations; say "selected protocol base" only after protocol_base is user_confirmed.',
-  'Prioritize missing canonical inputs: product name, token symbol, protocol base, expected investors, wallet rule, subscription/redemption cadence, payout cadence, NAV cadence/source, stablecoins, and burn/lock rule.',
+  'Prioritize missing canonical inputs: product name, token symbol, product type, base currency, protocol base, expected investors, wallet rule, subscription/redemption cadence, income treatment, payout cadence, NAV cadence/source, stablecoins, and burn/lock rule.',
 ];
 
 const protocolRules = [
@@ -80,6 +80,7 @@ const canonicalFieldPriority = [
   'token_symbol',
   'product_type',
   'base_currency',
+  'income_treatment',
   'protocol_base',
   'expected_investor_count',
   'investor_wallet_rule',

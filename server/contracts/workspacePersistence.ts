@@ -78,6 +78,7 @@ const ProductSetupFieldKeyPersistenceSchema = z.enum([
   'issuer_owner',
   'product_type',
   'base_currency',
+  'income_treatment',
   'protocol_base',
   'expected_investor_count',
   'investor_wallet_rule',
@@ -191,6 +192,14 @@ const ProductSetupFieldsPersistenceSchema = z
     issuer_owner: ProductSetupFieldPersistenceSchema,
     product_type: ProductSetupFieldPersistenceSchema,
     base_currency: ProductSetupFieldPersistenceSchema,
+    income_treatment: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'income_treatment',
+        label: 'Income treatment',
+        usedByTabs: ['Product Setup', 'Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
     protocol_base: ProductSetupFieldPersistenceSchema,
     expected_investor_count: ProductSetupFieldPersistenceSchema,
     investor_wallet_rule: ProductSetupFieldPersistenceSchema.default(() =>

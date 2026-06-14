@@ -52,7 +52,7 @@ Drift means the product, code, docs, tests, UI labels, contract artifacts, or ro
 - **Quality Architect / Refactorer:** source-of-truth drift, duplicated domain rules, brittle read models, per-tab state silos, incomplete data flow, and state/cache/memory drift.
 - **Code Reviewer:** guardrail drift, architecture drift, roadmap/scope drift, user-facing claim drift, and missed lesson patterns.
 - **Test Engineer:** test drift where assertions no longer cover current behavior, risk, or regression classes.
-- **Frontend/UX Reviewer:** UI flow drift, lifecycle tab drift, copy/status drift, and right-rail action drift.
+- **Frontend/UX Reviewer:** UI flow drift, lifecycle tab drift, copy/status drift, and right-rail action drift, distinguishing allowed captured-fact review from prohibited wallet/contract operation controls.
 - **Security Reviewer:** secret handling drift, wallet custody drift, chain/network drift, logging/evidence drift, and unsafe external-service assumptions.
 - **Solidity Reviewer:** contract invariant drift, ABI/artifact drift, event/evidence drift, and deployment-script drift.
 - **Release Engineer:** environment, build, release note, handover, and deployment-readiness drift.
@@ -62,7 +62,7 @@ Drift means the product, code, docs, tests, UI labels, contract artifacts, or ro
 - docs and prompts still match implemented behavior;
 - lifecycle read models still feed every tab that needs the data;
 - user-facing labels do not expose internal track names or overclaim capability;
-- Product Vault, right rail, Engineering Bot, SCP, and tabs derive status from the same source where applicable;
+- Product Vault, ZiLi-OS right console, center artifacts, Contract Ops, and tabs derive status from the same source where applicable;
 - cached, persisted, or remembered values do not override fresher lifecycle, wallet, NAV, subscription, redemption, or evidence state;
 - tests cover the current behavior rather than obsolete UI copy or implementation details;
 - smart-contract specs, ABI/artifacts, parameter cards, and operation gates agree;
@@ -303,7 +303,7 @@ This is a triggered lens, not a separate always-on reviewer. Apply it inside Qua
 - the user can understand the current stage, what has already been captured, what is missing, and what happens next;
 - lifecycle flow feels continuous from the user's perspective even when implementation spans multiple modules;
 - suggested next actions match the user's stated intent and the actual capability gaps;
-- right rail remains passive;
+- right rail does not contain wallet signing, deployment, mint, whitelist, NAV, redemption execution, or other contract-operation controls;
 - next actions match current lifecycle gaps;
 - user-facing copy avoids internal track labels;
 - no KYC/legal/advice/audit/production claims;
@@ -321,7 +321,7 @@ This is a triggered lens, not a separate always-on reviewer. Apply it inside Qua
 ### Anti-Patterns To Flag
 
 - cluttered workspace summaries that compete with AI answers;
-- workflow buttons in passive status panels;
+- wallet/contract operation buttons in the ZiLi-OS right console or passive status panels;
 - disabled buttons without clear reason;
 - visual tabs that hide cross-stage dependencies;
 - technically correct screens that leave a non-technical asset manager unsure what to do next;

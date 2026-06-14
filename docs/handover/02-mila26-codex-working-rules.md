@@ -36,7 +36,7 @@ Use `docs/handover/08-delivery-role-skills.md` when a task benefits from special
 - Quality Architect / Refactorer for brittleness, duplicated state, source-of-truth drift, and module-boundary concerns.
 - Security Reviewer for auth, secrets, wallet, LLM, API, evidence, and sensitive-data boundaries.
 - Solidity Reviewer for Solidity, Hardhat, ABI, bytecode, viem, and contract-test changes.
-- Frontend/UX Reviewer for lifecycle tabs, Engineering Bot readability, right-rail passivity, responsive behavior, user-facing claims, and user-perspective lifecycle flow.
+- Frontend/UX Reviewer for lifecycle tabs, ZiLi-OS console readability, right-rail operation-control boundaries, responsive behavior, user-facing claims, and user-perspective lifecycle flow.
 - Release Engineer for commit/push readiness, build/env checks, reviewer gates, and release-risk summaries.
 
 Triggered review lenses are applied inside those roles rather than treated as extra always-on bots:

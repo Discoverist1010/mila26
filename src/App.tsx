@@ -996,6 +996,7 @@ export function App() {
       'token_symbol',
       'product_type',
       'base_currency',
+      'income_treatment',
       'protocol_base',
       'expected_investor_count',
       'investor_wallet_rule',

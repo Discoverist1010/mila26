@@ -27,7 +27,7 @@ The app composes pure read models, API clients, wallet adapters, and a shared wo
 - Wallet Whitelist Operation Read Model.
 - Workspace Presentation Model.
 
-The right rail is passive. The central Engineering Bot surface owns workflow decisions. SCP owns operation controls only after explicit wallet-signed gates are satisfied.
+The right rail is the persistent ZiLi-OS console. It may review captured facts and stage draft handoffs, but wallet signing and contract operation controls remain in Contract Ops/SCP only after explicit wallet-signed gates are satisfied.
 
 ## Backend Routes
 

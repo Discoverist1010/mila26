@@ -4,8 +4,8 @@ Preserve these boundaries while moving toward blockchain-functional alpha.
 
 | Area | Preserve | Why it matters |
 |---|---|---|
-| Engineering Bot workflow surface | Central action/recommendation surface in `src/App.tsx` and `src/domain/cockpitActionRegistry.ts` | Prevents workflow buttons from spreading into passive panels. |
-| Right rail | Passive status/safety only | Keeps the UI understandable and avoids accidental workflow bypasses. |
+| Engineering Bot workflow surface | Central action/recommendation surface in `src/App.tsx` and `src/domain/cockpitActionRegistry.ts` | Prevents wallet/contract execution buttons from spreading into review/chat panels. |
+| Right rail | Persistent ZiLi-OS console for chat, captured-fact review, and draft handoff staging only | Keeps the UI understandable and avoids accidental workflow bypasses. |
 | SCP | Status/evidence/boundary/health plus operation controls only after operation-specific wallet gates | Prevents fake live operations while allowing approved wallet-signed controls. |
 | Separate artifacts/read models | Files in `src/domain/` and `server/contracts/` | Avoids a brittle monolithic lifecycle context. |
 | API envelopes | `server/http/responses.ts` | Keeps backend errors safe and consistent. |

@@ -1,278 +1,54 @@
 import type { FundFacts } from './schemas';
 import { isValidNonZeroEvmAddress } from './recordNavOperationReadModel';
+import {
+  deploymentProductSetupFieldKeys,
+  essentialProductSetupFieldKeys,
+  type ProductSetupDeploymentWarning,
+  type ProductSetupDeploymentWarningAcknowledgement,
+  type ProductSetupField,
+  type ProductSetupFieldKey,
+  type ProductSetupFieldSourceType,
+  type ProductSetupFieldStatus,
+  type ProductSetupFieldValue,
+  type ProductSetupHandoffNote,
+  type ProductSetupHandoffTarget,
+  type ProductSetupProtocolBase,
+  type ProductSetupReadModel,
+  type ProductSetupRecord,
+  type ProductSetupSuggestedUpdate,
+  type UnsupportedRequirementDecision,
+} from './productSetupSchema';
 
-export const supportedProtocolBases = [
-  'ERC-20',
-  'ERC-4626',
-  'ERC-3643',
-  'Custom ERC-20 with rebasing',
-] as const;
-
-export type ProductSetupProtocolBase = (typeof supportedProtocolBases)[number];
-
-export type ProductSetupFieldStatus =
-  | 'missing'
-  | 'inferred'
-  | 'user_stated'
-  | 'user_confirmed'
-  | 'system_default'
-  | 'conflicting'
-  | 'deferred'
-  | 'locked';
-
-export type ProductSetupFieldSourceType =
-  | 'user_message'
-  | 'pasted_text'
-  | 'uploaded_document'
-  | 'assistant_inference'
-  | 'system_default'
-  | 'user_confirmation'
-  | 'direct_form_input'
-  | 'counsel_compliance_pending'
-  | 'blockchain_transaction'
-  | 'app_event';
-
-export type ProductSetupFieldKey =
-  | 'product_name'
-  | 'token_symbol'
-  | 'issuer_owner'
-  | 'product_type'
-  | 'base_currency'
-  | 'protocol_base'
-  | 'expected_investor_count'
-  | 'investor_wallet_rule'
-  | 'whitelisted_wallets_required'
-  | 'subscription_cadence'
-  | 'subscription_stablecoins'
-  | 'subscription_receiving_wallet'
-  | 'redemption_cadence'
-  | 'redemption_schedule'
-  | 'redemption_payout_delay'
-  | 'income_payout_cadence'
-  | 'redemption_payout_cadence'
-  | 'redemption_wallet'
-  | 'admin_wallet'
-  | 'burn_lock_rule'
-  | 'nav_cadence'
-  | 'nav_source'
-  | 'investor_update_rule'
-  | 'initial_distribution_date'
-  | 'initial_investor_register_rule'
-  | 'maturity_date'
-  | 'maturity_closeout_rule'
-  | 'prototype_network';
-
-export type ProductSetupFieldValue = string | number | boolean | string[];
-
-export type ProductSetupField = {
-  key: ProductSetupFieldKey;
-  label: string;
-  value?: ProductSetupFieldValue;
-  status: ProductSetupFieldStatus;
-  sourceType?: ProductSetupFieldSourceType;
-  sourceRef?: string;
-  confidence?: number;
-  confirmedByUser: boolean;
-  needsCounselComplianceConfirmation?: boolean;
-  usedByTabs: string[];
-  smartContractRelevance: 'contract_parameter' | 'operational_metadata' | 'evidence_metadata';
-  deferralReason?: string;
-  rolePlaceholder?: string;
-};
-
-export type TermExplanationState = {
-  termKey: string;
-  explainedAt: string;
-  explanationVersion: string;
-  userAcknowledged?: boolean;
-  timesShown: number;
-};
-
-export type ProductSetupSuggestedUpdate = {
-  id: string;
-  fieldKey: ProductSetupFieldKey;
-  proposedValue: ProductSetupFieldValue;
-  rationale: string;
-  sourceType: ProductSetupFieldSourceType;
-  sourceRef: string;
-  confidence: number;
-};
-
-export type ProductSetupStructuredSuggestionInput = {
-  field: string;
-  proposedValue?: unknown;
-  rationale: string;
-  confidence: number;
-};
-
-export type UnsupportedRequirementDecision = {
-  id: string;
-  requirement: string;
-  mismatchReason: string;
-  nearestEquivalent?: string;
-  decision: 'pending' | 'accepted_equivalent' | 'rejected_equivalent' | 'excluded_from_mvp';
-  sourceRef: string;
-};
-
-export type ProductSetupDeploymentWarningAcknowledgement = {
-  id: string;
-  acknowledgedAtIso: string;
-  warningFieldKeys: ProductSetupFieldKey[];
-  likelyErrors: string[];
-  decision: 'proceed_with_warnings';
-  sourceRef: string;
-};
-
-export type ProductSetupHandoffTarget =
-  | 'investor_wallets'
-  | 'subscription'
-  | 'contract_ops'
-  | 'asset_servicing'
-  | 'redemption'
-  | 'maturity';
-
-export type ProductSetupHandoffStatus =
-  | 'draft_note_ready'
-  | 'needs_clarification'
-  | 'sent_as_draft_note'
-  | 'reviewed_in_target_tab';
-
-export type ProductSetupHandoffNote = {
-  id: string;
-  target: ProductSetupHandoffTarget;
-  title: string;
-  detail: string;
-  sourceFieldKeys: ProductSetupFieldKey[];
-  sourceRef: string;
-  status: ProductSetupHandoffStatus;
-  createdAtIso: string;
-  sentAtIso?: string;
-};
-
-export type ProductSetupRecord = {
-  id: string;
-  status: 'draft' | 'ready_for_engineering' | 'locked';
-  fields: Record<ProductSetupFieldKey, ProductSetupField>;
-  pendingSuggestedUpdates: ProductSetupSuggestedUpdate[];
-  termExplanations: Record<string, TermExplanationState>;
-  unsupportedRequirementDecisions: UnsupportedRequirementDecision[];
-  deploymentWarningAcknowledgements: ProductSetupDeploymentWarningAcknowledgement[];
-  downstreamHandoffNotes: ProductSetupHandoffNote[];
-  updatedAtIso: string;
-};
-
-export type ProductSetupDeploymentWarning = {
-  fieldKey: ProductSetupFieldKey;
-  label: string;
-  message: string;
-  likelyError: string;
-  status: ProductSetupFieldStatus;
-};
-
-export type ProductSetupReadModel = {
-  statusLabel: string;
-  readinessLabel: string;
-  completedEssentialCount: number;
-  requiredEssentialCount: number;
-  understandingSummary: string;
-  protocolRecommendation: {
-    recommendedProtocol: ProductSetupProtocolBase;
-    confidence: number;
-    reasons: string[];
-    alternatives: string[];
-    executablePrototypeLabel: string;
-  };
-  missingEssentials: ProductSetupField[];
-  deploymentBlockers: string[];
-  deploymentWarnings: ProductSetupDeploymentWarning[];
-  hasUnacknowledgedDeploymentWarnings: boolean;
-  latestDeploymentWarningAcknowledgement?: ProductSetupDeploymentWarningAcknowledgement;
-  profileRows: Array<{
-    id: string;
-    label: string;
-    value: string;
-    provenanceLabel: 'Stated' | 'Assumed' | 'Inferred' | 'Needs review' | 'Missing';
-    fieldKeys: ProductSetupFieldKey[];
-    whyItMatters?: string;
-  }>;
-  downstreamHandoffs: ProductSetupHandoffNote[];
-  requirementSections: Array<{
-    title: string;
-    fields: ProductSetupField[];
-  }>;
-  unsupportedRequirementDecisions: UnsupportedRequirementDecision[];
-  firstTimePrompts: Array<{
-    termKey: string;
-    fieldKey: ProductSetupFieldKey;
-    prompt: string;
-  }>;
-  packPreview: {
-    canDownloadDraft: boolean;
-    canConfirmAndLock: boolean;
-    warning: string;
-    includedDocuments: string[];
-  };
-};
-
-const essentialFieldKeys: ProductSetupFieldKey[] = [
-  'product_name',
-  'token_symbol',
-  'product_type',
-  'base_currency',
-  'protocol_base',
-  'expected_investor_count',
-  'investor_wallet_rule',
-  'subscription_cadence',
-  'redemption_cadence',
-  'subscription_stablecoins',
-  'burn_lock_rule',
-  'prototype_network',
-];
-
-const deploymentFieldKeys: ProductSetupFieldKey[] = [
-  'admin_wallet',
-  'subscription_receiving_wallet',
-  'redemption_wallet',
-  'protocol_base',
-  'investor_wallet_rule',
-  'subscription_cadence',
-  'redemption_cadence',
-  'subscription_stablecoins',
-  'burn_lock_rule',
-  'expected_investor_count',
-  'prototype_network',
-];
-
-const allProductSetupFieldKeys: ProductSetupFieldKey[] = [
-  'product_name',
-  'token_symbol',
-  'issuer_owner',
-  'product_type',
-  'base_currency',
-  'protocol_base',
-  'expected_investor_count',
-  'investor_wallet_rule',
-  'whitelisted_wallets_required',
-  'subscription_cadence',
-  'subscription_stablecoins',
-  'subscription_receiving_wallet',
-  'redemption_cadence',
-  'redemption_schedule',
-  'redemption_payout_delay',
-  'income_payout_cadence',
-  'redemption_payout_cadence',
-  'redemption_wallet',
-  'admin_wallet',
-  'burn_lock_rule',
-  'nav_cadence',
-  'nav_source',
-  'investor_update_rule',
-  'initial_distribution_date',
-  'initial_investor_register_rule',
-  'maturity_date',
-  'maturity_closeout_rule',
-  'prototype_network',
-];
+export {
+  allProductSetupFieldKeys,
+  deploymentProductSetupFieldKeys,
+  essentialProductSetupFieldKeys,
+  supportedProtocolBases,
+} from './productSetupSchema';
+export type {
+  ProductSetupDeploymentWarning,
+  ProductSetupDeploymentWarningAcknowledgement,
+  ProductSetupField,
+  ProductSetupFieldKey,
+  ProductSetupFieldSourceType,
+  ProductSetupFieldStatus,
+  ProductSetupFieldValue,
+  ProductSetupHandoffNote,
+  ProductSetupHandoffStatus,
+  ProductSetupHandoffTarget,
+  ProductSetupProtocolBase,
+  ProductSetupReadModel,
+  ProductSetupRecord,
+  ProductSetupStructuredSuggestionInput,
+  ProductSetupSuggestedUpdate,
+  TermExplanationState,
+  UnsupportedRequirementDecision,
+} from './productSetupSchema';
+export {
+  createProductSetupSuggestionsFromStructuredUpdates,
+  createProductSetupSuggestionsFromText,
+  createUnsupportedRequirementDecisionsFromText,
+} from './productSetupExtraction';
 
 function createField(input: Omit<ProductSetupField, 'confirmedByUser'> & { confirmedByUser?: boolean }): ProductSetupField {
   return {
@@ -321,6 +97,13 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
         label: 'Base currency',
         status: 'missing',
         usedByTabs: ['Subscription', 'Redemption', 'Asset Servicing'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      income_treatment: createField({
+        key: 'income_treatment',
+        label: 'Income treatment',
+        status: 'missing',
+        usedByTabs: ['Asset Servicing', 'Evidence Vault', 'Maturity'],
         smartContractRelevance: 'operational_metadata',
       }),
       protocol_base: createField({
@@ -505,6 +288,7 @@ export function normalizeProductSetupRecord(record: ProductSetupRecord): Product
     'token_symbol',
     'product_type',
     'base_currency',
+    'income_treatment',
     'investor_wallet_rule',
     'whitelisted_wallets_required',
   ] satisfies ProductSetupFieldKey[];
@@ -582,10 +366,10 @@ export function recommendProductSetupProtocol(record: ProductSetupRecord): Produ
 
 export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetupReadModel {
   const protocolRecommendation = recommendProductSetupProtocol(record);
-  const completedEssentialCount = essentialFieldKeys.filter((key) =>
+  const completedEssentialCount = essentialProductSetupFieldKeys.filter((key) =>
     ['user_confirmed', 'system_default', 'locked'].includes(record.fields[key].status),
   ).length;
-  const missingEssentials = essentialFieldKeys
+  const missingEssentials = essentialProductSetupFieldKeys
     .map((key) => record.fields[key])
     .filter((field) => !isDeploymentReadyField(field));
   const deploymentWarnings = toProductSetupDeploymentWarnings(record);
@@ -597,9 +381,9 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
 
   return {
     statusLabel: record.status === 'locked' ? 'Locked Product Setup snapshot' : 'Draft Product Setup',
-    readinessLabel: `${completedEssentialCount}/${essentialFieldKeys.length} essentials confirmed, defaulted, or deliberately deferred`,
+    readinessLabel: `${completedEssentialCount}/${essentialProductSetupFieldKeys.length} essentials confirmed, defaulted, or deliberately deferred`,
     completedEssentialCount,
-    requiredEssentialCount: essentialFieldKeys.length,
+    requiredEssentialCount: essentialProductSetupFieldKeys.length,
     understandingSummary: createUnderstandingSummary(record, protocolRecommendation.recommendedProtocol),
     protocolRecommendation,
     missingEssentials,
@@ -612,7 +396,7 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
     requirementSections: [
       {
         title: 'Product snapshot',
-        fields: (['product_name', 'token_symbol', 'issuer_owner', 'product_type', 'base_currency'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
+        fields: (['product_name', 'token_symbol', 'issuer_owner', 'product_type', 'base_currency', 'income_treatment'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
       },
       {
         title: 'Protocol and token model',
@@ -624,7 +408,7 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
       },
       {
         title: 'Asset servicing and maturity',
-        fields: (['nav_cadence', 'nav_source', 'income_payout_cadence', 'investor_update_rule', 'initial_distribution_date', 'initial_investor_register_rule', 'maturity_date', 'maturity_closeout_rule'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
+        fields: (['nav_cadence', 'nav_source', 'income_treatment', 'income_payout_cadence', 'investor_update_rule', 'initial_distribution_date', 'initial_investor_register_rule', 'maturity_date', 'maturity_closeout_rule'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
       },
       {
         title: 'Contract operations',
@@ -663,7 +447,7 @@ export function isDeploymentReadyField(field: ProductSetupField): boolean {
 }
 
 export function toProductSetupDeploymentWarnings(record: ProductSetupRecord): ProductSetupDeploymentWarning[] {
-  return deploymentFieldKeys
+  return deploymentProductSetupFieldKeys
     .map((fieldKey) => record.fields[fieldKey])
     .filter((field) => !isDeploymentReadyField(field))
     .map((field) => ({
@@ -768,9 +552,9 @@ function toProductSetupProfileRows(
     {
       id: 'income_treatment',
       label: 'Income treatment',
-      value: incomeTreatmentProfileValue(profileValue('income_payout_cadence')),
-      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['income_payout_cadence']),
-      fieldKeys: ['income_payout_cadence'],
+      value: incomeTreatmentProfileValue(profileValue('income_treatment'), profileValue('income_payout_cadence')),
+      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['income_treatment', 'income_payout_cadence']),
+      fieldKeys: ['income_treatment', 'income_payout_cadence'],
       whyItMatters: 'Income treatment determines whether Asset Servicing needs distribution workflows.',
     },
     {
@@ -864,10 +648,13 @@ function profileRow(
   };
 }
 
-function incomeTreatmentProfileValue(value: string): string {
-  if (!value) return 'To be filled';
-  if (/^no\b|no income|no distribution|accumulat/i.test(value)) return value;
-  return `Payout cadence: ${value}`;
+function incomeTreatmentProfileValue(treatment: string, payoutCadence: string): string {
+  if (treatment && payoutCadence && !/^no\b|no income|no distribution|accumulat/i.test(treatment)) {
+    return `${treatment}; payout cadence: ${payoutCadence}`;
+  }
+  if (treatment) return treatment;
+  if (payoutCadence) return `Payout cadence: ${payoutCadence}`;
+  return 'To be filled';
 }
 
 function fieldDisplayValueWithPending(record: ProductSetupRecord, fieldKey: ProductSetupFieldKey): string {
@@ -944,7 +731,7 @@ function createProductSetupHandoffCandidates(record: ProductSetupRecord): Produc
       id: 'asset-servicing-schedule',
       target: 'asset_servicing',
       title: 'Distribution, NAV, and corporate-action servicing',
-      fieldKeys: ['nav_cadence', 'nav_source', 'income_payout_cadence', 'investor_update_rule'],
+      fieldKeys: ['nav_cadence', 'nav_source', 'income_treatment', 'income_payout_cadence', 'investor_update_rule'],
       sourceRef: 'product_setup_asset_servicing',
       createdAtIso,
     }),
@@ -1126,287 +913,6 @@ export function markTermExplained(record: ProductSetupRecord, termKey: string): 
       },
     },
     updatedAtIso: new Date().toISOString(),
-  };
-}
-
-export function createProductSetupSuggestionsFromText(
-  text: string,
-  sourceRef: string,
-): ProductSetupSuggestedUpdate[] {
-  const normalized = text.toLowerCase();
-  const updates: ProductSetupSuggestedUpdate[] = [];
-  const original = text.trim();
-  const productNameMatch = original.match(/\bproduct\s+name\s+is\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s+(?:and|with|as|it\s+is|symbol\s+is)|[.?!,]|$)/i);
-  const tokenSymbolMatch = original.match(/\b(?:token\s+)?symbol\s+is\s+([A-Z][A-Z0-9]{1,11})\b/i);
-  const baseCurrencyMatch =
-    normalized.match(/\b(?:with\s+)?([a-z]{3,6})\s+as\s+(?:a\s+)?base\s+currency\b/) ??
-    normalized.match(/\bbase\s+currency\s*(?:is|=|:)?\s*([a-z]{3,6})\b/);
-  const productTypeMatch = normalized.match(/\b(?:it\s+is\s+)?(?:a\s+)?(pooled\s+fund|private\s+credit\s+fund|credit\s+fund|investment\s+fund|fund|note|bond|portfolio)\b/);
-  const investorMatch = normalized.match(/(?:about\s*)?(\d{1,3})(?:\s*-\s*\d{1,3})?\s+(?:investors|wallets)|(\d{1,3})\s*-\s*(\d{1,3})\s+investors/);
-  const delayMatch = normalized.match(/(\d{1,3})\s*(?:business\s*)?(?:day|days|hour|hours|week|weeks)/);
-  const ipoDateMatch = original.match(/\b(?:ipo|launch|initial\s+distribution)\s+date(?:\s+\w+){0,3}\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
-  const initialRegisterMatch = original.match(/\binitial\s+register\s+of\s+(\d{1,3})\s+investors?\s+will\s+be\s+([^.,;]+)/i);
-  const maturityTermMatch = original.match(/\bmaturity\s*(?:is|=|:)?\s*(\d{1,3}\s+(?:years?|months?|quarters?)\s+after\s+(?:launch|ipo(?:\s+date)?|initial\s+distribution))\b/i);
-  const noIncomeDistribution = /\bno\s+(?:income\s+)?(?:distribution|distributions|dividend|dividends|coupon|coupons|income\s+payout|cash\s+distribution)s?\b|\bthere\s+is\s+no\s+income\s+distribution\b|\bdoes\s+not\s+(?:pay|distribute)\s+(?:income|dividends|coupons)\b/.test(normalized);
-  const valuationCadence = extractCadenceNear(normalized, '(?:valuation|nav)');
-  const subscriptionCadence = extractCadenceNear(
-    normalized,
-    '(?:subscrib\\w*|subscription\\w*|buy|new\\s+investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|accept\\s+new\\s+investors?|new\\s+money\\s+comes?\\s+in)',
-  );
-  const redemptionCadence = extractCadenceNear(
-    normalized,
-    '(?:redeem\\w*|redemption\\w*|existing\\s+investors?\\s+(?:can\\s+)?(?:sell\\s+out|exit|cash\\s+out|withdraw)|investors?\\s+(?:can\\s+)?(?:sell\\s+out|exit|cash\\s+out|withdraw)|sell\\s+out|cash\\s+out|withdraw)',
-  );
-  const incomePayoutCadence = extractCadenceNear(normalized, '(?:distribution\\w*|dividend\\w*|coupon\\w*|income payout|cash distribution)');
-  const redemptionPayoutCadence = extractCadenceNear(normalized, '(?:redemption payout|settle\\w*|settlement\\w*)');
-  const combinedSubscriptionRedemptionCadence =
-    extractCombinedSubscriptionRedemptionCadence(normalized) ??
-    extractCadenceNear(
-      normalized,
-      '(?:subscription\\s*/\\s*redemption|subscription\\s+and\\s+redemption|subscriptions\\s*/\\s*redemptions|subscribe\\s+and\\s+redeem)',
-    );
-
-  if (productNameMatch?.[1]) {
-    updates.push(createSuggestedUpdate('product_name', productNameMatch[1].trim(), 'User stated the product name.', sourceRef, 0.9));
-  }
-  if (tokenSymbolMatch?.[1]) {
-    updates.push(createSuggestedUpdate('token_symbol', tokenSymbolMatch[1].trim(), 'User stated the token symbol.', sourceRef, 0.9));
-  }
-  if (productTypeMatch?.[1]) {
-    updates.push(createSuggestedUpdate('product_type', titleCaseProductSetupValue(productTypeMatch[1]), 'User described the product type.', sourceRef, 0.84));
-  }
-  if (baseCurrencyMatch?.[1]) {
-    updates.push(createSuggestedUpdate('base_currency', baseCurrencyMatch[1].toUpperCase(), 'User stated the base currency.', sourceRef, 0.88));
-  }
-  if (investorMatch?.[1] || investorMatch?.[3]) {
-    updates.push(createSuggestedUpdate('expected_investor_count', Number(investorMatch[1] ?? investorMatch[3]), 'User described expected investor scale.', sourceRef, 0.88));
-  }
-  if (ipoDateMatch?.[1]) {
-    updates.push(createSuggestedUpdate('initial_distribution_date', normalizeProductSetupDate(ipoDateMatch[1]), 'User described the tentative initial distribution or IPO date.', sourceRef, 0.8));
-  }
-  if (maturityTermMatch?.[1]) {
-    updates.push(createSuggestedUpdate('maturity_date', normalizeMaturityTerm(maturityTermMatch[1]), 'User described the product maturity term.', sourceRef, 0.86));
-  }
-  if (initialRegisterMatch?.[1] && initialRegisterMatch[2]) {
-    updates.push(createSuggestedUpdate('initial_investor_register_rule', `Initial register of ${initialRegisterMatch[1]} investors will be ${initialRegisterMatch[2].trim()}.`, 'User described the initial investor register process.', sourceRef, 0.78));
-  }
-  if (normalized.includes('usdc')) {
-    updates.push(createSuggestedUpdate('subscription_stablecoins', ['USDC'], 'User mentioned USDC subscription or payout rails.', sourceRef, 0.9));
-  }
-  if (normalized.includes('whitelist') || normalized.includes('approved wallet') || normalized.includes('approved wallets')) {
-    updates.push(createSuggestedUpdate('whitelisted_wallets_required', true, 'User described approved or whitelisted wallet access.', sourceRef, 0.9));
-    updates.push(createSuggestedUpdate('investor_wallet_rule', 'Approved wallets only; transfers should stay between approved wallets.', 'User described approved or whitelisted wallet access.', sourceRef, 0.86));
-  }
-  if (/peer\s*to\s*peer|p2p|buy-sell|buy sell|transfer.+each other/.test(normalized)) {
-    updates.push(createSuggestedUpdate('investor_wallet_rule', 'Approved investors may transfer peer-to-peer only to other approved wallets.', 'User described investor peer-to-peer transfers.', sourceRef, 0.82));
-  }
-  if (normalized.includes('quarter')) {
-    updates.push(createSuggestedUpdate('redemption_schedule', 'Quarterly', 'User described quarterly redemption timing.', sourceRef, 0.82));
-  }
-  if (normalized.includes('weekly')) {
-    updates.push(createSuggestedUpdate('redemption_schedule', 'Weekly', 'User described weekly redemption timing.', sourceRef, 0.8));
-  }
-  if (delayMatch?.[0]) {
-    updates.push(createSuggestedUpdate('redemption_payout_delay', delayMatch[0], 'User described a redemption payout delay.', sourceRef, 0.84));
-  }
-  if (valuationCadence) {
-    updates.push(createSuggestedUpdate('nav_cadence', valuationCadence, `User described ${valuationCadence.toLowerCase()} valuation or NAV updates.`, sourceRef, 0.84));
-  }
-  if (subscriptionCadence) {
-    updates.push(createSuggestedUpdate('subscription_cadence', subscriptionCadence, `User described ${subscriptionCadence.toLowerCase()} subscription timing.`, sourceRef, 0.83));
-  }
-  if (redemptionCadence) {
-    updates.push(createSuggestedUpdate('redemption_cadence', redemptionCadence, `User described ${redemptionCadence.toLowerCase()} redemption timing.`, sourceRef, 0.83));
-  }
-  if (combinedSubscriptionRedemptionCadence && !subscriptionCadence) {
-    updates.push(createSuggestedUpdate('subscription_cadence', combinedSubscriptionRedemptionCadence, `User described ${combinedSubscriptionRedemptionCadence.toLowerCase()} subscription timing.`, sourceRef, 0.82));
-  }
-  if (combinedSubscriptionRedemptionCadence && !redemptionCadence) {
-    updates.push(createSuggestedUpdate('redemption_cadence', combinedSubscriptionRedemptionCadence, `User described ${combinedSubscriptionRedemptionCadence.toLowerCase()} redemption timing.`, sourceRef, 0.82));
-  }
-  if (noIncomeDistribution) {
-    updates.push(createSuggestedUpdate('income_payout_cadence', 'No income distribution', 'User stated there is no income distribution.', sourceRef, 0.86));
-  } else if (incomePayoutCadence) {
-    updates.push(createSuggestedUpdate('income_payout_cadence', incomePayoutCadence, `User described ${incomePayoutCadence.toLowerCase()} income or distribution payout timing.`, sourceRef, 0.78));
-  }
-  if (redemptionPayoutCadence) {
-    updates.push(createSuggestedUpdate('redemption_payout_cadence', redemptionPayoutCadence, `User described ${redemptionPayoutCadence.toLowerCase()} redemption payout settlement timing.`, sourceRef, 0.78));
-  }
-  if (/uploaded file|upload file|file upload|uploaded via a file|ingested from uploaded file/.test(normalized)) {
-    updates.push(createSuggestedUpdate('nav_source', 'Uploaded file', 'User described NAV or valuation coming from an uploaded file.', sourceRef, 0.84));
-  }
-  if (/push|send|distribute/.test(normalized) && /wallet|investor/.test(normalized) && /information|update|notice/.test(normalized)) {
-    updates.push(createSuggestedUpdate('investor_update_rule', 'ZiLi-OS should prepare investor update records; wallet-pushed notices remain a custom requirement for review.', 'User described pushing investment information to investors.', sourceRef, 0.72));
-  }
-  if (normalized.includes('erc-3643') || normalized.includes('erc3643')) {
-    updates.push(createSuggestedUpdate('protocol_base', 'ERC-3643', 'User asked for or accepted a permissioned token protocol base.', sourceRef, 0.86));
-  }
-
-  return updates;
-}
-
-export function createProductSetupSuggestionsFromStructuredUpdates(
-  updates: ProductSetupStructuredSuggestionInput[] | undefined,
-  sourceRef: string,
-): ProductSetupSuggestedUpdate[] {
-  if (!updates?.length) return [];
-
-  return updates.flatMap((update) => {
-    const fieldKeys = normalizeProductSetupFieldAliases(update.field);
-    const proposedValue = normalizeSuggestedUpdateValue(update.proposedValue);
-    if (fieldKeys.length === 0 || proposedValue === undefined) return [];
-
-    return fieldKeys.map((fieldKey) => ({
-      id: `${fieldKey}-${sourceRef}`,
-      fieldKey,
-      proposedValue,
-      rationale: update.rationale,
-      sourceType: 'assistant_inference',
-      sourceRef,
-      confidence: update.confidence,
-    }));
-  });
-}
-
-function normalizeProductSetupFieldAliases(field: string): ProductSetupFieldKey[] {
-  const normalized = field
-    .trim()
-    .replace(/([a-z])([A-Z])/g, '$1_$2')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  if (allProductSetupFieldKeys.includes(normalized as ProductSetupFieldKey)) return [normalized as ProductSetupFieldKey];
-
-  if (/subscription.*redemption.*cadence|redemption.*subscription.*cadence/.test(normalized)) {
-    return ['subscription_cadence', 'redemption_cadence'];
-  }
-
-  const aliases: Record<string, ProductSetupFieldKey> = {
-    expected_investors: 'expected_investor_count',
-    investor_count: 'expected_investor_count',
-    target_investors: 'expected_investor_count',
-    base_currency_denomination: 'base_currency',
-    maturity: 'maturity_date',
-    term: 'maturity_date',
-    launch_date_term: 'maturity_date',
-    subscription_frequency: 'subscription_cadence',
-    redemption_frequency: 'redemption_cadence',
-    valuation_cadence: 'nav_cadence',
-    valuation_update_requirement: 'nav_cadence',
-    nav_cadence_format: 'nav_cadence',
-    wallet_whitelist_requirement: 'whitelisted_wallets_required',
-    whitelist_requirement: 'whitelisted_wallets_required',
-    wallet_rule: 'investor_wallet_rule',
-    burn_rule: 'burn_lock_rule',
-  };
-
-  return aliases[normalized] ? [aliases[normalized]] : [];
-}
-
-function normalizeSuggestedUpdateValue(value: unknown): ProductSetupFieldValue | undefined {
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
-  if (Array.isArray(value) && value.every((item): item is string => typeof item === 'string')) return value;
-  return undefined;
-}
-
-function titleCaseProductSetupValue(value: string): string {
-  return value
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
-    .join(' ');
-}
-
-function normalizeMaturityTerm(value: string): string {
-  return value
-    .trim()
-    .replace(/\bipo\b/gi, 'IPO')
-    .replace(/\binitial distribution\b/gi, 'initial distribution')
-    .replace(/\s+/g, ' ');
-}
-
-function normalizeProductSetupDate(value: string): string {
-  const match = value.trim().match(/^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/);
-  if (match?.[1] && match[2] && match[3]) {
-    const monthIndex = [
-      'jan',
-      'feb',
-      'mar',
-      'apr',
-      'may',
-      'jun',
-      'jul',
-      'aug',
-      'sep',
-      'oct',
-      'nov',
-      'dec',
-    ].indexOf(match[2].slice(0, 3).toLowerCase());
-    if (monthIndex >= 0) {
-      return `${match[3]}-${String(monthIndex + 1).padStart(2, '0')}-${String(Number(match[1])).padStart(2, '0')}`;
-    }
-  }
-  const parsed = Date.parse(value);
-  if (Number.isNaN(parsed)) return value.trim();
-  return new Date(parsed).toISOString().slice(0, 10);
-}
-
-function extractCadenceNear(value: string, contextPattern: string): string | undefined {
-  const cadenceTerms: Array<[RegExp, string]> = [
-    [/\bintraday\b/, 'Intraday'],
-    [/\bdaily\b|\beach day\b/, 'Daily'],
-    [/\bweekly\b|\beach week\b/, 'Weekly'],
-    [/\bmonthly\b|\beach month\b/, 'Monthly'],
-    [/\bquarterly\b|\beach quarter\b|\bquarter\b/, 'Quarterly'],
-    [/\bhalf[-\s]?yearly\b|\bsemi[-\s]?annual(?:ly)?\b/, 'Half-yearly'],
-    [/\byearly\b|\bannually\b|\bannual\b/, 'Yearly'],
-  ];
-
-  for (const [termPattern, label] of cadenceTerms) {
-    const termSource = `(?:${termPattern.source})`;
-    const cadenceBeforeContext = new RegExp(`${termSource}(?:\\s+\\w+){0,4}\\s+${contextPattern}`, 'i');
-    const contextBeforeCadence = new RegExp(`${contextPattern}(?:\\s+\\w+){0,4}\\s+${termSource}`, 'i');
-    if (cadenceBeforeContext.test(value) || contextBeforeCadence.test(value)) return label;
-  }
-
-  return undefined;
-}
-
-function extractCombinedSubscriptionRedemptionCadence(value: string): string | undefined {
-  const match = value.match(
-    /(?:subscription\s*\/\s*redemption|subscription\s+and\s+redemption|subscriptions\s*\/\s*redemptions|subscribe\s+and\s+redeem)[^a-z0-9]{0,24}(?:cadence|frequency|timing)?[^a-z0-9]{0,24}(intraday|daily|weekly|monthly|quarterly|half[-\s]?yearly|yearly|annual|annually)\b/i,
-  );
-  if (!match?.[1]) return undefined;
-  return cadenceLabelFromTerm(match[1]);
-}
-
-function cadenceLabelFromTerm(term: string): string | undefined {
-  const normalized = term.toLowerCase().replace(/\s+/g, '-');
-  if (normalized === 'intraday') return 'Intraday';
-  if (normalized === 'daily') return 'Daily';
-  if (normalized === 'weekly') return 'Weekly';
-  if (normalized === 'monthly') return 'Monthly';
-  if (normalized === 'quarterly') return 'Quarterly';
-  if (normalized === 'half-yearly') return 'Half-yearly';
-  if (normalized === 'yearly' || normalized === 'annual' || normalized === 'annually') return 'Yearly';
-  return undefined;
-}
-
-function createSuggestedUpdate(
-  fieldKey: ProductSetupFieldKey,
-  proposedValue: ProductSetupFieldValue,
-  rationale: string,
-  sourceRef: string,
-  confidence: number,
-): ProductSetupSuggestedUpdate {
-  return {
-    id: `${fieldKey}-${sourceRef}`,
-    fieldKey,
-    proposedValue,
-    rationale,
-    sourceType: 'user_message',
-    sourceRef,
-    confidence,
   };
 }
 
@@ -1609,49 +1115,6 @@ export function acknowledgeProductSetupDeploymentWarnings(
     ],
     updatedAtIso: acknowledgedAtIso,
   };
-}
-
-export function createUnsupportedRequirementDecisionsFromText(
-  text: string,
-  sourceRef: string,
-): UnsupportedRequirementDecision[] {
-  const normalized = text.toLowerCase();
-  const decisions: UnsupportedRequirementDecision[] = [];
-
-  if (/clawback|claw back|conditional transfer/.test(normalized)) {
-    decisions.push({
-      id: `unsupported-clawback-${sourceRef}`,
-      requirement: 'Conditional transfers with clawback',
-      mismatchReason: 'The current four protocol bases do not release an executable clawback adapter in the Sepolia prototype.',
-      nearestEquivalent: 'Use approved-wallet transfer restrictions and document manual exception handling for MVP.',
-      decision: 'pending',
-      sourceRef,
-    });
-  }
-
-  if (/peer\s*to\s*peer|p2p|buy-sell|buy sell|transfer.+each other/.test(normalized)) {
-    decisions.push({
-      id: `unsupported-p2p-settlement-${sourceRef}`,
-      requirement: 'Investor peer-to-peer transfer and settlement workflow',
-      mismatchReason: 'Approved-wallet transfers can be represented as a rule, but ZiLi-OS does not yet execute a marketplace, matching, liquidity, or settlement workflow.',
-      nearestEquivalent: 'Allow only approved-wallet transfers and record P2P settlement/liquidity as excluded from MVP execution.',
-      decision: 'pending',
-      sourceRef,
-    });
-  }
-
-  if (/push.+wallet|wallet.+push|send.+wallet/.test(normalized) && /information|update|notice/.test(normalized)) {
-    decisions.push({
-      id: `unsupported-wallet-push-${sourceRef}`,
-      requirement: 'Push investment information directly to investor wallets',
-      mismatchReason: 'The current prototype can record asset-servicing events, but it does not push arbitrary notices into wallets.',
-      nearestEquivalent: 'Generate investor update records in Evidence Vault and keep wallet-push delivery outside MVP execution.',
-      decision: 'pending',
-      sourceRef,
-    });
-  }
-
-  return decisions;
 }
 
 export function setUnsupportedRequirementDecisions(

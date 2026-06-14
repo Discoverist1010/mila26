@@ -58,7 +58,7 @@ The current app supports:
 16. Whitelist Wallet as a wallet-signed SCP operation.
 17. Lifecycle workspace UI with visual tabs and shared presentation state.
 
-The central Engineering Bot remains the active workflow decision surface. The right rail remains passive status/safety. The Smart Contract Control Panel owns wallet-signed operation controls only after the relevant gates are satisfied.
+The center remains the active tab artifact surface. The right rail remains the persistent ZiLi-OS console for chat, captured-fact review, and draft handoff staging. Contract Ops/SCP owns wallet-signed operation controls only after the relevant gates are satisfied.
 
 ## Current Outputs
 

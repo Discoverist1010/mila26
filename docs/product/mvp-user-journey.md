@@ -56,7 +56,7 @@ The Engineering Bot has cross-stage context even when the user is looking at a s
 
 ### Right Rail
 
-The right rail is passive context:
+The right rail is the persistent ZiLi-OS console:
 
 - Workspace Status;
 - Capability Status;
@@ -206,7 +206,7 @@ Production-readiness planning for website, login, beta operations, persistence, 
 - Do not expose internal track numbers in the product UI.
 - Left rail is navigation.
 - Center workspace is AI-first and decision-oriented.
-- Right rail is passive.
+- Right rail is the persistent ZiLi-OS console; it may review captured facts and stage draft handoffs, but it must not contain wallet/contract execution controls.
 - Engineering Bot replies should be readable and body-sized.
 - Conversation history stays visible in the local session.
 - Contract Ops is the home for wallet-signed post-deployment operations.

@@ -173,6 +173,7 @@ describe('workspace persistence repository', () => {
 
     delete legacyRecord.fields.investor_wallet_rule;
     delete legacyRecord.fields.token_symbol;
+    delete legacyRecord.fields.income_treatment;
     delete legacyRecord.fields.subscription_cadence;
     delete legacyRecord.fields.subscription_receiving_wallet;
     delete legacyRecord.fields.redemption_cadence;
@@ -204,6 +205,11 @@ describe('workspace persistence repository', () => {
     expect(parsed.fields.nav_cadence.status).toBe('missing');
     expect(parsed.fields.subscription_cadence.status).toBe('missing');
     expect(parsed.fields.redemption_cadence.status).toBe('missing');
+    expect(parsed.fields.income_treatment).toMatchObject({
+      key: 'income_treatment',
+      status: 'missing',
+      usedByTabs: ['Product Setup', 'Asset Servicing', 'Evidence Vault'],
+    });
     expect(parsed.fields.income_payout_cadence.status).toBe('missing');
     expect(parsed.fields.redemption_payout_cadence.status).toBe('missing');
     expect(parsed.fields.maturity_closeout_rule.status).toBe('missing');

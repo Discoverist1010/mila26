@@ -541,6 +541,7 @@ describe('App Blockchain Engineer Bot panel', () => {
         protocol_base: expect.objectContaining({ status: 'missing', value: null, sourceType: null, confirmedByUser: false }),
         subscription_cadence: expect.objectContaining({ status: 'missing', value: null, sourceType: null, confirmedByUser: false }),
         redemption_cadence: expect.objectContaining({ status: 'missing', value: null, sourceType: null, confirmedByUser: false }),
+        income_treatment: expect.objectContaining({ status: 'missing', value: null, sourceType: null, confirmedByUser: false }),
         income_payout_cadence: expect.objectContaining({ status: 'missing', value: null, sourceType: null, confirmedByUser: false }),
         redemption_payout_cadence: expect.objectContaining({ status: 'missing', value: null, sourceType: null, confirmedByUser: false }),
       }),

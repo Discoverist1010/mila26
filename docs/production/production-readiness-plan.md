@@ -54,7 +54,7 @@ Already implemented or documented:
 
 - lifecycle workspace UI direction and shared presentation state;
 - Engineering Bot-centric center workspace;
-- visual tabs and passive right rail;
+- visual tabs and persistent ZiLi-OS right rail for chat, captured-fact review, and draft handoff staging;
 - Requirement Brief, Engineering Brief, Smart Contract Artifact Spec, deterministic preview, evidence-lite, compile/test read models;
 - MetaMask/EIP-1193 wallet connection and Sepolia verification;
 - wallet-signed Sepolia deployment with provider-returned transaction hash and receipt-confirmed contract address;
@@ -162,7 +162,7 @@ Must deliver:
 - AI-first center workspace;
 - obvious next best action;
 - no internal track labels in user-facing UI;
-- right rail passive;
+- right rail has no wallet-signing, deployment, mint, whitelist, NAV, redemption execution, or other contract-operation controls;
 - mobile/desktop no-overlap checks;
 - first-run path for a user who does not know tokenisation.
 

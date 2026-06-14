@@ -47,7 +47,7 @@ The backend does not expose routes for wallet connection, signing, deployment, o
 
 The Engineering Bot is the visible workflow decision orchestrator. It surfaces the primary lifecycle action and structured guidance. It should remain the only active workflow-decision surface.
 
-Right rail remains passive. SCP remains status/evidence/boundary/health plus operation controls only after operation-specific wallet gates are satisfied.
+Right rail remains the persistent ZiLi-OS console for chat, captured-fact review, and draft handoff staging. SCP remains status/evidence/boundary/health plus operation controls only after operation-specific wallet gates are satisfied.
 
 ## Smart Contract Artifacts
 

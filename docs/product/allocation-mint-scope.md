@@ -49,7 +49,7 @@ The current Allocation / Mint slice is parameter, gate, and wallet-operation dri
 - The Contract Ops tab owns Allocation / Mint readiness and action controls.
 - The Investor Wallets tab provides a handoff action: `Use for Allocation / Mint`.
 - The Subscription tab should remain parameter capture only.
-- The right rail should stay passive and show readiness, not execution controls.
+- The right rail is the ZiLi-OS console for chat, captured-fact review, and draft handoff staging; it must not contain execution controls.
 - Contract Ops remains the only home for wallet-signed contract operations.
 
 ## Non-Goals

@@ -78,7 +78,7 @@ const actionCopy: Record<
   },
   toggle_right_rail: {
     label: 'Toggle right rail',
-    description: 'Show or hide passive project status.',
+    description: 'Show or hide the ZiLi-OS console.',
     placement: 'panel_toggle',
     kind: 'panel_toggle',
     variant: 'ghost',

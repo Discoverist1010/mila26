@@ -67,7 +67,7 @@ Acceptance criteria:
 
 - Wallet connection readiness remains separate from Wallet Signing Intent.
 - Wallet execution remains not implemented.
-- Right rail remains passive.
+- Right rail remains free of wallet/contract execution controls.
 - SCP operations remain unavailable until operation-specific adapters and evidence gates are implemented.
 - No fake wallet/contract/tx values are introduced.
 - `npm run check` and `npm run test:e2e` pass.
@@ -272,4 +272,4 @@ These should not precede the first safe wallet/testnet execution path unless the
 - SCP operations unlock only after wallet-signed deployment and operation-specific authorization.
 - No fake audit, security approval, production readiness, or legal/compliance claim.
 - No monolithic lifecycle context.
-- No right-rail workflow buttons.
+- No right-rail wallet/contract execution buttons.

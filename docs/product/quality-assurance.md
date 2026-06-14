@@ -37,7 +37,7 @@ MILA26 uses a reviewer system with defined roles:
 | Quality Architect / Refactorer | Looks for brittleness, duplicated rules, source-of-truth drift, hardcoding, and weak module boundaries. |
 | Security Reviewer | Reviews wallet safety, secrets, auth, API boundaries, private-key custody, LLM provider exposure, and sensitive data handling. |
 | Solidity Reviewer | Reviews smart-contract invariants, ABI/artifact consistency, access control, events, revert paths, and testnet boundaries. |
-| Frontend/UX Reviewer | Reviews Engineering Bot readability, lifecycle tab coherence, right-rail passivity, responsive behavior, user-facing claims, and whether the lifecycle flow is understandable from the user's point of view. |
+| Frontend/UX Reviewer | Reviews ZiLi-OS console readability, lifecycle tab coherence, right-rail operation-control boundaries, responsive behavior, user-facing claims, and whether the lifecycle flow is understandable from the user's point of view. |
 | Release Engineer | Reviews build status, environment configuration, reviewer gates, commit/push readiness, and release risk. |
 
 One person or agent may perform more than one role in a small track, but the role checks remain explicit.

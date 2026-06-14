@@ -6,7 +6,7 @@ MILA26 is a blockchain-functional alpha foundation for an AI tokenisation worksp
 
 The current app can guide a project from plain-language intent through Requirement Brief, Engineering Brief, closure readiness, Smart Contract Artifact Spec, deterministic artifact preview, check/evidence-lite, local compile/test representation, Deployment Gate, Wallet Signing Intent, wallet connection, unsigned deployment intent, wallet-signed Sepolia deployment, local-session deployment evidence/readiness, and three wallet-signed Contract Ops operations: Record NAV Event, Whitelist Wallet, and Allocation / Mint.
 
-The current UI is the MILA26 lifecycle workspace. It uses visual lifecycle tabs, a large AI answer surface with Engineering and Advisor modes, suggested next actions, passive right rail, Product Vault, lifecycle snapshot, and a focused Contract Ops tab for wallet-signed operations.
+The current UI is the MILA26 lifecycle workspace. It uses visual lifecycle tabs, active tab artifacts in the center, a persistent ZiLi-OS right console for chat plus captured-fact review, Product Vault/lifecycle status surfaces, and a focused Contract Ops tab for wallet-signed operations.
 
 The next implementation step should follow the tab-aligned roadmap, not the old dashboard flow:
 
@@ -28,7 +28,7 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Keep execution Ethereum Sepolia/testnet-only.
 - Use Engineering Bot as the cross-stage lifecycle decision surface.
 - Treat tabs as visual structure only; do not segregate state by tab.
-- Keep the right rail passive.
+- Keep wallet signing, deployment, mint, whitelist, NAV, and other contract-operation controls out of the right rail. Captured-fact review, reject/edit, and draft handoff confirmation may live in the ZiLi-OS console because they do not execute wallet or contract operations.
 - Keep Contract Ops as status/evidence/boundary/health plus operation-specific controls.
 - Backend never holds private keys.
 - User wallet signs deployment and operations.
@@ -55,7 +55,7 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
 - Investor Wallets tab for up to 50 wallet addresses with validation, duplicate detection, local-session whitelist status, Contract Ops whitelist target handoff, and Allocation/Mint handoff.
 - Subscription and Redemption tabs for local-session parameter capture, validation, lifecycle snapshot/vault/status updates, and subscription-redemption template handoff input.
 - Contract Ops tab for wallet-signed deployment, Record NAV, Whitelist Wallet, Allocation/Mint readiness, and wallet-signed execution for a selected whitelisted target wallet and token allocation amount from shared Investor Wallets and Subscription state.
-- Passive right rail and Product Vault.
+- Persistent ZiLi-OS right console and Product Vault/status surfaces.
 - Backend chat route: `POST /api/chat/blockchain-engineer`.
 - Backend Engineering Brief route: `POST /api/prd/engineering-brief`.
 - Backend Smart Contract Artifact Spec route: `POST /api/smart-contract/artifact-spec`.
@@ -104,7 +104,7 @@ Production readiness, beta preparation, website/login, and GTM gates are tracked
   - visual lifecycle tabs;
   - AI-first center workspace;
   - suggested next actions;
-  - passive right rail;
+  - persistent ZiLi-OS right console;
   - Product Vault and Recent Activity;
   - product-facing copy with no internal track labels.
 - Sprint Track 13 UX cleanup:

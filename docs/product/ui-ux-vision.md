@@ -97,7 +97,7 @@ Responsibilities:
 - Recent Activity;
 - passive safety note.
 
-The right rail must not contain workflow or wallet execution buttons.
+The right rail is the persistent ZiLi-OS console. It may contain captured-fact review and draft handoff staging buttons, but it must not contain wallet signing, deployment, mint, whitelist, NAV, redemption execution, or other contract-operation controls.
 
 ### Contract Ops
 
@@ -119,7 +119,7 @@ Contract Ops is the focused place for wallet-signed contract operations once the
 - The user should always understand where they are in the lifecycle, what has been captured, what is missing, and what MILA26 recommends next.
 - Keep AI answers readable with normal body text, short sections, and clear next actions.
 - Show one next best action, then optional supporting actions.
-- Keep the right rail passive.
+- Keep wallet/contract operation controls out of the right rail.
 - Keep financial-product wording user-facing; do not expose internal track numbers in the app UI.
 - Avoid in-app legal/tax/accounting disclaimer clutter unless required for a specific flow.
 - Preserve explicit blockchain safety boundaries: Sepolia only, user wallet signs, backend never holds private keys, local-session evidence only where applicable.
