@@ -167,6 +167,26 @@ describe('Product Setup record', () => {
     expect(byField.get('investor_wallet_rule')).toMatch(/Approved wallets only/i);
   });
 
+  it('extracts IPO-relative maturity and no-income treatment from follow-up assertions', () => {
+    const suggestions = createProductSetupSuggestionsFromText(
+      'Base currency is usd. There is no income distribution. Maturity is 3 years after IPO.',
+      'chat_turn_income_maturity',
+    );
+    const record = setProductSetupSuggestedUpdates(createInitialProductSetupRecord(facts), suggestions);
+    const readModel = toProductSetupReadModel(record);
+    const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
+    const incomeRow = readModel.profileRows.find((row) => row.id === 'income_treatment');
+    const maturityRow = readModel.profileRows.find((row) => row.id === 'term');
+    const windDownRow = readModel.profileRows.find((row) => row.id === 'wind_down_switch');
+
+    expect(byField.get('base_currency')).toBe('USD');
+    expect(byField.get('income_payout_cadence')).toBe('No income distribution');
+    expect(byField.get('maturity_date')).toBe('3 years after IPO');
+    expect(incomeRow).toMatchObject({ value: 'No income distribution', provenanceLabel: 'Needs review' });
+    expect(maturityRow).toMatchObject({ value: '3 years after IPO', provenanceLabel: 'Needs review' });
+    expect(windDownRow).toMatchObject({ value: '3 years after IPO', provenanceLabel: 'Needs review' });
+  });
+
   it('splits combined subscription and redemption cadence into both canonical fields', () => {
     const suggestions = createProductSetupSuggestionsFromText(
       'Subscription/redemption cadence: quarterly post-IPO.',

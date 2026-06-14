@@ -768,9 +768,7 @@ function toProductSetupProfileRows(
     {
       id: 'income_treatment',
       label: 'Income treatment',
-      value: profileValue('income_payout_cadence')
-        ? `Payout cadence: ${profileValue('income_payout_cadence')}`
-        : 'To be filled',
+      value: incomeTreatmentProfileValue(profileValue('income_payout_cadence')),
       provenanceLabel: provenanceLabelForFieldsWithPending(record, ['income_payout_cadence']),
       fieldKeys: ['income_payout_cadence'],
       whyItMatters: 'Income treatment determines whether Asset Servicing needs distribution workflows.',
@@ -864,6 +862,12 @@ function profileRow(
     fieldKeys: input.fieldKeys,
     whyItMatters: input.whyItMatters,
   };
+}
+
+function incomeTreatmentProfileValue(value: string): string {
+  if (!value) return 'To be filled';
+  if (/^no\b|no income|no distribution|accumulat/i.test(value)) return value;
+  return `Payout cadence: ${value}`;
 }
 
 function fieldDisplayValueWithPending(record: ProductSetupRecord, fieldKey: ProductSetupFieldKey): string {
@@ -1142,7 +1146,8 @@ export function createProductSetupSuggestionsFromText(
   const delayMatch = normalized.match(/(\d{1,3})\s*(?:business\s*)?(?:day|days|hour|hours|week|weeks)/);
   const ipoDateMatch = original.match(/\b(?:ipo|launch|initial\s+distribution)\s+date(?:\s+\w+){0,3}\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
   const initialRegisterMatch = original.match(/\binitial\s+register\s+of\s+(\d{1,3})\s+investors?\s+will\s+be\s+([^.,;]+)/i);
-  const maturityTermMatch = normalized.match(/\bmaturity\s*(?:is|=|:)?\s*(\d{1,3}\s+(?:years?|months?|quarters?)\s+after\s+launch)\b/);
+  const maturityTermMatch = original.match(/\bmaturity\s*(?:is|=|:)?\s*(\d{1,3}\s+(?:years?|months?|quarters?)\s+after\s+(?:launch|ipo(?:\s+date)?|initial\s+distribution))\b/i);
+  const noIncomeDistribution = /\bno\s+(?:income\s+)?(?:distribution|distributions|dividend|dividends|coupon|coupons|income\s+payout|cash\s+distribution)s?\b|\bthere\s+is\s+no\s+income\s+distribution\b|\bdoes\s+not\s+(?:pay|distribute)\s+(?:income|dividends|coupons)\b/.test(normalized);
   const valuationCadence = extractCadenceNear(normalized, '(?:valuation|nav)');
   const subscriptionCadence = extractCadenceNear(
     normalized,
@@ -1180,7 +1185,7 @@ export function createProductSetupSuggestionsFromText(
     updates.push(createSuggestedUpdate('initial_distribution_date', normalizeProductSetupDate(ipoDateMatch[1]), 'User described the tentative initial distribution or IPO date.', sourceRef, 0.8));
   }
   if (maturityTermMatch?.[1]) {
-    updates.push(createSuggestedUpdate('maturity_date', maturityTermMatch[1], 'User described the product maturity term.', sourceRef, 0.86));
+    updates.push(createSuggestedUpdate('maturity_date', normalizeMaturityTerm(maturityTermMatch[1]), 'User described the product maturity term.', sourceRef, 0.86));
   }
   if (initialRegisterMatch?.[1] && initialRegisterMatch[2]) {
     updates.push(createSuggestedUpdate('initial_investor_register_rule', `Initial register of ${initialRegisterMatch[1]} investors will be ${initialRegisterMatch[2].trim()}.`, 'User described the initial investor register process.', sourceRef, 0.78));
@@ -1219,7 +1224,9 @@ export function createProductSetupSuggestionsFromText(
   if (combinedSubscriptionRedemptionCadence && !redemptionCadence) {
     updates.push(createSuggestedUpdate('redemption_cadence', combinedSubscriptionRedemptionCadence, `User described ${combinedSubscriptionRedemptionCadence.toLowerCase()} redemption timing.`, sourceRef, 0.82));
   }
-  if (incomePayoutCadence) {
+  if (noIncomeDistribution) {
+    updates.push(createSuggestedUpdate('income_payout_cadence', 'No income distribution', 'User stated there is no income distribution.', sourceRef, 0.86));
+  } else if (incomePayoutCadence) {
     updates.push(createSuggestedUpdate('income_payout_cadence', incomePayoutCadence, `User described ${incomePayoutCadence.toLowerCase()} income or distribution payout timing.`, sourceRef, 0.78));
   }
   if (redemptionPayoutCadence) {
@@ -1308,6 +1315,14 @@ function titleCaseProductSetupValue(value: string): string {
     .filter(Boolean)
     .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
     .join(' ');
+}
+
+function normalizeMaturityTerm(value: string): string {
+  return value
+    .trim()
+    .replace(/\bipo\b/gi, 'IPO')
+    .replace(/\binitial distribution\b/gi, 'initial distribution')
+    .replace(/\s+/g, ' ');
 }
 
 function normalizeProductSetupDate(value: string): string {

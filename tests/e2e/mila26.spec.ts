@@ -44,6 +44,7 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await expect(productSetupHeader).not.toContainText('MVP readiness');
   await expect(productSetupHeader).not.toContainText('Advisor Bot + Engineering Bot');
   await expect(page.getByLabel('Next suggested action')).toHaveCount(0);
+  await expect(page.getByLabel('Lifecycle snapshot')).toHaveCount(0);
 
   await page
     .getByRole('textbox', { name: 'Product Setup chat' })

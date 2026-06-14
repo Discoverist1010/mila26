@@ -3952,18 +3952,20 @@ export function App() {
               )}
             </section>
 
-            <section className="lifecycle-snapshot" aria-label="Lifecycle snapshot">
-              <h3>Lifecycle snapshot</h3>
-              <div>
-                {workspacePresentation.lifecycleSnapshot.map((item) => (
-                  <article key={item.label}>
-                    <span className={`status-dot ${item.status}`} aria-hidden="true" />
-                    <strong>{item.label}</strong>
-                    <small>{item.detail}</small>
-                  </article>
-                ))}
-              </div>
-            </section>
+            {activeWorkspaceTab.id !== 'requirements' && (
+              <section className="lifecycle-snapshot" aria-label="Lifecycle snapshot">
+                <h3>Lifecycle snapshot</h3>
+                <div>
+                  {workspacePresentation.lifecycleSnapshot.map((item) => (
+                    <article key={item.label}>
+                      <span className={`status-dot ${item.status}`} aria-hidden="true" />
+                      <strong>{item.label}</strong>
+                      <small>{item.detail}</small>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {(smartContractGenerationStatus === 'ready' || engineeringBrief || hasSubscriptionRedemptionTemplateInput) && (
               <section className="artifact-panel compact-artifact-panel" aria-label="Workspace artifacts">

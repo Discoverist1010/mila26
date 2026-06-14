@@ -407,6 +407,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('What is this product')).toHaveTextContent('Product profile');
     expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('No downstream details captured yet.');
     expect(screen.getByLabelText('Product Setup Pack')).toHaveTextContent('Product Setup Pack');
+    expect(screen.queryByLabelText('Lifecycle snapshot')).not.toBeInTheDocument();
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
     expect(screen.getByRole('heading', { name: 'Subscription' })).toBeVisible();
