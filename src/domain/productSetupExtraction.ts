@@ -78,7 +78,12 @@ function extractTimingAssertions({
   const delayMatch = normalized.match(/(\d{1,3})\s*(?:business\s*)?(?:day|days|hour|hours|week|weeks)/);
   const ipoDateMatch = original.match(/\b(?:ipo|launch|initial\s+distribution)\s+date(?:\s+\w+){0,3}\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
   const initialRegisterMatch = original.match(/\binitial\s+register\s+of\s+(\d{1,3})\s+investors?\s+will\s+be\s+([^.,;]+)/i);
-  const maturityTermMatch = original.match(/\bmaturity\s*(?:is|=|:)?\s*(\d{1,3}\s+(?:years?|months?|quarters?)\s+after\s+(?:launch|ipo(?:\s+date)?|initial\s+distribution))\b/i);
+  const maturityTermMatch =
+    original.match(/\bmaturity\s*(?:is|=|:)?\s*(\d{1,3}\s+(?:years?|months?|quarters?)\s+after\s+(?:launch|ipo(?:\s+date)?|initial\s+distribution))\b/i) ??
+    original.match(/\b(\d{1,3}[-\s]?(?:years?|months?|quarters?))\s+(?:term|tenor)\b/i);
+  const maturityDateMatch =
+    original.match(/\bmaturity(?:\s+date)?\s*(?:is|=|:)?\s*(\d{4}-\d{2}-\d{2})\b/i) ??
+    original.match(/\bmaturity(?:\s+date)?\s*(?:is|=|:)?\s*(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
   const subscriptionCadence = extractCadenceNear(
     normalized,
     '(?:subscrib\\w*|subscription\\w*|buy|new\\s+investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|accept\\s+new\\s+investors?|new\\s+money\\s+comes?\\s+in)',
@@ -100,6 +105,9 @@ function extractTimingAssertions({
   }
   if (maturityTermMatch?.[1]) {
     updates.push(createSuggestedUpdate('maturity_date', normalizeMaturityTerm(maturityTermMatch[1]), 'User described the product maturity term.', sourceRef, 0.86));
+  }
+  if (!maturityTermMatch?.[1] && maturityDateMatch?.[1]) {
+    updates.push(createSuggestedUpdate('maturity_date', normalizeProductSetupDate(maturityDateMatch[1]), 'User stated the maturity date.', sourceRef, 0.88));
   }
   if (initialRegisterMatch?.[1] && initialRegisterMatch[2]) {
     updates.push(createSuggestedUpdate('initial_investor_register_rule', `Initial register of ${initialRegisterMatch[1]} investors will be ${initialRegisterMatch[2].trim()}.`, 'User described the initial investor register process.', sourceRef, 0.78));
@@ -160,15 +168,19 @@ function extractServicingAssertions({
   const valuationCadence = extractCadenceNear(normalized, '(?:valuation|nav)');
   const incomePayoutCadence = extractCadenceNear(normalized, '(?:distribution\\w*|dividend\\w*|coupon\\w*|income payout|cash distribution)');
   const noIncomeDistribution = /\bno\s+(?:income\s+)?(?:distribution|distributions|dividend|dividends|coupon|coupons|income\s+payout|cash\s+distribution)s?\b|\bthere\s+is\s+no\s+income\s+distribution\b|\bdoes\s+not\s+(?:pay|distribute)\s+(?:income|dividends|coupons)\b/.test(normalized);
+  const incomeDistributionAssertion =
+    /\bincome\s+(?:is\s+)?distributed\b|\bdistribute\s+income\b|\bincome\s+payout\b|\bdistribution\s+to\s+investors?\b/.test(normalized);
 
   if (valuationCadence) {
     updates.push(createSuggestedUpdate('nav_cadence', valuationCadence, `User described ${valuationCadence.toLowerCase()} valuation or NAV updates.`, sourceRef, 0.84));
   }
   if (noIncomeDistribution) {
     updates.push(createSuggestedUpdate('income_treatment', 'No income distribution', 'User stated there is no income distribution.', sourceRef, 0.86));
-  } else if (incomePayoutCadence) {
+  } else if (incomePayoutCadence || incomeDistributionAssertion) {
     updates.push(createSuggestedUpdate('income_treatment', 'Distributing', 'User described an income distribution workflow.', sourceRef, 0.74));
-    updates.push(createSuggestedUpdate('income_payout_cadence', incomePayoutCadence, `User described ${incomePayoutCadence.toLowerCase()} income or distribution payout timing.`, sourceRef, 0.78));
+    if (incomePayoutCadence) {
+      updates.push(createSuggestedUpdate('income_payout_cadence', incomePayoutCadence, `User described ${incomePayoutCadence.toLowerCase()} income or distribution payout timing.`, sourceRef, 0.78));
+    }
   }
   if (/uploaded file|upload file|file upload|uploaded via a file|ingested from uploaded file/.test(normalized)) {
     updates.push(createSuggestedUpdate('nav_source', 'Uploaded file', 'User described NAV or valuation coming from an uploaded file.', sourceRef, 0.84));
@@ -184,8 +196,17 @@ function extractProtocolAssertions({
   normalized,
   sourceRef,
 }: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
+  if (/\berc-?\s*20\b|\berc20\b/.test(normalized)) {
+    return [createSuggestedUpdate('protocol_base', 'ERC-20', 'User selected ERC-20 as the protocol base.', sourceRef, 0.88)];
+  }
+  if (/\berc-?\s*4626\b|\berc4626\b/.test(normalized)) {
+    return [createSuggestedUpdate('protocol_base', 'ERC-4626', 'User selected ERC-4626 as the protocol base.', sourceRef, 0.88)];
+  }
   if (normalized.includes('erc-3643') || normalized.includes('erc3643')) {
     return [createSuggestedUpdate('protocol_base', 'ERC-3643', 'User asked for or accepted a permissioned token protocol base.', sourceRef, 0.86)];
+  }
+  if (/\brebasing\s+erc-?\s*20\b|\bcustom\s+erc-?\s*20\b.*\brebas/.test(normalized)) {
+    return [createSuggestedUpdate('protocol_base', 'Custom ERC-20 with rebasing', 'User selected a rebasing ERC-20 protocol base.', sourceRef, 0.86)];
   }
 
   return [];
@@ -268,6 +289,10 @@ function titleCaseProductSetupValue(value: string): string {
 function normalizeMaturityTerm(value: string): string {
   return value
     .trim()
+    .replace(/^(\d{1,3})-(year|month|quarter)s?$/i, (_match, amount: string, unit: string) => {
+      const normalizedUnit = Number(amount) === 1 ? unit.toLowerCase() : `${unit.toLowerCase()}s`;
+      return `${amount} ${normalizedUnit}`;
+    })
     .replace(/\bipo\b/gi, 'IPO')
     .replace(/\binitial distribution\b/gi, 'initial distribution')
     .replace(/\s+/g, ' ');

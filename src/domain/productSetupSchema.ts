@@ -135,12 +135,31 @@ export type ProductSetupHandoffStatus =
   | 'sent_as_draft_note'
   | 'reviewed_in_target_tab';
 
+export type ProductSetupHandoffSuggestionStatus =
+  | 'pending'
+  | 'applied_in_target_tab'
+  | 'dismissed_in_target_tab';
+
+export type ProductSetupHandoffSuggestion = {
+  id: string;
+  sourceFieldKey: ProductSetupFieldKey;
+  targetFieldKey?: string;
+  label: string;
+  value: ProductSetupFieldValue;
+  valueLabel: string;
+  provenanceLabel: 'Stated' | 'Assumed' | 'Inferred' | 'Needs review';
+  status: ProductSetupHandoffSuggestionStatus;
+  appliedAtIso?: string;
+  dismissedAtIso?: string;
+};
+
 export type ProductSetupHandoffNote = {
   id: string;
   target: ProductSetupHandoffTarget;
   title: string;
   detail: string;
   sourceFieldKeys: ProductSetupFieldKey[];
+  suggestions: ProductSetupHandoffSuggestion[];
   sourceRef: string;
   status: ProductSetupHandoffStatus;
   createdAtIso: string;

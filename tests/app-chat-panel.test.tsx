@@ -381,6 +381,10 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Redemption Product Setup draft notes')).toHaveTextContent(/Redemption payout delay: 10 business days?/);
     expect(screen.getByLabelText('Redemption delay unit')).toHaveValue('');
     expect(screen.getByLabelText('Redemption delay duration')).toHaveValue('');
+    fireEvent.click(within(screen.getByLabelText('Redemption Product Setup draft notes')).getByRole('button', { name: 'Apply' }));
+    expect(screen.getByLabelText('Redemption Product Setup draft notes')).toHaveTextContent('Applied');
+    expect(screen.getByLabelText('Redemption delay unit')).toHaveValue('days');
+    expect(screen.getByLabelText('Redemption delay duration')).toHaveValue('10');
   }, 10_000);
 
   it('blocks blank input before calling fetch', async () => {
@@ -464,13 +468,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Subscription mechanics');
     expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Subscription stablecoins: USDC');
     expect(screen.getByLabelText('Permitted stablecoins')).toHaveValue('');
-    fireEvent.click(
-      within(screen.getByLabelText('Subscription Product Setup draft notes')).getByRole('button', {
-        name: 'Mark reviewed in this tab',
-      }),
-    );
-    expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Reviewed in this tab');
-    expect(screen.getByLabelText('Permitted stablecoins')).toHaveValue('');
+    fireEvent.click(within(screen.getByLabelText('Subscription Product Setup draft notes')).getByRole('button', { name: 'Apply' }));
+    expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Applied');
+    expect(screen.getByLabelText('Permitted stablecoins')).toHaveValue('USDC');
   });
 
   it('captures the admin wallet from Contract Ops instead of Product Setup', () => {
@@ -775,7 +775,10 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(within(registry).getAllByText('Ready to whitelist').length).toBeGreaterThan(0);
     expect(within(registry).getByText('Valid wallet address')).toBeVisible();
     expect(screen.getByText('1 ready, 0 whitelisted')).toBeVisible();
-    expect(screen.getByLabelText('Product setup status')).toHaveTextContent('1/50 registered');
+    expect(screen.queryByLabelText('Product setup status')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Project navigation')).toBeVisible();
+    expect(screen.getByLabelText('Workspace snapshot actions')).toHaveTextContent('Save');
+    expect(screen.getByLabelText('Workspace snapshot actions')).toHaveTextContent('Load latest');
     expect(screen.getByLabelText('ZiLi-OS console')).toBeVisible();
 
     fireEvent.click(within(registry).getByRole('button', { name: 'Use for wallet whitelist' }));
@@ -999,7 +1002,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
     fireEvent.change(screen.getByLabelText('Investor wallet address'), { target: { value: investorWallet } });
     fireEvent.click(screen.getByRole('button', { name: 'Add wallet' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Save snapshot' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       expect(screen.getByLabelText('Workspace persistence status')).toHaveTextContent(

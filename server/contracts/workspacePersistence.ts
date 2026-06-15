@@ -361,6 +361,21 @@ const ProductSetupDeploymentWarningAcknowledgementPersistenceSchema = z
   })
   .strict();
 
+const ProductSetupHandoffSuggestionPersistenceSchema = z
+  .object({
+    id: z.string().trim().min(1).max(220),
+    sourceFieldKey: ProductSetupFieldKeyPersistenceSchema,
+    targetFieldKey: z.string().trim().min(1).max(120).optional(),
+    label: z.string().trim().min(1).max(160),
+    value: ProductSetupFieldValuePersistenceSchema,
+    valueLabel: z.string().trim().min(1).max(800),
+    provenanceLabel: z.enum(['Stated', 'Assumed', 'Inferred', 'Needs review']),
+    status: z.enum(['pending', 'applied_in_target_tab', 'dismissed_in_target_tab']),
+    appliedAtIso: z.string().trim().min(1).max(80).optional(),
+    dismissedAtIso: z.string().trim().min(1).max(80).optional(),
+  })
+  .strict();
+
 const ProductSetupHandoffNotePersistenceSchema = z
   .object({
     id: z.string().trim().min(1).max(180),
@@ -368,6 +383,7 @@ const ProductSetupHandoffNotePersistenceSchema = z
     title: z.string().trim().min(1).max(180),
     detail: z.string().trim().min(1).max(1000),
     sourceFieldKeys: z.array(ProductSetupFieldKeyPersistenceSchema).min(1).max(12),
+    suggestions: z.array(ProductSetupHandoffSuggestionPersistenceSchema).max(12).default([]),
     sourceRef: z.string().trim().min(1).max(180),
     status: z.enum(['draft_note_ready', 'needs_clarification', 'sent_as_draft_note', 'reviewed_in_target_tab']),
     createdAtIso: z.string().trim().min(1).max(80),

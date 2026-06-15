@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const navItems = [
   { label: 'Product', href: '#product' },
@@ -127,7 +127,35 @@ const statusItems = [
   },
 ];
 
+const trustPathItems = [
+  {
+    label: 'Current MVP boundary',
+    detail:
+      'The app runs as a working local/Sepolia prototype. Durable evidence and generated artifacts now persist through the backend; active wallet state remains local-session-only.',
+  },
+  {
+    label: 'Persistence decision',
+    detail:
+      'Project, lifecycle, investor registry, artifact, and evidence records sit behind a SQLite-backed local MVP storage boundary.',
+  },
+  {
+    label: 'Evidence labels',
+    detail: 'Evidence labels distinguish local-session, provider-returned, and receipt-confirmed data.',
+  },
+  {
+    label: 'Review gates',
+    detail: 'Code, UX, security, Solidity, state/performance, and release review gates reduce brittle implementation risk.',
+  },
+  {
+    label: 'MVP claim boundary',
+    detail: 'No mainnet, custody, audit, legal, KYC, or investment-advice claim is made by the MVP.',
+  },
+];
+
 export function WebsiteLanding() {
+  const [activeWorkspaceModeIndex, setActiveWorkspaceModeIndex] = useState(0);
+  const activeWorkspaceMode = workflowItems[activeWorkspaceModeIndex] ?? workflowItems[0];
+
   useEffect(() => {
     document.title = 'ZiLiOS';
   }, []);
@@ -199,6 +227,33 @@ export function WebsiteLanding() {
             We seek to help create new growth path, and facilitate the launch and adoption of tokenised products with AI-guided structuring, blockchain-informed
             workflows, and post-trade domain expertise.
           </p>
+        </div>
+      </section>
+
+      <section className="website-mode-strip" aria-label="Workspace mode preview">
+        <div className="website-mode-heading">
+          <p className="eyebrow">Workflow</p>
+          <h2>From product intent to a reviewable Sepolia operation path.</h2>
+        </div>
+        <div className="website-mode-console">
+          <div className="website-mode-tabs" aria-label="Workspace mode options">
+            {workflowItems.map((item, index) => (
+              <button
+                key={item.step}
+                type="button"
+                aria-pressed={index === activeWorkspaceModeIndex}
+                onClick={() => setActiveWorkspaceModeIndex(index)}
+              >
+                <span>{item.step}</span>
+                {item.title}
+              </button>
+            ))}
+          </div>
+          <article className="website-mode-panel" aria-live="polite">
+            <span>{activeWorkspaceMode.step}</span>
+            <strong>{activeWorkspaceMode.title}</strong>
+            <p>{activeWorkspaceMode.description}</p>
+          </article>
         </div>
       </section>
 
@@ -307,6 +362,21 @@ export function WebsiteLanding() {
             </p>
           </article>
         </div>
+      </section>
+
+      <section className="website-trust-path-section" aria-label="Trust path visual">
+        <div className="website-trust-path-heading">
+          <p className="eyebrow">Quality Assurance</p>
+          <h2>Built to reduce brittle code and unsupported claims.</h2>
+        </div>
+        <ol className="website-trust-path">
+          {trustPathItems.map((item) => (
+            <li key={item.label}>
+              <span>{item.label}</span>
+              <p>{item.detail}</p>
+            </li>
+          ))}
+        </ol>
       </section>
 
       <section className="website-status-band" aria-label="MVP status and boundaries">

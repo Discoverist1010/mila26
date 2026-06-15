@@ -14,8 +14,25 @@ test('website exposes company, product, access, and contact information without 
   await expect(companyCopy.nth(1)).toContainText(
     'We seek to help create new growth path, and facilitate the launch and adoption of tokenised products with AI-guided structuring, blockchain-informed workflows, and post-trade domain expertise.',
   );
+
+  const workspaceMode = page.getByLabel('Workspace mode preview');
+  await expect(workspaceMode).toContainText('From product intent to a reviewable Sepolia operation path');
+  await expect(workspaceMode.getByRole('button', { name: /Define the product/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(workspaceMode.getByRole('article')).toContainText('Capture product type, investor limits');
+  await workspaceMode.getByRole('button', { name: /Turn rules into artifacts/ }).click();
+  await expect(workspaceMode.getByRole('button', { name: /Turn rules into artifacts/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(workspaceMode.getByRole('article')).toContainText(
+    'Generate requirement, engineering, contract, check, and evidence surfaces from approved parameters instead of scattered notes.',
+  );
+  await workspaceMode.getByRole('button', { name: /Prove the Sepolia path/ }).click();
+  await expect(workspaceMode.getByRole('article')).toContainText('Use wallet-signed deployment, NAV, whitelist');
+
   await expect(page.getByLabel('Workflow path')).toContainText('From product intent to a reviewable Sepolia operation path');
   await expect(page.getByLabel('Workflow path')).toContainText('Prove the Sepolia path');
+  await expect(page.getByLabel('Trust path visual')).toContainText('Evidence labels');
+  await expect(page.getByLabel('Trust path visual')).toContainText(
+    'No mainnet, custody, audit, legal, KYC, or investment-advice claim is made by the MVP.',
+  );
   await expect(page.getByLabel('MVP status and boundaries')).toContainText('Working MVP');
   await expect(page.getByLabel('MVP status and boundaries')).toContainText('Still gated');
   await expect(page.getByLabel('Access path')).toContainText('The website does not store lifecycle data');

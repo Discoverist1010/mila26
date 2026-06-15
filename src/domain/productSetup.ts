@@ -11,6 +11,7 @@ import {
   type ProductSetupFieldStatus,
   type ProductSetupFieldValue,
   type ProductSetupHandoffNote,
+  type ProductSetupHandoffSuggestion,
   type ProductSetupHandoffTarget,
   type ProductSetupProtocolBase,
   type ProductSetupReadModel,
@@ -34,6 +35,8 @@ export type {
   ProductSetupFieldStatus,
   ProductSetupFieldValue,
   ProductSetupHandoffNote,
+  ProductSetupHandoffSuggestion,
+  ProductSetupHandoffSuggestionStatus,
   ProductSetupHandoffStatus,
   ProductSetupHandoffTarget,
   ProductSetupProtocolBase,
@@ -314,7 +317,10 @@ export function normalizeProductSetupRecord(record: ProductSetupRecord): Product
   return {
     ...record,
     fields,
-    downstreamHandoffNotes: record.downstreamHandoffNotes ?? [],
+    downstreamHandoffNotes: (record.downstreamHandoffNotes ?? []).map((note) => ({
+      ...note,
+      suggestions: note.suggestions ?? [],
+    })),
   };
 }
 
@@ -527,6 +533,7 @@ function toProductSetupProfileRows(
     'whitelisted_wallets_required',
     'burn_lock_rule',
   ].some((fieldKey) => Boolean(profileValue(fieldKey as ProductSetupFieldKey)));
+  const protocolValue = profileValue('protocol_base');
 
   return [
     profileRow(record, {
@@ -580,10 +587,10 @@ function toProductSetupProfileRows(
       id: 'protocol_target',
       label: 'Protocol target',
       value:
-        fieldDisplayValue(record.fields.protocol_base) ||
+        protocolValue ||
         (hasProtocolRecommendationBasis ? `${protocolRecommendation.recommendedProtocol} recommended; not selected` : 'To be filled'),
-      provenanceLabel: fieldDisplayValue(record.fields.protocol_base)
-        ? provenanceLabelForFields([record.fields.protocol_base])
+      provenanceLabel: protocolValue
+        ? provenanceLabelForFieldsWithPending(record, ['protocol_base'])
         : hasProtocolRecommendationBasis
           ? 'Needs review'
           : 'Missing',
@@ -765,26 +772,90 @@ function handoffCandidate(
     createdAtIso: string;
   },
 ): ProductSetupHandoffNote {
-  const detailParts = input.fieldKeys
+  const suggestionParts = input.fieldKeys
     .map((fieldKey) => {
       const field = record.fields[fieldKey];
       const value = fieldDisplayValue(field) || field.rolePlaceholder;
       if (!value || field.status === 'missing' || !isProductSetupHandoffEligibleField(field)) return undefined;
-      return { fieldKey, detail: `${field.label}: ${value}` };
+      return {
+        fieldKey,
+        detail: `${field.label}: ${value}`,
+        suggestion: createHandoffSuggestion(input.target, field, value),
+      };
     })
-    .filter((part): part is { fieldKey: ProductSetupFieldKey; detail: string } => Boolean(part));
-  const detail = detailParts.map((part) => part.detail).join('; ');
+    .filter((part): part is { fieldKey: ProductSetupFieldKey; detail: string; suggestion: ProductSetupHandoffSuggestion } => Boolean(part));
+  const detail = suggestionParts.map((part) => part.detail).join('; ');
 
   return {
     id: input.id,
     target: input.target,
     title: input.title,
     detail,
-    sourceFieldKeys: detailParts.length > 0 ? detailParts.map((part) => part.fieldKey) : input.fieldKeys,
+    sourceFieldKeys: suggestionParts.length > 0 ? suggestionParts.map((part) => part.fieldKey) : input.fieldKeys,
+    suggestions: suggestionParts.map((part) => part.suggestion),
     sourceRef: input.sourceRef,
     status: detail ? 'draft_note_ready' : 'needs_clarification',
     createdAtIso: input.createdAtIso,
   };
+}
+
+function createHandoffSuggestion(
+  target: ProductSetupHandoffTarget,
+  field: ProductSetupField,
+  valueLabel: string,
+): ProductSetupHandoffSuggestion {
+  return {
+    id: `${target}-${field.key}`,
+    sourceFieldKey: field.key,
+    targetFieldKey: productSetupHandoffTargetFieldKey(target, field.key),
+    label: field.label,
+    value: field.value ?? field.rolePlaceholder ?? valueLabel,
+    valueLabel,
+    provenanceLabel: handoffSuggestionProvenanceLabel(field),
+    status: 'pending',
+  };
+}
+
+function handoffSuggestionProvenanceLabel(field: ProductSetupField): ProductSetupHandoffSuggestion['provenanceLabel'] {
+  if (field.status === 'user_confirmed' || field.status === 'user_stated') return 'Stated';
+  if (field.status === 'system_default') return 'Assumed';
+  if (field.status === 'inferred') return 'Inferred';
+  return 'Needs review';
+}
+
+function productSetupHandoffTargetFieldKey(
+  target: ProductSetupHandoffTarget,
+  fieldKey: ProductSetupFieldKey,
+): string | undefined {
+  const mappings: Record<ProductSetupHandoffTarget, Partial<Record<ProductSetupFieldKey, string>>> = {
+    investor_wallets: {},
+    subscription: {
+      subscription_cadence: 'subscriptionCadence',
+      subscription_stablecoins: 'permittedStablecoins',
+      subscription_receiving_wallet: 'paymentAddress',
+      initial_distribution_date: 'subscriptionWindow',
+    },
+    contract_ops: {},
+    asset_servicing: {
+      nav_cadence: 'navCadence',
+      nav_source: 'navSource',
+      income_payout_cadence: 'incomePayoutCadence',
+      investor_update_rule: 'investorUpdateRule',
+    },
+    redemption: {
+      redemption_cadence: 'redemptionCadence',
+      redemption_schedule: 'redemptionWindow',
+      redemption_payout_delay: 'redemptionDelay',
+      redemption_payout_cadence: 'redemptionPayoutCadence',
+      redemption_wallet: 'redemptionWalletAddress',
+      burn_lock_rule: 'redemptionHandlingRule',
+    },
+    maturity: {
+      maturity_date: 'maturityDate',
+      maturity_closeout_rule: 'closeoutMethod',
+    },
+  };
+  return mappings[target][fieldKey];
 }
 
 function isProductSetupHandoffEligibleField(field: ProductSetupField): boolean {
@@ -825,6 +896,58 @@ export function reviewProductSetupHandoffNote(record: ProductSetupRecord, handof
       note.id === handoffId ? { ...note, status: 'reviewed_in_target_tab' } : note,
     ),
     updatedAtIso: new Date().toISOString(),
+  };
+}
+
+export function applyProductSetupHandoffSuggestion(
+  record: ProductSetupRecord,
+  handoffId: string,
+  suggestionId: string,
+): ProductSetupRecord {
+  return updateProductSetupHandoffSuggestionStatus(record, handoffId, suggestionId, 'applied_in_target_tab');
+}
+
+export function dismissProductSetupHandoffSuggestion(
+  record: ProductSetupRecord,
+  handoffId: string,
+  suggestionId: string,
+): ProductSetupRecord {
+  return updateProductSetupHandoffSuggestionStatus(record, handoffId, suggestionId, 'dismissed_in_target_tab');
+}
+
+function updateProductSetupHandoffSuggestionStatus(
+  record: ProductSetupRecord,
+  handoffId: string,
+  suggestionId: string,
+  status: 'applied_in_target_tab' | 'dismissed_in_target_tab',
+): ProductSetupRecord {
+  const updatedAtIso = new Date().toISOString();
+  let changed = false;
+  const downstreamHandoffNotes = record.downstreamHandoffNotes.map((note) => {
+    if (note.id !== handoffId) return note;
+    const suggestions = note.suggestions.map((suggestion) => {
+      if (suggestion.id !== suggestionId || suggestion.status !== 'pending') return suggestion;
+      changed = true;
+      return {
+        ...suggestion,
+        status,
+        appliedAtIso: status === 'applied_in_target_tab' ? updatedAtIso : suggestion.appliedAtIso,
+        dismissedAtIso: status === 'dismissed_in_target_tab' ? updatedAtIso : suggestion.dismissedAtIso,
+      };
+    });
+    const allReviewed = suggestions.length > 0 && suggestions.every((suggestion) => suggestion.status !== 'pending');
+    return {
+      ...note,
+      suggestions,
+      status: allReviewed ? 'reviewed_in_target_tab' : note.status,
+    };
+  });
+
+  if (!changed) return record;
+  return {
+    ...record,
+    downstreamHandoffNotes,
+    updatedAtIso,
   };
 }
 

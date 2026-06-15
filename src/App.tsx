@@ -20,6 +20,10 @@ import { toBlockchainEngineerResponseViewModel } from './domain/blockchainEngine
 import { toDeploymentEvidenceReadModel } from './domain/deploymentEvidenceReadModel';
 import { toDeploymentGateReadModel } from './domain/deploymentGateReadModel';
 import {
+  canApplyProductSetupHandoffSuggestionToLifecycle,
+  toProductSetupHandoffLifecyclePatch,
+} from './domain/productSetupHandoffApply';
+import {
   createInitialMila26LifecycleState,
   createInvestorRegistryEntry,
   markInvestorWalletWhitelisted,
@@ -43,6 +47,7 @@ import { toProjectClosureReadModel } from './domain/projectClosureReadModel';
 import { toProjectLifecycleReadModel, type Mila26UiActionId } from './domain/projectLifecycleReadModel';
 import {
   acknowledgeProductSetupDeploymentWarnings,
+  applyProductSetupHandoffSuggestion,
   confirmProductSetupUpdate,
   createInitialProductSetupRecord,
   createProductSetupPackMarkdown,
@@ -52,6 +57,7 @@ import {
   createProductSetupSuggestionsFromText,
   createUnsupportedRequirementDecisionsFromText,
   decideUnsupportedRequirement,
+  dismissProductSetupHandoffSuggestion,
   dismissProductSetupSuggestedUpdate,
   fieldDisplayValue,
   handleProductSetupWalletInput,
@@ -63,6 +69,8 @@ import {
   setUnsupportedRequirementDecisions,
   toProductSetupReadModel,
   updateProductSetupField,
+  type ProductSetupHandoffNote,
+  type ProductSetupHandoffSuggestion,
   type ProductSetupFieldKey,
   type ProductSetupHandoffTarget,
   type ProductSetupRecord,
@@ -1356,6 +1364,40 @@ export function App() {
     setProductSetupRecord((current) => reviewProductSetupHandoffNote(current, handoffId));
   }
 
+  function applyProductSetupStarterSuggestion(note: ProductSetupHandoffNote, suggestion: ProductSetupHandoffSuggestion) {
+    const patch = toProductSetupHandoffLifecyclePatch(note.target, suggestion);
+    if (!patch) return;
+    if (patch.permittedStablecoinsInput !== undefined) setPermittedStablecoinsInput(patch.permittedStablecoinsInput);
+    if (patch.subscription) updateSubscriptionParameters(patch.subscription);
+    if (patch.redemption) updateRedemptionParameters(patch.redemption);
+    if (patch.assetServicing) updateAssetServicingParameters(patch.assetServicing);
+    if (patch.maturity) updateMaturityParameters(patch.maturity);
+    setProductSetupRecord((current) => applyProductSetupHandoffSuggestion(current, note.id, suggestion.id));
+  }
+
+  function dismissProductSetupStarterSuggestion(noteId: string, suggestionId: string) {
+    setProductSetupRecord((current) => dismissProductSetupHandoffSuggestion(current, noteId, suggestionId));
+  }
+
+  function canApplyProductSetupStarterSuggestion(
+    target: ProductSetupHandoffTarget,
+    suggestion: ProductSetupHandoffSuggestion,
+  ): boolean {
+    return canApplyProductSetupHandoffSuggestionToLifecycle(target, suggestion);
+  }
+
+  function productSetupStarterSuggestionStatusLabel(status: ProductSetupHandoffSuggestion['status']) {
+    switch (status) {
+      case 'applied_in_target_tab':
+        return 'Applied';
+      case 'dismissed_in_target_tab':
+        return 'Dismissed';
+      case 'pending':
+      default:
+        return 'Pending';
+    }
+  }
+
   function renderProductSetupDraftNotes(target: ProductSetupHandoffTarget) {
     const notes = productSetupRecord.downstreamHandoffNotes.filter(
       (note) => note.target === target && (note.status === 'sent_as_draft_note' || note.status === 'reviewed_in_target_tab'),
@@ -1366,8 +1408,8 @@ export function App() {
       <section className="product-setup-draft-notes" aria-label={`${productSetupHandoffTargetLabel(target)} Product Setup draft notes`}>
         <div className="registry-panel-heading compact-subsection-heading">
           <div>
-            <h4>Product Setup draft notes</h4>
-            <p>Review these notes when you are ready. They do not change this tab's confirmed settings until you apply them here.</p>
+            <h4>Product Setup starter draft</h4>
+            <p>Review these suggestions before applying them. Sent notes do not change this tab's confirmed settings by themselves.</p>
           </div>
           <span>{notes.length} note(s)</span>
         </div>
@@ -1378,15 +1420,55 @@ export function App() {
                 <span>{note.title}</span>
                 <p>{note.detail}</p>
                 <small>Source: Product Setup PRD · {note.sentAtIso ? `Sent ${note.sentAtIso}` : 'Draft note'}</small>
+                {note.suggestions.length > 0 && (
+                  <div className="product-setup-starter-suggestions" aria-label={`${note.title} starter suggestions`}>
+                    {note.suggestions.map((suggestion) => {
+                      const canApply = canApplyProductSetupStarterSuggestion(note.target, suggestion);
+                      return (
+                        <div className="product-setup-starter-suggestion" key={suggestion.id}>
+                          <div>
+                            <strong>{suggestion.label}</strong>
+                            <p>{suggestion.valueLabel}</p>
+                            <small>
+                              {suggestion.provenanceLabel} · {productSetupStarterSuggestionStatusLabel(suggestion.status)}
+                              {!suggestion.targetFieldKey ? ' · guidance only' : ''}
+                            </small>
+                          </div>
+                          {suggestion.status === 'pending' && (
+                            <div className="suggestion-actions">
+                              <button
+                                type="button"
+                                className="workflow-button compact primary-action"
+                                disabled={!canApply}
+                                onClick={() => applyProductSetupStarterSuggestion(note, suggestion)}
+                              >
+                                Apply
+                              </button>
+                              <button
+                                type="button"
+                                className="workflow-button compact"
+                                onClick={() => dismissProductSetupStarterSuggestion(note.id, suggestion.id)}
+                              >
+                                Dismiss
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <button
-                type="button"
-                className="workflow-button"
-                disabled={note.status === 'reviewed_in_target_tab'}
-                onClick={() => reviewProductSetupHandoff(note.id)}
-              >
-                {note.status === 'reviewed_in_target_tab' ? 'Reviewed in this tab' : 'Mark reviewed in this tab'}
-              </button>
+              {note.suggestions.length === 0 && (
+                <button
+                  type="button"
+                  className="workflow-button"
+                  disabled={note.status === 'reviewed_in_target_tab'}
+                  onClick={() => reviewProductSetupHandoff(note.id)}
+                >
+                  {note.status === 'reviewed_in_target_tab' ? 'Reviewed in this tab' : 'Mark reviewed in this tab'}
+                </button>
+              )}
             </article>
           ))}
         </div>
@@ -2720,38 +2802,6 @@ export function App() {
               </button>
             </nav>
 
-            <section className="left-status-card" aria-label="Product setup status">
-              <h2>Product Setup</h2>
-              <ul className="compact-status-list">
-                {workspacePresentation.productSetup.map((item) => (
-                  <li key={item.label}>
-                    <span className={`status-dot ${item.status}`} aria-hidden="true" />
-                    <span>{item.label}</span>
-                    <small>{item.detail}</small>
-                  </li>
-                ))}
-              </ul>
-              <div className="workspace-persistence-actions" aria-label="Workspace snapshot actions">
-                <button
-                  type="button"
-                  onClick={() => void saveWorkspaceToBackend()}
-                  disabled={workspacePersistenceStatus.status === 'saving' || workspacePersistenceStatus.status === 'loading'}
-                >
-                  {workspacePersistenceStatus.status === 'saving' ? 'Saving...' : 'Save snapshot'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void loadLatestWorkspaceFromBackend()}
-                  disabled={workspacePersistenceStatus.status === 'saving' || workspacePersistenceStatus.status === 'loading'}
-                >
-                  {workspacePersistenceStatus.status === 'loading' ? 'Loading...' : 'Load latest'}
-                </button>
-              </div>
-              <p className={`workspace-persistence-message ${workspacePersistenceStatus.status}`} aria-label="Workspace persistence status">
-                {workspacePersistenceStatus.message}
-              </p>
-            </section>
-
             <a className="rail-help" href="#workspace">Help & Support</a>
           </aside>
         )}
@@ -2801,9 +2851,30 @@ export function App() {
                 <h2>{activeWorkspaceTab.label}</h2>
                 <p>{activeWorkspaceTab.purpose}</p>
               </div>
-              <span className={`gate-badge ${activeWorkspaceTab.status === 'available' ? 'ready' : 'draft'}`}>
-                {tabStatusLabel(activeWorkspaceTab.status)}
-              </span>
+              <div className="stage-header-actions">
+                <div className="stage-persistence" aria-label="Workspace snapshot actions">
+                  <button
+                    type="button"
+                    onClick={() => void saveWorkspaceToBackend()}
+                    disabled={workspacePersistenceStatus.status === 'saving' || workspacePersistenceStatus.status === 'loading'}
+                  >
+                    {workspacePersistenceStatus.status === 'saving' ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void loadLatestWorkspaceFromBackend()}
+                    disabled={workspacePersistenceStatus.status === 'saving' || workspacePersistenceStatus.status === 'loading'}
+                  >
+                    {workspacePersistenceStatus.status === 'loading' ? 'Loading...' : 'Load latest'}
+                  </button>
+                  <span className={`workspace-persistence-message ${workspacePersistenceStatus.status}`} aria-label="Workspace persistence status">
+                    {workspacePersistenceStatus.message}
+                  </span>
+                </div>
+                <span className={`gate-badge ${activeWorkspaceTab.status === 'available' ? 'ready' : 'draft'}`}>
+                  {tabStatusLabel(activeWorkspaceTab.status)}
+                </span>
+              </div>
             </div>
 
             {activeWorkspaceTab.id === 'requirements' && (
@@ -3587,6 +3658,15 @@ export function App() {
                       value={lifecycleState.assetServicingParameters.investorUpdateRule ?? ''}
                       onChange={(event) => updateAssetServicingParameters({ investorUpdateRule: event.target.value })}
                       placeholder="e.g. Quarterly investor update records"
+                    />
+                  </label>
+                  <label htmlFor="asset-servicing-income-payout-cadence">
+                    Income payout cadence
+                    <input
+                      id="asset-servicing-income-payout-cadence"
+                      value={lifecycleState.assetServicingParameters.incomePayoutCadence ?? ''}
+                      onChange={(event) => updateAssetServicingParameters({ incomePayoutCadence: event.target.value })}
+                      placeholder="e.g. Quarterly"
                     />
                   </label>
                 </div>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyProductSetupHandoffSuggestion,
   classifyWalletSetupResponse,
   acknowledgeProductSetupDeploymentWarnings,
   confirmProductSetupUpdate,
@@ -9,6 +10,7 @@ import {
   createProductSetupSuggestionsFromText,
   createUnsupportedRequirementDecisionsFromText,
   deferProductSetupField,
+  dismissProductSetupHandoffSuggestion,
   handleProductSetupWalletInput,
   markTermExplained,
   normalizeProductSetupRecord,
@@ -190,6 +192,33 @@ describe('Product Setup record', () => {
     expect(windDownRow).toMatchObject({ value: '3 years after IPO', provenanceLabel: 'Needs review' });
   });
 
+  it('extracts stated protocol, maturity date, and income distribution into pending profile rows', () => {
+    const suggestions = createProductSetupSuggestionsFromText(
+      'Will use ERC 20. Maturity 2029-11-08. Income is distributed to investors wallet.',
+      'chat_turn_protocol_maturity_income',
+    );
+    const record = setProductSetupSuggestedUpdates(createInitialProductSetupRecord(facts), suggestions);
+    const readModel = toProductSetupReadModel(record);
+    const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
+    const protocolRow = readModel.profileRows.find((row) => row.id === 'protocol_target');
+    const maturityRow = readModel.profileRows.find((row) => row.id === 'term');
+    const incomeRow = readModel.profileRows.find((row) => row.id === 'income_treatment');
+
+    expect(byField.get('protocol_base')).toBe('ERC-20');
+    expect(byField.get('maturity_date')).toBe('2029-11-08');
+    expect(byField.get('income_treatment')).toBe('Distributing');
+    expect(protocolRow).toMatchObject({ value: 'ERC-20', provenanceLabel: 'Needs review' });
+    expect(maturityRow).toMatchObject({ value: '2029-11-08', provenanceLabel: 'Needs review' });
+    expect(incomeRow).toMatchObject({ value: 'Distributing', provenanceLabel: 'Needs review' });
+  });
+
+  it('normalizes hyphenated maturity terms into readable plural text', () => {
+    const suggestions = createProductSetupSuggestionsFromText('3-year term.', 'chat_turn_hyphen_term');
+    const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
+
+    expect(byField.get('maturity_date')).toBe('3 years');
+  });
+
   it('splits combined subscription and redemption cadence into both canonical fields', () => {
     const suggestions = createProductSetupSuggestionsFromText(
       'Subscription/redemption cadence: quarterly post-IPO.',
@@ -273,18 +302,77 @@ describe('Product Setup record', () => {
       title: 'Subscription mechanics',
     });
     expect(subscriptionHandoff?.detail).toContain('Subscription stablecoins: USDC');
+    expect(subscriptionHandoff?.suggestions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceFieldKey: 'subscription_stablecoins',
+          targetFieldKey: 'permittedStablecoins',
+          value: ['USDC'],
+          valueLabel: 'USDC',
+          status: 'pending',
+        }),
+      ]),
+    );
     expect(redemptionHandoff?.detail).toContain('Redemption cadence: Quarterly');
+    expect(redemptionHandoff?.suggestions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceFieldKey: 'redemption_cadence',
+          targetFieldKey: 'redemptionCadence',
+          value: 'Quarterly',
+          status: 'pending',
+        }),
+      ]),
+    );
 
     const sent = sendProductSetupHandoffNote(record, subscriptionHandoff!.id);
     expect(sent.downstreamHandoffNotes.find((note) => note.id === subscriptionHandoff!.id)).toMatchObject({
       target: 'subscription',
       status: 'sent_as_draft_note',
     });
+    expect(sent.downstreamHandoffNotes.find((note) => note.id === subscriptionHandoff!.id)?.suggestions[0]).toMatchObject({
+      status: 'pending',
+      targetFieldKey: 'permittedStablecoins',
+    });
+
+    const applied = applyProductSetupHandoffSuggestion(
+      sent,
+      subscriptionHandoff!.id,
+      sent.downstreamHandoffNotes.find((note) => note.id === subscriptionHandoff!.id)!.suggestions[0].id,
+    );
+    expect(applied.downstreamHandoffNotes.find((note) => note.id === subscriptionHandoff!.id)).toMatchObject({
+      target: 'subscription',
+      status: 'reviewed_in_target_tab',
+      suggestions: [expect.objectContaining({ status: 'applied_in_target_tab' })],
+    });
 
     const reviewed = reviewProductSetupHandoffNote(sent, subscriptionHandoff!.id);
     expect(reviewed.downstreamHandoffNotes.find((note) => note.id === subscriptionHandoff!.id)).toMatchObject({
       target: 'subscription',
       status: 'reviewed_in_target_tab',
+    });
+  });
+
+  it('dismisses Product Setup starter suggestions without applying them in the target tab', () => {
+    let record = createInitialProductSetupRecord(facts);
+    record = updateProductSetupField(record, {
+      fieldKey: 'redemption_cadence',
+      value: 'Quarterly',
+      sourceType: 'user_message',
+      sourceRef: 'chat_turn_handoff',
+    });
+
+    const redemptionHandoff = toProductSetupReadModel(record).downstreamHandoffs.find((handoff) => handoff.target === 'redemption')!;
+    const sent = sendProductSetupHandoffNote(record, redemptionHandoff.id);
+    const dismissed = dismissProductSetupHandoffSuggestion(
+      sent,
+      redemptionHandoff.id,
+      sent.downstreamHandoffNotes.find((note) => note.id === redemptionHandoff.id)!.suggestions[0].id,
+    );
+
+    expect(dismissed.downstreamHandoffNotes.find((note) => note.id === redemptionHandoff.id)).toMatchObject({
+      status: 'reviewed_in_target_tab',
+      suggestions: [expect.objectContaining({ status: 'dismissed_in_target_tab' })],
     });
   });
 

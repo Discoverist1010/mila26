@@ -59,6 +59,15 @@ describe('ZiLi-OS Copilot router', () => {
     });
   });
 
+  it('extracts direct protocol selections even when the message is short', () => {
+    expect(routeZiLiOSCopilotMessage('will use erc 20')).toMatchObject({
+      route: 'engineering',
+      assistantMode: 'engineering',
+      shouldExtractRequirements: true,
+      labels: ['Engineering Bot'],
+    });
+  });
+
   it('defaults unclear input to Engineering so Product Setup keeps moving', () => {
     expect(routeZiLiOSCopilotMessage('hello')).toMatchObject({
       route: 'engineering',

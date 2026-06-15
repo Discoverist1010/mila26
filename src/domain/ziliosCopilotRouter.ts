@@ -63,6 +63,11 @@ const protocolReferencePatterns = [
   /\barchitecture\s+target\b/i,
 ];
 
+const protocolSelectionPatterns = [
+  /\b(?:will|would|want\s+to|prefer\s+to|choose|select|use|go\s+with|proceed\s+with)\s+(?:use\s+)?erc-?\s*(?:20|4626|3643)\b/i,
+  /\berc-?\s*(?:20|4626|3643)\s+(?:is|as)\s+(?:the\s+)?(?:protocol|target|base|choice)\b/i,
+];
+
 function hasAnyPattern(value: string, patterns: RegExp[]): boolean {
   return patterns.some((pattern) => pattern.test(value));
 }
@@ -71,8 +76,9 @@ export function routeZiLiOSCopilotMessage(message: string): ZiLiOSCopilotRoute {
   const trimmed = message.trim();
   const hasProtocolConfusion =
     hasAnyPattern(trimmed, protocolConfusionPatterns) && hasAnyPattern(trimmed, protocolReferencePatterns);
+  const hasProtocolSelection = hasAnyPattern(trimmed, protocolSelectionPatterns);
   const hasAdvisorIntent = hasAnyPattern(trimmed, advisorPatterns);
-  const hasProductFacts = hasAnyPattern(trimmed, productFactPatterns);
+  const hasProductFacts = hasAnyPattern(trimmed, productFactPatterns) || hasProtocolSelection;
 
   if (hasProtocolConfusion) {
     return {
