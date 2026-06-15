@@ -1,51 +1,54 @@
 import { expect, test } from '@playwright/test';
 
-test('website exposes company, product, access, and contact information without becoming app state', async ({ page }) => {
+test('website presents the mockup-based company page and beta request form', async ({ page }) => {
   await page.goto('/site');
 
-  await expect(page.getByLabel('ZiLiOS website navigation')).toContainText('Product');
-  await expect(page.getByLabel('Company positioning')).toContainText(
+  const homeLink = page.getByLabel('ZiLiOS home');
+  await expect(homeLink).toBeVisible();
+  await expect(homeLink.locator('img')).toBeVisible();
+
+  await expect(
+    page.getByRole('heading', {
+      name: 'Tokenise an investment product without building the full technical and ops teams first.',
+    }),
+  ).toBeVisible();
+  await expect(page.getByText('AI structures the work')).toBeVisible();
+  await expect(page.getByText('No backend private-key custody')).toBeVisible();
+
+  const company = page.getByLabel('Company positioning');
+  await expect(company).toContainText(
     'Infrastructure for tokenised investment products, from workflow design to testnet deployment.',
   );
-  const companyCopy = page.getByLabel('Company positioning').locator('.website-company-copy p');
-  await expect(companyCopy.nth(0)).toContainText(
-    'ZilIOS is for builders who want to move tokenised finance forward responsibly.',
-  );
-  await expect(companyCopy.nth(1)).toContainText(
-    'We seek to help create new growth path, and facilitate the launch and adoption of tokenised products with AI-guided structuring, blockchain-informed workflows, and post-trade domain expertise.',
+  await expect(company).toContainText(
+    'ZiLiOS is for builders who want to move tokenised finance forward responsibly',
   );
 
-  const workspaceMode = page.getByLabel('Workspace mode preview');
-  await expect(workspaceMode).toContainText('From product intent to a reviewable Sepolia operation path');
-  await expect(workspaceMode.getByRole('button', { name: /Define the product/ })).toHaveAttribute('aria-pressed', 'true');
-  await expect(workspaceMode.getByRole('article')).toContainText('Capture product type, investor limits');
-  await workspaceMode.getByRole('button', { name: /Turn rules into artifacts/ }).click();
-  await expect(workspaceMode.getByRole('button', { name: /Turn rules into artifacts/ })).toHaveAttribute('aria-pressed', 'true');
-  await expect(workspaceMode.getByRole('article')).toContainText(
-    'Generate requirement, engineering, contract, check, and evidence surfaces from approved parameters instead of scattered notes.',
+  await expect(page.getByLabel('User outcome')).toContainText(
+    'Less uncertainty between product idea and technical proof',
   );
-  await workspaceMode.getByRole('button', { name: /Prove the Sepolia path/ }).click();
-  await expect(workspaceMode.getByRole('article')).toContainText('Use wallet-signed deployment, NAV, whitelist');
-
-  await expect(page.getByLabel('Workflow path')).toContainText('From product intent to a reviewable Sepolia operation path');
-  await expect(page.getByLabel('Workflow path')).toContainText('Prove the Sepolia path');
-  await expect(page.getByLabel('Trust path visual')).toContainText('Evidence labels');
-  await expect(page.getByLabel('Trust path visual')).toContainText(
-    'No mainnet, custody, audit, legal, KYC, or investment-advice claim is made by the MVP.',
+  await expect(page.getByLabel('User outcome')).toContainText(
+    'Test a tokenisation idea before depending on broader teams or external developers.',
   );
-  await expect(page.getByLabel('MVP status and boundaries')).toContainText('Working MVP');
-  await expect(page.getByLabel('MVP status and boundaries')).toContainText('Still gated');
-  await expect(page.getByLabel('Access path')).toContainText('The website does not store lifecycle data');
+  await expect(page.getByLabel('Operating model')).toContainText(
+    'AI, blockchain, and post-trade operations stay connected',
+  );
+  await expect(page.getByLabel('Product overview')).toContainText(
+    'One workspace across the tokenised product lifecycle',
+  );
 
-  const contact = page.getByLabel('Contact and beta interest');
-  await expect(contact).toContainText('Request a beta conversation without sending sensitive documents');
-  await expect(contact.getByLabel('User type')).toBeVisible();
-  await expect(contact.getByLabel('Organisation')).toBeVisible();
-  await expect(contact.getByLabel('Work email')).toBeVisible();
-  await expect(contact.getByLabel('Product interest')).toBeVisible();
-  await expect(contact.getByRole('button', { name: 'Send beta interest' })).toBeVisible();
-  await expect(contact).toContainText('no website database or lifecycle workspace record is created');
+  await page.getByRole('button', { name: 'Request beta access' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Request beta access' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel('Name')).toBeVisible();
+  await expect(dialog.getByLabel('Email')).toBeVisible();
+  await expect(dialog.getByLabel('Domain expertise')).toBeVisible();
 
+  await dialog.getByLabel('Domain expertise').selectOption('other');
+  await expect(dialog.getByRole('textbox', { name: 'Please specify' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close beta request form' }).click();
+  await expect(dialog).toBeHidden();
+
+  await expect(page.getByText(/Short positioning options/i)).toHaveCount(0);
   await expect(page.getByText(/Track 15|Track 16|15B|15C/i)).toHaveCount(0);
   await expect(page.getByText(/production ready|mainnet ready|audit passed|investment advice/i)).toHaveCount(0);
 });

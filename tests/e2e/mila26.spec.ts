@@ -10,19 +10,16 @@ test('website intro routes to app access without overclaiming production readine
       name: /Tokenise an investment product without building the full technical and ops teams first/i,
     }),
   ).toBeVisible();
-  await expect(page.getByRole('img', { name: /ZiLiOS lifecycle workspace/i })).toBeVisible();
   await expect(page.getByText('Controlled MVP access. Ethereum Sepolia/testnet only. User wallet signs.')).toBeVisible();
-  await expect(page.getByLabel('What ZiLiOS means for users')).toContainText('Less throwaway effort');
-  await expect(page.getByLabel('What ZiLiOS means for users')).toContainText('Clearer proof for stakeholders');
-  await expect(page.getByLabel('Three domain workstreams')).toContainText('AI turns intent into a buildable workflow');
-  await expect(page.getByLabel('Three domain workstreams')).toContainText('Blockchain actions stay gated and wallet-signed');
-  await expect(page.getByLabel('Three domain workstreams')).toContainText('Distribution and servicing are designed in from the start');
+  await expect(page.getByLabel('Hero proof points')).toContainText('No backend private-key custody');
+  await expect(page.getByLabel('User outcome')).toContainText('Less throwaway effort');
+  await expect(page.getByLabel('User outcome')).toContainText('Clearer proof for stakeholders');
+  await expect(page.getByLabel('Operating model')).toContainText('AI turns intent into a buildable workflow');
+  await expect(page.getByLabel('Operating model')).toContainText('Blockchain actions stay gated and wallet-signed');
+  await expect(page.getByLabel('Operating model')).toContainText('Distribution and servicing are designed in from the start');
   await expect(page.getByLabel('Product overview')).toContainText('Keep distribution tied to named wallet rules');
   await expect(page.getByLabel('Product overview')).toContainText('provider-returned hashes');
-  await expect(page.getByLabel('Persistence and evidence direction')).toContainText('Durable evidence');
-  await expect(page.getByLabel('Persistence and evidence direction')).toContainText('SQLite-backed local MVP storage boundary');
-  await expect(page.getByLabel('Quality assurance')).toContainText('reduce brittle implementation risk');
-  await expect(page.getByLabel('Access path')).toContainText('source of truth');
+  await expect(page.getByRole('button', { name: 'Request beta access' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open app workspace' })).toHaveAttribute('href', '/');
   await expect(page.getByText(/Track 15|Track 16|15B|15C/i)).toHaveCount(0);
   await expect(page.getByText(/production ready|mainnet ready|audit passed|investment advice/i)).toHaveCount(0);

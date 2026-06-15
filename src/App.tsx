@@ -458,15 +458,6 @@ function formatWalletChainStatus(status: string) {
   return 'Unknown';
 }
 
-function tabStatusLabel(status: ReturnType<typeof toWorkspacePresentation>['tabs'][number]['status']) {
-  if (status === 'in_progress') return 'In progress';
-  if (status === 'needs_review') return 'Needs review';
-  if (status === 'needs_parameters') return 'Needs parameters';
-  if (status === 'available') return 'Available';
-  if (status === 'local_session_only') return 'Local session only';
-  return 'Needs prerequisites';
-}
-
 function fundingTargetStatusLabel(status: 'ready' | 'needs_funding' | 'blocked' | 'pending') {
   if (status === 'ready') return 'Ready';
   if (status === 'needs_funding') return 'Needs funding';
@@ -2871,9 +2862,6 @@ export function App() {
                     {workspacePersistenceStatus.message}
                   </span>
                 </div>
-                <span className={`gate-badge ${activeWorkspaceTab.status === 'available' ? 'ready' : 'draft'}`}>
-                  {tabStatusLabel(activeWorkspaceTab.status)}
-                </span>
               </div>
             </div>
 

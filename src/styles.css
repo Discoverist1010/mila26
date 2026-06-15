@@ -1,9 +1,654 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 :root {
   color: #172033;
   background: #eef2f5;
   --chat-font: "Source Sans 3", "IBM Plex Sans", "Atkinson Hyperlegible", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.zilios-site {
+  --zilios-bg: #f6f7f4;
+  --zilios-panel: #ffffff;
+  --zilios-ink: #101726;
+  --zilios-muted: #667085;
+  --zilios-soft: #e5e7eb;
+  --zilios-line: #d9dee5;
+  --zilios-green: #5dcaa5;
+  --zilios-green-dark: #2e7f75;
+  --zilios-orange: #ef9f27;
+  --zilios-navy: #101729;
+  background: var(--zilios-bg);
+  color: var(--zilios-ink);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.zilios-page {
+  margin: 0 auto;
+  max-width: 1280px;
+  padding: 0 48px;
+  width: 100%;
+}
+
+.zilios-hero {
+  background:
+    radial-gradient(circle at 78% 16%, rgb(93 202 165 / 0.18), transparent 28%),
+    radial-gradient(circle at 18% 78%, rgb(239 159 39 / 0.1), transparent 24%),
+    var(--zilios-navy);
+  color: #fff;
+  overflow: hidden;
+  position: relative;
+}
+
+.zilios-hero-bg {
+  height: 100%;
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+}
+
+.zilios-trace {
+  animation: zilios-draw-trace 9s ease-in-out infinite alternate;
+  fill: none;
+  stroke-dasharray: 420;
+  stroke-dashoffset: 80;
+}
+
+.zilios-trace-2 {
+  animation-delay: 0.8s;
+}
+
+.zilios-trace-3 {
+  animation-delay: 1.4s;
+}
+
+.zilios-token {
+  animation: zilios-token-float 7s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.zilios-hero-inner {
+  min-height: 720px;
+  padding-bottom: 78px;
+  padding-top: 34px;
+  position: relative;
+  z-index: 1;
+}
+
+.zilios-brand {
+  align-items: center;
+  color: #fff;
+  display: inline-flex;
+  gap: 12px;
+  margin-bottom: 86px;
+  text-decoration: none;
+}
+
+.zilios-brand img {
+  background: #fff;
+  border-radius: 8px;
+  height: 34px;
+  object-fit: cover;
+  width: 34px;
+}
+
+.zilios-brand span {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.zilios-eyebrow {
+  color: var(--zilios-green-dark);
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+}
+
+.zilios-hero .zilios-eyebrow {
+  color: var(--zilios-green);
+}
+
+.zilios-hero h1,
+.zilios-company h2,
+.zilios-section h2 {
+  color: inherit;
+  font-family: "Fraunces", Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  margin: 0;
+}
+
+.zilios-hero h1 {
+  font-size: clamp(54px, 7.2vw, 98px);
+  line-height: 0.98;
+  max-width: 920px;
+}
+
+.zilios-hero-sub {
+  color: rgb(255 255 255 / 0.78);
+  font-size: clamp(18px, 2vw, 22px);
+  line-height: 1.55;
+  margin: 30px 0 0;
+  max-width: 760px;
+}
+
+.zilios-hero-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 36px;
+}
+
+.zilios-button {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 46px;
+  padding: 12px 20px;
+  text-decoration: none;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.zilios-button:hover,
+.zilios-button:focus-visible {
+  transform: translateY(-1px);
+}
+
+.zilios-button:focus-visible,
+.zilios-modal-close:focus-visible,
+.zilios-brand:focus-visible {
+  outline: 3px solid rgb(93 202 165 / 0.38);
+  outline-offset: 3px;
+}
+
+.zilios-button-primary {
+  background: var(--zilios-green);
+  color: #0a1624;
+}
+
+.zilios-button-secondary {
+  background: transparent;
+  border-color: rgb(255 255 255 / 0.28);
+  color: #fff;
+}
+
+.zilios-hero-note {
+  color: rgb(255 255 255 / 0.58);
+  font-size: 14px;
+  margin: 18px 0 0;
+}
+
+.zilios-hero-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 40px;
+  max-width: 790px;
+}
+
+.zilios-pill {
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 999px;
+  color: rgb(255 255 255 / 0.74);
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+.zilios-company {
+  border-bottom: 1px solid var(--zilios-line);
+  display: grid;
+  gap: 54px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
+  padding: 96px 0;
+}
+
+.zilios-company h2 {
+  font-size: clamp(42px, 5vw, 68px);
+  line-height: 1.04;
+}
+
+.zilios-company .zilios-eyebrow {
+  grid-column: 1 / -1;
+  margin-bottom: -30px;
+}
+
+.zilios-company blockquote {
+  align-self: center;
+  border-left: 3px solid var(--zilios-green-dark);
+  margin: 0;
+  padding: 8px 0 8px 30px;
+}
+
+.zilios-company p {
+  color: #4b5563;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.zilios-spine-wrap {
+  display: grid;
+  gap: 40px;
+  grid-template-columns: 86px minmax(0, 1fr);
+}
+
+.zilios-spine {
+  padding-top: 94px;
+  position: relative;
+}
+
+.zilios-spine-line {
+  background: linear-gradient(180deg, var(--zilios-green-dark), rgb(46 127 117 / 0.12));
+  bottom: 80px;
+  left: 24px;
+  position: absolute;
+  top: 92px;
+  width: 1px;
+}
+
+.zilios-spine-marker {
+  align-items: center;
+  background: var(--zilios-bg);
+  border: 1px solid var(--zilios-line);
+  border-radius: 50%;
+  color: var(--zilios-green-dark);
+  display: flex;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  height: 48px;
+  justify-content: center;
+  margin-bottom: 338px;
+  position: relative;
+  width: 48px;
+}
+
+.zilios-section {
+  border-bottom: 1px solid var(--zilios-line);
+  display: grid;
+  gap: 64px;
+  grid-template-columns: minmax(280px, 0.58fr) minmax(0, 1fr);
+  padding: 88px 0;
+}
+
+.zilios-section-full {
+  grid-template-columns: 1fr;
+}
+
+.zilios-section-reverse {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.58fr);
+}
+
+.zilios-section-reverse .zilios-section-text {
+  order: 2;
+}
+
+.zilios-section-reverse .zilios-card-grid {
+  order: 1;
+}
+
+.zilios-section-text {
+  align-self: start;
+  position: sticky;
+  top: 34px;
+}
+
+.zilios-section h2 {
+  font-size: clamp(34px, 4vw, 54px);
+  line-height: 1.05;
+}
+
+.zilios-section p {
+  color: var(--zilios-muted);
+  font-size: 18px;
+  margin: 18px 0 0;
+}
+
+.zilios-card-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.zilios-card-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.zilios-card-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.zilios-card {
+  background: var(--zilios-panel);
+  border: 1px solid #e6e8ed;
+  border-radius: 8px;
+  min-height: 182px;
+  padding: 24px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.zilios-card:hover {
+  border-color: rgb(93 202 165 / 0.45);
+  box-shadow: 0 18px 42px rgb(16 23 38 / 0.08);
+  transform: translateY(-2px);
+}
+
+.zilios-card-featured {
+  background:
+    linear-gradient(135deg, rgb(16 23 41 / 0.96), rgb(24 49 58 / 0.96)),
+    var(--zilios-navy);
+  grid-column: span 2;
+}
+
+.zilios-card h3 {
+  color: var(--zilios-ink);
+  font-size: 17px;
+  line-height: 1.28;
+  margin: 0;
+}
+
+.zilios-card p {
+  color: var(--zilios-muted);
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 14px 0 0;
+}
+
+.zilios-card-featured h3,
+.zilios-card-featured p {
+  color: #fff;
+}
+
+.zilios-card-featured p {
+  color: rgb(255 255 255 / 0.74);
+}
+
+.zilios-card-tag {
+  border-top: 1px solid #edf0f3;
+  color: var(--zilios-green-dark);
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 18px;
+  padding-top: 14px;
+}
+
+.zilios-footer {
+  align-items: center;
+  color: var(--zilios-muted);
+  display: flex;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  justify-content: space-between;
+  letter-spacing: 0;
+  padding-bottom: 40px;
+  padding-top: 36px;
+  text-transform: uppercase;
+}
+
+.zilios-modal-backdrop {
+  align-items: center;
+  background: rgb(16 23 41 / 0.64);
+  backdrop-filter: blur(10px);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 60;
+}
+
+.zilios-modal {
+  background: #fff;
+  border: 1px solid #e6e8ed;
+  border-radius: 8px;
+  box-shadow: 0 28px 80px rgb(0 0 0 / 0.28);
+  max-height: calc(100vh - 40px);
+  max-width: 520px;
+  overflow: auto;
+  padding: 34px;
+  position: relative;
+  width: 100%;
+}
+
+.zilios-modal-close {
+  align-items: center;
+  background: #f2f4f7;
+  border: 1px solid #e6e8ed;
+  border-radius: 50%;
+  color: #344054;
+  display: flex;
+  font-size: 24px;
+  font-weight: 400;
+  height: 36px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0 0 2px;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 36px;
+}
+
+.zilios-modal h2 {
+  color: var(--zilios-ink);
+  font-family: "Fraunces", Georgia, "Times New Roman", serif;
+  font-size: 34px;
+  line-height: 1.1;
+  margin: 0;
+  padding-right: 34px;
+}
+
+.zilios-modal-intro {
+  color: var(--zilios-muted);
+  font-size: 15px;
+  margin: 14px 0 24px;
+}
+
+.zilios-beta-form {
+  display: grid;
+  gap: 15px;
+}
+
+.zilios-beta-form label {
+  color: #344054;
+  display: grid;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 8px;
+}
+
+.zilios-beta-form input,
+.zilios-beta-form select {
+  background: #fbfcfd;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  color: var(--zilios-ink);
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+.zilios-beta-form input:focus,
+.zilios-beta-form select:focus {
+  border-color: var(--zilios-green-dark);
+  outline: 3px solid rgb(93 202 165 / 0.22);
+}
+
+@keyframes zilios-draw-trace {
+  from {
+    stroke-dashoffset: 150;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes zilios-token-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(45deg);
+  }
+
+  50% {
+    transform: translateY(-12px) rotate(45deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zilios-trace,
+  .zilios-token,
+  .zilios-button,
+  .zilios-card {
+    animation: none;
+    transition: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .zilios-page {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+  .zilios-hero-inner {
+    min-height: 660px;
+    padding-bottom: 60px;
+  }
+
+  .zilios-brand {
+    margin-bottom: 64px;
+  }
+
+  .zilios-company,
+  .zilios-section,
+  .zilios-section-reverse {
+    gap: 34px;
+    grid-template-columns: 1fr;
+    padding: 66px 0;
+  }
+
+  .zilios-company blockquote {
+    padding-left: 22px;
+  }
+
+  .zilios-section-text,
+  .zilios-section-reverse .zilios-section-text,
+  .zilios-section-reverse .zilios-card-grid {
+    order: initial;
+    position: static;
+  }
+
+  .zilios-spine-wrap {
+    gap: 20px;
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .zilios-spine-line {
+    left: 18px;
+  }
+
+  .zilios-spine-marker {
+    height: 38px;
+    margin-bottom: 372px;
+    width: 38px;
+  }
+
+  .zilios-card-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .zilios-page {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .zilios-hero-inner {
+    min-height: auto;
+    padding-bottom: 48px;
+    padding-top: 24px;
+  }
+
+  .zilios-brand {
+    margin-bottom: 46px;
+  }
+
+  .zilios-hero h1 {
+    font-size: clamp(38px, 12vw, 56px);
+  }
+
+  .zilios-hero-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .zilios-button {
+    width: 100%;
+  }
+
+  .zilios-company h2,
+  .zilios-section h2 {
+    font-size: clamp(32px, 10vw, 44px);
+  }
+
+  .zilios-company p,
+  .zilios-section p {
+    font-size: 16px;
+  }
+
+  .zilios-spine-wrap {
+    display: block;
+  }
+
+  .zilios-spine {
+    display: none;
+  }
+
+  .zilios-section {
+    padding: 56px 0;
+  }
+
+  .zilios-card-grid-2,
+  .zilios-card-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .zilios-card-featured {
+    grid-column: auto;
+  }
+
+  .zilios-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .zilios-modal {
+    padding: 28px 20px 22px;
+  }
 }
 
 * {
@@ -2152,7 +2797,17 @@ summary {
 }
 
 .stage-header-actions {
+  flex-shrink: 0;
+  margin-left: auto;
   min-width: min(100%, 420px);
+}
+
+.stage-header-actions > .gate-badge {
+  display: none;
+}
+
+.stage-persistence {
+  margin-left: auto;
 }
 
 .stage-persistence button {

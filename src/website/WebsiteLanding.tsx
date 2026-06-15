@@ -1,86 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react';
 
-const navItems = [
-  { label: 'Product', href: '#product' },
-  { label: 'Workflow', href: '#workflow' },
-  { label: 'Evidence', href: '#evidence' },
-  { label: 'Quality', href: '#quality' },
-  { label: 'Access', href: '#access' },
-  { label: 'Contact', href: '#contact' },
+const heroPills = [
+  'AI structures the work',
+  'User wallet signs',
+  'Evidence stays reviewable',
+  'No backend private-key custody',
 ];
 
-const domainItems = [
-  {
-    title: 'AI turns intent into a buildable workflow',
-    proof: 'Engineering Bot, Requirement Brief, Engineering Brief, and cross-stage next actions.',
-    description:
-      'The asset manager explains the product once. ZiLiOS structures the lifecycle questions, parameters, documents, and next steps.',
-  },
-  {
-    title: 'Blockchain actions stay gated and wallet-signed',
-    proof: 'MetaMask/EIP-1193, Sepolia-only checks, deployment evidence, NAV, whitelist, and Allocation/Mint operations.',
-    description:
-      'Users can prove the testnet path without giving ZiLiOS private keys or accepting fake transaction evidence.',
-  },
-  {
-    title: 'Distribution and servicing are designed in from the start',
-    proof: 'Investor registry, subscription/redemption parameters, NAV events, servicing tabs, maturity planning, and evidence surfaces.',
-    description:
-      'Tokenisation is treated as an operating lifecycle, not just a contract-generation exercise.',
-  },
-];
-
-const lifecycleItems = [
-  {
-    title: 'Know the next step without knowing every blockchain step',
-    description: 'One guided workspace covers requirements, investors, subscription, redemption, servicing, maturity, and evidence.',
-  },
-  {
-    title: 'Keep distribution tied to named wallet rules',
-    description: 'The MVP registry supports up to 50 wallet addresses with validation, whitelist handoff, and demo wallet setup.',
-  },
-  {
-    title: 'Define cash-flow rules before coding them',
-    description: 'Subscription and redemption inputs capture permitted stablecoins, payment-per-token, redemption wallet, payout asset, and delay settings.',
-  },
-  {
-    title: 'Show technical progress with evidence',
-    description: 'Wallet-signed Sepolia operations produce provider-returned hashes, receipt-derived addresses, and local-session evidence surfaces.',
-  },
-];
-
-const workflowItems = [
-  {
-    step: '01',
-    title: 'Define the product',
-    description:
-      'Capture product type, investor limits, wallet rules, subscription assets, redemption timing, and open decisions in one Product Setup flow.',
-  },
-  {
-    step: '02',
-    title: 'Prepare controlled distribution',
-    description:
-      'Build a test investor wallet registry, validate up to 50 wallet addresses, and hand approved wallets into whitelist and allocation operations.',
-  },
-  {
-    step: '03',
-    title: 'Turn rules into artifacts',
-    description:
-      'Generate requirement, engineering, contract, check, and evidence surfaces from approved parameters instead of scattered notes.',
-  },
-  {
-    step: '04',
-    title: 'Prove the Sepolia path',
-    description:
-      'Use wallet-signed deployment, NAV, whitelist, and Allocation/Mint operations with provider-returned hashes and receipt-confirmed evidence.',
-  },
-];
-
-const userMeaningItems = [
+const userOutcomeItems = [
   {
     title: 'Less coordination burden',
     description:
-      'Move from product idea to testnet workflow before relying on larger teams or outside developers, allowing confidentiality, avoidable coordination time, and reducing blind reliance on smart-contract work.',
+      'Test a tokenisation idea before depending on broader teams or external developers. The workflow keeps sensitive assumptions tighter, reduces avoidable coordination, and makes smart-contract outputs easier to inspect.',
   },
   {
     title: 'Safer technical path',
@@ -99,377 +30,328 @@ const userMeaningItems = [
   },
 ];
 
-const qaItems = [
-  'Code, UX, security, Solidity, state/performance, and release review gates reduce brittle implementation risk.',
-  'Regression and e2e tests check shared lifecycle state, wallet boundaries, and no-overclaim rules.',
-  'Evidence labels distinguish local-session, provider-returned, and receipt-confirmed data.',
-  'No mainnet, custody, audit, legal, KYC, or investment-advice claim is made by the MVP.',
-];
-
-const statusItems = [
+const operatingModelItems = [
   {
-    label: 'Working MVP',
-    title: 'Local/Sepolia workflow',
-    detail:
-      'Guided Product Setup, investor wallet registry, subscription/redemption parameters, wallet-signed operations, and backend-backed project/evidence records.',
+    title: 'AI turns intent into a buildable workflow',
+    description:
+      'The asset manager explains the product once. ZiLiOS structures the lifecycle questions, parameters, documents, and next steps.',
+    tag: 'Engineering Bot, Requirement Brief, Engineering Brief, and cross-stage next actions.',
   },
   {
-    label: 'Controlled boundary',
-    title: 'Private beta access',
-    detail:
-      'Invited users can evaluate the workflow and their ideas. The website does not collect lifecycle data or turn the MVP into public production software.',
+    title: 'Blockchain actions stay gated and wallet-signed',
+    description:
+      'Users can prove the testnet path without giving ZiLiOS private keys or accepting fake transaction evidence.',
+    tag: 'MetaMask/EIP-1193, Sepolia-only checks, deployment evidence, NAV, whitelist, and Allocation/Mint operations.',
   },
   {
-    label: 'Still gated',
-    title: 'Production-grade launch items',
-    detail:
-      'Mainnet deployment, live subscription/redemption payments, custody, legal/compliance approval, full auth, payments, and production audit remain outside this version.',
+    title: 'Distribution and servicing are designed in from the start',
+    description: 'Tokenisation is treated as an operating lifecycle, not just a contract-generation exercise.',
+    tag: 'Investor registry, subscription/redemption parameters, NAV events, servicing tabs, maturity planning, and evidence surfaces.',
   },
 ];
 
-const trustPathItems = [
+const productItems = [
   {
-    label: 'Current MVP boundary',
-    detail:
-      'The app runs as a working local/Sepolia prototype. Durable evidence and generated artifacts now persist through the backend; active wallet state remains local-session-only.',
+    title: 'Know the next step without knowing every blockchain step',
+    description:
+      'One guided workspace covers requirements, investors, subscription, redemption, servicing, maturity, and evidence.',
+    featured: true,
   },
   {
-    label: 'Persistence decision',
-    detail:
-      'Project, lifecycle, investor registry, artifact, and evidence records sit behind a SQLite-backed local MVP storage boundary.',
+    title: 'Keep distribution tied to named wallet rules',
+    description:
+      'The MVP registry supports up to 50 wallet addresses with validation, whitelist handoff, and demo wallet setup.',
   },
   {
-    label: 'Evidence labels',
-    detail: 'Evidence labels distinguish local-session, provider-returned, and receipt-confirmed data.',
+    title: 'Define cash-flow rules before coding them',
+    description:
+      'Subscription and redemption inputs capture permitted stablecoins, payment-per-token, redemption wallet, payout asset, and delay settings.',
   },
   {
-    label: 'Review gates',
-    detail: 'Code, UX, security, Solidity, state/performance, and release review gates reduce brittle implementation risk.',
-  },
-  {
-    label: 'MVP claim boundary',
-    detail: 'No mainnet, custody, audit, legal, KYC, or investment-advice claim is made by the MVP.',
+    title: 'Show technical progress with evidence',
+    description:
+      'Wallet-signed Sepolia operations produce provider-returned hashes, receipt-derived addresses, and local-session evidence surfaces.',
   },
 ];
+
+type Expertise = 'blockchain' | 'investments' | 'post_trade' | 'other';
+
+const expertiseLabels: Record<Expertise, string> = {
+  blockchain: 'Blockchain',
+  investments: 'Investments',
+  post_trade: 'Funds/product post-trade',
+  other: 'Others: please specify',
+};
 
 export function WebsiteLanding() {
-  const [activeWorkspaceModeIndex, setActiveWorkspaceModeIndex] = useState(0);
-  const activeWorkspaceMode = workflowItems[activeWorkspaceModeIndex] ?? workflowItems[0];
+  const [isBetaModalOpen, setIsBetaModalOpen] = useState(false);
+  const [expertise, setExpertise] = useState<Expertise>('blockchain');
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     document.title = 'ZiLiOS';
   }, []);
 
-  return (
-    <main className="website-page" aria-label="ZiLiOS company and product website">
-      <header className="website-topbar">
-        <a className="website-brand compact" href="/site" aria-label="ZiLiOS home">
-          <img src="/assets/brand/kangle-ai-logo.png" alt="" aria-hidden="true" />
-          ZiLiOS
-        </a>
-        <nav className="website-nav" aria-label="ZiLiOS website navigation">
-          {navItems.map((item) => (
-            <a key={item.href} href={item.href}>
-              {item.label}
-            </a>
-          ))}
-        </nav>
-        <a className="nav-cta" href="mailto:hello@mila26.ai?subject=ZiLiOS%20beta%20access">
-          Request access
-        </a>
-      </header>
+  useEffect(() => {
+    if (!isBetaModalOpen) {
+      return;
+    }
 
-      <section className="website-hero">
-        <div className="website-hero-copy">
-          <a className="website-brand" href="/site" aria-label="ZiLiOS home">
+    nameInputRef.current?.focus();
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsBetaModalOpen(false);
+      }
+    }
+
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isBetaModalOpen]);
+
+  function openBetaModal() {
+    setIsBetaModalOpen(true);
+  }
+
+  function closeBetaModal() {
+    setIsBetaModalOpen(false);
+  }
+
+  function closeOnBackdrop(event: MouseEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget) {
+      closeBetaModal();
+    }
+  }
+
+  function handleBetaSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get('name') ?? '').trim();
+    const email = String(form.get('email') ?? '').trim();
+    const selectedExpertise = String(form.get('domain_expertise') ?? '');
+    const otherExpertise = String(form.get('other_domain_expertise') ?? '').trim();
+    const expertiseLabel =
+      selectedExpertise === 'other'
+        ? `Others: ${otherExpertise || 'please specify'}`
+        : expertiseLabels[selectedExpertise as Expertise] ?? selectedExpertise;
+
+    const body = [
+      `Name: ${name}`,
+      `Email: ${email}`,
+      `Domain expertise: ${expertiseLabel}`,
+    ].join('\n');
+
+    window.location.href = `mailto:hello@mila26.ai?subject=${encodeURIComponent(
+      'ZiLiOS beta access request',
+    )}&body=${encodeURIComponent(body)}`;
+  }
+
+  return (
+    <main className="zilios-site" aria-label="ZiLiOS company and product website">
+      <header className="zilios-hero">
+        <svg className="zilios-hero-bg" viewBox="0 0 1280 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <path
+            className="zilios-trace zilios-trace-1"
+            d="M520 80 C 760 40, 900 220, 1180 140 S 1340 260, 1480 200"
+            stroke="#5DCAA5"
+            strokeWidth="1.5"
+            opacity="0.3"
+          />
+          <path
+            className="zilios-trace zilios-trace-2"
+            d="M460 320 C 700 380, 880 240, 1100 360 S 1320 320, 1480 420"
+            stroke="#5DCAA5"
+            strokeWidth="1.5"
+            opacity="0.22"
+          />
+          <path
+            className="zilios-trace zilios-trace-3"
+            d="M600 540 C 820 480, 980 600, 1180 500 S 1360 560, 1480 520"
+            stroke="#EF9F27"
+            strokeWidth="1.5"
+            opacity="0.22"
+          />
+          <rect className="zilios-token" x="897" y="217" width="8" height="8" fill="#EF9F27" opacity="0.5" transform="rotate(45 901 221)" />
+          <rect className="zilios-token" x="1097" y="357" width="8" height="8" fill="#5DCAA5" opacity="0.5" transform="rotate(45 1101 361)" />
+          <rect className="zilios-token" x="977" y="597" width="8" height="8" fill="#EF9F27" opacity="0.5" transform="rotate(45 981 601)" />
+        </svg>
+
+        <div className="zilios-page zilios-hero-inner">
+          <a className="zilios-brand" href="/site" aria-label="ZiLiOS home">
             <img src="/assets/brand/kangle-ai-logo.png" alt="" aria-hidden="true" />
-            ZiLiOS
+            <span>ZiLiOS</span>
           </a>
-          <p className="eyebrow">AI tokenisation copilot</p>
+          <div className="zilios-eyebrow">AI tokenisation copilot</div>
           <h1>Tokenise an investment product without building the full technical and ops teams first.</h1>
-          <p className="website-lede">
+          <p className="zilios-hero-sub">
             ZiLiOS is an AI-guided system that helps asset managers turn investment ideas into tokenised offerings: from
             requirements, distribution to subscriptions, redemptions, valuation, asset servicing, and blockchain
             execution in one workflow.
           </p>
-          <div className="website-actions" aria-label="Website access actions">
-            <a className="primary-link" href="/">
+          <div className="zilios-hero-actions" aria-label="Website access actions">
+            <a className="zilios-button zilios-button-primary" href="/">
               Open app workspace
             </a>
-            <a className="secondary-link" href="mailto:hello@mila26.ai?subject=ZiLiOS%20beta%20access">
+            <button className="zilios-button zilios-button-secondary" type="button" onClick={openBetaModal}>
               Request beta access
-            </a>
+            </button>
           </div>
-          <p className="website-boundary">Controlled MVP access. Ethereum Sepolia/testnet only. User wallet signs.</p>
-          <div className="website-proof-strip" aria-label="Hero proof points">
-            <span>AI structures the work</span>
-            <span>User wallet signs</span>
-            <span>Evidence stays reviewable</span>
-            <span>No backend private-key custody</span>
-          </div>
-        </div>
-        <figure className="website-product-preview">
-          <img src="/mila26-product-preview.png" alt="ZiLiOS lifecycle workspace showing redemption parameters and template handoff" />
-          <figcaption>Working lifecycle workspace preview</figcaption>
-        </figure>
-      </section>
-
-      <section className="website-company-band" aria-label="Company positioning">
-        <div>
-          <p className="eyebrow">Company</p>
-          <h2>Infrastructure for tokenised investment products, from workflow design to testnet deployment.</h2>
-        </div>
-        <div className="website-company-copy">
-          <p>
-            ZilIOS is for builders who want to move tokenised finance forward responsibly.
-          </p>
-          <p>
-            We seek to help create new growth path, and facilitate the launch and adoption of tokenised products with AI-guided structuring, blockchain-informed
-            workflows, and post-trade domain expertise.
-          </p>
-        </div>
-      </section>
-
-      <section className="website-mode-strip" aria-label="Workspace mode preview">
-        <div className="website-mode-heading">
-          <p className="eyebrow">Workflow</p>
-          <h2>From product intent to a reviewable Sepolia operation path.</h2>
-        </div>
-        <div className="website-mode-console">
-          <div className="website-mode-tabs" aria-label="Workspace mode options">
-            {workflowItems.map((item, index) => (
-              <button
-                key={item.step}
-                type="button"
-                aria-pressed={index === activeWorkspaceModeIndex}
-                onClick={() => setActiveWorkspaceModeIndex(index)}
-              >
-                <span>{item.step}</span>
-                {item.title}
-              </button>
+          <p className="zilios-hero-note">Controlled MVP access. Ethereum Sepolia/testnet only. User wallet signs.</p>
+          <div className="zilios-hero-pills" aria-label="Hero proof points">
+            {heroPills.map((pill) => (
+              <span className="zilios-pill" key={pill}>
+                {pill}
+              </span>
             ))}
           </div>
-          <article className="website-mode-panel" aria-live="polite">
-            <span>{activeWorkspaceMode.step}</span>
-            <strong>{activeWorkspaceMode.title}</strong>
-            <p>{activeWorkspaceMode.description}</p>
-          </article>
         </div>
-      </section>
+      </header>
 
-      <section className="website-section" aria-label="What ZiLiOS means for users">
-        <div>
-          <p className="eyebrow">User outcome</p>
-          <h2>Less uncertainty between product idea and technical proof.</h2>
-          <p className="website-section-copy">
-            Tokenising a product creates practical questions about code safety, effort reuse, investor communications,
-            redemption mechanics, and review evidence. ZiLiOS helps users address those questions before they become expensive.
-          </p>
-        </div>
-        <div className="website-card-grid">
-          {userMeaningItems.map((item) => (
-            <article key={item.title}>
-              <strong>{item.title}</strong>
-              <p>{item.description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      <div className="zilios-page">
+        <section className="zilios-company" aria-label="Company positioning">
+          <div className="zilios-eyebrow">Company</div>
+          <h2>Infrastructure for tokenised investment products, from workflow design to testnet deployment.</h2>
+          <blockquote>
+            <p>
+              ZiLiOS is for builders who want to move tokenised finance forward responsibly — helping asset managers
+              launch and adopt tokenised products through AI-guided structuring, blockchain-informed workflows, and
+              post-trade domain expertise.
+            </p>
+          </blockquote>
+        </section>
+      </div>
 
-      <section className="website-section" aria-label="Three domain workstreams">
-        <div>
-          <p className="eyebrow">Operating model</p>
-          <h2>AI, blockchain, and post-trade operations stay connected.</h2>
-          <p className="website-section-copy">
-            A tokenised product usually needs blockchain engineering, investor distribution operations, post-trade
-            servicing, and AI-enabled workflow support. ZiLiOS connects those workstreams so the asset manager can focus
-            on investment decisions.
-          </p>
-        </div>
-        <div className="website-card-grid three-domain-grid">
-          {domainItems.map((item) => (
-            <article key={item.title}>
-              <strong>{item.title}</strong>
-              <p>{item.description}</p>
-              <small>{item.proof}</small>
-            </article>
-          ))}
-        </div>
-      </section>
+      <div className="zilios-page">
+        <div className="zilios-spine-wrap">
+          <aside className="zilios-spine" aria-hidden="true">
+            <div className="zilios-spine-line" />
+            <div className="zilios-spine-marker">01</div>
+            <div className="zilios-spine-marker">02</div>
+            <div className="zilios-spine-marker">03</div>
+          </aside>
 
-      <section id="product" className="website-section" aria-label="Product overview">
-        <div>
-          <p className="eyebrow">Product</p>
-          <h2>One workspace across the tokenised product lifecycle.</h2>
-        </div>
-        <div className="website-card-grid">
-          {lifecycleItems.map((item) => (
-            <article key={item.title}>
-              <strong>{item.title}</strong>
-              <p>{item.description}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section id="workflow" className="website-section workflow-band" aria-label="Workflow path">
-        <div>
-          <p className="eyebrow">Workflow</p>
-          <h2>From product intent to a reviewable Sepolia operation path.</h2>
-          <p className="website-section-copy">
-            The site should make the path legible before a user enters the app: define the product, prepare wallet
-            distribution, generate artifacts, and prove only what the MVP can actually prove.
-          </p>
-        </div>
-        <div className="website-workflow-list">
-          {workflowItems.map((item) => (
-            <article key={item.step}>
-              <span>{item.step}</span>
-              <div>
-                <strong>{item.title}</strong>
-                <p>{item.description}</p>
+          <div className="zilios-section-stack">
+            <section className="zilios-section" id="user-outcome" aria-label="User outcome">
+              <div className="zilios-section-text">
+                <div className="zilios-eyebrow">
+                  <span>01</span> User outcome
+                </div>
+                <h2>Less uncertainty between product idea and technical proof</h2>
+                <p>
+                  Tokenising a product creates practical questions about code safety, effort reuse, investor
+                  communications, redemption mechanics, and review evidence. ZiLiOS helps users address those questions
+                  before they become expensive.
+                </p>
               </div>
-            </article>
-          ))}
-        </div>
-      </section>
+              <div className="zilios-card-grid zilios-card-grid-2">
+                {userOutcomeItems.map((item) => (
+                  <article className="zilios-card" key={item.title}>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
 
-      <section id="evidence" className="website-section" aria-label="Persistence and evidence direction">
-        <div>
-          <p className="eyebrow">From demo to durable work</p>
-          <h2>Designed so useful work does not have to be thrown away.</h2>
+            <section className="zilios-section zilios-section-full" id="operating-model" aria-label="Operating model">
+              <div className="zilios-section-text">
+                <div className="zilios-eyebrow">
+                  <span>02</span> Operating model
+                </div>
+                <h2>AI, blockchain, and post-trade operations stay connected</h2>
+                <p>
+                  A tokenised product usually needs blockchain engineering, investor distribution operations, post-trade
+                  servicing, and AI-enabled workflow support. ZiLiOS connects those workstreams so the asset manager can
+                  focus on investment decisions.
+                </p>
+              </div>
+              <div className="zilios-card-grid zilios-card-grid-3">
+                {operatingModelItems.map((item) => (
+                  <article className="zilios-card" key={item.title}>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                    <div className="zilios-card-tag">{item.tag}</div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="zilios-section zilios-section-reverse" id="product" aria-label="Product overview">
+              <div className="zilios-section-text">
+                <div className="zilios-eyebrow">
+                  <span>03</span> Product
+                </div>
+                <h2>One workspace across the tokenised product lifecycle</h2>
+                <p>
+                  One guided workspace covers requirements, investors, subscription, redemption, servicing, maturity,
+                  and evidence — without requiring the asset manager to know every blockchain step.
+                </p>
+              </div>
+              <div className="zilios-card-grid zilios-card-grid-2">
+                {productItems.map((item) => (
+                  <article className={item.featured ? 'zilios-card zilios-card-featured' : 'zilios-card'} key={item.title}>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
         </div>
-        <div className="website-proof-list">
-          <article>
-            <strong>Current MVP boundary</strong>
-            <p>
-              The app runs as a working local/Sepolia prototype. Durable evidence and generated artifacts now persist
-              through the backend; active wallet state remains local-session-only.
+      </div>
+
+      <footer className="zilios-page zilios-footer">
+        <span>ZiLiOS</span>
+        <span>Tokenisation, structured.</span>
+      </footer>
+
+      {isBetaModalOpen ? (
+        <div className="zilios-modal-backdrop" onMouseDown={closeOnBackdrop}>
+          <section className="zilios-modal" role="dialog" aria-modal="true" aria-labelledby="zilios-beta-title">
+            <button className="zilios-modal-close" type="button" onClick={closeBetaModal} aria-label="Close beta request form">
+              ×
+            </button>
+            <div className="zilios-eyebrow">Controlled beta</div>
+            <h2 id="zilios-beta-title">Request beta access</h2>
+            <p className="zilios-modal-intro">
+              Share a few details so we can understand the right beta conversation. Do not send private keys, seed
+              phrases, offering documents, investor lists, or confidential financial files.
             </p>
-          </article>
-          <article>
-            <strong>Persistence decision</strong>
-            <p>
-              Project, lifecycle, investor registry, artifact, and evidence records sit behind a SQLite-backed local MVP
-              storage boundary, so the app can evolve without browser-state lock-in.
-            </p>
-          </article>
-          <article>
-            <strong>User meaning</strong>
-            <p>
-              Requirements, parameters, smart-contract artifacts, and provider-derived evidence can become a reviewable
-              project record, instead of remaining screenshots or scattered demo notes.
-            </p>
-          </article>
+            <form className="zilios-beta-form" onSubmit={handleBetaSubmit}>
+              <label>
+                Name
+                <input ref={nameInputRef} name="name" type="text" autoComplete="name" required />
+              </label>
+              <label>
+                Email
+                <input name="email" type="email" autoComplete="email" required />
+              </label>
+              <label>
+                Domain expertise
+                <select
+                  name="domain_expertise"
+                  value={expertise}
+                  onChange={(event) => setExpertise(event.target.value as Expertise)}
+                >
+                  <option value="blockchain">Blockchain</option>
+                  <option value="investments">Investments</option>
+                  <option value="post_trade">Funds/product post-trade</option>
+                  <option value="other">Others: please specify</option>
+                </select>
+              </label>
+              {expertise === 'other' ? (
+                <label>
+                  Please specify
+                  <input name="other_domain_expertise" type="text" required />
+                </label>
+              ) : null}
+              <button className="zilios-button zilios-button-primary" type="submit">
+                Send request
+              </button>
+            </form>
+          </section>
         </div>
-      </section>
-
-      <section className="website-trust-path-section" aria-label="Trust path visual">
-        <div className="website-trust-path-heading">
-          <p className="eyebrow">Quality Assurance</p>
-          <h2>Built to reduce brittle code and unsupported claims.</h2>
-        </div>
-        <ol className="website-trust-path">
-          {trustPathItems.map((item) => (
-            <li key={item.label}>
-              <span>{item.label}</span>
-              <p>{item.detail}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="website-status-band" aria-label="MVP status and boundaries">
-        <div>
-          <p className="eyebrow">Status</p>
-          <h2>Clear about what works, what is controlled, and what remains gated.</h2>
-        </div>
-        <div className="website-status-grid">
-          {statusItems.map((item) => (
-            <article key={item.label}>
-              <span>{item.label}</span>
-              <strong>{item.title}</strong>
-              <p>{item.detail}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section id="quality" className="website-section muted-band" aria-label="Quality assurance">
-        <div>
-          <p className="eyebrow">Quality Assurance</p>
-          <h2>Built to reduce brittle code and unsupported claims.</h2>
-          <p className="website-section-copy">
-            ZiLiOS uses review gates and drift checks because asset managers, investors, and auditors need to know what
-            is implemented, what is evidence-backed, and what still requires approval.
-          </p>
-        </div>
-        <ul className="website-checklist">
-          {qaItems.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section id="access" className="website-access" aria-label="Access path">
-        <div>
-          <p className="eyebrow">Access</p>
-          <h2>Private MVP path for invited users and beta testers.</h2>
-          <p>
-            Start in the app workspace for local/Sepolia testing. The website does not store lifecycle data or replace
-            the app workspace as the source of truth.
-          </p>
-        </div>
-        <a className="primary-link" href="/">
-          Continue to ZiLiOS app
-        </a>
-      </section>
-
-      <section id="contact" className="website-contact" aria-label="Contact and beta interest">
-        <div>
-          <p className="eyebrow">Contact</p>
-          <h2>Request a beta conversation without sending sensitive documents.</h2>
-          <p>
-            Share only business contact details and a short description of the product category you want to test. ZiLiOS
-            does not need private keys, seed phrases, offering documents, investor lists, or confidential financial files
-            through this website.
-          </p>
-        </div>
-        <form
-          className="website-contact-form"
-          action="mailto:hello@mila26.ai?subject=ZiLiOS%20beta%20interest"
-          method="post"
-          encType="text/plain"
-        >
-          <label>
-            User type
-            <select name="user_type" defaultValue="asset_manager">
-              <option value="asset_manager">Asset manager</option>
-              <option value="tokenised_product_founder">Tokenised product founder</option>
-              <option value="beta_reviewer">Beta reviewer</option>
-              <option value="investor_or_stakeholder">Investor or stakeholder</option>
-            </select>
-          </label>
-          <label>
-            Organisation
-            <input name="organisation" type="text" autoComplete="organization" placeholder="Company or fund name" />
-          </label>
-          <label>
-            Work email
-            <input name="email" type="email" autoComplete="email" placeholder="name@company.com" />
-          </label>
-          <label>
-            Product interest
-            <textarea
-              name="product_interest"
-              rows={4}
-              placeholder="Briefly describe the tokenised product type or beta review goal."
-            />
-          </label>
-          <button type="submit">Send beta interest</button>
-          <p>Submits through your email client; no website database or lifecycle workspace record is created.</p>
-        </form>
-      </section>
+      ) : null}
     </main>
   );
 }
