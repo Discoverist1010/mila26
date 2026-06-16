@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent, type RefObject } from 'react';
 
 const heroPills = [
   'AI structures the work',
@@ -84,11 +84,15 @@ const expertiseLabels: Record<Expertise, string> = {
   other: 'Others: please specify',
 };
 
-const spineMarkerItems: Array<{ id: SpineSectionId; label: string }> = [
-  { id: 'user-outcome', label: '01' },
-  { id: 'operating-model', label: '02' },
-  { id: 'product', label: '03' },
+const spineMarkerItems: Array<{ id: SpineSectionId; label: string; top: string }> = [
+  { id: 'user-outcome', label: '01', top: '16.5%' },
+  { id: 'operating-model', label: '02', top: '50%' },
+  { id: 'product', label: '03', top: '83.5%' },
 ];
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.max(minimum, Math.min(maximum, value));
+}
 
 export function WebsiteLanding() {
   const [isBetaModalOpen, setIsBetaModalOpen] = useState(false);
@@ -97,6 +101,9 @@ export function WebsiteLanding() {
   const [spineProgress, setSpineProgress] = useState(0);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const spineRef = useRef<HTMLElement>(null);
+  const userOutcomeRef = useRef<HTMLElement>(null);
+  const operatingModelRef = useRef<HTMLElement>(null);
+  const productRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     document.title = 'ZiLiOS';
@@ -131,18 +138,21 @@ export function WebsiteLanding() {
 
       const spineRect = spineElement.getBoundingClientRect();
       const viewportMidpoint = window.innerHeight / 2;
-      const lineTop = spineRect.top + 92;
-      const lineBottom = spineRect.bottom - 80;
-      const lineHeight = Math.max(1, lineBottom - lineTop);
-      const nextProgress = Math.max(0, Math.min(100, ((viewportMidpoint - lineTop) / lineHeight) * 100));
+      const nextProgress = clamp(viewportMidpoint - spineRect.top, 0, spineRect.height);
 
       setSpineProgress((currentProgress) =>
         Math.abs(currentProgress - nextProgress) < 0.5 ? currentProgress : nextProgress,
       );
 
       let nextActiveSection = spineMarkerItems[0].id;
-      for (const item of spineMarkerItems) {
-        const section = document.getElementById(item.id);
+      const sectionRefs: Array<{ id: SpineSectionId; ref: RefObject<HTMLElement | null> }> = [
+        { id: 'user-outcome', ref: userOutcomeRef },
+        { id: 'operating-model', ref: operatingModelRef },
+        { id: 'product', ref: productRef },
+      ];
+
+      for (const item of sectionRefs) {
+        const section = item.ref.current;
         if (!section) continue;
 
         const sectionRect = section.getBoundingClientRect();
@@ -304,7 +314,7 @@ export function WebsiteLanding() {
             ref={spineRef}
             aria-hidden="true"
             data-testid="zilios-spine"
-            style={{ '--zilios-spine-progress': `${spineProgress}%` } as CSSProperties}
+            style={{ '--zilios-spine-progress': `${spineProgress}px` } as CSSProperties}
           >
             <div className="zilios-spine-line" />
             <div className="zilios-spine-fill" data-testid="zilios-spine-fill" />
@@ -315,6 +325,7 @@ export function WebsiteLanding() {
                 data-section={item.id}
                 data-testid={`zilios-spine-marker-${item.label}`}
                 key={item.id}
+                style={{ top: item.top }}
               >
                 {item.label}
               </div>
@@ -322,7 +333,7 @@ export function WebsiteLanding() {
           </aside>
 
           <div className="zilios-section-stack">
-            <section className="zilios-section" id="user-outcome" aria-label="User outcome">
+            <section className="zilios-section" id="user-outcome" ref={userOutcomeRef} aria-label="User outcome">
               <div className="zilios-section-text">
                 <div className="zilios-eyebrow">
                   <span>01</span> User outcome
@@ -344,7 +355,12 @@ export function WebsiteLanding() {
               </div>
             </section>
 
-            <section className="zilios-section zilios-section-full" id="operating-model" aria-label="Operating model">
+            <section
+              className="zilios-section zilios-section-full"
+              id="operating-model"
+              ref={operatingModelRef}
+              aria-label="Operating model"
+            >
               <div className="zilios-section-text">
                 <div className="zilios-eyebrow">
                   <span>02</span> Operating model
@@ -367,7 +383,12 @@ export function WebsiteLanding() {
               </div>
             </section>
 
-            <section className="zilios-section zilios-section-reverse" id="product" aria-label="Product overview">
+            <section
+              className="zilios-section zilios-section-reverse"
+              id="product"
+              ref={productRef}
+              aria-label="Product overview"
+            >
               <div className="zilios-section-text">
                 <div className="zilios-eyebrow">
                   <span>03</span> Product

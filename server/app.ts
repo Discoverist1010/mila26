@@ -3,6 +3,7 @@ import { fail } from './http/responses';
 import { blockchainEngineerChatRoutes } from './routes/blockchainEngineerChat';
 import { engineeringBriefRoutes } from './routes/engineeringBrief';
 import { healthRoutes } from './routes/health';
+import { productSetupExtractionRoutes } from './routes/productSetupExtraction';
 import { smartContractArtifactRoutes } from './routes/smartContractArtifact';
 import { smartContractArtifactSpecRoutes } from './routes/smartContractArtifactSpec';
 import { workspacePersistenceRoutes } from './routes/workspacePersistence';
@@ -25,6 +26,7 @@ function parseAllowedOrigins(value: string | undefined): string[] {
 export type CreateAppOptions = {
   blockchainEngineerLlmProvider?: Mila26LlmProvider;
   engineeringBriefLlmProvider?: Mila26LlmProvider;
+  productSetupExtractionLlmProvider?: Mila26LlmProvider;
   workspacePersistenceRepository?: WorkspacePersistenceRepository;
 };
 
@@ -55,6 +57,10 @@ export function createApp(options: CreateAppOptions = {}) {
   app.register(engineeringBriefRoutes, {
     prefix: '/api',
     llmProvider: options.engineeringBriefLlmProvider,
+  });
+  app.register(productSetupExtractionRoutes, {
+    prefix: '/api',
+    llmProvider: options.productSetupExtractionLlmProvider ?? options.blockchainEngineerLlmProvider,
   });
   app.register(smartContractArtifactSpecRoutes, { prefix: '/api' });
   app.register(smartContractArtifactRoutes, { prefix: '/api' });

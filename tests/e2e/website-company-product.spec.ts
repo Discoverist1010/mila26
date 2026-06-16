@@ -39,6 +39,37 @@ test('website presents the mockup-based company page and beta request form', asy
   await expect(page.getByTestId('zilios-spine-marker-01')).toHaveAttribute('data-active', 'true');
   await page.locator('#operating-model').scrollIntoViewIfNeeded();
   await expect(page.getByTestId('zilios-spine-marker-02')).toHaveAttribute('data-active', 'true');
+  const fixedMarkerPositions = await page.getByTestId('zilios-spine').evaluate((spine) => {
+    const markerOne = document.querySelector('[data-testid="zilios-spine-marker-01"]');
+    const markerTwo = document.querySelector('[data-testid="zilios-spine-marker-02"]');
+    const markerThree = document.querySelector('[data-testid="zilios-spine-marker-03"]');
+    const spineRect = spine.getBoundingClientRect();
+    const markerOneRect = markerOne?.getBoundingClientRect();
+    const markerTwoRect = markerTwo?.getBoundingClientRect();
+    const markerThreeRect = markerThree?.getBoundingClientRect();
+    const markerRatio = (rect: DOMRect | undefined) =>
+      rect ? (rect.top + rect.height / 2 - spineRect.top) / spineRect.height : 0;
+
+    return {
+      markerOneRatio: markerRatio(markerOneRect),
+      markerTwoRatio: markerRatio(markerTwoRect),
+      markerThreeRatio: markerRatio(markerThreeRect),
+    };
+  });
+  expect(fixedMarkerPositions.markerOneRatio).toBeGreaterThan(0.14);
+  expect(fixedMarkerPositions.markerOneRatio).toBeLessThan(0.19);
+  expect(fixedMarkerPositions.markerTwoRatio).toBeGreaterThan(0.48);
+  expect(fixedMarkerPositions.markerTwoRatio).toBeLessThan(0.52);
+  expect(fixedMarkerPositions.markerThreeRatio).toBeGreaterThan(0.81);
+  expect(fixedMarkerPositions.markerThreeRatio).toBeLessThan(0.86);
+  const operatingModelOverlap = await page.locator('#operating-model').evaluate((section) => {
+    const text = section.querySelector('.zilios-section-text');
+    const cards = section.querySelector('.zilios-card-grid');
+    const textRect = text?.getBoundingClientRect();
+    const cardsRect = cards?.getBoundingClientRect();
+    return textRect && cardsRect ? textRect.bottom > cardsRect.top : true;
+  });
+  expect(operatingModelOverlap).toBe(false);
   await page.locator('#product').scrollIntoViewIfNeeded();
   await expect(page.getByTestId('zilios-spine-marker-03')).toHaveAttribute('data-active', 'true');
   const spineFillHeight = await page.getByTestId('zilios-spine-fill').evaluate((element) =>

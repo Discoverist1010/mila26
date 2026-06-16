@@ -79,7 +79,8 @@ function extractTimingAssertions({
   const ipoDateMatch = original.match(/\b(?:ipo|launch|initial\s+distribution)\s+date(?:\s+\w+){0,3}\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
   const initialRegisterMatch = original.match(/\binitial\s+register\s+of\s+(\d{1,3})\s+investors?\s+will\s+be\s+([^.,;]+)/i);
   const maturityTermMatch =
-    original.match(/\bmaturity\s*(?:is|=|:)?\s*(\d{1,3}\s+(?:years?|months?|quarters?)\s+after\s+(?:launch|ipo(?:\s+date)?|initial\s+distribution))\b/i) ??
+    original.match(/\bmaturity\s*(?:is|=|:)?\s*(\d{1,3}\s+(?:years?|months?|quarters?)\s+after\s+(?:launch|ipo|ipo\s+date|opo|opo\s+date|initial\s+distribution)(?:\s+(?:date\s+)?of\s+\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})?)\b/i) ??
+    original.match(/\b(?:term|tenor)\s*(?:is|=|:)?\s*(\d{1,3}[-\s]?(?:years?|months?|quarters?))\b/i) ??
     original.match(/\b(\d{1,3}[-\s]?(?:years?|months?|quarters?))\s+(?:term|tenor)\b/i);
   const maturityDateMatch =
     original.match(/\bmaturity(?:\s+date)?\s*(?:is|=|:)?\s*(\d{4}-\d{2}-\d{2})\b/i) ??
@@ -166,10 +167,13 @@ function extractServicingAssertions({
 }: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
   const updates: ProductSetupSuggestedUpdate[] = [];
   const valuationCadence = extractCadenceNear(normalized, '(?:valuation|nav)');
-  const incomePayoutCadence = extractCadenceNear(normalized, '(?:distribution\\w*|dividend\\w*|coupon\\w*|income payout|cash distribution)');
+  const incomePayoutCadence = extractCadenceNear(
+    normalized,
+    '(?:income\\s+distribution|distribution\\w*|distribut\\w*|dividend\\w*|coupon\\w*|income payout|cash distribution)',
+  );
   const noIncomeDistribution = /\bno\s+(?:income\s+)?(?:distribution|distributions|dividend|dividends|coupon|coupons|income\s+payout|cash\s+distribution)s?\b|\bthere\s+is\s+no\s+income\s+distribution\b|\bdoes\s+not\s+(?:pay|distribute)\s+(?:income|dividends|coupons)\b/.test(normalized);
   const incomeDistributionAssertion =
-    /\bincome\s+(?:is\s+)?distributed\b|\bdistribute\s+income\b|\bincome\s+payout\b|\bdistribution\s+to\s+investors?\b/.test(normalized);
+    /\bincome\s+(?:is\s+|will\s+be\s+)?distributed\b|\bincome\s+distribution\s*(?:-|=|:)?\s*(?:yes|true|enabled)\b|\bthere\s+will\s+be\s+income\b|\bdistribute\s+income\b|\bincome\s+payout\b|\bdistribution\s+to\s+investors?\b/.test(normalized);
 
   if (valuationCadence) {
     updates.push(createSuggestedUpdate('nav_cadence', valuationCadence, `User described ${valuationCadence.toLowerCase()} valuation or NAV updates.`, sourceRef, 0.84));
@@ -293,6 +297,7 @@ function normalizeMaturityTerm(value: string): string {
       const normalizedUnit = Number(amount) === 1 ? unit.toLowerCase() : `${unit.toLowerCase()}s`;
       return `${amount} ${normalizedUnit}`;
     })
+    .replace(/\bopo\b/gi, 'IPO')
     .replace(/\bipo\b/gi, 'IPO')
     .replace(/\binitial distribution\b/gi, 'initial distribution')
     .replace(/\s+/g, ' ');

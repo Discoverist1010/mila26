@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { askBlockchainEngineer } from './api/blockchainEngineerChat';
 import { generateEngineeringBrief } from './api/engineeringBrief';
+import {
+  extractProductSetupFacts,
+  toProductSetupSuggestedUpdatesFromExtraction,
+  type ProductSetupExtractionResult,
+} from './api/productSetupExtraction';
 import { generateSmartContractArtifact } from './api/smartContractArtifact';
 import { generateSmartContractArtifactSpec } from './api/smartContractArtifactSpec';
 import {
@@ -59,6 +64,7 @@ import {
   decideUnsupportedRequirement,
   dismissProductSetupHandoffSuggestion,
   dismissProductSetupSuggestedUpdate,
+  filterProductSetupSuggestedUpdates,
   fieldDisplayValue,
   handleProductSetupWalletInput,
   normalizeProductSetupRecord,
@@ -186,6 +192,16 @@ const starterFacts: FundFacts = {
 };
 
 const initialBotQuestion = 'I want investors to subscribe with stablecoins and redeem later after a delay.';
+const PRODUCT_SETUP_EXTRACTION_TIMEOUT_MS = 1_200;
+
+function productSetupExtractionTimeout(): Promise<ProductSetupExtractionResult> {
+  return new Promise((resolve) => {
+    window.setTimeout(
+      () => resolve({ ok: false, code: 'EXTRACTION_TIMEOUT', message: 'Structured extraction timed out.' }),
+      PRODUCT_SETUP_EXTRACTION_TIMEOUT_MS,
+    );
+  });
+}
 
 type ProjectDirectorySelection = 'workspace' | 'usequities' | 'sgequities' | 'mixedportfolio';
 
@@ -1321,6 +1337,36 @@ export function App() {
     ]);
   }
 
+  function sanitizeProductSetupResponseSuggestions(
+    response: BlockchainEngineerChatResponse,
+    acceptedSuggestions: ProductSetupSuggestedUpdate[],
+  ): BlockchainEngineerChatResponse {
+    if (!response.suggestedRequirementUpdates?.length) return response;
+
+    const acceptedSuggestionKeys = new Set(
+      acceptedSuggestions.map((update) => `${update.fieldKey}:${stringifyProductSetupSuggestedValue(update.proposedValue)}`),
+    );
+    const suggestedRequirementUpdates = response.suggestedRequirementUpdates.filter((update) => {
+      const normalizedUpdates = createProductSetupSuggestionsFromStructuredUpdates([update], 'response_preview');
+      if (normalizedUpdates.length === 0) return true;
+
+      return normalizedUpdates.some((normalizedUpdate) =>
+        acceptedSuggestionKeys.has(
+          `${normalizedUpdate.fieldKey}:${stringifyProductSetupSuggestedValue(normalizedUpdate.proposedValue)}`,
+        ),
+      );
+    });
+
+    return {
+      ...response,
+      suggestedRequirementUpdates,
+    };
+  }
+
+  function stringifyProductSetupSuggestedValue(value: ProductSetupSuggestedUpdate['proposedValue']): string {
+    return Array.isArray(value) ? value.join('|') : String(value);
+  }
+
   function renderEngineerResponse(response: BlockchainEngineerChatResponse) {
     const viewModel = toBlockchainEngineerResponseViewModel(response);
     const suppressResponseNextAction = activeWorkspaceTab.id === 'requirements';
@@ -1518,8 +1564,23 @@ export function App() {
       },
     ]);
     const chatSourceRef = `chat_turn_${Date.now()}`;
-    const productSetupSuggestions =
-      copilotRoute.shouldExtractRequirements ? createProductSetupSuggestionsFromText(submittedQuestion, chatSourceRef) : [];
+    let productSetupSuggestions: ProductSetupSuggestedUpdate[] = [];
+    if (copilotRoute.shouldExtractRequirements) {
+      const extractionResult = await Promise.race([
+        extractProductSetupFacts({
+          userMessage: submittedQuestion,
+          sourceRef: chatSourceRef,
+          productSetupContext: productSetupChatContext.productSetup,
+        }).catch(() => ({ ok: false as const, message: 'Structured extraction unavailable.' })),
+        productSetupExtractionTimeout(),
+      ]);
+      const extractionFacts =
+        extractionResult.ok && Array.isArray(extractionResult.data?.facts) ? extractionResult.data.facts : [];
+      productSetupSuggestions =
+        extractionResult.ok && extractionFacts.length > 0
+          ? toProductSetupSuggestedUpdatesFromExtraction(extractionResult.data, chatSourceRef)
+          : createProductSetupSuggestionsFromText(submittedQuestion, chatSourceRef);
+    }
     const unsupportedRequirementDecisions =
       copilotRoute.shouldExtractRequirements ? createUnsupportedRequirementDecisionsFromText(submittedQuestion, chatSourceRef) : [];
     const currentTurnExtractedFacts = productSetupSuggestions.map((update) => ({
@@ -1584,11 +1645,26 @@ export function App() {
         result.data.suggestedRequirementUpdates,
         chatSourceRef,
       );
-      if (structuredProductSetupSuggestions.length > 0) {
-        setProductSetupRecord((current) => setProductSetupSuggestedUpdates(current, structuredProductSetupSuggestions));
+      const currentTurnSuggestionsByField = new Map(
+        productSetupSuggestions.map((update) => [update.fieldKey, update]),
+      );
+      const acceptedStructuredProductSetupSuggestions = filterProductSetupSuggestedUpdates(
+        productSetupRecord,
+        structuredProductSetupSuggestions,
+      ).filter((update) => {
+        const currentTurnSuggestion = currentTurnSuggestionsByField.get(update.fieldKey);
+        if (!currentTurnSuggestion) return true;
+        return stringifyProductSetupSuggestedValue(currentTurnSuggestion.proposedValue) === stringifyProductSetupSuggestedValue(update.proposedValue);
+      });
+      if (acceptedStructuredProductSetupSuggestions.length > 0) {
+        setProductSetupRecord((current) => setProductSetupSuggestedUpdates(current, acceptedStructuredProductSetupSuggestions));
       }
-      publishEngineerResponse(
+      const responseForDisplay = sanitizeProductSetupResponseSuggestions(
         result.data,
+        acceptedStructuredProductSetupSuggestions,
+      );
+      publishEngineerResponse(
+        responseForDisplay,
         result.data.responseSource === 'live_model' ? 'live_model' : 'backend',
         copilotRoute.assistantMode,
         copilotRoute.route,

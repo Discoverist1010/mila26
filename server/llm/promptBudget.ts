@@ -1,6 +1,6 @@
 import type { Mila26LlmMessage, Mila26LlmPurpose } from './types';
 
-export type Mila26PromptBudgetName = 'blockchain_engineer_chat' | 'engineering_brief_generation';
+export type Mila26PromptBudgetName = 'blockchain_engineer_chat' | 'engineering_brief_generation' | 'product_setup_extraction';
 
 export type Mila26PromptBudget = {
   name: Mila26PromptBudgetName;
@@ -55,6 +55,10 @@ export const promptBudgets = {
   engineeringBriefGeneration: {
     name: 'engineering_brief_generation',
     maxEstimatedInputTokens: 8_000,
+  },
+  productSetupExtraction: {
+    name: 'product_setup_extraction',
+    maxEstimatedInputTokens: 3_500,
   },
 } as const satisfies Record<string, Mila26PromptBudget>;
 

@@ -173,7 +173,7 @@ describe('Product Setup record', () => {
 
   it('extracts IPO-relative maturity and no-income treatment from follow-up assertions', () => {
     const suggestions = createProductSetupSuggestionsFromText(
-      'Base currency is usd. There is no income distribution. Maturity is 3 years after IPO.',
+      'Base currency is usd. There is no income distribution. The term is 3 years. Maturity is 3 years after opo date of 8 Nov 2026.',
       'chat_turn_income_maturity',
     );
     const record = setProductSetupSuggestedUpdates(createInitialProductSetupRecord(facts), suggestions);
@@ -186,10 +186,14 @@ describe('Product Setup record', () => {
     expect(byField.get('base_currency')).toBe('USD');
     expect(byField.get('income_treatment')).toBe('No income distribution');
     expect(byField.has('income_payout_cadence')).toBe(false);
-    expect(byField.get('maturity_date')).toBe('3 years after IPO');
+    expect(byField.get('maturity_date')).toBe('3 years after IPO date of 8 Nov 2026');
     expect(incomeRow).toMatchObject({ value: 'No income distribution', provenanceLabel: 'Needs review' });
-    expect(maturityRow).toMatchObject({ value: '3 years after IPO', provenanceLabel: 'Needs review' });
-    expect(windDownRow).toMatchObject({ value: '3 years after IPO', provenanceLabel: 'Needs review' });
+    expect(maturityRow).toMatchObject({ label: 'Term / maturity', value: '3 years after IPO date of 8 Nov 2026', provenanceLabel: 'Needs review' });
+    expect(windDownRow).toMatchObject({
+      label: 'Maturity workflow',
+      value: 'Enabled by term: 3 years after IPO date of 8 Nov 2026',
+      provenanceLabel: 'Needs review',
+    });
   });
 
   it('extracts stated protocol, maturity date, and income distribution into pending profile rows', () => {
@@ -210,6 +214,24 @@ describe('Product Setup record', () => {
     expect(protocolRow).toMatchObject({ value: 'ERC-20', provenanceLabel: 'Needs review' });
     expect(maturityRow).toMatchObject({ value: '2029-11-08', provenanceLabel: 'Needs review' });
     expect(incomeRow).toMatchObject({ value: 'Distributing', provenanceLabel: 'Needs review' });
+  });
+
+  it('extracts natural income distribution confirmations and cadence', () => {
+    const suggestions = createProductSetupSuggestionsFromText(
+      'Income distribution - yes. Income will be distributed quarterly.',
+      'chat_turn_income_yes',
+    );
+    const record = setProductSetupSuggestedUpdates(createInitialProductSetupRecord(facts), suggestions);
+    const readModel = toProductSetupReadModel(record);
+    const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
+    const incomeRow = readModel.profileRows.find((row) => row.id === 'income_treatment');
+
+    expect(byField.get('income_treatment')).toBe('Distributing');
+    expect(byField.get('income_payout_cadence')).toBe('Quarterly');
+    expect(incomeRow).toMatchObject({
+      value: 'Distributing; payout cadence: Quarterly',
+      provenanceLabel: 'Needs review',
+    });
   });
 
   it('normalizes hyphenated maturity terms into readable plural text', () => {
@@ -261,6 +283,37 @@ describe('Product Setup record', () => {
     expect(subscriptionRow).toMatchObject({ value: 'Enabled: Quarterly', provenanceLabel: 'Needs review' });
     expect(redemptionRow).toMatchObject({ value: 'Enabled: Quarterly', provenanceLabel: 'Needs review' });
     expect(termRow).toMatchObject({ value: '3 years after launch', provenanceLabel: 'Needs review' });
+  });
+
+  it('does not let assistant protocol recommendations override a user-stated protocol choice', () => {
+    const record = updateProductSetupField(createInitialProductSetupRecord(facts), {
+      fieldKey: 'protocol_base',
+      value: 'ERC-20',
+      sourceType: 'user_message',
+      sourceRef: 'chat_turn_user_protocol',
+      status: 'user_stated',
+    });
+    const withAssistantRecommendation = setProductSetupSuggestedUpdates(
+      record,
+      createProductSetupSuggestionsFromStructuredUpdates(
+        [
+          {
+            field: 'protocol_base',
+            proposedValue: 'ERC-3643',
+            rationale: 'Whitelisted wallets suggest ERC-3643 as an architecture target.',
+            confidence: 0.88,
+          },
+        ],
+        'chat_turn_assistant_recommendation',
+      ),
+    );
+    const protocolRow = toProductSetupReadModel(withAssistantRecommendation).profileRows.find(
+      (row) => row.id === 'protocol_target',
+    );
+
+    expect(withAssistantRecommendation.fields.protocol_base.value).toBe('ERC-20');
+    expect(withAssistantRecommendation.pendingSuggestedUpdates.some((update) => update.fieldKey === 'protocol_base')).toBe(false);
+    expect(protocolRow).toMatchObject({ value: 'ERC-20', provenanceLabel: 'Stated' });
   });
 
   it('promotes a suggested field only after user confirmation', () => {

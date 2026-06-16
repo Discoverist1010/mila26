@@ -1,7 +1,7 @@
 export type Mila26LlmProviderName = 'mock' | 'openai';
 export type Mila26KnownLlmProviderName = Mila26LlmProviderName;
 
-export type Mila26LlmPurpose = 'blockchain_engineer_chat' | 'engineering_brief_generation';
+export type Mila26LlmPurpose = 'blockchain_engineer_chat' | 'engineering_brief_generation' | 'product_setup_extraction';
 
 export type Mila26LlmMessage = {
   role: 'system' | 'user' | 'assistant';

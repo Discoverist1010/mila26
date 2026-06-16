@@ -244,37 +244,56 @@ function acknowledgeContractOpsProductSetupWarnings() {
 
 describe('App Blockchain Engineer Bot panel', () => {
   it('shows the initial Copilot answer before asking and then renders a backend answer', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      createJsonResponse({
-        ok: true,
-        data: {
-          messageId: 'chat-1',
-          agentId: 'blockchain-engineer',
-          content: 'Backend mock says ERC-3643 is suitable for whitelisted investor wallet products.',
-          protocolComparison: {
-            erc20: 'Fungible portfolio shares with broad wallet support.',
-            erc4626: 'Vault shares for clean single-asset vaults.',
-            erc3643: 'Permissioned token for approved wallets.',
-            rebasingErc20: 'Balances adjust after NAV updates.',
-            erc721OutOfScope: 'Unique token IDs are out of MVP scope.',
-            recommendation: 'Use ERC-3643 when wallet permissioning is central.',
-          },
-          suggestedRequirementUpdates: [
-            {
-              field: 'protocol_base',
-              proposedValue: 'ERC-3643',
-              rationale: 'The stated income product needs approved-wallet controls.',
-              confidence: 0.84,
+    const fetchMock = vi.fn((url: string) => {
+      if (url.endsWith('/api/product-setup/extract')) {
+        return Promise.resolve(
+          createJsonResponse({
+            ok: true,
+            data: {
+              extractionSource: 'fallback_unavailable',
+              facts: [],
+              warnings: [],
             },
-          ],
-          openQuestions: ['Should every approved investor hold identical share units?'],
-          riskNotes: ['Backend must not hold private keys.'],
-          nextRecommendedAction: 'Confirm the recommended protocol base before approving the Requirement Brief.',
-          responseSource: 'live_model',
-          createdAt: '2026-05-21T00:00:00.000Z',
-        },
-      }),
-    );
+          }),
+        );
+      }
+
+      if (url.endsWith('/api/chat/blockchain-engineer')) {
+        return Promise.resolve(
+          createJsonResponse({
+            ok: true,
+            data: {
+              messageId: 'chat-1',
+              agentId: 'blockchain-engineer',
+              content: 'Backend mock says ERC-3643 is suitable for whitelisted investor wallet products.',
+              protocolComparison: {
+                erc20: 'Fungible portfolio shares with broad wallet support.',
+                erc4626: 'Vault shares for clean single-asset vaults.',
+                erc3643: 'Permissioned token for approved wallets.',
+                rebasingErc20: 'Balances adjust after NAV updates.',
+                erc721OutOfScope: 'Unique token IDs are out of MVP scope.',
+                recommendation: 'Use ERC-3643 when wallet permissioning is central.',
+              },
+              suggestedRequirementUpdates: [
+                {
+                  field: 'protocol_base',
+                  proposedValue: 'ERC-3643',
+                  rationale: 'The stated income product needs approved-wallet controls.',
+                  confidence: 0.84,
+                },
+              ],
+              openQuestions: ['Should every approved investor hold identical share units?'],
+              riskNotes: ['Backend must not hold private keys.'],
+              nextRecommendedAction: 'Confirm the recommended protocol base before approving the Requirement Brief.',
+              responseSource: 'live_model',
+              createdAt: '2026-05-21T00:00:00.000Z',
+            },
+          }),
+        );
+      }
+
+      return Promise.resolve(createJsonResponse({ ok: false, error: { code: 'UNEXPECTED', message: 'Unexpected route.' } }, { status: 400 }));
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<App />);
@@ -628,9 +647,11 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/chat/blockchain-engineer'))).toBe(true);
     });
-    const requestBody = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const chatCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/api/chat/blockchain-engineer'));
+    expect(chatCall).toBeDefined();
+    const requestBody = JSON.parse((chatCall![1] as RequestInit).body as string);
 
     expect(requestBody.projectContext.currentTurnExtractedFacts).toEqual(
       expect.arrayContaining([

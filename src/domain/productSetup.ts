@@ -566,7 +566,7 @@ function toProductSetupProfileRows(
     },
     {
       id: 'term',
-      label: 'Term',
+      label: 'Term / maturity',
       value: profileValue('maturity_date') || 'To be filled',
       provenanceLabel: provenanceLabelForFieldsWithPending(record, ['maturity_date']),
       fieldKeys: ['maturity_date'],
@@ -627,8 +627,12 @@ function toProductSetupProfileRows(
     },
     {
       id: 'wind_down_switch',
-      label: 'Maturity / wind-down',
-      value: profileValue('maturity_closeout_rule') || profileValue('maturity_date') || 'To be filled',
+      label: 'Maturity workflow',
+      value: profileValue('maturity_closeout_rule')
+        ? `Closeout: ${profileValue('maturity_closeout_rule')}`
+        : profileValue('maturity_date')
+          ? `Enabled by term: ${profileValue('maturity_date')}`
+          : 'To be filled',
       provenanceLabel: provenanceLabelForFieldsWithPending(record, ['maturity_closeout_rule', 'maturity_date']),
       fieldKeys: ['maturity_closeout_rule', 'maturity_date'],
     },
@@ -1043,15 +1047,60 @@ export function setProductSetupSuggestedUpdates(
   record: ProductSetupRecord,
   updates: ProductSetupSuggestedUpdate[],
 ): ProductSetupRecord {
-  if (updates.length === 0) return record;
-  const byId = new Map(record.pendingSuggestedUpdates.map((update) => [update.id, update]));
-  updates.forEach((update) => byId.set(update.id, update));
+  const acceptedUpdates = filterProductSetupSuggestedUpdates(record, updates);
+  if (acceptedUpdates.length === 0) return record;
+
+  const fieldsWithUserUpdates = new Set(
+    acceptedUpdates.filter((update) => update.sourceType === 'user_message').map((update) => update.fieldKey),
+  );
+  const byId = new Map(
+    record.pendingSuggestedUpdates
+      .filter((update) => !(fieldsWithUserUpdates.has(update.fieldKey) && update.sourceType === 'assistant_inference'))
+      .map((update) => [update.id, update]),
+  );
+  acceptedUpdates.forEach((update) => byId.set(update.id, update));
 
   return {
     ...record,
     pendingSuggestedUpdates: [...byId.values()],
     updatedAtIso: new Date().toISOString(),
   };
+}
+
+export function filterProductSetupSuggestedUpdates(
+  record: ProductSetupRecord,
+  updates: ProductSetupSuggestedUpdate[],
+): ProductSetupSuggestedUpdate[] {
+  return updates.filter((update) => shouldKeepProductSetupSuggestedUpdate(record, update));
+}
+
+function shouldKeepProductSetupSuggestedUpdate(
+  record: ProductSetupRecord,
+  update: ProductSetupSuggestedUpdate,
+): boolean {
+  const currentField = record.fields[update.fieldKey];
+  const currentValue = currentField.value;
+  const hasExplicitCurrentValue =
+    currentValue !== undefined &&
+    currentValue !== null &&
+    ['user_stated', 'user_confirmed'].includes(currentField.status);
+
+  if (!hasExplicitCurrentValue) return true;
+
+  if (productSetupValuesEqual(currentValue, update.proposedValue)) {
+    return false;
+  }
+
+  return update.sourceType !== 'assistant_inference';
+}
+
+function productSetupValuesEqual(left: ProductSetupFieldValue, right: ProductSetupFieldValue): boolean {
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+    return left.every((value, index) => value === right[index]);
+  }
+
+  return left === right;
 }
 
 export function confirmProductSetupUpdate(

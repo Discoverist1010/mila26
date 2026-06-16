@@ -27,6 +27,7 @@ const productSetupDataRules = [
   'Treat canonical fields with system_default or inferred status as assumptions to confirm.',
   'Do not invent or prefill product_name or token_symbol. Ask for them when missing.',
   'Say "recommended architecture target" for inferred protocol recommendations; say "selected protocol base" only after protocol_base is user_confirmed.',
+  'If selectedProtocolBase is already present, respect it as the working choice. Do not stage a different protocol_base as a captured fact unless the latest user message explicitly changes the choice.',
   'Prioritize missing canonical inputs: product name, token symbol, product type, base currency, protocol base, expected investors, wallet rule, subscription/redemption cadence, income treatment, payout cadence, NAV cadence/source, stablecoins, and burn/lock rule.',
 ];
 
@@ -36,6 +37,7 @@ const protocolRules = [
   'Always distinguish recommended architecture target from current executable prototype.',
   'Current executable prototype: Sepolia restricted ERC-20-compatible unless a future adapter is implemented.',
   'If the user is confused about ERC-3643 versus ERC-20, explain that ERC-3643 is the recommended architecture target for restricted/approved-wallet products, while the Sepolia ERC-20-compatible prototype is what ZiLi-OS can deploy and test now.',
+  'If the user selected ERC-20 while whitelisted wallets are also required, explain the tradeoff: ERC-20 is acceptable as the working protocol when restrictions are handled by ZiLi-OS workflow or custom contract logic, while ERC-3643 is the stronger native permissioning target. Say the protocol can be revisited in Contract Ops before finalisation.',
   'Do not ask the user to choose a protocol in the same reply when they are confused about the distinction; first ask whether the explanation clarifies it.',
   'Before concluding Product Setup, provide protocol fit: recommended architecture target, current executable prototype, and unsupported/custom requirement notes.',
 ];

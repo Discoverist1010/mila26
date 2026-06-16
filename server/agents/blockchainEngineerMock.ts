@@ -55,11 +55,18 @@ function looksLikeProtocolConfusion(value: string): boolean {
   return hasConfusion && hasProtocolReference;
 }
 
+function selectedProtocolBaseFromContext(request: BlockchainEngineerChatRequest): string | undefined {
+  const productSetup = request.projectContext?.productSetup;
+  if (!productSetup || typeof productSetup !== 'object' || !('selectedProtocolBase' in productSetup)) return undefined;
+  return typeof productSetup.selectedProtocolBase === 'string' ? productSetup.selectedProtocolBase : undefined;
+}
+
 export function answerWithBlockchainEngineerMock(
   request: BlockchainEngineerChatRequest,
 ): BlockchainEngineerChatResponse {
   const lower = request.userMessage.toLowerCase();
   const investorCount = extractInvestorCount(request.userMessage);
+  const selectedProtocolBase = selectedProtocolBaseFromContext(request);
   const createdAt = new Date().toISOString();
   const base = {
     messageId: createMessageId(),
@@ -182,29 +189,40 @@ export function answerWithBlockchainEngineerMock(
     request.requestedFocus === 'protocol_choice' ||
     includesAny(lower, ['erc-20', 'erc20', 'erc-4626', 'erc4626', 'erc-3643', 'erc3643', 'erc-721', 'erc721', 'protocol', 'fungible', 'non-fungible', 'rebasing'])
   ) {
+    const hasErc20Selection = selectedProtocolBase === 'ERC-20' || /\berc-?\s*20\b|\berc20\b/.test(lower);
+
     return BlockchainEngineerChatResponseSchema.parse({
       ...base,
-      content:
-        'Engineering Bot view: ZiLi-OS starts with four protocol bases for Product Setup: ERC-20, ERC-4626, ERC-3643, and custom ERC-20 with rebasing. For a product with whitelisted wallets and restricted token holding, ERC-3643 is usually the best architecture target. ERC-721 can be explained if asked, but it is out of MVP scope because this workflow focuses on fungible investment units, vault shares, permissioned fungible tokens, and rebasing balances.',
+      content: hasErc20Selection
+        ? 'Engineering Bot view: I will keep ERC-20 as the working protocol base. The tradeoff is that ERC-20 is simpler and matches the current Sepolia executable prototype, while approved-wallet restrictions need to be handled by ZiLi-OS workflow or custom contract logic. ERC-3643 remains the stronger native permissioning target if you later want built-in transfer checks. You can revisit this in Contract Ops before finalisation.'
+        : 'Engineering Bot view: ZiLi-OS starts with four protocol bases for Product Setup: ERC-20, ERC-4626, ERC-3643, and custom ERC-20 with rebasing. For a product with whitelisted wallets and restricted token holding, ERC-3643 is usually the best architecture target. ERC-721 can be explained if asked, but it is out of MVP scope because this workflow focuses on fungible investment units, vault shares, permissioned fungible tokens, and rebasing balances.',
       protocolComparison: {
         erc20: 'Simple fungible investment units where restrictions can stay mostly in the ZiLi-OS workflow or custom extensions.',
         erc4626: 'Best for a clean single-asset vault where investors deposit one ERC-20 asset and receive vault shares.',
         erc3643: 'Best fit when approved wallets, permissioned holding, and transfer checks are central to the product.',
         rebasingErc20: 'Use only when investor balances should automatically adjust after NAV, value, or yield updates.',
         erc721OutOfScope: 'Useful for unique non-fungible token IDs, but not an active ZiLi-OS MVP protocol base.',
-        recommendation: 'Recommend ERC-3643 when whitelisted wallets and restricted transfers are core requirements; otherwise choose the closest of the four bases by product behaviour.',
+        recommendation: hasErc20Selection
+          ? 'Keep ERC-20 as the working choice now; revisit ERC-3643 in Contract Ops only if native permissioning becomes more important than prototype simplicity.'
+          : 'Recommend ERC-3643 when whitelisted wallets and restricted transfers are core requirements; otherwise choose the closest of the four bases by product behaviour.',
       },
-      suggestedRequirementUpdates: [
-        {
-          field: 'protocol_base',
-          proposedValue: 'ERC-3643',
-          rationale: 'Whitelisted wallets and restricted token holding point to a permissioned token architecture.',
-          confidence: 0.88,
-        },
-      ],
-      openQuestions: ['Do only approved wallets need to hold or receive the token?', 'Should balances stay fixed unless investors subscribe/redeem, or should they rebase after NAV updates?'],
+      suggestedRequirementUpdates: hasErc20Selection
+        ? []
+        : [
+            {
+              field: 'protocol_base',
+              proposedValue: 'ERC-3643',
+              rationale: 'Whitelisted wallets and restricted token holding point to a permissioned token architecture.',
+              confidence: 0.88,
+            },
+          ],
+      openQuestions: hasErc20Selection
+        ? ['Does this tradeoff make sense, or do you want ZiLi-OS to compare ERC-20 and ERC-3643 in more detail?']
+        : ['Do only approved wallets need to hold or receive the token?', 'Should balances stay fixed unless investors subscribe/redeem, or should they rebase after NAV updates?'],
       riskNotes: ['This is product-engineering guidance, not legal, investment, or formal audit advice.'],
-      nextRecommendedAction: 'Confirm the recommended protocol base in Product Setup before Contract Ops prepares deployment settings.',
+      nextRecommendedAction: hasErc20Selection
+        ? 'Continue Product Setup with ERC-20 as the working protocol base; revisit in Contract Ops before finalisation if needed.'
+        : 'Confirm the recommended protocol base in Product Setup before Contract Ops prepares deployment settings.',
     });
   }
 
