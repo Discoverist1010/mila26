@@ -67,11 +67,12 @@ import {
   filterProductSetupSuggestedUpdates,
   fieldDisplayValue,
   handleProductSetupWalletInput,
+  mergeProductSetupSuggestedUpdates,
   normalizeProductSetupRecord,
   productSetupHandoffTargetLabel,
+  reconcileProductSetupSuggestedUpdates,
   reviewProductSetupHandoffNote,
   sendProductSetupHandoffNote,
-  setProductSetupSuggestedUpdates,
   setUnsupportedRequirementDecisions,
   toProductSetupReadModel,
   updateProductSetupField,
@@ -1576,10 +1577,12 @@ export function App() {
       ]);
       const extractionFacts =
         extractionResult.ok && Array.isArray(extractionResult.data?.facts) ? extractionResult.data.facts : [];
-      productSetupSuggestions =
+      const localSuggestions = createProductSetupSuggestionsFromText(submittedQuestion, chatSourceRef);
+      const structuredSuggestions =
         extractionResult.ok && extractionFacts.length > 0
           ? toProductSetupSuggestedUpdatesFromExtraction(extractionResult.data, chatSourceRef)
-          : createProductSetupSuggestionsFromText(submittedQuestion, chatSourceRef);
+          : [];
+      productSetupSuggestions = mergeProductSetupSuggestedUpdates(localSuggestions, structuredSuggestions);
     }
     const unsupportedRequirementDecisions =
       copilotRoute.shouldExtractRequirements ? createUnsupportedRequirementDecisionsFromText(submittedQuestion, chatSourceRef) : [];
@@ -1592,9 +1595,10 @@ export function App() {
       confidence: update.confidence,
     }));
     if (productSetupSuggestions.length > 0 || unsupportedRequirementDecisions.length > 0) {
-      setProductSetupRecord((current) =>
-        setUnsupportedRequirementDecisions(setProductSetupSuggestedUpdates(current, productSetupSuggestions), unsupportedRequirementDecisions),
-      );
+      setProductSetupRecord((current) => {
+        const reconciled = reconcileProductSetupSuggestedUpdates(current, productSetupSuggestions).record;
+        return setUnsupportedRequirementDecisions(reconciled, unsupportedRequirementDecisions);
+      });
     }
 
     const workspaceDefaults = brief
@@ -1654,10 +1658,12 @@ export function App() {
       ).filter((update) => {
         const currentTurnSuggestion = currentTurnSuggestionsByField.get(update.fieldKey);
         if (!currentTurnSuggestion) return true;
-        return stringifyProductSetupSuggestedValue(currentTurnSuggestion.proposedValue) === stringifyProductSetupSuggestedValue(update.proposedValue);
+        return false;
       });
       if (acceptedStructuredProductSetupSuggestions.length > 0) {
-        setProductSetupRecord((current) => setProductSetupSuggestedUpdates(current, acceptedStructuredProductSetupSuggestions));
+        setProductSetupRecord((current) =>
+          reconcileProductSetupSuggestedUpdates(current, acceptedStructuredProductSetupSuggestions).record,
+        );
       }
       const responseForDisplay = sanitizeProductSetupResponseSuggestions(
         result.data,

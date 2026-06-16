@@ -13,8 +13,10 @@ import {
   dismissProductSetupHandoffSuggestion,
   handleProductSetupWalletInput,
   markTermExplained,
+  mergeProductSetupSuggestedUpdates,
   normalizeProductSetupRecord,
   recommendProductSetupProtocol,
+  reconcileProductSetupSuggestedUpdates,
   reviewProductSetupHandoffNote,
   setUnsupportedRequirementDecisions,
   setProductSetupSuggestedUpdates,
@@ -48,7 +50,6 @@ describe('Product Setup record', () => {
         'subscription_stablecoins',
         'whitelisted_wallets_required',
         'redemption_cadence',
-        'redemption_schedule',
         'redemption_payout_delay',
       ]),
     );
@@ -214,6 +215,109 @@ describe('Product Setup record', () => {
     expect(protocolRow).toMatchObject({ value: 'ERC-20', provenanceLabel: 'Needs review' });
     expect(maturityRow).toMatchObject({ value: '2029-11-08', provenanceLabel: 'Needs review' });
     expect(incomeRow).toMatchObject({ value: 'Distributing', provenanceLabel: 'Needs review' });
+  });
+
+  it('reconciles explicit user-stated setup facts directly into the Product Profile', () => {
+    const suggestions = createProductSetupSuggestionsFromText(
+      'Ok, lets use ERC 3643. The base currency is SGD. Subscription and redemption are quarterly. Income will be distributed quarterly. Maturity is 3 years after IPO date of 8 Nov 2026.',
+      'chat_turn_explicit_setup',
+    );
+    const result = reconcileProductSetupSuggestedUpdates(createInitialProductSetupRecord(facts), suggestions);
+    const readModel = toProductSetupReadModel(result.record);
+    const protocolRow = readModel.profileRows.find((row) => row.id === 'protocol_target');
+    const currencyRow = readModel.profileRows.find((row) => row.id === 'base_currency');
+    const subscriptionRow = readModel.profileRows.find((row) => row.id === 'subscription_switch');
+    const redemptionRow = readModel.profileRows.find((row) => row.id === 'redemption_switch');
+    const incomeRow = readModel.profileRows.find((row) => row.id === 'income_treatment');
+    const maturityRow = readModel.profileRows.find((row) => row.id === 'term');
+
+    expect(result.record.fields.protocol_base).toMatchObject({ value: 'ERC-3643', status: 'user_stated' });
+    expect(result.record.fields.base_currency).toMatchObject({ value: 'SGD', status: 'user_stated' });
+    expect(result.record.fields.subscription_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(result.record.fields.redemption_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(result.record.fields.income_treatment).toMatchObject({ value: 'Distributing', status: 'user_stated' });
+    expect(result.record.fields.income_payout_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(result.record.fields.maturity_date).toMatchObject({
+      value: '3 years after IPO date of 8 Nov 2026',
+      status: 'user_stated',
+    });
+    expect(protocolRow).toMatchObject({ value: 'ERC-3643', provenanceLabel: 'Stated' });
+    expect(currencyRow).toMatchObject({ value: 'SGD', provenanceLabel: 'Stated' });
+    expect(subscriptionRow).toMatchObject({ value: 'Enabled: Quarterly', provenanceLabel: 'Stated' });
+    expect(redemptionRow).toMatchObject({ value: 'Enabled: Quarterly', provenanceLabel: 'Stated' });
+    expect(incomeRow).toMatchObject({ value: 'Distributing; payout cadence: Quarterly', provenanceLabel: 'Stated' });
+    expect(maturityRow).toMatchObject({
+      value: '3 years after IPO date of 8 Nov 2026',
+      provenanceLabel: 'Stated',
+    });
+  });
+
+  it('merges partial structured extraction with local extraction coverage', () => {
+    const localSuggestions = createProductSetupSuggestionsFromText(
+      'Ok, lets use ERC 3643. The base currency is SGD. Subscription and redemption are quarterly.',
+      'chat_turn_merge',
+    );
+    const structuredSuggestions = createProductSetupSuggestionsFromStructuredUpdates(
+      [
+        {
+          field: 'protocol_base',
+          proposedValue: 'ERC-3643',
+          rationale: 'User selected ERC-3643.',
+          confidence: 0.9,
+        },
+        {
+          field: 'base_currency',
+          proposedValue: 'SGD',
+          rationale: 'User stated SGD as base currency.',
+          confidence: 0.9,
+        },
+      ],
+      'chat_turn_merge',
+    );
+    const mergedSuggestions = mergeProductSetupSuggestedUpdates(localSuggestions, structuredSuggestions);
+    const result = reconcileProductSetupSuggestedUpdates(createInitialProductSetupRecord(facts), mergedSuggestions);
+
+    expect(result.record.fields.protocol_base).toMatchObject({ value: 'ERC-3643', status: 'user_stated' });
+    expect(result.record.fields.base_currency).toMatchObject({ value: 'SGD', status: 'user_stated' });
+    expect(result.record.fields.subscription_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(result.record.fields.redemption_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+  });
+
+  it('does not convert quarterly income distribution into a redemption schedule', () => {
+    const suggestions = createProductSetupSuggestionsFromText(
+      'Income will be distributed quarterly.',
+      'chat_turn_quarterly_income_only',
+    );
+    const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
+
+    expect(byField.get('income_treatment')).toBe('Distributing');
+    expect(byField.get('income_payout_cadence')).toBe('Quarterly');
+    expect(byField.has('redemption_schedule')).toBe(false);
+    expect(byField.has('redemption_cadence')).toBe(false);
+  });
+
+  it('keeps explicit ERC-20 selection ahead of conflicting assistant protocol recommendations', () => {
+    const localSuggestions = createProductSetupSuggestionsFromText(
+      'I will use ERC 20. Approved wallets only.',
+      'chat_turn_user_erc20',
+    );
+    const structuredSuggestions = createProductSetupSuggestionsFromStructuredUpdates(
+      [
+        {
+          field: 'protocol_base',
+          proposedValue: 'ERC-3643',
+          rationale: 'Whitelisted wallets suggest ERC-3643 as a recommended architecture target.',
+          confidence: 0.94,
+        },
+      ],
+      'chat_turn_user_erc20',
+    );
+    const mergedSuggestions = mergeProductSetupSuggestedUpdates(localSuggestions, structuredSuggestions);
+    const result = reconcileProductSetupSuggestedUpdates(createInitialProductSetupRecord(facts), mergedSuggestions);
+    const protocolRow = toProductSetupReadModel(result.record).profileRows.find((row) => row.id === 'protocol_target');
+
+    expect(result.record.fields.protocol_base).toMatchObject({ value: 'ERC-20', status: 'user_stated' });
+    expect(protocolRow).toMatchObject({ value: 'ERC-20', provenanceLabel: 'Stated' });
   });
 
   it('extracts natural income distribution confirmations and cadence', () => {

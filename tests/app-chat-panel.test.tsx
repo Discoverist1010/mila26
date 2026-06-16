@@ -400,7 +400,10 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Redemption Product Setup draft notes')).toHaveTextContent(/Redemption payout delay: 10 business days?/);
     expect(screen.getByLabelText('Redemption delay unit')).toHaveValue('');
     expect(screen.getByLabelText('Redemption delay duration')).toHaveValue('');
-    fireEvent.click(within(screen.getByLabelText('Redemption Product Setup draft notes')).getByRole('button', { name: 'Apply' }));
+    const redemptionPayoutDelayArticle = within(screen.getByLabelText('Redemption Product Setup draft notes'))
+      .getByText('Redemption payout delay')
+      .closest('.product-setup-starter-suggestion') as HTMLElement;
+    fireEvent.click(within(redemptionPayoutDelayArticle).getByRole('button', { name: 'Apply' }));
     expect(screen.getByLabelText('Redemption Product Setup draft notes')).toHaveTextContent('Applied');
     expect(screen.getByLabelText('Redemption delay unit')).toHaveValue('days');
     expect(screen.getByLabelText('Redemption delay duration')).toHaveValue('10');
@@ -469,19 +472,19 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Subscription stablecoins');
+      expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Subscription stablecoins: USDC');
     });
     fireEvent.click(
       within(screen.getByLabelText('Needs your review'))
-        .getAllByText('Subscription stablecoins')[0]
+        .getAllByText(/Subscription stablecoins: USDC/)[0]
         .closest('article')
-        ?.querySelector('button.workflow-button.primary-action') as HTMLElement,
+        ?.querySelector('button.workflow-button') as HTMLElement,
     );
 
     await waitFor(() => {
       expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Subscription mechanics');
     });
-    fireEvent.click(within(screen.getByLabelText('Product Setup downstream handoffs')).getByRole('button', { name: 'Send to Subscription' }));
+    expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Draft note sent');
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
     expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Subscription mechanics');
@@ -691,16 +694,17 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect.objectContaining({ status: 'missing', value: null, confirmedByUser: false }),
     );
     expect(requestBody.projectContext.productSetup.protocolRecommendationCaveat).toMatch(/selected only after the user confirms/i);
-    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Expected investors');
-    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('24');
-    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Subscription cadence');
+    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Investor Wallets');
+    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Expected investors: 24');
+    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Subscription cadence: Monthly');
     expect(screen.getByLabelText('Needs your review')).toHaveTextContent('3 item(s) waiting');
-    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('1 more item(s) hidden');
-    fireEvent.click(within(screen.getByLabelText('Needs your review')).getByRole('button', { name: 'Review all' }));
-    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Redemption cadence');
+    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Redemption cadence: Monthly');
     expect(screen.getByLabelText('What is this product')).toHaveTextContent('Instrument / structure');
-    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Needs review');
-    expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('No downstream details captured yet.');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Enabled: Monthly');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Stated');
+    expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Investor Wallets');
+    expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Subscription');
+    expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Redemption');
   });
 
   it('shows a safe error and deterministic Copilot answer when the backend is unavailable', async () => {

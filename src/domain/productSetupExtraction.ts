@@ -113,12 +113,6 @@ function extractTimingAssertions({
   if (initialRegisterMatch?.[1] && initialRegisterMatch[2]) {
     updates.push(createSuggestedUpdate('initial_investor_register_rule', `Initial register of ${initialRegisterMatch[1]} investors will be ${initialRegisterMatch[2].trim()}.`, 'User described the initial investor register process.', sourceRef, 0.78));
   }
-  if (normalized.includes('quarter')) {
-    updates.push(createSuggestedUpdate('redemption_schedule', 'Quarterly', 'User described quarterly redemption timing.', sourceRef, 0.82));
-  }
-  if (normalized.includes('weekly')) {
-    updates.push(createSuggestedUpdate('redemption_schedule', 'Weekly', 'User described weekly redemption timing.', sourceRef, 0.8));
-  }
   if (delayMatch?.[0]) {
     updates.push(createSuggestedUpdate('redemption_payout_delay', delayMatch[0], 'User described a redemption payout delay.', sourceRef, 0.84));
   }
@@ -206,7 +200,7 @@ function extractProtocolAssertions({
   if (/\berc-?\s*4626\b|\berc4626\b/.test(normalized)) {
     return [createSuggestedUpdate('protocol_base', 'ERC-4626', 'User selected ERC-4626 as the protocol base.', sourceRef, 0.88)];
   }
-  if (normalized.includes('erc-3643') || normalized.includes('erc3643')) {
+  if (/\berc-?\s*3643\b|\berc3643\b/.test(normalized)) {
     return [createSuggestedUpdate('protocol_base', 'ERC-3643', 'User asked for or accepted a permissioned token protocol base.', sourceRef, 0.86)];
   }
   if (/\brebasing\s+erc-?\s*20\b|\bcustom\s+erc-?\s*20\b.*\brebas/.test(normalized)) {

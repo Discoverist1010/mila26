@@ -53,6 +53,13 @@ export {
   createUnsupportedRequirementDecisionsFromText,
 } from './productSetupExtraction';
 
+export type ProductSetupSuggestionReconciliationResult = {
+  record: ProductSetupRecord;
+  acceptedUpdates: ProductSetupSuggestedUpdate[];
+  appliedUpdates: ProductSetupSuggestedUpdate[];
+  pendingUpdates: ProductSetupSuggestedUpdate[];
+};
+
 function createField(input: Omit<ProductSetupField, 'confirmedByUser'> & { confirmedByUser?: boolean }): ProductSetupField {
   return {
     ...input,
@@ -1065,6 +1072,116 @@ export function setProductSetupSuggestedUpdates(
     pendingSuggestedUpdates: [...byId.values()],
     updatedAtIso: new Date().toISOString(),
   };
+}
+
+export function mergeProductSetupSuggestedUpdates(
+  ...updateGroups: ProductSetupSuggestedUpdate[][]
+): ProductSetupSuggestedUpdate[] {
+  const byField = new Map<ProductSetupFieldKey, ProductSetupSuggestedUpdate>();
+
+  updateGroups.flat().forEach((update) => {
+    const existing = byField.get(update.fieldKey);
+    if (!existing) {
+      byField.set(update.fieldKey, update);
+      return;
+    }
+
+    if (productSetupValuesEqual(existing.proposedValue, update.proposedValue)) {
+      if (existing.sourceType !== update.sourceType) {
+        byField.set(update.fieldKey, existing.sourceType === 'user_message' ? existing : update);
+        return;
+      }
+      byField.set(update.fieldKey, update.confidence > existing.confidence ? update : existing);
+      return;
+    }
+
+    if (existing.fieldKey === 'protocol_base' && existing.sourceType === 'user_message') return;
+    if (existing.sourceType === 'assistant_inference' && update.sourceType === 'user_message') {
+      byField.set(update.fieldKey, update);
+      return;
+    }
+    if (existing.sourceType === update.sourceType && update.confidence >= existing.confidence + 0.08) {
+      byField.set(update.fieldKey, update);
+    }
+  });
+
+  return [...byField.values()];
+}
+
+export function reconcileProductSetupSuggestedUpdates(
+  record: ProductSetupRecord,
+  updates: ProductSetupSuggestedUpdate[],
+): ProductSetupSuggestionReconciliationResult {
+  const acceptedUpdates = filterProductSetupSuggestedUpdates(record, updates);
+  const appliedUpdates = acceptedUpdates.filter(shouldApplyProductSetupUpdateDirectly);
+  const pendingUpdates = acceptedUpdates.filter((update) => !shouldApplyProductSetupUpdateDirectly(update));
+  const appliedFieldKeys = new Set(appliedUpdates.map((update) => update.fieldKey));
+
+  const recordAfterAppliedUpdates = appliedUpdates.reduce((currentRecord, update) => {
+    const updatedRecord = updateProductSetupField(currentRecord, {
+      fieldKey: update.fieldKey,
+      value: update.proposedValue,
+      sourceType: update.sourceType,
+      sourceRef: update.sourceRef,
+      status: 'user_stated',
+      confidence: update.confidence,
+    });
+
+    return {
+      ...updatedRecord,
+      pendingSuggestedUpdates: updatedRecord.pendingSuggestedUpdates.filter(
+        (pendingUpdate) => pendingUpdate.fieldKey !== update.fieldKey,
+      ),
+    };
+  }, record);
+
+  const recordAfterPendingUpdates = pendingUpdates.length > 0
+    ? setProductSetupSuggestedUpdates(recordAfterAppliedUpdates, pendingUpdates)
+    : recordAfterAppliedUpdates;
+
+  return {
+    record: {
+      ...recordAfterPendingUpdates,
+      pendingSuggestedUpdates: recordAfterPendingUpdates.pendingSuggestedUpdates.filter(
+        (pendingUpdate) => !appliedFieldKeys.has(pendingUpdate.fieldKey),
+      ),
+    },
+    acceptedUpdates,
+    appliedUpdates,
+    pendingUpdates,
+  };
+}
+
+const directUserStatedProductSetupFields = new Set<ProductSetupFieldKey>([
+  'product_name',
+  'token_symbol',
+  'product_type',
+  'base_currency',
+  'income_treatment',
+  'protocol_base',
+  'expected_investor_count',
+  'investor_wallet_rule',
+  'whitelisted_wallets_required',
+  'subscription_cadence',
+  'subscription_stablecoins',
+  'redemption_cadence',
+  'income_payout_cadence',
+  'redemption_payout_cadence',
+  'burn_lock_rule',
+  'nav_cadence',
+  'nav_source',
+  'initial_distribution_date',
+  'initial_investor_register_rule',
+  'maturity_date',
+  'maturity_closeout_rule',
+]);
+
+function shouldApplyProductSetupUpdateDirectly(update: ProductSetupSuggestedUpdate): boolean {
+  if (update.sourceType !== 'user_message') return false;
+
+  if (!directUserStatedProductSetupFields.has(update.fieldKey)) return false;
+  if (update.fieldKey === 'income_treatment') return update.confidence >= 0.72;
+  return update.confidence >= 0.78;
 }
 
 export function filterProductSetupSuggestedUpdates(

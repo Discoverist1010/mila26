@@ -55,15 +55,9 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await expect(suggestedUpdates).toContainText('25');
   await expect(suggestedUpdates).toContainText('Subscription stablecoins');
   await expect(suggestedUpdates).toContainText('USDC');
-  await expect(suggestedUpdates).toContainText('Redemption schedule');
+  await expect(suggestedUpdates).toContainText('Redemption cadence');
   await expect(suggestedUpdates).toContainText('Quarterly');
   await expect(page.getByLabel('Next suggested action')).toHaveCount(0);
-
-  await suggestedUpdates
-    .locator('article')
-    .filter({ hasText: 'Expected investors' })
-    .getByRole('button', { name: 'Confirm' })
-    .click();
 
   await expect(productSetupArtifact.getByLabel('Product Setup downstream handoffs')).toContainText('Investor eligibility and wallet rules');
   await expect(productSetupArtifact.getByLabel('Product Setup downstream handoffs')).toContainText('Expected investors: 25');
@@ -72,11 +66,6 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await expect(productSetupArtifact.getByLabel('Product Setup just-in-time explanations')).toHaveCount(0);
   await expect(productSetupArtifact.getByLabel('Product Setup missing fields')).toHaveCount(0);
 
-  await suggestedUpdates
-    .locator('article')
-    .filter({ hasText: 'Subscription stablecoins' })
-    .getByRole('button', { name: 'Confirm' })
-    .click();
   await expect(productSetupArtifact.getByLabel('Product Setup downstream handoffs')).toContainText('Subscription mechanics');
   await productSetupArtifact.getByLabel('Product Setup downstream handoffs').getByRole('button', { name: 'Send to Subscription' }).click();
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
