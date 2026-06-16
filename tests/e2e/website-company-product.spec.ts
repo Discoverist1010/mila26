@@ -36,6 +36,19 @@ test('website presents the mockup-based company page and beta request form', asy
     'One workspace across the tokenised product lifecycle',
   );
 
+  await expect(page.getByTestId('zilios-spine-marker-01')).toHaveAttribute('data-active', 'true');
+  await page.locator('#operating-model').scrollIntoViewIfNeeded();
+  await expect(page.getByTestId('zilios-spine-marker-02')).toHaveAttribute('data-active', 'true');
+  await page.locator('#product').scrollIntoViewIfNeeded();
+  await expect(page.getByTestId('zilios-spine-marker-03')).toHaveAttribute('data-active', 'true');
+  const spineFillHeight = await page.getByTestId('zilios-spine-fill').evaluate((element) =>
+    Number.parseFloat(window.getComputedStyle(element).height),
+  );
+  expect(spineFillHeight).toBeGreaterThan(0);
+
+  await page.getByRole('heading', {
+    name: 'Tokenise an investment product without building the full technical and ops teams first.',
+  }).scrollIntoViewIfNeeded();
   await page.getByRole('button', { name: 'Request beta access' }).click();
   const dialog = page.getByRole('dialog', { name: 'Request beta access' });
   await expect(dialog).toBeVisible();

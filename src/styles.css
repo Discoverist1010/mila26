@@ -54,10 +54,11 @@
 }
 
 .zilios-trace {
-  animation: zilios-draw-trace 9s ease-in-out infinite alternate;
+  animation: zilios-stream-trace 8s linear infinite;
   fill: none;
-  stroke-dasharray: 420;
-  stroke-dashoffset: 80;
+  stroke-dasharray: 18 32;
+  stroke-dashoffset: 0;
+  stroke-linecap: round;
 }
 
 .zilios-trace-2 {
@@ -69,8 +70,29 @@
 }
 
 .zilios-token {
-  animation: zilios-token-float 7s ease-in-out infinite;
+  opacity: 0.66;
+}
+
+.zilios-token rect {
+  animation: zilios-token-pulse 3.6s ease-in-out infinite;
   transform-origin: center;
+  transform-box: fill-box;
+}
+
+.zilios-token-teal {
+  fill: var(--zilios-green);
+}
+
+.zilios-token-amber {
+  fill: var(--zilios-orange);
+}
+
+.zilios-token-2 rect {
+  animation-delay: 0.5s;
+}
+
+.zilios-token-3 rect {
+  animation-delay: 1s;
 }
 
 .zilios-hero-inner {
@@ -85,7 +107,7 @@
   align-items: center;
   color: #fff;
   display: inline-flex;
-  gap: 12px;
+  gap: 22px;
   margin-bottom: 86px;
   text-decoration: none;
 }
@@ -93,14 +115,14 @@
 .zilios-brand img {
   background: #fff;
   border-radius: 8px;
-  height: 34px;
+  height: 68px;
   object-fit: cover;
-  width: 34px;
+  width: 68px;
 }
 
 .zilios-brand span {
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 13px;
+  font-size: 26px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -257,11 +279,22 @@
 }
 
 .zilios-spine-line {
-  background: linear-gradient(180deg, var(--zilios-green-dark), rgb(46 127 117 / 0.12));
+  background: var(--zilios-line);
   bottom: 80px;
   left: 24px;
   position: absolute;
   top: 92px;
+  width: 1px;
+}
+
+.zilios-spine-fill {
+  background: var(--zilios-orange);
+  height: var(--zilios-spine-progress, 0%);
+  left: 24px;
+  max-height: calc(100% - 172px);
+  position: absolute;
+  top: 92px;
+  transition: height 180ms ease;
   width: 1px;
 }
 
@@ -270,7 +303,7 @@
   background: var(--zilios-bg);
   border: 1px solid var(--zilios-line);
   border-radius: 50%;
-  color: var(--zilios-green-dark);
+  color: var(--zilios-muted);
   display: flex;
   font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
@@ -278,8 +311,23 @@
   height: 48px;
   justify-content: center;
   margin-bottom: 338px;
-  position: relative;
+  position: sticky;
+  top: 50vh;
+  transform: translateY(-50%);
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
   width: 48px;
+  z-index: 1;
+}
+
+.zilios-spine-marker.active {
+  background: #fff7ed;
+  border-color: var(--zilios-orange);
+  box-shadow: 0 0 0 6px rgb(239 159 39 / 0.12);
+  color: #b15f00;
 }
 
 .zilios-section {
@@ -495,24 +543,26 @@
   outline: 3px solid rgb(93 202 165 / 0.22);
 }
 
-@keyframes zilios-draw-trace {
-  from {
-    stroke-dashoffset: 150;
+@keyframes zilios-stream-trace {
+  0% {
+    stroke-dashoffset: 0;
   }
 
-  to {
-    stroke-dashoffset: 0;
+  100% {
+    stroke-dashoffset: -200;
   }
 }
 
-@keyframes zilios-token-float {
+@keyframes zilios-token-pulse {
   0%,
   100% {
-    transform: translateY(0) rotate(45deg);
+    opacity: 0.42;
+    transform: scale(0.74);
   }
 
   50% {
-    transform: translateY(-12px) rotate(45deg);
+    opacity: 0.92;
+    transform: scale(1.18);
   }
 }
 
@@ -569,6 +619,10 @@
     left: 18px;
   }
 
+  .zilios-spine-fill {
+    left: 18px;
+  }
+
   .zilios-spine-marker {
     height: 38px;
     margin-bottom: 372px;
@@ -594,6 +648,19 @@
 
   .zilios-brand {
     margin-bottom: 46px;
+  }
+
+  .zilios-brand {
+    gap: 16px;
+  }
+
+  .zilios-brand img {
+    height: 54px;
+    width: 54px;
+  }
+
+  .zilios-brand span {
+    font-size: 21px;
   }
 
   .zilios-hero h1 {

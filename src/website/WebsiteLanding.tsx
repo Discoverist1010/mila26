@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent } from 'react';
 
 const heroPills = [
   'AI structures the work',
@@ -75,6 +75,7 @@ const productItems = [
 ];
 
 type Expertise = 'blockchain' | 'investments' | 'post_trade' | 'other';
+type SpineSectionId = 'user-outcome' | 'operating-model' | 'product';
 
 const expertiseLabels: Record<Expertise, string> = {
   blockchain: 'Blockchain',
@@ -83,10 +84,19 @@ const expertiseLabels: Record<Expertise, string> = {
   other: 'Others: please specify',
 };
 
+const spineMarkerItems: Array<{ id: SpineSectionId; label: string }> = [
+  { id: 'user-outcome', label: '01' },
+  { id: 'operating-model', label: '02' },
+  { id: 'product', label: '03' },
+];
+
 export function WebsiteLanding() {
   const [isBetaModalOpen, setIsBetaModalOpen] = useState(false);
   const [expertise, setExpertise] = useState<Expertise>('blockchain');
+  const [activeSpineSection, setActiveSpineSection] = useState<SpineSectionId>('user-outcome');
+  const [spineProgress, setSpineProgress] = useState(0);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const spineRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     document.title = 'ZiLiOS';
@@ -108,6 +118,66 @@ export function WebsiteLanding() {
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [isBetaModalOpen]);
+
+  useEffect(() => {
+    let animationFrameId: number | null = null;
+
+    function updateSpine() {
+      animationFrameId = null;
+      const spineElement = spineRef.current;
+      if (!spineElement) {
+        return;
+      }
+
+      const spineRect = spineElement.getBoundingClientRect();
+      const viewportMidpoint = window.innerHeight / 2;
+      const lineTop = spineRect.top + 92;
+      const lineBottom = spineRect.bottom - 80;
+      const lineHeight = Math.max(1, lineBottom - lineTop);
+      const nextProgress = Math.max(0, Math.min(100, ((viewportMidpoint - lineTop) / lineHeight) * 100));
+
+      setSpineProgress((currentProgress) =>
+        Math.abs(currentProgress - nextProgress) < 0.5 ? currentProgress : nextProgress,
+      );
+
+      let nextActiveSection = spineMarkerItems[0].id;
+      for (const item of spineMarkerItems) {
+        const section = document.getElementById(item.id);
+        if (!section) continue;
+
+        const sectionRect = section.getBoundingClientRect();
+        if (sectionRect.top <= viewportMidpoint) {
+          nextActiveSection = item.id;
+        }
+        if (sectionRect.top <= viewportMidpoint && sectionRect.bottom >= viewportMidpoint) {
+          break;
+        }
+      }
+
+      setActiveSpineSection((currentSection) =>
+        currentSection === nextActiveSection ? currentSection : nextActiveSection,
+      );
+    }
+
+    function requestSpineUpdate() {
+      if (animationFrameId !== null) {
+        return;
+      }
+      animationFrameId = window.requestAnimationFrame(updateSpine);
+    }
+
+    updateSpine();
+    window.addEventListener('scroll', requestSpineUpdate, { passive: true });
+    window.addEventListener('resize', requestSpineUpdate);
+
+    return () => {
+      window.removeEventListener('scroll', requestSpineUpdate);
+      window.removeEventListener('resize', requestSpineUpdate);
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, []);
 
   function openBetaModal() {
     setIsBetaModalOpen(true);
@@ -152,28 +222,34 @@ export function WebsiteLanding() {
         <svg className="zilios-hero-bg" viewBox="0 0 1280 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
           <path
             className="zilios-trace zilios-trace-1"
-            d="M520 80 C 760 40, 900 220, 1180 140 S 1340 260, 1480 200"
+            d="M64 92 C 244 36, 432 128, 620 96 S 980 42, 1228 122"
             stroke="#5DCAA5"
             strokeWidth="1.5"
             opacity="0.3"
           />
           <path
             className="zilios-trace zilios-trace-2"
-            d="M460 320 C 700 380, 880 240, 1100 360 S 1320 320, 1480 420"
+            d="M64 318 C 250 374, 442 284, 622 318 S 952 420, 1228 334"
             stroke="#5DCAA5"
             strokeWidth="1.5"
             opacity="0.22"
           />
           <path
             className="zilios-trace zilios-trace-3"
-            d="M600 540 C 820 480, 980 600, 1180 500 S 1360 560, 1480 520"
+            d="M64 536 C 260 482, 458 566, 668 526 S 986 458, 1228 522"
             stroke="#EF9F27"
             strokeWidth="1.5"
             opacity="0.22"
           />
-          <rect className="zilios-token" x="897" y="217" width="8" height="8" fill="#EF9F27" opacity="0.5" transform="rotate(45 901 221)" />
-          <rect className="zilios-token" x="1097" y="357" width="8" height="8" fill="#5DCAA5" opacity="0.5" transform="rotate(45 1101 361)" />
-          <rect className="zilios-token" x="977" y="597" width="8" height="8" fill="#EF9F27" opacity="0.5" transform="rotate(45 981 601)" />
+          <g className="zilios-token zilios-token-teal zilios-token-1" transform="translate(1010 154) rotate(45)">
+            <rect x="-2.4" y="-2.4" width="4.8" height="4.8" />
+          </g>
+          <g className="zilios-token zilios-token-amber zilios-token-2" transform="translate(960 340) rotate(45)">
+            <rect x="-2.4" y="-2.4" width="4.8" height="4.8" />
+          </g>
+          <g className="zilios-token zilios-token-teal zilios-token-3" transform="translate(760 512) rotate(45)">
+            <rect x="-2.4" y="-2.4" width="4.8" height="4.8" />
+          </g>
         </svg>
 
         <div className="zilios-page zilios-hero-inner">
@@ -223,11 +299,26 @@ export function WebsiteLanding() {
 
       <div className="zilios-page">
         <div className="zilios-spine-wrap">
-          <aside className="zilios-spine" aria-hidden="true">
+          <aside
+            className="zilios-spine"
+            ref={spineRef}
+            aria-hidden="true"
+            data-testid="zilios-spine"
+            style={{ '--zilios-spine-progress': `${spineProgress}%` } as CSSProperties}
+          >
             <div className="zilios-spine-line" />
-            <div className="zilios-spine-marker">01</div>
-            <div className="zilios-spine-marker">02</div>
-            <div className="zilios-spine-marker">03</div>
+            <div className="zilios-spine-fill" data-testid="zilios-spine-fill" />
+            {spineMarkerItems.map((item) => (
+              <div
+                className={`zilios-spine-marker ${activeSpineSection === item.id ? 'active' : ''}`}
+                data-active={activeSpineSection === item.id ? 'true' : 'false'}
+                data-section={item.id}
+                data-testid={`zilios-spine-marker-${item.label}`}
+                key={item.id}
+              >
+                {item.label}
+              </div>
+            ))}
           </aside>
 
           <div className="zilios-section-stack">
