@@ -5,6 +5,7 @@ import {
   acknowledgeProductSetupDeploymentWarnings,
   confirmProductSetupUpdate,
   createProductSetupPackMarkdown,
+  createProductSetupPrdDocxContent,
   createInitialProductSetupRecord,
   createProductSetupSuggestionsFromStructuredUpdates,
   createProductSetupSuggestionsFromText,
@@ -59,7 +60,7 @@ describe('Product Setup record', () => {
   it('starts protocol base blank while still offering a separate protocol recommendation', () => {
     const record = createInitialProductSetupRecord(facts);
     const readModel = toProductSetupReadModel(record);
-    const protocolTargetRow = readModel.profileRows.find((row) => row.id === 'protocol_target');
+    const protocolTargetRow = readModel.profileRows.find((row) => row.id === 'protocol_base');
 
     expect(record.fields.product_name.status).toBe('missing');
     expect(record.fields.product_name.value).toBeUndefined();
@@ -73,7 +74,7 @@ describe('Product Setup record', () => {
     expect(record.fields.investor_wallet_rule.value).toBeUndefined();
     expect(record.fields.protocol_base.status).toBe('missing');
     expect(record.fields.protocol_base.value).toBeUndefined();
-    expect(protocolTargetRow).toMatchObject({ value: 'To be filled', provenanceLabel: 'Missing' });
+    expect(protocolTargetRow).toMatchObject({ value: 'Customised ERC-20 recommended; not selected', provenanceLabel: 'Needs review' });
   });
 
   it('normalizes old starter identity defaults back to missing Product Setup inputs', () => {
@@ -181,20 +182,14 @@ describe('Product Setup record', () => {
     const readModel = toProductSetupReadModel(record);
     const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
     const incomeRow = readModel.profileRows.find((row) => row.id === 'income_treatment');
-    const maturityRow = readModel.profileRows.find((row) => row.id === 'term');
-    const windDownRow = readModel.profileRows.find((row) => row.id === 'wind_down_switch');
+    const durationRow = readModel.profileRows.find((row) => row.id === 'duration_months');
 
     expect(byField.get('base_currency')).toBe('USD');
     expect(byField.get('income_treatment')).toBe('No income distribution');
     expect(byField.has('income_payout_cadence')).toBe(false);
     expect(byField.get('maturity_date')).toBe('3 years after IPO date of 8 Nov 2026');
     expect(incomeRow).toMatchObject({ value: 'No income distribution', provenanceLabel: 'Needs review' });
-    expect(maturityRow).toMatchObject({ label: 'Term / maturity', value: '3 years after IPO date of 8 Nov 2026', provenanceLabel: 'Needs review' });
-    expect(windDownRow).toMatchObject({
-      label: 'Maturity workflow',
-      value: 'Enabled by term: 3 years after IPO date of 8 Nov 2026',
-      provenanceLabel: 'Needs review',
-    });
+    expect(durationRow).toMatchObject({ label: 'Duration of product in months', value: '36 months', provenanceLabel: 'Needs review' });
   });
 
   it('extracts stated protocol, maturity date, and income distribution into pending profile rows', () => {
@@ -205,15 +200,13 @@ describe('Product Setup record', () => {
     const record = setProductSetupSuggestedUpdates(createInitialProductSetupRecord(facts), suggestions);
     const readModel = toProductSetupReadModel(record);
     const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
-    const protocolRow = readModel.profileRows.find((row) => row.id === 'protocol_target');
-    const maturityRow = readModel.profileRows.find((row) => row.id === 'term');
+    const protocolRow = readModel.profileRows.find((row) => row.id === 'protocol_base');
     const incomeRow = readModel.profileRows.find((row) => row.id === 'income_treatment');
 
     expect(byField.get('protocol_base')).toBe('ERC-20');
     expect(byField.get('maturity_date')).toBe('2029-11-08');
     expect(byField.get('income_treatment')).toBe('Distributing');
     expect(protocolRow).toMatchObject({ value: 'ERC-20', provenanceLabel: 'Needs review' });
-    expect(maturityRow).toMatchObject({ value: '2029-11-08', provenanceLabel: 'Needs review' });
     expect(incomeRow).toMatchObject({ value: 'Distributing', provenanceLabel: 'Needs review' });
   });
 
@@ -224,12 +217,12 @@ describe('Product Setup record', () => {
     );
     const result = reconcileProductSetupSuggestedUpdates(createInitialProductSetupRecord(facts), suggestions);
     const readModel = toProductSetupReadModel(result.record);
-    const protocolRow = readModel.profileRows.find((row) => row.id === 'protocol_target');
+    const protocolRow = readModel.profileRows.find((row) => row.id === 'protocol_base');
     const currencyRow = readModel.profileRows.find((row) => row.id === 'base_currency');
-    const subscriptionRow = readModel.profileRows.find((row) => row.id === 'subscription_switch');
-    const redemptionRow = readModel.profileRows.find((row) => row.id === 'redemption_switch');
+    const subscriptionRow = readModel.profileRows.find((row) => row.id === 'subscription_cadence');
+    const redemptionRow = readModel.profileRows.find((row) => row.id === 'redemption_cadence');
     const incomeRow = readModel.profileRows.find((row) => row.id === 'income_treatment');
-    const maturityRow = readModel.profileRows.find((row) => row.id === 'term');
+    const durationRow = readModel.profileRows.find((row) => row.id === 'duration_months');
 
     expect(result.record.fields.protocol_base).toMatchObject({ value: 'ERC-3643', status: 'user_stated' });
     expect(result.record.fields.base_currency).toMatchObject({ value: 'SGD', status: 'user_stated' });
@@ -243,11 +236,11 @@ describe('Product Setup record', () => {
     });
     expect(protocolRow).toMatchObject({ value: 'ERC-3643', provenanceLabel: 'Stated' });
     expect(currencyRow).toMatchObject({ value: 'SGD', provenanceLabel: 'Stated' });
-    expect(subscriptionRow).toMatchObject({ value: 'Enabled: Quarterly', provenanceLabel: 'Stated' });
-    expect(redemptionRow).toMatchObject({ value: 'Enabled: Quarterly', provenanceLabel: 'Stated' });
-    expect(incomeRow).toMatchObject({ value: 'Distributing; payout cadence: Quarterly', provenanceLabel: 'Stated' });
-    expect(maturityRow).toMatchObject({
-      value: '3 years after IPO date of 8 Nov 2026',
+    expect(subscriptionRow).toMatchObject({ value: 'Quarterly', provenanceLabel: 'Stated' });
+    expect(redemptionRow).toMatchObject({ value: 'Quarterly', provenanceLabel: 'Stated' });
+    expect(incomeRow).toMatchObject({ value: 'Distributing', provenanceLabel: 'Stated' });
+    expect(durationRow).toMatchObject({
+      value: '36 months',
       provenanceLabel: 'Stated',
     });
   });
@@ -314,7 +307,7 @@ describe('Product Setup record', () => {
     );
     const mergedSuggestions = mergeProductSetupSuggestedUpdates(localSuggestions, structuredSuggestions);
     const result = reconcileProductSetupSuggestedUpdates(createInitialProductSetupRecord(facts), mergedSuggestions);
-    const protocolRow = toProductSetupReadModel(result.record).profileRows.find((row) => row.id === 'protocol_target');
+    const protocolRow = toProductSetupReadModel(result.record).profileRows.find((row) => row.id === 'protocol_base');
 
     expect(result.record.fields.protocol_base).toMatchObject({ value: 'ERC-20', status: 'user_stated' });
     expect(protocolRow).toMatchObject({ value: 'ERC-20', provenanceLabel: 'Stated' });
@@ -333,7 +326,7 @@ describe('Product Setup record', () => {
     expect(byField.get('income_treatment')).toBe('Distributing');
     expect(byField.get('income_payout_cadence')).toBe('Quarterly');
     expect(incomeRow).toMatchObject({
-      value: 'Distributing; payout cadence: Quarterly',
+      value: 'Distributing',
       provenanceLabel: 'Needs review',
     });
   });
@@ -379,14 +372,14 @@ describe('Product Setup record', () => {
       ),
     );
     const readModel = toProductSetupReadModel(withSuggestions);
-    const subscriptionRow = readModel.profileRows.find((row) => row.id === 'subscription_switch');
-    const redemptionRow = readModel.profileRows.find((row) => row.id === 'redemption_switch');
-    const termRow = readModel.profileRows.find((row) => row.id === 'term');
+    const subscriptionRow = readModel.profileRows.find((row) => row.id === 'subscription_cadence');
+    const redemptionRow = readModel.profileRows.find((row) => row.id === 'redemption_cadence');
+    const durationRow = readModel.profileRows.find((row) => row.id === 'duration_months');
 
     expect(withSuggestions.fields.subscription_cadence.status).toBe('missing');
-    expect(subscriptionRow).toMatchObject({ value: 'Enabled: Quarterly', provenanceLabel: 'Needs review' });
-    expect(redemptionRow).toMatchObject({ value: 'Enabled: Quarterly', provenanceLabel: 'Needs review' });
-    expect(termRow).toMatchObject({ value: '3 years after launch', provenanceLabel: 'Needs review' });
+    expect(subscriptionRow).toMatchObject({ value: 'Quarterly', provenanceLabel: 'Needs review' });
+    expect(redemptionRow).toMatchObject({ value: 'Quarterly', provenanceLabel: 'Needs review' });
+    expect(durationRow).toMatchObject({ value: '36 months', provenanceLabel: 'Needs review' });
   });
 
   it('does not let assistant protocol recommendations override a user-stated protocol choice', () => {
@@ -411,9 +404,7 @@ describe('Product Setup record', () => {
         'chat_turn_assistant_recommendation',
       ),
     );
-    const protocolRow = toProductSetupReadModel(withAssistantRecommendation).profileRows.find(
-      (row) => row.id === 'protocol_target',
-    );
+    const protocolRow = toProductSetupReadModel(withAssistantRecommendation).profileRows.find((row) => row.id === 'protocol_base');
 
     expect(withAssistantRecommendation.fields.protocol_base.value).toBe('ERC-20');
     expect(withAssistantRecommendation.pendingSuggestedUpdates.some((update) => update.fieldKey === 'protocol_base')).toBe(false);
@@ -458,7 +449,7 @@ describe('Product Setup record', () => {
       status: 'draft_note_ready',
       title: 'Subscription mechanics',
     });
-    expect(subscriptionHandoff?.detail).toContain('Subscription stablecoins: USDC');
+    expect(subscriptionHandoff?.detail).toContain('Subscription stablecoin type: USDC');
     expect(subscriptionHandoff?.suggestions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -470,7 +461,7 @@ describe('Product Setup record', () => {
         }),
       ]),
     );
-    expect(redemptionHandoff?.detail).toContain('Redemption cadence: Quarterly');
+    expect(redemptionHandoff?.detail).toContain('Redemption / burn cadence: Quarterly');
     expect(redemptionHandoff?.suggestions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -561,7 +552,8 @@ describe('Product Setup record', () => {
     const readModel = toProductSetupReadModel(deferred);
 
     expect(deferred.fields.admin_wallet.status).toBe('deferred');
-    expect(readModel.packPreview.canDownloadDraft).toBe(true);
+    expect(readModel.packPreview.status).toBe('Draft');
+    expect(readModel.packPreview.canDownloadArtifacts).toBe(false);
   });
 
   it('classifies wallet follow-up responses by intent', () => {
@@ -642,17 +634,28 @@ describe('Product Setup record', () => {
     );
   });
 
-  it('generates a Product Setup Pack with definitions, protocol fit, provenance, and unsupported decisions', () => {
+  it('generates a Product Setup PRD with definitions, protocol fit, provenance, and unsupported decisions', () => {
     const record = setUnsupportedRequirementDecisions(
       createInitialProductSetupRecord(facts),
       createUnsupportedRequirementDecisionsFromText('I need conditional transfer with clawback.', 'chat_turn_pack'),
     );
     const markdown = createProductSetupPackMarkdown(record);
 
-    expect(markdown).toContain('# ZiLi-OS Product Setup Pack');
+    expect(markdown).toContain('# ZiLi-OS Product Requirements Document');
     expect(markdown).toContain('## Definitions Used In This Product Setup');
     expect(markdown).toContain('Recommended architecture target');
     expect(markdown).toContain('Current executable prototype');
     expect(markdown).toContain('Conditional transfers with clawback');
+  });
+
+  it('generates a real DOCX package for the Product Setup PRD download', () => {
+    const docx = createProductSetupPrdDocxContent(createInitialProductSetupRecord(facts));
+    const packageText = new TextDecoder().decode(docx);
+
+    expect(docx[0]).toBe(0x50);
+    expect(docx[1]).toBe(0x4b);
+    expect(packageText).toContain('[Content_Types].xml');
+    expect(packageText).toContain('word/document.xml');
+    expect(packageText).toContain('ZiLi-OS Product Requirements Document');
   });
 });

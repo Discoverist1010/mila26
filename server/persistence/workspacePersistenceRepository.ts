@@ -376,7 +376,10 @@ function artifactIdentity(record: WorkspaceArtifactRecordInput): { artifactId: s
     case 'evidence_lite':
       return { artifactId: record.artifactPayload.evidenceId, artifactStatus: record.artifactPayload.status };
     case 'product_setup_pack':
-      return { artifactId: `product-setup-pack-${record.artifactPayload.recordId}`, artifactStatus: 'generated' };
+      return {
+        artifactId: record.artifactPayload.artifactId ?? `product-setup-pack-${record.artifactPayload.recordId}`,
+        artifactStatus: record.artifactPayload.packStatus ?? 'generated',
+      };
   }
 }
 

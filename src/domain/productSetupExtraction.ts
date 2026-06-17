@@ -48,6 +48,11 @@ function extractIdentityAndTypeAssertions({
     normalized.match(/\b(?:with\s+)?([a-z]{3,6})\s+as\s+(?:a\s+)?base\s+currency\b/) ??
     normalized.match(/\bbase\s+currency\s*(?:is|=|:)?\s*([a-z]{3,6})\b/);
   const productTypeMatch = normalized.match(/\b(?:it\s+is\s+)?(?:a\s+)?(pooled\s+fund|private\s+credit\s+fund|credit\s+fund|investment\s+fund|fund|note|bond|portfolio)\b/);
+  const wrapperMatch = normalized.match(/\b(fund|bond|equity|private asset)\b/);
+  const assetClassMatch = normalized.match(/\b(equities|equity|bonds|private credit|money market fund|mixed portfolio)\b/);
+  const structureMatch = normalized.match(/\b(open[-\s]?ended|closed[-\s]?ended|fixed maturity)\b/);
+  const offeringMatch = normalized.match(/\b(restricted|private|institutional[-\s]?only|retail|all)\s+(?:offering|distribution|product)\b/);
+  const investorTypeMatch = normalized.match(/\b(retail|high net worth|accredited investor|institutional|all)\s+(?:investors?|holders?)\b/);
   const investorMatch = normalized.match(/(?:about\s*)?(\d{1,3})(?:\s*-\s*\d{1,3})?\s+(?:investors|wallets)|(\d{1,3})\s*-\s*(\d{1,3})\s+investors/);
 
   if (productNameMatch?.[1]) {
@@ -59,11 +64,28 @@ function extractIdentityAndTypeAssertions({
   if (productTypeMatch?.[1]) {
     updates.push(createSuggestedUpdate('product_type', titleCaseProductSetupValue(productTypeMatch[1]), 'User described the product type.', sourceRef, 0.84));
   }
+  if (wrapperMatch?.[1]) {
+    updates.push(createSuggestedUpdate('product_wrapper', titleCaseProductSetupValue(wrapperMatch[1]), 'User described the product wrapper.', sourceRef, 0.82));
+  }
+  if (assetClassMatch?.[1]) {
+    updates.push(createSuggestedUpdate('underlying_asset_class', titleCaseProductSetupValue(assetClassMatch[1]), 'User described the underlying asset class.', sourceRef, 0.82));
+  }
+  if (structureMatch?.[1]) {
+    updates.push(createSuggestedUpdate('product_structure', titleCaseProductSetupValue(structureMatch[1].replace(/\s+/, '-')), 'User described the product structure.', sourceRef, 0.82));
+  }
+  if (offeringMatch?.[1]) {
+    updates.push(createSuggestedUpdate('offering_type', titleCaseProductSetupValue(offeringMatch[1].replace('-', ' ')), 'User described the offering type.', sourceRef, 0.78));
+  }
+  if (investorTypeMatch?.[1]) {
+    updates.push(createSuggestedUpdate('eligible_investor_type', titleCaseProductSetupValue(investorTypeMatch[1]), 'User described the eligible investor type.', sourceRef, 0.8));
+  }
   if (baseCurrencyMatch?.[1]) {
     updates.push(createSuggestedUpdate('base_currency', baseCurrencyMatch[1].toUpperCase(), 'User stated the base currency.', sourceRef, 0.88));
   }
   if (investorMatch?.[1] || investorMatch?.[3]) {
-    updates.push(createSuggestedUpdate('expected_investor_count', Number(investorMatch[1] ?? investorMatch[3]), 'User described expected investor scale.', sourceRef, 0.88));
+    const investorCount = Number(investorMatch[1] ?? investorMatch[3]);
+    updates.push(createSuggestedUpdate('expected_investor_count', investorCount, 'User described expected investor scale.', sourceRef, 0.88));
+    updates.push(createSuggestedUpdate('maximum_investor_count', investorCount, 'User described the investor cap for the product.', sourceRef, 0.82));
   }
 
   return updates;
@@ -102,10 +124,16 @@ function extractTimingAssertions({
     );
 
   if (ipoDateMatch?.[1]) {
-    updates.push(createSuggestedUpdate('initial_distribution_date', normalizeProductSetupDate(ipoDateMatch[1]), 'User described the tentative initial distribution or IPO date.', sourceRef, 0.8));
+    const normalizedDate = normalizeProductSetupDate(ipoDateMatch[1]);
+    updates.push(createSuggestedUpdate('product_launch_date', normalizedDate, 'User described the product launch or IPO date.', sourceRef, 0.84));
+    updates.push(createSuggestedUpdate('initial_distribution_date', normalizedDate, 'User described the tentative initial distribution or IPO date.', sourceRef, 0.8));
   }
   if (maturityTermMatch?.[1]) {
-    updates.push(createSuggestedUpdate('maturity_date', normalizeMaturityTerm(maturityTermMatch[1]), 'User described the product maturity term.', sourceRef, 0.86));
+    const durationMonths = durationMonthsFromTerm(maturityTermMatch[1]);
+    if (durationMonths) {
+      updates.push(createSuggestedUpdate('duration_months', durationMonths, 'User described the product duration.', sourceRef, 0.86));
+    }
+    updates.push(createSuggestedUpdate('maturity_date', normalizeMaturityTerm(maturityTermMatch[1]), 'User described the product maturity term.', sourceRef, 0.82));
   }
   if (!maturityTermMatch?.[1] && maturityDateMatch?.[1]) {
     updates.push(createSuggestedUpdate('maturity_date', normalizeProductSetupDate(maturityDateMatch[1]), 'User stated the maturity date.', sourceRef, 0.88));
@@ -141,15 +169,32 @@ function extractSettlementAndWalletAssertions({
 }: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
   const updates: ProductSetupSuggestedUpdate[] = [];
 
+  if (/\bstablecoin|usdc|usdt\b/.test(normalized)) {
+    updates.push(createSuggestedUpdate('subscription_payment_method', 'Stablecoin', 'User described stablecoin subscription payment.', sourceRef, 0.82));
+    updates.push(createSuggestedUpdate('redemption_payment_method', 'Stablecoin', 'User described stablecoin redemption payout.', sourceRef, 0.76));
+  }
+  if (/\bfiat\b|off[-\s]?chain|bank transfer|wire transfer/.test(normalized)) {
+    updates.push(createSuggestedUpdate('subscription_payment_method', 'Offchain transfer', 'User described offchain or fiat subscription payment.', sourceRef, 0.8));
+    updates.push(createSuggestedUpdate('redemption_payment_method', 'Offchain transfer', 'User described offchain or fiat redemption payout.', sourceRef, 0.76));
+  }
   if (normalized.includes('usdc')) {
     updates.push(createSuggestedUpdate('subscription_stablecoins', ['USDC'], 'User mentioned USDC subscription or payout rails.', sourceRef, 0.9));
+    updates.push(createSuggestedUpdate('redemption_stablecoin_type', 'USDC', 'User mentioned USDC redemption payout rails.', sourceRef, 0.78));
+  }
+  if (normalized.includes('usdt')) {
+    updates.push(createSuggestedUpdate('subscription_stablecoins', ['USDT'], 'User mentioned USDT subscription or payout rails.', sourceRef, 0.9));
+    updates.push(createSuggestedUpdate('redemption_stablecoin_type', 'USDT', 'User mentioned USDT redemption payout rails.', sourceRef, 0.78));
   }
   if (normalized.includes('whitelist') || normalized.includes('approved wallet') || normalized.includes('approved wallets')) {
     updates.push(createSuggestedUpdate('whitelisted_wallets_required', true, 'User described approved or whitelisted wallet access.', sourceRef, 0.9));
     updates.push(createSuggestedUpdate('investor_wallet_rule', 'Approved wallets only; transfers should stay between approved wallets.', 'User described approved or whitelisted wallet access.', sourceRef, 0.86));
   }
   if (/peer\s*to\s*peer|p2p|buy-sell|buy sell|transfer.+each other/.test(normalized)) {
+    updates.push(createSuggestedUpdate('p2p_transfer_allowed', true, 'User described investor peer-to-peer transfers.', sourceRef, 0.82));
     updates.push(createSuggestedUpdate('investor_wallet_rule', 'Approved investors may transfer peer-to-peer only to other approved wallets.', 'User described investor peer-to-peer transfers.', sourceRef, 0.82));
+  }
+  if (/no\s+(?:p2p|peer\s*to\s*peer)|p2p\s+(?:is\s+)?(?:not\s+allowed|disabled)|cannot\s+transfer\s+to\s+one\s+another/.test(normalized)) {
+    updates.push(createSuggestedUpdate('p2p_transfer_allowed', false, 'User said peer-to-peer investor transfers are not allowed.', sourceRef, 0.82));
   }
 
   return updates;
@@ -194,17 +239,14 @@ function extractProtocolAssertions({
   normalized,
   sourceRef,
 }: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
+  if (/\bcustomi[sz]ed\s+erc-?\s*20\b|\bcustom\s+erc-?\s*20\b/.test(normalized)) {
+    return [createSuggestedUpdate('protocol_base', 'Customised ERC-20', 'User selected customised ERC-20 as the protocol base.', sourceRef, 0.88)];
+  }
   if (/\berc-?\s*20\b|\berc20\b/.test(normalized)) {
     return [createSuggestedUpdate('protocol_base', 'ERC-20', 'User selected ERC-20 as the protocol base.', sourceRef, 0.88)];
   }
-  if (/\berc-?\s*4626\b|\berc4626\b/.test(normalized)) {
-    return [createSuggestedUpdate('protocol_base', 'ERC-4626', 'User selected ERC-4626 as the protocol base.', sourceRef, 0.88)];
-  }
   if (/\berc-?\s*3643\b|\berc3643\b/.test(normalized)) {
     return [createSuggestedUpdate('protocol_base', 'ERC-3643', 'User asked for or accepted a permissioned token protocol base.', sourceRef, 0.86)];
-  }
-  if (/\brebasing\s+erc-?\s*20\b|\bcustom\s+erc-?\s*20\b.*\brebas/.test(normalized)) {
-    return [createSuggestedUpdate('protocol_base', 'Custom ERC-20 with rebasing', 'User selected a rebasing ERC-20 protocol base.', sourceRef, 0.86)];
   }
 
   return [];
@@ -220,11 +262,22 @@ export function createProductSetupSuggestionsFromStructuredUpdates(
     const fieldKeys = normalizeProductSetupFieldAliases(update.field);
     const proposedValue = normalizeSuggestedUpdateValue(update.proposedValue);
     if (fieldKeys.length === 0 || proposedValue === undefined) return [];
-
-    return fieldKeys.map((fieldKey) => ({
-      id: `${fieldKey}-${sourceRef}`,
+    const derivedDurationMonths =
+      typeof proposedValue === 'string' && fieldKeys.includes('maturity_date')
+        ? durationMonthsFromTerm(proposedValue)
+        : undefined;
+    const normalizedUpdates = fieldKeys.map((fieldKey) => ({
       fieldKey,
       proposedValue,
+    }));
+    if (derivedDurationMonths !== undefined && !fieldKeys.includes('duration_months')) {
+      normalizedUpdates.push({ fieldKey: 'duration_months', proposedValue: derivedDurationMonths });
+    }
+
+    return normalizedUpdates.map(({ fieldKey, proposedValue: normalizedProposedValue }) => ({
+      id: `${fieldKey}-${sourceRef}`,
+      fieldKey,
+      proposedValue: normalizedProposedValue,
       rationale: update.rationale,
       sourceType: 'assistant_inference',
       sourceRef,
@@ -295,6 +348,17 @@ function normalizeMaturityTerm(value: string): string {
     .replace(/\bipo\b/gi, 'IPO')
     .replace(/\binitial distribution\b/gi, 'initial distribution')
     .replace(/\s+/g, ' ');
+}
+
+function durationMonthsFromTerm(value: string): number | undefined {
+  const match = value.match(/\b(\d{1,3})[-\s]?(years?|months?|quarters?)\b/i);
+  if (!match?.[1] || !match[2]) return undefined;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return undefined;
+  const unit = match[2].toLowerCase();
+  if (unit.startsWith('year')) return amount * 12;
+  if (unit.startsWith('quarter')) return amount * 3;
+  return amount;
 }
 
 function normalizeProductSetupDate(value: string): string {

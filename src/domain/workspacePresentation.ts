@@ -66,7 +66,7 @@ const baseWorkspaceTabs: WorkspaceTab[] = [
   {
     id: 'requirements',
     label: 'Product Setup',
-    purpose: 'Capture the product terms, investor rules, servicing assumptions, and lifecycle requirements.',
+    purpose: 'Capture the product terms, investor rules, lifecycle assumptions, and compliance controls needed to generate the product PRD.',
     status: 'needs_review',
   },
   {

@@ -2,7 +2,7 @@ import type { FundFacts } from './schemas';
 import { isValidNonZeroEvmAddress } from './recordNavOperationReadModel';
 import {
   deploymentProductSetupFieldKeys,
-  essentialProductSetupFieldKeys,
+  productSetupPrdFieldKeys,
   type ProductSetupDeploymentWarning,
   type ProductSetupDeploymentWarningAcknowledgement,
   type ProductSetupField,
@@ -24,6 +24,7 @@ export {
   allProductSetupFieldKeys,
   deploymentProductSetupFieldKeys,
   essentialProductSetupFieldKeys,
+  productSetupPrdFieldKeys,
   supportedProtocolBases,
 } from './productSetupSchema';
 export type {
@@ -83,10 +84,72 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
       }),
       token_symbol: createField({
         key: 'token_symbol',
-        label: 'Token symbol',
+        label: 'Product short name',
         status: 'missing',
         usedByTabs: ['Overview', 'Contract Ops', 'Evidence Vault'],
         smartContractRelevance: 'contract_parameter',
+      }),
+      product_launch_date: createField({
+        key: 'product_launch_date',
+        label: 'Product launch date',
+        status: 'missing',
+        usedByTabs: ['Product Setup', 'Subscription', 'Investor Wallets', 'Maturity', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      product_wrapper: createField({
+        key: 'product_wrapper',
+        label: 'Product wrapper',
+        status: 'missing',
+        usedByTabs: ['Product Setup', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      underlying_asset_class: createField({
+        key: 'underlying_asset_class',
+        label: 'Underlying asset class',
+        status: 'missing',
+        usedByTabs: ['Product Setup', 'Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      product_structure: createField({
+        key: 'product_structure',
+        label: 'Product term type',
+        status: 'missing',
+        usedByTabs: ['Product Setup', 'Subscription', 'Redemption', 'Maturity'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      offering_type: createField({
+        key: 'offering_type',
+        label: 'Offering type',
+        status: 'missing',
+        usedByTabs: ['Product Setup', 'Investor Wallets', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      eligible_investor_type: createField({
+        key: 'eligible_investor_type',
+        label: 'Eligible investor type',
+        status: 'missing',
+        usedByTabs: ['Product Setup', 'Investor Wallets', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      maximum_investor_count: createField({
+        key: 'maximum_investor_count',
+        label: 'Maximum number of investors',
+        value: 50,
+        status: 'system_default',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_investor_cap',
+        usedByTabs: ['Product Setup', 'Investor Wallets', 'Contract Ops'],
+        smartContractRelevance: 'contract_parameter',
+      }),
+      distribution_jurisdiction: createField({
+        key: 'distribution_jurisdiction',
+        label: 'Distribution jurisdiction',
+        value: 'Singapore',
+        status: 'locked',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_singapore_only',
+        usedByTabs: ['Product Setup', 'Investor Wallets', 'Evidence Vault'],
+        smartContractRelevance: 'evidence_metadata',
       }),
       issuer_owner: createField({
         key: 'issuer_owner',
@@ -146,14 +209,21 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
       }),
       subscription_cadence: createField({
         key: 'subscription_cadence',
-        label: 'Subscription cadence',
+        label: 'Subscription / mint cadence',
         status: 'missing',
         usedByTabs: ['Subscription', 'Contract Ops', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
       }),
+      subscription_payment_method: createField({
+        key: 'subscription_payment_method',
+        label: 'Subscription payment method',
+        status: 'missing',
+        usedByTabs: ['Subscription', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
       subscription_stablecoins: createField({
         key: 'subscription_stablecoins',
-        label: 'Subscription stablecoins',
+        label: 'Subscription stablecoin type',
         status: 'missing',
         usedByTabs: ['Subscription', 'Contract Ops'],
         smartContractRelevance: 'contract_parameter',
@@ -167,9 +237,23 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
       }),
       redemption_cadence: createField({
         key: 'redemption_cadence',
-        label: 'Redemption cadence',
+        label: 'Redemption / burn cadence',
         status: 'missing',
         usedByTabs: ['Redemption', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      redemption_payment_method: createField({
+        key: 'redemption_payment_method',
+        label: 'Redemption payment method',
+        status: 'missing',
+        usedByTabs: ['Redemption', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      redemption_stablecoin_type: createField({
+        key: 'redemption_stablecoin_type',
+        label: 'Redemption stablecoin type',
+        status: 'missing',
+        usedByTabs: ['Redemption', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
       }),
       redemption_schedule: createField({
@@ -200,6 +284,68 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
         usedByTabs: ['Redemption', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
       }),
+      minimum_redemption_amount: createField({
+        key: 'minimum_redemption_amount',
+        label: 'Minimum redemption amount',
+        value: '1 token',
+        status: 'system_default',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_default_minimum_redemption',
+        usedByTabs: ['Redemption', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      p2p_transfer_allowed: createField({
+        key: 'p2p_transfer_allowed',
+        label: 'P2P transfer allowed',
+        status: 'missing',
+        usedByTabs: ['Investor Wallets', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'contract_parameter',
+      }),
+      compliance_model: createField({
+        key: 'compliance_model',
+        label: 'Compliance model',
+        value: 'Whitelist-based transfer restrictions',
+        status: 'locked',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_compliance_model',
+        usedByTabs: ['Investor Wallets', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'contract_parameter',
+      }),
+      evidence_model: createField({
+        key: 'evidence_model',
+        label: 'Evidence model',
+        value: 'Store PRD, approvals, transaction hashes, generated artefacts, and version history',
+        status: 'locked',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_evidence_model',
+        usedByTabs: ['Evidence Vault'],
+        smartContractRelevance: 'evidence_metadata',
+      }),
+      duration_months: createField({
+        key: 'duration_months',
+        label: 'Duration of product in months',
+        status: 'missing',
+        usedByTabs: ['Product Setup', 'Maturity', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      derived_maturity_date: createField({
+        key: 'derived_maturity_date',
+        label: 'Derived maturity date',
+        status: 'missing',
+        usedByTabs: ['Product Setup', 'Maturity', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      maturity_description: createField({
+        key: 'maturity_description',
+        label: 'Maturity description',
+        value:
+          'Maturity date is the product termination / final redemption date. On maturity, transfers are paused for the token, outstanding tokens move through the approved maturity redemption process, and fiat payout is processed offchain unless another approved payout method is selected.',
+        status: 'locked',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_maturity_description',
+        usedByTabs: ['Product Setup', 'Maturity', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
       redemption_wallet: createField({
         key: 'redemption_wallet',
         label: 'Redemption wallet',
@@ -227,6 +373,16 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
         status: 'missing',
         usedByTabs: ['Asset Servicing', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
+      }),
+      nav_upload_method: createField({
+        key: 'nav_upload_method',
+        label: 'NAV upload method',
+        value: 'CSV',
+        status: 'locked',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_csv_only_nav_upload',
+        usedByTabs: ['Product Setup', 'Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'evidence_metadata',
       }),
       nav_source: createField({
         key: 'nav_source',
@@ -272,9 +428,9 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
       }),
       prototype_network: createField({
         key: 'prototype_network',
-        label: 'Prototype network',
+        label: 'Blockchain network',
         value: 'Sepolia testnet',
-        status: 'system_default',
+        status: 'locked',
         sourceType: 'system_default',
         sourceRef: 'mila26_testnet_boundary',
         usedByTabs: ['Contract Ops', 'Evidence Vault'],
@@ -321,70 +477,108 @@ export function normalizeProductSetupRecord(record: ProductSetupRecord): Product
     }
   }
 
-  return {
+  return deriveProductSetupFields({
     ...record,
     fields,
     downstreamHandoffNotes: (record.downstreamHandoffNotes ?? []).map((note) => ({
       ...note,
       suggestions: note.suggestions ?? [],
     })),
+  });
+}
+
+function deriveProductSetupFields(record: ProductSetupRecord): ProductSetupRecord {
+  const launchDate = fieldDisplayValue(record.fields.product_launch_date);
+  const durationMonths = Number(record.fields.duration_months.value);
+  const existingDerived = record.fields.derived_maturity_date;
+  const derivedMaturityDate =
+    launchDate && Number.isFinite(durationMonths) && durationMonths > 0
+      ? deriveMaturityDateFromLaunchAndDuration(launchDate, durationMonths)
+      : undefined;
+
+  if (!derivedMaturityDate) return record;
+  if (existingDerived.value === derivedMaturityDate && existingDerived.status !== 'missing') return record;
+
+  return {
+    ...record,
+    fields: {
+      ...record.fields,
+      derived_maturity_date: {
+        ...existingDerived,
+        value: derivedMaturityDate,
+        status: 'system_default',
+        sourceType: 'system_default',
+        sourceRef: 'derived_from_launch_date_and_duration',
+        confidence: 1,
+        confirmedByUser: false,
+      },
+    },
   };
+}
+
+export function deriveMaturityDateFromLaunchAndDuration(launchDate: string, durationMonths: number): string | undefined {
+  const parsed = parseProductSetupIsoDate(launchDate);
+  if (!parsed || !Number.isFinite(durationMonths) || durationMonths <= 0) return undefined;
+  const candidate = new Date(Date.UTC(parsed.year, parsed.monthIndex + durationMonths, parsed.day));
+  while (candidate.getUTCDay() === 0 || candidate.getUTCDay() === 6) {
+    candidate.setUTCDate(candidate.getUTCDate() + 1);
+  }
+  return candidate.toISOString().slice(0, 10);
+}
+
+function parseProductSetupIsoDate(value: string): { year: number; monthIndex: number; day: number } | undefined {
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match?.[1] || !match[2] || !match[3]) return undefined;
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  if (!Number.isInteger(year) || !Number.isInteger(monthIndex) || !Number.isInteger(day)) return undefined;
+  if (monthIndex < 0 || monthIndex > 11 || day < 1 || day > 31) return undefined;
+  return { year, monthIndex, day };
 }
 
 export function recommendProductSetupProtocol(record: ProductSetupRecord): ProductSetupReadModel['protocolRecommendation'] {
   const whitelistRequired = record.fields.whitelisted_wallets_required.value === true;
-  const stablecoins = record.fields.subscription_stablecoins.value;
-  const schedule = String(record.fields.redemption_schedule.value ?? '').toLowerCase();
-  const burnLockRule = String(record.fields.burn_lock_rule.value ?? '').toLowerCase();
-  const productType = String(record.fields.product_type.value ?? '').toLowerCase();
-
-  if (burnLockRule.includes('rebase') || burnLockRule.includes('balance')) {
-    return {
-      recommendedProtocol: 'Custom ERC-20 with rebasing',
-      confidence: 0.78,
-      reasons: ['Investor balances appear to need automatic NAV or yield-driven adjustment.'],
-      alternatives: ['ERC-3643 if permissioning matters more than balance adjustment.', 'ERC-20 if balances stay fixed between subscription and redemption.'],
-      executablePrototypeLabel: 'Architecture target; current Contract Ops execution remains the Sepolia restricted ERC-20-compatible prototype.',
-    };
-  }
-
-  if (productType.includes('vault') && Array.isArray(stablecoins) && stablecoins.length === 1 && !schedule.includes('delay')) {
-    return {
-      recommendedProtocol: 'ERC-4626',
-      confidence: 0.76,
-      reasons: ['The product behaves like a single-asset vault where investors deposit one ERC-20 asset and receive shares.'],
-      alternatives: ['ERC-3643 if approved-wallet holding and transfer checks are central.', 'ERC-20 for a simpler prototype token.'],
-      executablePrototypeLabel: 'Architecture target; current Contract Ops execution remains the Sepolia restricted ERC-20-compatible prototype.',
-    };
-  }
+  const p2pAllowed = record.fields.p2p_transfer_allowed.value === true;
+  const productStructure = String(record.fields.product_structure.value ?? '').toLowerCase();
 
   if (whitelistRequired) {
     return {
       recommendedProtocol: 'ERC-3643',
       confidence: 0.88,
       reasons: ['Whitelisted wallets and restricted token holding are central to the product setup.'],
-      alternatives: ['ERC-20 if whitelist enforcement can stay at the application/workflow layer.', 'ERC-4626 only for clean vault-share behaviour.', 'Custom rebasing ERC-20 only if balances must auto-adjust.'],
+      alternatives: ['Customised ERC-20 if the MVP should keep the current executable prototype while adding whitelist-style controls.', 'ERC-20 if transfer restrictions can stay offchain or at the workflow layer.'],
       executablePrototypeLabel: 'Recommended architecture target; current executable prototype is Sepolia restricted ERC-20-compatible.',
     };
   }
 
+  if (p2pAllowed || productStructure.includes('open')) {
+    return {
+      recommendedProtocol: 'Customised ERC-20',
+      confidence: 0.82,
+      reasons: ['The product needs a fungible token with product-specific controls for mint, burn, pause, and evidence events.'],
+      alternatives: ['ERC-3643 if whitelisted-transfer restrictions become the core architecture.', 'ERC-20 if the product only needs simple transferable units.'],
+      executablePrototypeLabel: 'Default architecture target; current Contract Ops execution remains Sepolia restricted ERC-20-compatible.',
+    };
+  }
+
   return {
-    recommendedProtocol: 'ERC-20',
-    confidence: 0.74,
-    reasons: ['The product appears to need a simple fungible token model without native vault or rebasing mechanics.'],
-    alternatives: ['ERC-3643 if transfer restrictions become essential.', 'ERC-4626 for a clean single-asset vault.', 'Custom rebasing ERC-20 for automatic balance changes.'],
-    executablePrototypeLabel: 'Closest current Contract Ops execution path on Sepolia.',
+    recommendedProtocol: 'Customised ERC-20',
+    confidence: 0.76,
+    reasons: ['Customised ERC-20 is the default MVP recommendation for a tokenised product needing mint, burn, pause, role, and evidence controls.'],
+    alternatives: ['ERC-20 for the simplest fungible-token prototype.', 'ERC-3643 when whitelisted-transfer restrictions are central to the architecture.'],
+    executablePrototypeLabel: 'Default architecture target; current executable prototype is Sepolia restricted ERC-20-compatible.',
   };
 }
 
 export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetupReadModel {
+  record = deriveProductSetupFields(record);
   const protocolRecommendation = recommendProductSetupProtocol(record);
-  const completedEssentialCount = essentialProductSetupFieldKeys.filter((key) =>
-    ['user_confirmed', 'system_default', 'locked'].includes(record.fields[key].status),
-  ).length;
-  const missingEssentials = essentialProductSetupFieldKeys
+  const requiredProductSetupFieldKeys = toRequiredProductSetupFieldKeys(record);
+  const completedEssentialCount = requiredProductSetupFieldKeys.filter((key) => isProductSetupRequiredFieldDrafted(record.fields[key])).length;
+  const missingEssentials = requiredProductSetupFieldKeys
     .map((key) => record.fields[key])
-    .filter((field) => !isDeploymentReadyField(field));
+    .filter((field) => !isProductSetupRequiredFieldDrafted(field));
   const deploymentWarnings = toProductSetupDeploymentWarnings(record);
   const deploymentBlockers = deploymentWarnings.map((warning) => warning.message);
   const latestDeploymentWarningAcknowledgement = record.deploymentWarningAcknowledgements.at(-1);
@@ -394,9 +588,9 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
 
   return {
     statusLabel: record.status === 'locked' ? 'Locked Product Setup snapshot' : 'Draft Product Setup',
-    readinessLabel: `${completedEssentialCount}/${essentialProductSetupFieldKeys.length} essentials confirmed, defaulted, or deliberately deferred`,
+    readinessLabel: `${completedEssentialCount}/${requiredProductSetupFieldKeys.length} Product Setup fields drafted, defaulted, or locked`,
     completedEssentialCount,
-    requiredEssentialCount: essentialProductSetupFieldKeys.length,
+    requiredEssentialCount: requiredProductSetupFieldKeys.length,
     understandingSummary: createUnderstandingSummary(record, protocolRecommendation.recommendedProtocol),
     protocolRecommendation,
     missingEssentials,
@@ -406,28 +600,7 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
     latestDeploymentWarningAcknowledgement,
     profileRows: toProductSetupProfileRows(record, protocolRecommendation),
     downstreamHandoffs: toProductSetupDownstreamHandoffs(record),
-    requirementSections: [
-      {
-        title: 'Product snapshot',
-        fields: (['product_name', 'token_symbol', 'issuer_owner', 'product_type', 'base_currency', 'income_treatment'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
-      },
-      {
-        title: 'Protocol and token model',
-        fields: (['protocol_base', 'expected_investor_count', 'investor_wallet_rule', 'whitelisted_wallets_required'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
-      },
-      {
-        title: 'Subscription and redemption',
-        fields: (['subscription_cadence', 'subscription_stablecoins', 'subscription_receiving_wallet', 'redemption_cadence', 'redemption_schedule', 'redemption_payout_delay', 'redemption_payout_cadence', 'redemption_wallet', 'burn_lock_rule'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
-      },
-      {
-        title: 'Asset servicing and maturity',
-        fields: (['nav_cadence', 'nav_source', 'income_treatment', 'income_payout_cadence', 'investor_update_rule', 'initial_distribution_date', 'initial_investor_register_rule', 'maturity_date', 'maturity_closeout_rule'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
-      },
-      {
-        title: 'Contract operations',
-        fields: (['prototype_network', 'admin_wallet'] satisfies ProductSetupFieldKey[]).map((key) => record.fields[key]),
-      },
-    ],
+    requirementSections: toProductSetupRequirementSections(record),
     unsupportedRequirementDecisions: record.unsupportedRequirementDecisions,
     firstTimePrompts: [
       { termKey: 'admin_wallet', fieldKey: 'admin_wallet', prompt: productSetupPromptForTerm('admin_wallet') },
@@ -437,18 +610,54 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
       { termKey: 'burn_lock_rule', fieldKey: 'burn_lock_rule', prompt: productSetupPromptForTerm('burn_lock_rule') },
     ],
     packPreview: {
-      canDownloadDraft: true,
-      canConfirmAndLock: missingEssentials.length === 0 && deploymentBlockers.length === 0,
+      status: missingEssentials.length === 0 ? 'Ready for review' : 'Draft',
+      versionLabel: 'Not generated',
+      evidenceVaultStatus: 'Not stored yet',
+      canDownloadArtifacts: false,
       warning:
-        'This document reflects ZiLi-OS’s operational interpretation of user-provided Product Setup information. Legal/compliance-sensitive items should be confirmed with counsel/compliance.',
+        'ZiliOS generates this pack after the product profile is reviewed and finalised. It captures the product PRD, product assumptions, compliance rules, and staged operational notes for the lifecycle tabs. Legal and compliance-sensitive items should be confirmed with counsel or compliance.',
       includedDocuments: [
         'Product Requirements Document',
-        'Engineering smart-contract and Sepolia testnet details',
-        'PRD-to-contract translation',
-        'Asset-servicing setup covering distribution, investor wallets, NAV, subscription, and redemption',
+        'Product terms and lifecycle summary',
+        'Investor eligibility and distribution rules',
+        'NAV, subscription, redemption, and maturity assumptions',
+        'Tokenisation and compliance assumptions',
+        'Staged notes for Investor Wallets, Subscription, Contract Ops, Asset Servicing, Redemption, and Maturity',
+        'Open questions, if any',
       ],
     },
   };
+}
+
+function toRequiredProductSetupFieldKeys(record: ProductSetupRecord): ProductSetupFieldKey[] {
+  const keys = [...productSetupPrdFieldKeys];
+  if (String(record.fields.subscription_payment_method.value ?? '').toLowerCase() === 'stablecoin') {
+    keys.push('subscription_stablecoins');
+  }
+  if (String(record.fields.redemption_payment_method.value ?? '').toLowerCase() === 'stablecoin') {
+    keys.push('redemption_stablecoin_type');
+  }
+  return [...new Set(keys)];
+}
+
+function isProductSetupRequiredFieldDrafted(field: ProductSetupField): boolean {
+  if (field.rolePlaceholder) return false;
+  if (field.value === undefined || field.value === null) return false;
+  if (Array.isArray(field.value)) return field.value.length > 0;
+  if (typeof field.value === 'string' && field.value.trim().length === 0) return false;
+  if (field.status === 'missing' || field.status === 'conflicting') return false;
+  if (field.key === 'maximum_investor_count') {
+    const count = Number(field.value);
+    return Number.isFinite(count) && count > 0 && count <= 50;
+  }
+  if (field.key === 'duration_months') {
+    const duration = Number(field.value);
+    return Number.isFinite(duration) && duration > 0;
+  }
+  if (field.key === 'base_currency') {
+    return !Array.isArray(field.value);
+  }
+  return true;
 }
 
 export function isDeploymentReadyField(field: ProductSetupField): boolean {
@@ -532,157 +741,131 @@ function toProductSetupProfileRows(
   record: ProductSetupRecord,
   protocolRecommendation: ProductSetupReadModel['protocolRecommendation'],
 ): ProductSetupReadModel['profileRows'] {
-  const profileValue = (fieldKey: ProductSetupFieldKey) => fieldDisplayValueWithPending(record, fieldKey);
-  const hasProtocolRecommendationBasis = [
-    'product_type',
-    'subscription_stablecoins',
-    'investor_wallet_rule',
-    'whitelisted_wallets_required',
-    'burn_lock_rule',
-  ].some((fieldKey) => Boolean(profileValue(fieldKey as ProductSetupFieldKey)));
-  const protocolValue = profileValue('protocol_base');
-
-  return [
-    profileRow(record, {
-      id: 'instrument',
-      label: 'Instrument / structure',
-      fieldKeys: ['product_type', 'product_name'],
-      fallback: 'To be filled',
-      whyItMatters: 'This anchors the PRD and helps later tabs decide which workflows are in scope.',
-    }),
-    profileRow(record, {
-      id: 'asset_class',
-      label: 'Asset class',
-      fieldKeys: ['product_type'],
-      fallback: 'To be filled',
-      whyItMatters: 'Asset class informs valuation, servicing, and disclosure assumptions.',
-    }),
-    profileRow(record, {
-      id: 'base_currency',
-      label: 'Base currency',
-      fieldKeys: ['base_currency'],
-      fallback: 'To be filled',
-    }),
-    {
-      id: 'income_treatment',
-      label: 'Income treatment',
-      value: incomeTreatmentProfileValue(profileValue('income_treatment'), profileValue('income_payout_cadence')),
-      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['income_treatment', 'income_payout_cadence']),
-      fieldKeys: ['income_treatment', 'income_payout_cadence'],
-      whyItMatters: 'Income treatment determines whether Asset Servicing needs distribution workflows.',
-    },
-    {
-      id: 'term',
-      label: 'Term / maturity',
-      value: profileValue('maturity_date') || 'To be filled',
-      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['maturity_date']),
-      fieldKeys: ['maturity_date'],
-      whyItMatters: 'A maturity or wind-down date activates closeout planning later.',
-    },
-    {
-      id: 'settlement_transfer',
-      label: 'Settlement & transfer',
-      value: compactText([
-        profileValue('subscription_stablecoins'),
-        profileValue('investor_wallet_rule'),
-      ]) || 'To be filled',
-      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['subscription_stablecoins', 'investor_wallet_rule']),
-      fieldKeys: ['subscription_stablecoins', 'investor_wallet_rule'],
-      whyItMatters: 'Settlement and transfer assumptions determine which Subscription, Investor Wallets, and Contract Ops workflows are needed.',
-    },
-    {
-      id: 'protocol_target',
-      label: 'Protocol target',
-      value:
-        protocolValue ||
-        (hasProtocolRecommendationBasis ? `${protocolRecommendation.recommendedProtocol} recommended; not selected` : 'To be filled'),
-      provenanceLabel: protocolValue
-        ? provenanceLabelForFieldsWithPending(record, ['protocol_base'])
-        : hasProtocolRecommendationBasis
-          ? 'Needs review'
-          : 'Missing',
-      fieldKeys: ['protocol_base'],
-      whyItMatters: 'Protocol target guides later questions, while executable prototype capability remains separate.',
-    },
-    {
-      id: 'subscription_switch',
-      label: 'Subscription',
-      value: profileValue('subscription_cadence')
-        ? `Enabled: ${profileValue('subscription_cadence')}`
-        : 'To be filled',
-      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['subscription_cadence']),
-      fieldKeys: ['subscription_cadence'],
-    },
-    {
-      id: 'redemption_switch',
-      label: 'Redemption',
-      value: profileValue('redemption_cadence') || profileValue('redemption_schedule')
-        ? `Enabled: ${profileValue('redemption_cadence') || profileValue('redemption_schedule')}`
-        : 'To be filled',
-      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['redemption_cadence', 'redemption_schedule']),
-      fieldKeys: ['redemption_cadence', 'redemption_schedule'],
-    },
-    {
-      id: 'servicing_switch',
-      label: 'Servicing required',
-      value: compactText([
-        profileValue('nav_cadence') && `NAV: ${profileValue('nav_cadence')}`,
-        profileValue('nav_source') && `Source: ${profileValue('nav_source')}`,
-      ]) || 'To be filled',
-      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['nav_cadence', 'nav_source']),
-      fieldKeys: ['nav_cadence', 'nav_source'],
-    },
-    {
-      id: 'wind_down_switch',
-      label: 'Maturity workflow',
-      value: profileValue('maturity_closeout_rule')
-        ? `Closeout: ${profileValue('maturity_closeout_rule')}`
-        : profileValue('maturity_date')
-          ? `Enabled by term: ${profileValue('maturity_date')}`
-          : 'To be filled',
-      provenanceLabel: provenanceLabelForFieldsWithPending(record, ['maturity_closeout_rule', 'maturity_date']),
-      fieldKeys: ['maturity_closeout_rule', 'maturity_date'],
-    },
-  ];
+  const rows = toProductSetupRequirementSections(record).flatMap((section) =>
+    section.fields.map((field) => productSetupFieldProfileRow(record, field.key)),
+  );
+  const protocolRow = rows.find((row) => row.id === 'protocol_base');
+  if (protocolRow && protocolRow.value === 'To be filled') {
+    protocolRow.value = `${protocolRecommendation.recommendedProtocol} recommended; not selected`;
+    protocolRow.provenanceLabel = 'Needs review';
+  }
+  return rows;
 }
 
-function profileRow(
+function productSetupFieldProfileRow(
   record: ProductSetupRecord,
-  input: {
-    id: string;
-    label: string;
-    fieldKeys: ProductSetupFieldKey[];
-    fallback: string;
-    whyItMatters?: string;
-  },
+  fieldKey: ProductSetupFieldKey,
 ): ProductSetupReadModel['profileRows'][number] {
+  const field = record.fields[fieldKey];
   return {
-    id: input.id,
-    label: input.label,
-    value: compactText(input.fieldKeys.map((fieldKey) => fieldDisplayValueWithPending(record, fieldKey))) || input.fallback,
-    provenanceLabel: provenanceLabelForFieldsWithPending(record, input.fieldKeys),
-    fieldKeys: input.fieldKeys,
-    whyItMatters: input.whyItMatters,
+    id: fieldKey,
+    label: field.label,
+    value: fieldDisplayValueWithPending(record, fieldKey) || 'To be filled',
+    provenanceLabel: provenanceLabelForFieldsWithPending(record, [fieldKey]),
+    fieldKeys: [fieldKey],
+    whyItMatters: productSetupFieldHelperText(fieldKey),
   };
 }
 
-function incomeTreatmentProfileValue(treatment: string, payoutCadence: string): string {
-  if (treatment && payoutCadence && !/^no\b|no income|no distribution|accumulat/i.test(treatment)) {
-    return `${treatment}; payout cadence: ${payoutCadence}`;
-  }
-  if (treatment) return treatment;
-  if (payoutCadence) return `Payout cadence: ${payoutCadence}`;
-  return 'To be filled';
+function toProductSetupRequirementSections(record: ProductSetupRecord): ProductSetupReadModel['requirementSections'] {
+  const paymentFields = [
+    'subscription_payment_method',
+    ...(String(record.fields.subscription_payment_method.value ?? '').toLowerCase() === 'stablecoin'
+      ? (['subscription_stablecoins'] as const)
+      : []),
+    'redemption_payment_method',
+    ...(String(record.fields.redemption_payment_method.value ?? '').toLowerCase() === 'stablecoin'
+      ? (['redemption_stablecoin_type'] as const)
+      : []),
+    'minimum_redemption_amount',
+  ] satisfies ProductSetupFieldKey[];
+
+  const sections: Array<{ title: string; fieldKeys: ProductSetupFieldKey[] }> = [
+    {
+      title: 'Product identity',
+      fieldKeys: ['product_name', 'token_symbol', 'product_launch_date', 'base_currency'],
+    },
+    {
+      title: 'Product classification',
+      fieldKeys: ['product_wrapper', 'underlying_asset_class', 'product_structure', 'income_treatment'],
+    },
+    {
+      title: 'Investor and distribution rules',
+      fieldKeys: ['offering_type', 'eligible_investor_type', 'maximum_investor_count', 'distribution_jurisdiction'],
+    },
+    {
+      title: 'Lifecycle cadence',
+      fieldKeys: ['nav_cadence', 'nav_upload_method', 'subscription_cadence', 'redemption_cadence', 'duration_months', 'derived_maturity_date'],
+    },
+    {
+      title: 'Payment and currency assumptions',
+      fieldKeys: paymentFields,
+    },
+    {
+      title: 'Tokenisation and compliance model',
+      fieldKeys: ['whitelisted_wallets_required', 'p2p_transfer_allowed', 'prototype_network', 'protocol_base', 'compliance_model'],
+    },
+    {
+      title: 'Evidence assumptions',
+      fieldKeys: ['evidence_model'],
+    },
+  ];
+
+  return sections.map((section) => ({
+    title: section.title,
+    fields: section.fieldKeys.map((fieldKey) => record.fields[fieldKey]),
+  }));
+}
+
+function productSetupFieldHelperText(fieldKey: ProductSetupFieldKey): string | undefined {
+  const helpers: Partial<Record<ProductSetupFieldKey, string>> = {
+    product_name: 'The PRD uses this as the user-facing product name.',
+    token_symbol: 'A short product code used in documents and later Contract Ops setup.',
+    product_launch_date: 'Launch date anchors subscription start and maturity calculation.',
+    product_wrapper: 'Wrapper identifies whether the product behaves like a fund, bond, equity, private asset, or other structure.',
+    underlying_asset_class: 'Asset class informs valuation, servicing, and disclosure assumptions.',
+    product_structure: 'Choose open-ended, closed-ended, or fixed maturity. This decides which subscription, redemption, and maturity workflows are needed.',
+    offering_type: 'Offering type helps Investor Wallets check the distribution model before whitelisting.',
+    eligible_investor_type: 'Investor type is verified offchain before wallet whitelisting; the contract does not independently verify investor status.',
+    maximum_investor_count: 'MVP investor cap cannot exceed 50.',
+    distribution_jurisdiction: 'Locked MVP default: Singapore only for now.',
+    nav_cadence: 'NAV cadence tells Asset Servicing how often valuation updates are expected.',
+    nav_upload_method: 'Locked MVP default: CSV upload only for now.',
+    subscription_cadence: 'Subscription normally results in minting, which means creating new tokens for approved investors after subscription is accepted.',
+    redemption_cadence: 'Redemption normally results in burning, which means cancelling tokens after a redemption is approved.',
+    duration_months: 'Duration is required before ZiliOS can derive the maturity date.',
+    derived_maturity_date: 'Calculated from launch date plus duration, moved to the next weekday if it lands on a weekend.',
+    maturity_description: 'Maturity normally results in final redemption and token transfer controls before offchain payout.',
+    base_currency: 'Only one base currency is allowed.',
+    subscription_payment_method: 'Subscription payment method determines whether stablecoin details are needed.',
+    subscription_stablecoins: 'Shown only when subscription payment method is stablecoin.',
+    redemption_payment_method: 'Redemption payment method determines whether stablecoin payout details are needed.',
+    redemption_stablecoin_type: 'Shown only when redemption payment method is stablecoin.',
+    minimum_redemption_amount: 'Default MVP assumption: 1 token.',
+    whitelisted_wallets_required: 'Whitelisted wallets can receive or hold tokens only after approval.',
+    p2p_transfer_allowed: 'If P2P is enabled, transfers are still limited to eligible whitelisted wallets.',
+    prototype_network: 'Locked MVP default: Sepolia testnet only.',
+    protocol_base: 'Protocol preference guides Contract Ops but can be changed before deployment finalisation.',
+    compliance_model: 'MVP compliance control is whitelist-based transfer restrictions.',
+    evidence_model: 'Evidence Vault stores PRD versions, approvals, transaction hashes, generated artefacts, and version history.',
+  };
+  return helpers[fieldKey];
 }
 
 function fieldDisplayValueWithPending(record: ProductSetupRecord, fieldKey: ProductSetupFieldKey): string {
-  const directValue = fieldDisplayValue(record.fields[fieldKey]);
+  const directValue = formatProductSetupFieldValue(fieldKey, record.fields[fieldKey].value);
   if (directValue) return directValue;
   const pendingUpdate = findPendingUpdateForField(record, fieldKey);
   if (!pendingUpdate) return '';
-  if (Array.isArray(pendingUpdate.proposedValue)) return pendingUpdate.proposedValue.join(', ');
-  if (typeof pendingUpdate.proposedValue === 'boolean') return pendingUpdate.proposedValue ? 'Yes' : 'No';
-  return String(pendingUpdate.proposedValue);
+  return formatProductSetupFieldValue(fieldKey, pendingUpdate.proposedValue);
+}
+
+function formatProductSetupFieldValue(fieldKey: ProductSetupFieldKey, value: ProductSetupFieldValue | undefined): string {
+  if (value === undefined || value === null || value === '') return '';
+  if (fieldKey === 'duration_months' && typeof value === 'number') return `${value} month${value === 1 ? '' : 's'}`;
+  if (Array.isArray(value)) return value.join(', ');
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  return String(value);
 }
 
 function findPendingUpdateForField(record: ProductSetupRecord, fieldKey: ProductSetupFieldKey): ProductSetupSuggestedUpdate | undefined {
@@ -705,12 +888,8 @@ function provenanceLabelForFields(fields: ProductSetupField[]): ProductSetupRead
   if (populated.some((field) => field.status === 'conflicting' || field.status === 'deferred')) return 'Needs review';
   if (populated.some((field) => field.status === 'user_confirmed' || field.status === 'user_stated')) return 'Stated';
   if (populated.some((field) => field.status === 'inferred')) return 'Inferred';
-  if (populated.some((field) => field.status === 'system_default')) return 'Assumed';
+  if (populated.some((field) => field.status === 'system_default' || field.status === 'locked')) return 'Assumed';
   return 'Needs review';
-}
-
-function compactText(parts: Array<string | undefined | false>): string {
-  return parts.filter((part): part is string => Boolean(part && part.trim())).join(' · ');
 }
 
 function toProductSetupDownstreamHandoffs(record: ProductSetupRecord): ProductSetupHandoffNote[] {
@@ -1155,6 +1334,13 @@ export function reconcileProductSetupSuggestedUpdates(
 const directUserStatedProductSetupFields = new Set<ProductSetupFieldKey>([
   'product_name',
   'token_symbol',
+  'product_launch_date',
+  'product_wrapper',
+  'underlying_asset_class',
+  'product_structure',
+  'offering_type',
+  'eligible_investor_type',
+  'maximum_investor_count',
   'product_type',
   'base_currency',
   'income_treatment',
@@ -1162,14 +1348,20 @@ const directUserStatedProductSetupFields = new Set<ProductSetupFieldKey>([
   'expected_investor_count',
   'investor_wallet_rule',
   'whitelisted_wallets_required',
+  'p2p_transfer_allowed',
   'subscription_cadence',
+  'subscription_payment_method',
   'subscription_stablecoins',
+  'redemption_payment_method',
+  'redemption_stablecoin_type',
   'redemption_cadence',
   'income_payout_cadence',
   'redemption_payout_cadence',
+  'minimum_redemption_amount',
   'burn_lock_rule',
   'nav_cadence',
   'nav_source',
+  'duration_months',
   'initial_distribution_date',
   'initial_investor_register_rule',
   'maturity_date',
@@ -1227,7 +1419,7 @@ export function confirmProductSetupUpdate(
   const update = record.pendingSuggestedUpdates.find((candidate) => candidate.id === updateId);
   if (!update) return record;
 
-  return {
+  return deriveProductSetupFields({
     ...record,
     fields: {
       ...record.fields,
@@ -1243,7 +1435,7 @@ export function confirmProductSetupUpdate(
     },
     pendingSuggestedUpdates: record.pendingSuggestedUpdates.filter((candidate) => candidate.id !== updateId),
     updatedAtIso: new Date().toISOString(),
-  };
+  });
 }
 
 export function dismissProductSetupSuggestedUpdate(
@@ -1264,7 +1456,7 @@ export function deferProductSetupField(
   fieldKey: ProductSetupFieldKey,
   reason = 'User chose to add this before deployment.',
 ): ProductSetupRecord {
-  return {
+  return deriveProductSetupFields({
     ...record,
     fields: {
       ...record.fields,
@@ -1278,7 +1470,7 @@ export function deferProductSetupField(
       },
     },
     updatedAtIso: new Date().toISOString(),
-  };
+  });
 }
 
 export function updateProductSetupField(
@@ -1435,7 +1627,18 @@ export function decideUnsupportedRequirement(
   };
 }
 
-export function createProductSetupPackPayload(record: ProductSetupRecord, readModel = toProductSetupReadModel(record)) {
+export type ProductSetupPackGenerationOptions = {
+  generatedAtIso?: string;
+  versionLabel?: string;
+};
+
+export function createProductSetupPackPayload(
+  record: ProductSetupRecord,
+  readModel = toProductSetupReadModel(record),
+  options: ProductSetupPackGenerationOptions = {},
+) {
+  const generatedAtIso = options.generatedAtIso ?? new Date().toISOString();
+  const versionLabel = options.versionLabel ?? 'v1.0';
   const definitions = [
     'Admin wallet: public blockchain address allowed to manage important token settings. Never provide private keys or seed phrases.',
     'Subscription receiving wallet: public wallet address or payment contract where investors send stablecoins when subscribing.',
@@ -1460,7 +1663,11 @@ export function createProductSetupPackPayload(record: ProductSetupRecord, readMo
 
   return {
     recordId: record.id,
-    generatedAtIso: new Date().toISOString(),
+    artifactId: `product-setup-prd-${record.id}-${versionLabel.replaceAll('.', '-')}`,
+    versionLabel,
+    displayVersion: `Product PRD ${versionLabel}`,
+    generatedAtIso,
+    packStatus: 'PRD generated',
     warning: readModel.packPreview.warning,
     statusLabel: readModel.statusLabel,
     readinessLabel: readModel.readinessLabel,
@@ -1476,14 +1683,15 @@ export function createProductSetupPackPayload(record: ProductSetupRecord, readMo
   };
 }
 
-export function createProductSetupPackMarkdown(record: ProductSetupRecord): string {
-  const payload = createProductSetupPackPayload(record);
+export function createProductSetupPrdMarkdown(
+  record: ProductSetupRecord,
+  readModel = toProductSetupReadModel(record),
+  options: ProductSetupPackGenerationOptions = {},
+): string {
+  const payload = createProductSetupPackPayload(record, readModel, options);
   const fieldRows = payload.fields
     .map((field) => `| ${field.requirement} | ${field.userInput} | ${field.interpretation} | ${field.source} | ${field.status} |`)
     .join('\n');
-  const warningRows = payload.deploymentWarnings.length > 0
-    ? payload.deploymentWarnings.map((warning) => `- ${warning.label}: ${warning.likelyError}`).join('\n')
-    : '- No current Product Setup deployment warnings.';
   const unsupportedRows = payload.unsupportedRequirementDecisions.length > 0
     ? payload.unsupportedRequirementDecisions.map((decision) => `- ${decision.requirement}: ${decision.decision}. ${decision.nearestEquivalent ?? decision.mismatchReason}`).join('\n')
     : '- No unsupported/custom requirements recorded.';
@@ -1495,24 +1703,90 @@ export function createProductSetupPackMarkdown(record: ProductSetupRecord): stri
     : '| None | - | - | No downstream handoffs recorded. |';
 
   return [
-    '# ZiLi-OS Product Setup Pack',
+    `# ZiLi-OS Product Requirements Document ${payload.versionLabel}`,
     '',
     `Generated at: ${payload.generatedAtIso}`,
     '',
     `> ${payload.warning}`,
     '',
-    '## Protocol Fit',
+    '## 1. Product Overview',
     '',
-    `- Recommended architecture target: ${payload.recommendedArchitectureTarget}`,
-    `- Current executable prototype: ${payload.currentExecutablePrototype}`,
+    `- Product Setup status: ${payload.statusLabel}`,
+    `- Readiness: ${payload.readinessLabel}`,
     '',
-    '## What Is This Product?',
+    '## 2. Product Terms Summary',
     '',
     '| Attribute | Value | Provenance |',
     '| --- | --- | --- |',
     profileRows,
     '',
-    '## Downstream Handoff Register',
+    '## 3. Investor Eligibility And Distribution Rules',
+    '',
+    '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
+    '| --- | --- | --- | --- | --- |',
+    fieldRowsForLabels(payload.fields, ['Offering type', 'Eligible investor type', 'Maximum number of investors', 'Distribution jurisdiction', 'Whitelisted wallets required', 'P2P transfer allowed']),
+    '',
+    '## 4. NAV And Valuation Assumptions',
+    '',
+    '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
+    '| --- | --- | --- | --- | --- |',
+    fieldRowsForLabels(payload.fields, ['NAV cadence', 'NAV upload method', 'NAV source']),
+    '',
+    '## 5. Subscription And Mint Assumptions',
+    '',
+    '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
+    '| --- | --- | --- | --- | --- |',
+    fieldRowsForLabels(payload.fields, ['Subscription / mint cadence', 'Subscription payment method', 'Subscription stablecoin type', 'Minimum redemption amount']),
+    '',
+    '## 6. Redemption And Burn Assumptions',
+    '',
+    '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
+    '| --- | --- | --- | --- | --- |',
+    fieldRowsForLabels(payload.fields, ['Redemption / burn cadence', 'Redemption payment method', 'Redemption stablecoin type', 'Burn / lock rule']),
+    '',
+    '## 7. Maturity And Final Redemption Assumptions',
+    '',
+    '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
+    '| --- | --- | --- | --- | --- |',
+    fieldRowsForLabels(payload.fields, ['Duration of product in months', 'Derived maturity date', 'Maturity description', 'Maturity date', 'Maturity closeout rule']),
+    '',
+    '## 8. Blockchain And Token Protocol Assumptions',
+    '',
+    `- Recommended architecture target: ${payload.recommendedArchitectureTarget}`,
+    `- Current executable prototype: ${payload.currentExecutablePrototype}`,
+    '',
+    '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
+    '| --- | --- | --- | --- | --- |',
+    fieldRowsForLabels(payload.fields, ['Blockchain network', 'Protocol base']),
+    '',
+    '## 9. Compliance Rules Summary',
+    '',
+    '- Whitelisted wallets only: tokens can only be minted or transferred to approved wallet addresses.',
+    '- Maximum investor count: active investors must not exceed the configured cap.',
+    '- P2P transfer restriction: if enabled, transfers remain limited to whitelisted eligible wallets.',
+    '- Maturity / redemption control: on maturity or termination, transfers can be paused and tokens move through the approved process.',
+    '',
+    'Investor type is verified offchain before wallet whitelisting. Onchain enforcement uses wallet whitelist status and configured controls; the contract does not independently verify investor type.',
+    '',
+    '## 10. Operational Assumptions',
+    '',
+    '| Detail | Destination tab | Status | Draft note |',
+    '| --- | --- | --- | --- |',
+    handoffRows,
+    '',
+    '## 11. Evidence And Audit Requirements',
+    '',
+    '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
+    '| --- | --- | --- | --- | --- |',
+    fieldRowsForLabels(payload.fields, ['Evidence model']),
+    '',
+    '## 12. Open Questions / Missing Information',
+    '',
+    payload.deploymentWarnings.length > 0
+      ? payload.deploymentWarnings.map((warning) => `- ${warning.label}: ${warning.likelyError}`).join('\n')
+      : '- No open Product Setup deployment warnings recorded.',
+    '',
+    '## 13. Staged Notes For Lifecycle Tabs',
     '',
     '| Detail | Destination tab | Status | Draft note |',
     '| --- | --- | --- | --- |',
@@ -1522,31 +1796,213 @@ export function createProductSetupPackMarkdown(record: ProductSetupRecord): stri
     '',
     ...payload.definitions.map((definition) => `- ${definition}`),
     '',
-    '## Product Requirements And Provenance',
+    '## Appendix A. Product Requirements And Provenance',
     '',
     '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
     '| --- | --- | --- | --- | --- |',
     fieldRows,
     '',
-    '## Deployment Warnings',
-    '',
-    warningRows,
-    '',
     '## Unsupported Or Custom Requirements',
     '',
     unsupportedRows,
-    '',
-    '## Included Documents',
-    '',
-    '- Product Requirements Document',
-    '- Engineering smart-contract and Sepolia testnet details',
-    '- PRD-to-contract translation',
-    '- Asset servicing setup for distribution, wallet addresses, NAV, subscription, and redemption',
   ].join('\n');
 }
 
-export function createProductSetupPackPrintableHtml(record: ProductSetupRecord): string {
-  const payload = createProductSetupPackPayload(record);
+function fieldRowsForLabels(
+  fields: ReturnType<typeof createProductSetupPackPayload>['fields'],
+  labels: string[],
+): string {
+  const wanted = new Set(labels);
+  const rows = fields
+    .filter((field) => wanted.has(field.requirement))
+    .map((field) => `| ${field.requirement} | ${field.userInput} | ${field.interpretation} | ${field.source} | ${field.status} |`);
+  return rows.length > 0 ? rows.join('\n') : '| None | - | - | - | - |';
+}
+
+export function createProductSetupPackMarkdown(record: ProductSetupRecord): string {
+  return createProductSetupPrdMarkdown(record);
+}
+
+export function createProductSetupPrdDocxContent(
+  record: ProductSetupRecord,
+  readModel = toProductSetupReadModel(record),
+  options: ProductSetupPackGenerationOptions = {},
+): Uint8Array {
+  const markdown = createProductSetupPrdMarkdown(record, readModel, options);
+  const payload = createProductSetupPackPayload(record, readModel, options);
+  const documentXml = markdownToWordDocumentXml(markdown, `ZiLi-OS Product Requirements Document ${payload.versionLabel}`);
+
+  return createZipArchive({
+    '[Content_Types].xml': [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
+      '<Default Extension="xml" ContentType="application/xml"/>',
+      '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>',
+      '</Types>',
+    ].join(''),
+    '_rels/.rels': [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>',
+      '</Relationships>',
+    ].join(''),
+    'word/document.xml': documentXml,
+  });
+}
+
+function markdownToWordDocumentXml(markdown: string, title: string): string {
+  const body = markdown
+    .split('\n')
+    .flatMap((line) => markdownLineToWordParagraphs(line))
+    .join('');
+
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+    '<w:body>',
+    wordParagraph(title, 'Title'),
+    body,
+    '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr>',
+    '</w:body>',
+    '</w:document>',
+  ].join('');
+}
+
+function markdownLineToWordParagraphs(line: string): string[] {
+  const trimmed = line.trim();
+  if (!trimmed) return [wordParagraph('')];
+  if (/^\|?[-\s|]+\|?$/.test(trimmed)) return [];
+  if (trimmed.startsWith('# ')) return [wordParagraph(trimmed.slice(2), 'Heading1')];
+  if (trimmed.startsWith('## ')) return [wordParagraph(trimmed.slice(3), 'Heading2')];
+  if (trimmed.startsWith('- ')) return [wordParagraph(`• ${trimmed.slice(2)}`)];
+  if (trimmed.startsWith('|')) {
+    const cells = trimmed
+      .split('|')
+      .map((cell) => cell.trim())
+      .filter(Boolean);
+    return cells.length > 0 ? [wordParagraph(cells.join(' | '))] : [];
+  }
+  return [wordParagraph(trimmed)];
+}
+
+function wordParagraph(text: string, style?: 'Title' | 'Heading1' | 'Heading2'): string {
+  const styleXml = style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : '';
+  return `<w:p>${styleXml}<w:r><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r></w:p>`;
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
+}
+
+function createZipArchive(files: Record<string, string>): Uint8Array {
+  const encoder = new TextEncoder();
+  const fileEntries = Object.entries(files).map(([name, content]) => ({
+    name,
+    nameBytes: encoder.encode(name),
+    data: encoder.encode(content),
+  }));
+  const localParts: Uint8Array[] = [];
+  const centralParts: Uint8Array[] = [];
+  let offset = 0;
+
+  for (const entry of fileEntries) {
+    const crc = crc32(entry.data);
+    const localHeader = zipLocalHeader(entry.nameBytes, entry.data.length, crc);
+    localParts.push(localHeader, entry.nameBytes, entry.data);
+    centralParts.push(zipCentralHeader(entry.nameBytes, entry.data.length, crc, offset), entry.nameBytes);
+    offset += localHeader.length + entry.nameBytes.length + entry.data.length;
+  }
+
+  const centralOffset = offset;
+  const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+  const endRecord = zipEndRecord(fileEntries.length, centralSize, centralOffset);
+  return concatBytes([...localParts, ...centralParts, endRecord]);
+}
+
+function zipLocalHeader(fileName: Uint8Array, size: number, crc: number): Uint8Array {
+  const header = new Uint8Array(30);
+  const view = new DataView(header.buffer);
+  view.setUint32(0, 0x04034b50, true);
+  view.setUint16(4, 20, true);
+  view.setUint16(8, 0, true);
+  view.setUint16(10, 0, true);
+  view.setUint16(12, 0, true);
+  view.setUint32(14, crc, true);
+  view.setUint32(18, size, true);
+  view.setUint32(22, size, true);
+  view.setUint16(26, fileName.length, true);
+  return header;
+}
+
+function zipCentralHeader(fileName: Uint8Array, size: number, crc: number, localOffset: number): Uint8Array {
+  const header = new Uint8Array(46);
+  const view = new DataView(header.buffer);
+  view.setUint32(0, 0x02014b50, true);
+  view.setUint16(4, 20, true);
+  view.setUint16(6, 20, true);
+  view.setUint16(10, 0, true);
+  view.setUint16(12, 0, true);
+  view.setUint16(14, 0, true);
+  view.setUint32(16, crc, true);
+  view.setUint32(20, size, true);
+  view.setUint32(24, size, true);
+  view.setUint16(28, fileName.length, true);
+  view.setUint32(42, localOffset, true);
+  return header;
+}
+
+function zipEndRecord(fileCount: number, centralSize: number, centralOffset: number): Uint8Array {
+  const record = new Uint8Array(22);
+  const view = new DataView(record.buffer);
+  view.setUint32(0, 0x06054b50, true);
+  view.setUint16(8, fileCount, true);
+  view.setUint16(10, fileCount, true);
+  view.setUint32(12, centralSize, true);
+  view.setUint32(16, centralOffset, true);
+  return record;
+}
+
+function concatBytes(parts: Uint8Array[]): Uint8Array {
+  const size = parts.reduce((sum, part) => sum + part.length, 0);
+  const output = new Uint8Array(size);
+  let offset = 0;
+  for (const part of parts) {
+    output.set(part, offset);
+    offset += part.length;
+  }
+  return output;
+}
+
+const crc32Table = new Uint32Array(
+  Array.from({ length: 256 }, (_, index) => {
+    let crc = index;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = crc & 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
+    }
+    return crc >>> 0;
+  }),
+);
+
+function crc32(data: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (const byte of data) {
+    crc = crc32Table[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+export function createProductSetupPackPrintableHtml(
+  record: ProductSetupRecord,
+  readModel = toProductSetupReadModel(record),
+  options: ProductSetupPackGenerationOptions = {},
+): string {
+  const payload = createProductSetupPackPayload(record, readModel, options);
   const rows = payload.fields
     .map((field) => `<tr><td>${escapeHtml(field.requirement)}</td><td>${escapeHtml(field.userInput)}</td><td>${escapeHtml(field.interpretation)}</td><td>${escapeHtml(field.source)}</td><td>${escapeHtml(field.status)}</td></tr>`)
     .join('');
@@ -1562,20 +2018,22 @@ export function createProductSetupPackPrintableHtml(record: ProductSetupRecord):
 
   return [
     '<!doctype html>',
-    '<html><head><meta charset="utf-8"><title>ZiLi-OS Product Setup Pack</title>',
+    '<html><head><meta charset="utf-8"><title>ZiLi-OS Product Requirements Document</title>',
     '<style>body{font-family:Inter,Arial,sans-serif;color:#111827;line-height:1.45;margin:32px}table{border-collapse:collapse;width:100%;font-size:12px}td,th{border:1px solid #d1d5db;padding:8px;text-align:left;vertical-align:top}h1,h2{margin-bottom:8px}.warning{background:#fff7ed;border:1px solid #fdba74;padding:12px}</style>',
     '</head><body>',
-    '<h1>ZiLi-OS Product Setup Pack</h1>',
+    `<h1>ZiLi-OS Product Requirements Document ${escapeHtml(payload.versionLabel)}</h1>`,
     `<p>Generated at: ${escapeHtml(payload.generatedAtIso)}</p>`,
     `<p class="warning">${escapeHtml(payload.warning)}</p>`,
-    '<h2>Protocol Fit</h2>',
+    '<h2>Product Overview</h2>',
+    `<p><strong>Status:</strong> ${escapeHtml(payload.statusLabel)}. <strong>Readiness:</strong> ${escapeHtml(payload.readinessLabel)}.</p>`,
+    '<h2>Blockchain And Token Protocol Assumptions</h2>',
     `<p><strong>Recommended architecture target:</strong> ${escapeHtml(payload.recommendedArchitectureTarget)}</p>`,
     `<p><strong>Current executable prototype:</strong> ${escapeHtml(payload.currentExecutablePrototype)}</p>`,
-    '<h2>What Is This Product?</h2>',
+    '<h2>Product Terms Summary</h2>',
     '<table><thead><tr><th>Attribute</th><th>Value</th><th>Provenance</th></tr></thead><tbody>',
     profileRows,
     '</tbody></table>',
-    '<h2>Downstream Handoff Register</h2>',
+    '<h2>Staged Notes For Lifecycle Tabs</h2>',
     '<table><thead><tr><th>Detail</th><th>Destination tab</th><th>Status</th><th>Draft note</th></tr></thead><tbody>',
     handoffRows,
     '</tbody></table>',

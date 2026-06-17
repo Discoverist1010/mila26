@@ -75,6 +75,14 @@ export const AllocationMintParametersPersistenceSchema = z
 const ProductSetupFieldKeyPersistenceSchema = z.enum([
   'product_name',
   'token_symbol',
+  'product_launch_date',
+  'product_wrapper',
+  'underlying_asset_class',
+  'product_structure',
+  'offering_type',
+  'eligible_investor_type',
+  'maximum_investor_count',
+  'distribution_jurisdiction',
   'issuer_owner',
   'product_type',
   'base_currency',
@@ -84,17 +92,28 @@ const ProductSetupFieldKeyPersistenceSchema = z.enum([
   'investor_wallet_rule',
   'whitelisted_wallets_required',
   'subscription_cadence',
+  'subscription_payment_method',
   'subscription_stablecoins',
   'subscription_receiving_wallet',
   'redemption_cadence',
+  'redemption_payment_method',
+  'redemption_stablecoin_type',
   'redemption_schedule',
   'redemption_payout_delay',
   'income_payout_cadence',
   'redemption_payout_cadence',
+  'minimum_redemption_amount',
+  'p2p_transfer_allowed',
+  'compliance_model',
+  'evidence_model',
+  'duration_months',
+  'derived_maturity_date',
+  'maturity_description',
   'redemption_wallet',
   'admin_wallet',
   'burn_lock_rule',
   'nav_cadence',
+  'nav_upload_method',
   'nav_source',
   'investor_update_rule',
   'initial_distribution_date',
@@ -184,9 +203,81 @@ const ProductSetupFieldsPersistenceSchema = z
     token_symbol: ProductSetupFieldPersistenceSchema.default(() =>
       defaultProductSetupField({
         key: 'token_symbol',
-        label: 'Token symbol',
+        label: 'Product short name',
         usedByTabs: ['Overview', 'Contract Ops', 'Evidence Vault'],
         smartContractRelevance: 'contract_parameter',
+      }),
+    ),
+    product_launch_date: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'product_launch_date',
+        label: 'Product launch date',
+        usedByTabs: ['Product Setup', 'Subscription', 'Investor Wallets', 'Maturity', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    product_wrapper: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'product_wrapper',
+        label: 'Product wrapper',
+        usedByTabs: ['Product Setup', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    underlying_asset_class: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'underlying_asset_class',
+        label: 'Underlying asset class',
+        usedByTabs: ['Product Setup', 'Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    product_structure: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'product_structure',
+        label: 'Product structure',
+        usedByTabs: ['Product Setup', 'Subscription', 'Redemption', 'Maturity'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    offering_type: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'offering_type',
+        label: 'Offering type',
+        usedByTabs: ['Product Setup', 'Investor Wallets', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    eligible_investor_type: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'eligible_investor_type',
+        label: 'Eligible investor type',
+        usedByTabs: ['Product Setup', 'Investor Wallets', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    maximum_investor_count: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'maximum_investor_count',
+        label: 'Maximum number of investors',
+        value: 50,
+        status: 'system_default',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_investor_cap',
+        usedByTabs: ['Product Setup', 'Investor Wallets', 'Contract Ops'],
+        smartContractRelevance: 'contract_parameter',
+      }),
+    ),
+    distribution_jurisdiction: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'distribution_jurisdiction',
+        label: 'Distribution jurisdiction',
+        value: 'Singapore',
+        status: 'locked',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_singapore_only',
+        usedByTabs: ['Product Setup', 'Investor Wallets', 'Evidence Vault'],
+        smartContractRelevance: 'evidence_metadata',
       }),
     ),
     issuer_owner: ProductSetupFieldPersistenceSchema,
@@ -214,8 +305,16 @@ const ProductSetupFieldsPersistenceSchema = z
     subscription_cadence: ProductSetupFieldPersistenceSchema.default(() =>
       defaultProductSetupField({
         key: 'subscription_cadence',
-        label: 'Subscription cadence',
+        label: 'Subscription / mint cadence',
         usedByTabs: ['Subscription', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    subscription_payment_method: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'subscription_payment_method',
+        label: 'Subscription payment method',
+        usedByTabs: ['Subscription', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
       }),
     ),
@@ -231,8 +330,24 @@ const ProductSetupFieldsPersistenceSchema = z
     redemption_cadence: ProductSetupFieldPersistenceSchema.default(() =>
       defaultProductSetupField({
         key: 'redemption_cadence',
-        label: 'Redemption cadence',
+        label: 'Redemption / burn cadence',
         usedByTabs: ['Redemption', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    redemption_payment_method: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'redemption_payment_method',
+        label: 'Redemption payment method',
+        usedByTabs: ['Redemption', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    redemption_stablecoin_type: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'redemption_stablecoin_type',
+        label: 'Redemption stablecoin type',
+        usedByTabs: ['Redemption', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
       }),
     ),
@@ -254,6 +369,79 @@ const ProductSetupFieldsPersistenceSchema = z
         smartContractRelevance: 'operational_metadata',
       }),
     ),
+    minimum_redemption_amount: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'minimum_redemption_amount',
+        label: 'Minimum redemption amount',
+        value: '1 token',
+        status: 'system_default',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_default_minimum_redemption',
+        usedByTabs: ['Redemption', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    p2p_transfer_allowed: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'p2p_transfer_allowed',
+        label: 'P2P transfer allowed',
+        usedByTabs: ['Investor Wallets', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'contract_parameter',
+      }),
+    ),
+    compliance_model: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'compliance_model',
+        label: 'Compliance model',
+        value: 'Whitelist-based transfer restrictions',
+        status: 'locked',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_compliance_model',
+        usedByTabs: ['Investor Wallets', 'Contract Ops', 'Evidence Vault'],
+        smartContractRelevance: 'contract_parameter',
+      }),
+    ),
+    evidence_model: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'evidence_model',
+        label: 'Evidence model',
+        value: 'Store PRD, approvals, transaction hashes, generated artefacts, and version history',
+        status: 'locked',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_evidence_model',
+        usedByTabs: ['Evidence Vault'],
+        smartContractRelevance: 'evidence_metadata',
+      }),
+    ),
+    duration_months: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'duration_months',
+        label: 'Duration of product in months',
+        usedByTabs: ['Product Setup', 'Maturity', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    derived_maturity_date: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'derived_maturity_date',
+        label: 'Derived maturity date',
+        usedByTabs: ['Product Setup', 'Maturity', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    maturity_description: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'maturity_description',
+        label: 'Maturity description',
+        value:
+          'Maturity date is the product termination / final redemption date. On maturity, transfers are paused for the token, outstanding tokens move through the approved maturity redemption process, and fiat payout is processed offchain unless another approved payout method is selected.',
+        status: 'locked',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_maturity_description',
+        usedByTabs: ['Product Setup', 'Maturity', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
     redemption_wallet: ProductSetupFieldPersistenceSchema,
     admin_wallet: ProductSetupFieldPersistenceSchema,
     burn_lock_rule: ProductSetupFieldPersistenceSchema,
@@ -263,6 +451,18 @@ const ProductSetupFieldsPersistenceSchema = z
         label: 'NAV cadence',
         usedByTabs: ['Asset Servicing', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    nav_upload_method: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'nav_upload_method',
+        label: 'NAV upload method',
+        value: 'CSV',
+        status: 'locked',
+        sourceType: 'system_default',
+        sourceRef: 'mvp_csv_only_nav_upload',
+        usedByTabs: ['Product Setup', 'Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'evidence_metadata',
       }),
     ),
     nav_source: ProductSetupFieldPersistenceSchema.default(() =>
@@ -596,11 +796,15 @@ const ProductSetupPackArtifactRecordSchema = z
     artifactPayload: z
       .object({
         recordId: z.string().trim().min(1).max(160),
+        artifactId: z.string().trim().min(1).max(220).optional(),
+        versionLabel: z.string().trim().min(1).max(40).optional(),
+        displayVersion: z.string().trim().min(1).max(80).optional(),
         generatedAtIso: z.string().trim().min(1).max(80),
+        packStatus: z.string().trim().min(1).max(80).optional(),
         warning: z.string().trim().min(1).max(800),
         statusLabel: z.string().trim().min(1).max(160),
         readinessLabel: z.string().trim().min(1).max(160),
-        recommendedArchitectureTarget: z.enum(['ERC-20', 'ERC-4626', 'ERC-3643', 'Custom ERC-20 with rebasing']),
+        recommendedArchitectureTarget: z.enum(['ERC-20', 'Customised ERC-20', 'ERC-3643']),
         currentExecutablePrototype: z.string().trim().min(1).max(420),
         definitions: z.array(z.string().trim().min(1).max(420)).min(1).max(20),
         profileRows: z
@@ -616,7 +820,7 @@ const ProductSetupPackArtifactRecordSchema = z
               })
               .strict(),
           )
-          .max(20),
+          .max(80),
         downstreamHandoffs: z.array(ProductSetupHandoffNotePersistenceSchema).max(40),
         fields: z
           .array(
@@ -632,7 +836,7 @@ const ProductSetupPackArtifactRecordSchema = z
               .strict(),
           )
           .min(1)
-          .max(40),
+          .max(80),
         deploymentWarnings: z
           .array(
             z

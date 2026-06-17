@@ -34,7 +34,7 @@ test('product setup turns unstructured chat into reviewable requirements', async
   const productSetupArtifact = page.getByLabel('Product Setup PRD artifact');
   await expect(productSetupArtifact).toBeVisible();
   await expect(productSetupArtifact.getByLabel('What is this product')).toContainText('Product profile');
-  await expect(productSetupArtifact.getByLabel('What is this product')).toContainText('Instrument / structure');
+  await expect(productSetupArtifact.getByLabel('What is this product')).toContainText('Product name');
   await expect(productSetupArtifact.getByLabel('Product Setup downstream handoffs')).toContainText('No downstream details captured yet.');
   await expect(productSetupHeader).not.toContainText('Conversation-first Product Setup');
   await expect(productSetupHeader).not.toContainText('ZiLi-OS understanding');
@@ -53,9 +53,9 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await expect(suggestedUpdates).toContainText('Expected investors');
   await suggestedUpdates.getByRole('button', { name: 'Review all' }).click();
   await expect(suggestedUpdates).toContainText('25');
-  await expect(suggestedUpdates).toContainText('Subscription stablecoins');
+  await expect(suggestedUpdates).toContainText('Subscription stablecoin type');
   await expect(suggestedUpdates).toContainText('USDC');
-  await expect(suggestedUpdates).toContainText('Redemption cadence');
+  await expect(suggestedUpdates).toContainText('Redemption / burn cadence');
   await expect(suggestedUpdates).toContainText('Quarterly');
   await expect(page.getByLabel('Next suggested action')).toHaveCount(0);
 
@@ -76,8 +76,10 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await expect(page.getByLabel('Permitted stablecoins')).toHaveValue('USDC');
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Product Setup/ }).click();
 
-  await productSetupArtifact.getByLabel('Product Setup Pack').getByRole('button', { name: 'Download Product Setup Pack' }).click();
-  await expect(productSetupArtifact).toContainText('Draft Product Setup Pack generated in session.');
+  await expect(productSetupArtifact.getByLabel('Product Setup Pack')).toContainText('Draft');
+  await expect(productSetupArtifact.getByLabel('Product Setup Pack').getByRole('button', { name: 'Download PRD .docx' })).toBeDisabled();
+  await expect(productSetupArtifact.getByLabel('Product Setup Pack').getByRole('button', { name: 'Download PRD .md' })).toBeDisabled();
+  await expect(productSetupArtifact.getByLabel('Product Setup Pack').getByRole('button', { name: 'Download setup JSON' })).toBeDisabled();
 });
 
 test('guided beta journey creates requirements and exposes Engineering Brief action', async ({ page }) => {

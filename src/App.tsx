@@ -55,9 +55,9 @@ import {
   applyProductSetupHandoffSuggestion,
   confirmProductSetupUpdate,
   createInitialProductSetupRecord,
-  createProductSetupPackMarkdown,
   createProductSetupPackPayload,
-  createProductSetupPackPrintableHtml,
+  createProductSetupPrdDocxContent,
+  createProductSetupPrdMarkdown,
   createProductSetupSuggestionsFromStructuredUpdates,
   createProductSetupSuggestionsFromText,
   createUnsupportedRequirementDecisionsFromText,
@@ -294,6 +294,15 @@ type WorkspacePersistenceStatus = {
 type DurableRecordStatus = {
   status: 'idle' | 'saving' | 'loading' | 'saved' | 'loaded' | 'error';
   message: string;
+};
+
+type ProductSetupPrdArtifacts = {
+  versionLabel: string;
+  generatedAtIso: string;
+  payload: ReturnType<typeof createProductSetupPackPayload>;
+  markdown: string;
+  docxContent: Uint8Array;
+  setupJson: string;
 };
 
 function createLocalEngineerResponse(content: string): BlockchainEngineerChatResponse {
@@ -579,7 +588,7 @@ export function App() {
     status: 'idle',
     message: 'Generated artifacts are in session until saved.',
   });
-  const [productSetupPackGeneratedAtIso, setProductSetupPackGeneratedAtIso] = useState<string | undefined>();
+  const [productSetupPrdArtifacts, setProductSetupPrdArtifacts] = useState<ProductSetupPrdArtifacts | undefined>();
   const [productSetupPackStatus, setProductSetupPackStatus] = useState<string | undefined>();
   const [productSetupWalletMessage, setProductSetupWalletMessage] = useState<string | undefined>();
   const [contractOpsDeploymentWarningMessage, setContractOpsDeploymentWarningMessage] = useState<string | undefined>();
@@ -827,15 +836,14 @@ export function App() {
   const lifecycleReadModel = useMemo(() => toMila26LifecycleReadModel(lifecycleState), [lifecycleState]);
   const productSetupReadModel = useMemo(() => toProductSetupReadModel(productSetupRecord), [productSetupRecord]);
   const productSetupPendingReviewCount = productSetupRecord.pendingSuggestedUpdates.length;
-  const productSetupDraftedProfileRows = productSetupReadModel.profileRows.filter((row) => row.provenanceLabel !== 'Missing');
   const productSetupRowsNeedingReview = productSetupReadModel.profileRows.filter((row) =>
     ['Inferred', 'Assumed', 'Needs review'].includes(row.provenanceLabel),
   );
   const productSetupProgressPercent = Math.round(
-    (productSetupDraftedProfileRows.length / Math.max(productSetupReadModel.profileRows.length, 1)) * 100,
+    (productSetupReadModel.completedEssentialCount / Math.max(productSetupReadModel.requiredEssentialCount, 1)) * 100,
   );
   const productSetupProgressLabel =
-    `${productSetupDraftedProfileRows.length} of ${productSetupReadModel.profileRows.length} drafted` +
+    `${productSetupReadModel.completedEssentialCount} of ${productSetupReadModel.requiredEssentialCount} Product Setup fields drafted` +
     (productSetupRowsNeedingReview.length > 0 ? ` · ${productSetupRowsNeedingReview.length} need review` : '');
   const allocationMint = lifecycleReadModel.allocationMint;
   const selectedAllocationMintRegistryEntry = useMemo(
@@ -1010,23 +1018,44 @@ export function App() {
     const canonicalFieldKeys: ProductSetupFieldKey[] = [
       'product_name',
       'token_symbol',
+      'product_launch_date',
+      'product_wrapper',
+      'underlying_asset_class',
+      'product_structure',
+      'offering_type',
+      'eligible_investor_type',
+      'maximum_investor_count',
+      'distribution_jurisdiction',
       'product_type',
       'base_currency',
       'income_treatment',
       'protocol_base',
       'expected_investor_count',
       'investor_wallet_rule',
+      'whitelisted_wallets_required',
+      'p2p_transfer_allowed',
       'subscription_cadence',
+      'subscription_payment_method',
       'redemption_cadence',
+      'redemption_payment_method',
       'income_payout_cadence',
       'redemption_payout_cadence',
       'subscription_stablecoins',
+      'redemption_stablecoin_type',
+      'minimum_redemption_amount',
       'burn_lock_rule',
       'nav_cadence',
+      'nav_upload_method',
       'nav_source',
       'initial_distribution_date',
       'initial_investor_register_rule',
+      'duration_months',
+      'derived_maturity_date',
+      'maturity_description',
       'maturity_date',
+      'compliance_model',
+      'evidence_model',
+      'prototype_network',
     ];
 
     return {
@@ -1733,7 +1762,8 @@ export function App() {
     setInvestorRegistryDraftWallet('');
     setInvestorRegistryError(undefined);
     setWalletWhitelistTargetWallet('');
-    setProductSetupPackGeneratedAtIso(undefined);
+    setProductSetupPrdArtifacts(undefined);
+    setProductSetupPackStatus(undefined);
   }
 
   async function saveWorkspaceToBackend() {
@@ -1914,11 +1944,10 @@ export function App() {
   function buildArtifactRecords(lifecycleSnapshotVersion: number): WorkspaceArtifactRecordInput[] {
     const records: WorkspaceArtifactRecordInput[] = [];
 
-    if (productSetupPackGeneratedAtIso) {
-      const productSetupPackPayload = createProductSetupPackPayload(productSetupRecord, productSetupReadModel);
+    if (productSetupPrdArtifacts) {
       records.push({
         artifactType: 'product_setup_pack',
-        artifactPayload: productSetupPackPayload,
+        artifactPayload: productSetupPrdArtifacts.payload,
         lifecycleSnapshotVersion,
       });
     }
@@ -2697,39 +2726,144 @@ export function App() {
     setProductSetupWalletMessage(result.message);
   }
 
-  function generateProductSetupPack(format: 'markdown' | 'json' | 'pdf') {
-    setProductSetupPackGeneratedAtIso(new Date().toISOString());
-    const baseName = `${productSetupRecord.id}-${format}`;
+  function nextProductSetupPrdVersionLabel(): string {
+    const versionLabels = [
+      productSetupPrdArtifacts?.versionLabel,
+      ...durableArtifactRecords
+        .filter((record) => record.artifactType === 'product_setup_pack')
+        .map((record) => ('versionLabel' in record.artifactPayload ? record.artifactPayload.versionLabel : undefined)),
+    ].filter((value): value is string => Boolean(value));
+
+    const highestPatch = versionLabels.reduce((highest, label) => {
+      const match = /^v(\d+)\.(\d+)$/.exec(label.trim());
+      if (!match) return highest;
+      const score = Number(match[1]) * 10 + Number(match[2]);
+      return Math.max(highest, score);
+    }, -1);
+
+    if (highestPatch < 0) return 'v1.0';
+    const nextPatch = highestPatch + 1;
+    return `v${Math.floor(nextPatch / 10)}.${nextPatch % 10}`;
+  }
+
+  async function finaliseProductSetupPrd() {
+    const generatedAtIso = new Date().toISOString();
+    const versionLabel = nextProductSetupPrdVersionLabel();
+    const generationOptions = { generatedAtIso, versionLabel };
+    const payload = createProductSetupPackPayload(productSetupRecord, productSetupReadModel, generationOptions);
+    const markdown = createProductSetupPrdMarkdown(productSetupRecord, productSetupReadModel, generationOptions);
+    const docxContent = createProductSetupPrdDocxContent(productSetupRecord, productSetupReadModel, generationOptions);
+    const setupJson = JSON.stringify(
+      {
+        artifact: payload,
+        productSetupRecord,
+      },
+      null,
+      2,
+    );
+    const artifacts: ProductSetupPrdArtifacts = {
+      versionLabel,
+      generatedAtIso,
+      payload,
+      markdown,
+      docxContent,
+      setupJson,
+    };
+
+    setProductSetupPrdArtifacts(artifacts);
+    setProductSetupPackStatus(`Product PRD ${versionLabel} generated. Download buttons are now available.`);
+
+    const workspaceRecord = await saveWorkspaceSnapshotForPersistence();
+    if (!workspaceRecord) {
+      setArtifactVaultStatus({
+        status: 'error',
+        message: `Product PRD ${versionLabel} generated in session. Save a workspace snapshot before storing it in Evidence Vault.`,
+      });
+      return;
+    }
+
+    setArtifactVaultStatus({ status: 'saving', message: `Saving Product PRD ${versionLabel} to Evidence Vault...` });
+    const result = await saveWorkspaceArtifactRecords({
+      projectId: workspaceRecord.project.id,
+      records: [
+        {
+          artifactType: 'product_setup_pack',
+          artifactPayload: payload,
+          lifecycleSnapshotVersion: workspaceRecord.snapshot.version,
+        },
+      ],
+    });
+
+    if (result.ok) {
+      setDurableArtifactRecords(result.data.artifactRecords);
+      setArtifactVaultStatus({
+        status: 'saved',
+        message: `Product PRD ${versionLabel} stored in Evidence Vault.`,
+      });
+      return;
+    }
+
+    setArtifactVaultStatus({
+      status: 'error',
+      message: `Product PRD ${versionLabel} generated in session. Evidence Vault save failed: ${result.message}`,
+    });
+  }
+
+  async function saveProductSetupDraft() {
+    const result = await saveWorkspaceSnapshotForPersistence();
+    if (result) {
+      setProductSetupPackStatus(`Product Setup draft saved as snapshot v${result.snapshot.version}. PRD download buttons remain inactive until finalisation.`);
+      setWorkspacePersistenceStatus({
+        status: 'saved',
+        message: `Snapshot v${result.snapshot.version} saved. Product PRD has not been finalised.`,
+      });
+    }
+  }
+
+  function downloadProductSetupArtifact(format: 'markdown' | 'json' | 'docx') {
+    if (!productSetupPrdArtifacts) {
+      setProductSetupPackStatus('Finalise the Product PRD before downloading artefacts.');
+      return;
+    }
+
     const content =
       format === 'markdown'
-        ? createProductSetupPackMarkdown(productSetupRecord)
+        ? productSetupPrdArtifacts.markdown
         : format === 'json'
-          ? JSON.stringify(createProductSetupPackPayload(productSetupRecord, productSetupReadModel), null, 2)
-          : createProductSetupPackPrintableHtml(productSetupRecord);
-    const mimeType = format === 'json' ? 'application/json' : format === 'markdown' ? 'text/markdown' : 'text/html';
-    const extension = format === 'json' ? 'json' : format === 'markdown' ? 'md' : 'html';
+          ? productSetupPrdArtifacts.setupJson
+          : productSetupPrdArtifacts.docxContent;
+    const mimeType =
+      format === 'json'
+        ? 'application/json'
+        : format === 'markdown'
+          ? 'text/markdown'
+          : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    const extension = format === 'markdown' ? 'md' : format;
+    const versionSuffix = productSetupPrdArtifacts.versionLabel.replaceAll('.', '-');
+    const baseName =
+      format === 'json'
+        ? `product-setup-${versionSuffix}`
+        : `product-prd-${versionSuffix}`;
+    const blobPart = content instanceof Uint8Array ? uint8ArrayToArrayBuffer(content) : content;
 
     try {
-      const blob = new Blob([content], { type: mimeType });
+      const blob = new Blob([blobPart], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = `${baseName}.${extension}`;
       link.click();
       URL.revokeObjectURL(url);
-      setProductSetupPackStatus(
-        format === 'pdf'
-          ? 'PDF-readable Product Setup Pack downloaded as HTML. Open it and print or save as PDF.'
-          : `${format.toUpperCase()} Product Setup Pack downloaded.`,
-      );
+      setProductSetupPackStatus(`${baseName}.${extension} downloaded.`);
     } catch {
-      setProductSetupPackStatus('Product Setup Pack is ready in session. Browser download was unavailable.');
+      setProductSetupPackStatus('Product PRD artifact is ready in session. Browser download was unavailable.');
     }
+  }
 
-    setArtifactVaultStatus({
-      status: 'idle',
-      message: 'Draft Product Setup Pack is ready in session. Save generated artifacts to persist it.',
-    });
+  function uint8ArrayToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+    const copy = new Uint8Array(bytes.byteLength);
+    copy.set(bytes);
+    return copy.buffer;
   }
 
   function acknowledgeDeploymentWarnings() {
@@ -2749,6 +2883,17 @@ export function App() {
     ? unsentProductSetupHandoffs
     : unsentProductSetupHandoffs.slice(0, Math.max(0, visibleReviewLimit - visibleReviewUpdates.length));
   const hiddenReviewCount = Math.max(0, rightRailReviewCount - visibleReviewUpdates.length - visibleReviewHandoffs.length);
+  const productSetupPackStatusLabel = productSetupPrdArtifacts
+    ? 'PRD generated'
+    : productSetupReadModel.missingEssentials.length === 0
+      ? 'Ready for review'
+      : 'Draft';
+  const productSetupEvidenceVaultLabel =
+    productSetupPrdArtifacts && artifactVaultStatus.status === 'saved'
+      ? 'Stored in Evidence Vault'
+      : productSetupPrdArtifacts
+        ? 'Generated in session'
+        : 'Not stored yet';
   const shellStyle = isRightRailOpen
     ? ({ '--mila-right-rail-width': `${rightRailWidth}px` } as CSSProperties)
     : undefined;
@@ -2758,7 +2903,10 @@ export function App() {
   }
 
   function productSetupProfileProvenanceLabel(label: (typeof productSetupReadModel.profileRows)[number]['provenanceLabel']) {
-    return label === 'Missing' ? 'To be filled' : label;
+    if (label === 'Missing') return 'To be filled';
+    if (label === 'Stated') return 'Ready';
+    if (label === 'Assumed') return 'Locked default';
+    return 'Needs review';
   }
 
   function userFacingCopilotRouteLabel(label: string) {
@@ -2952,7 +3100,10 @@ export function App() {
                 <div>
                   <span className="section-kicker">Product PRD</span>
                   <h3>Product setup</h3>
-                  <p>ZiLi-OS drafts the product brief first, then stages operational details as draft notes for the focused tabs.</p>
+                  <p>
+                    ZiliOS drafts the product PRD from the product profile first, then stages wallet, subscription, contract,
+                    servicing, redemption, and maturity details into the relevant lifecycle tabs.
+                  </p>
                 </div>
                 <div className="product-setup-progress" aria-label="Product Setup PRD progress">
                   <div>
@@ -4003,7 +4154,25 @@ export function App() {
                     <div>
                       <h4>Product Setup Pack</h4>
                       <p>{productSetupReadModel.packPreview.warning}</p>
-                      <ul className="artifact-list">
+                      <div className="product-setup-pack-meta" aria-label="PRD artefact status">
+                        <article>
+                          <span>Pack status</span>
+                          <strong>{productSetupPackStatusLabel}</strong>
+                        </article>
+                        <article>
+                          <span>Version</span>
+                          <strong>{productSetupPrdArtifacts?.versionLabel ?? 'Not generated'}</strong>
+                        </article>
+                        <article>
+                          <span>Last generated</span>
+                          <strong>{productSetupPrdArtifacts ? new Date(productSetupPrdArtifacts.generatedAtIso).toLocaleString() : 'Not generated'}</strong>
+                        </article>
+                        <article>
+                          <span>Evidence Vault</span>
+                          <strong>{productSetupEvidenceVaultLabel}</strong>
+                        </article>
+                      </div>
+                      <ul className="artifact-list product-setup-pack-includes">
                         {productSetupReadModel.packPreview.includedDocuments.map((document) => (
                           <li key={document}>
                             <span>Included</span>
@@ -4012,30 +4181,63 @@ export function App() {
                         ))}
                       </ul>
                     </div>
+                    <div className="product-setup-pack-actions" aria-label="PRD artefact actions">
+                      <button
+                        type="button"
+                        className="workflow-button primary-action"
+                        disabled={productSetupReadModel.missingEssentials.length > 0}
+                        onClick={() => void finaliseProductSetupPrd()}
+                      >
+                        Finalise PRD
+                      </button>
+                      <button
+                        type="button"
+                        className="workflow-button"
+                        onClick={() => void saveProductSetupDraft()}
+                      >
+                        Save as draft
+                      </button>
+                      <button
+                        type="button"
+                        className="workflow-button"
+                        disabled={productSetupReadModel.missingEssentials.length === 0}
+                        onClick={() => {
+                          setSelectedWorkspaceTab('requirements');
+                          setProductSetupPackStatus(
+                            `Open questions: ${productSetupReadModel.missingEssentials
+                              .slice(0, 5)
+                              .map((field) => field.label)
+                              .join(', ') || 'none'}.`,
+                          );
+                        }}
+                      >
+                        Edit further
+                      </button>
+                    </div>
                     <button
                       type="button"
                       className="workflow-button primary-action"
-                      onClick={() => generateProductSetupPack('markdown')}
+                      disabled={!productSetupPrdArtifacts}
+                      onClick={() => downloadProductSetupArtifact('docx')}
                     >
-                      Download Product Setup Pack
+                      Download PRD .docx
                     </button>
                     <button
                       type="button"
                       className="workflow-button"
-                      onClick={() => generateProductSetupPack('json')}
+                      disabled={!productSetupPrdArtifacts}
+                      onClick={() => downloadProductSetupArtifact('markdown')}
                     >
-                      Download JSON
+                      Download PRD .md
                     </button>
                     <button
                       type="button"
                       className="workflow-button"
-                      onClick={() => generateProductSetupPack('pdf')}
+                      disabled={!productSetupPrdArtifacts}
+                      onClick={() => downloadProductSetupArtifact('json')}
                     >
-                      Download PDF-readable
+                      Download setup JSON
                     </button>
-                    {productSetupPackGeneratedAtIso && (
-                      <p className="chat-status">Draft Product Setup Pack generated in session. Save generated artifacts to persist it.</p>
-                    )}
                     {productSetupPackStatus && <p className="chat-status">{productSetupPackStatus}</p>}
                   </section>
                 </section>

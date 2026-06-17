@@ -379,7 +379,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByLabelText('Next suggested action')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Expected investors');
     fireEvent.click(within(screen.getByLabelText('Needs your review')).getByRole('button', { name: 'Review all' }));
-    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Subscription stablecoins');
+    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Subscription stablecoin type');
     expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Redemption payout delay');
     expect(
       screen
@@ -444,7 +444,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByLabelText('Product Setup wallet capture')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Product Setup just-in-time explanations')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Product Setup missing fields')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Instrument / structure');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Product name');
     expect(screen.getByLabelText('What is this product')).toHaveTextContent('To be filled');
   });
 
@@ -472,11 +472,11 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Subscription stablecoins: USDC');
+      expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Subscription stablecoin type: USDC');
     });
     fireEvent.click(
       within(screen.getByLabelText('Needs your review'))
-        .getAllByText(/Subscription stablecoins: USDC/)[0]
+        .getAllByText(/Subscription stablecoin type: USDC/)[0]
         .closest('article')
         ?.querySelector('button.workflow-button') as HTMLElement,
     );
@@ -488,7 +488,7 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Subscription/ }));
     expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Subscription mechanics');
-    expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Subscription stablecoins: USDC');
+    expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Subscription stablecoin type: USDC');
     expect(screen.getByLabelText('Permitted stablecoins')).toHaveValue('');
     fireEvent.click(within(screen.getByLabelText('Subscription Product Setup draft notes')).getByRole('button', { name: 'Apply' }));
     expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Applied');
@@ -667,19 +667,19 @@ describe('App Blockchain Engineer Bot panel', () => {
         }),
         expect.objectContaining({
           fieldKey: 'subscription_cadence',
-          label: 'Subscription cadence',
+          label: 'Subscription / mint cadence',
           value: 'Monthly',
           sourceType: 'user_message',
         }),
         expect.objectContaining({
           fieldKey: 'redemption_cadence',
-          label: 'Redemption cadence',
+          label: 'Redemption / burn cadence',
           value: 'Monthly',
           sourceType: 'user_message',
         }),
       ]),
     );
-    expect(requestBody.projectContext.currentTurnExtractedFacts).toHaveLength(3);
+    expect(requestBody.projectContext.currentTurnExtractedFacts).toHaveLength(4);
     expect(requestBody.projectContext.workspaceDefaults).toBeUndefined();
     expect(requestBody.projectContext.fundName).toBeUndefined();
     expect(requestBody.projectContext.tokenSymbol).toBeUndefined();
@@ -696,12 +696,12 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(requestBody.projectContext.productSetup.protocolRecommendationCaveat).toMatch(/selected only after the user confirms/i);
     expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Investor Wallets');
     expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Expected investors: 24');
-    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Subscription cadence: Monthly');
+    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Subscription / mint cadence: Monthly');
     expect(screen.getByLabelText('Needs your review')).toHaveTextContent('3 item(s) waiting');
-    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Redemption cadence: Monthly');
-    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Instrument / structure');
-    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Enabled: Monthly');
-    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Stated');
+    expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Redemption / burn cadence: Monthly');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Product name');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Monthly');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Ready');
     expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Investor Wallets');
     expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Subscription');
     expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Redemption');

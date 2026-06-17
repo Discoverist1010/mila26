@@ -1,8 +1,7 @@
 export const supportedProtocolBases = [
   'ERC-20',
-  'ERC-4626',
+  'Customised ERC-20',
   'ERC-3643',
-  'Custom ERC-20 with rebasing',
 ] as const;
 
 export type ProductSetupProtocolBase = (typeof supportedProtocolBases)[number];
@@ -32,6 +31,14 @@ export type ProductSetupFieldSourceType =
 export type ProductSetupFieldKey =
   | 'product_name'
   | 'token_symbol'
+  | 'product_launch_date'
+  | 'product_wrapper'
+  | 'underlying_asset_class'
+  | 'product_structure'
+  | 'offering_type'
+  | 'eligible_investor_type'
+  | 'maximum_investor_count'
+  | 'distribution_jurisdiction'
   | 'issuer_owner'
   | 'product_type'
   | 'base_currency'
@@ -41,17 +48,28 @@ export type ProductSetupFieldKey =
   | 'investor_wallet_rule'
   | 'whitelisted_wallets_required'
   | 'subscription_cadence'
+  | 'subscription_payment_method'
   | 'subscription_stablecoins'
   | 'subscription_receiving_wallet'
   | 'redemption_cadence'
+  | 'redemption_payment_method'
+  | 'redemption_stablecoin_type'
   | 'redemption_schedule'
   | 'redemption_payout_delay'
   | 'income_payout_cadence'
   | 'redemption_payout_cadence'
+  | 'minimum_redemption_amount'
+  | 'p2p_transfer_allowed'
+  | 'compliance_model'
+  | 'evidence_model'
+  | 'duration_months'
+  | 'derived_maturity_date'
+  | 'maturity_description'
   | 'redemption_wallet'
   | 'admin_wallet'
   | 'burn_lock_rule'
   | 'nav_cadence'
+  | 'nav_upload_method'
   | 'nav_source'
   | 'investor_update_rule'
   | 'initial_distribution_date'
@@ -224,8 +242,11 @@ export type ProductSetupReadModel = {
     prompt: string;
   }>;
   packPreview: {
-    canDownloadDraft: boolean;
-    canConfirmAndLock: boolean;
+    status: 'Draft' | 'Ready for review' | 'Finalised' | 'PRD generated';
+    versionLabel: string;
+    lastGeneratedAtIso?: string;
+    evidenceVaultStatus: string;
+    canDownloadArtifacts: boolean;
     warning: string;
     includedDocuments: string[];
   };
@@ -234,17 +255,63 @@ export type ProductSetupReadModel = {
 export const essentialProductSetupFieldKeys = [
   'product_name',
   'token_symbol',
-  'product_type',
-  'base_currency',
-  'income_treatment',
-  'protocol_base',
-  'expected_investor_count',
-  'investor_wallet_rule',
+  'product_launch_date',
+  'product_wrapper',
+  'underlying_asset_class',
+  'product_structure',
+  'offering_type',
+  'eligible_investor_type',
+  'maximum_investor_count',
+  'distribution_jurisdiction',
+  'nav_cadence',
+  'nav_upload_method',
   'subscription_cadence',
   'redemption_cadence',
-  'subscription_stablecoins',
-  'burn_lock_rule',
+  'duration_months',
+  'derived_maturity_date',
+  'maturity_description',
+  'base_currency',
+  'subscription_payment_method',
+  'redemption_payment_method',
+  'minimum_redemption_amount',
+  'whitelisted_wallets_required',
+  'p2p_transfer_allowed',
+  'protocol_base',
   'prototype_network',
+  'compliance_model',
+  'evidence_model',
+] satisfies ProductSetupFieldKey[];
+
+export const productSetupPrdFieldKeys = [
+  'product_name',
+  'token_symbol',
+  'product_launch_date',
+  'product_wrapper',
+  'underlying_asset_class',
+  'product_structure',
+  'offering_type',
+  'eligible_investor_type',
+  'maximum_investor_count',
+  'distribution_jurisdiction',
+  'nav_cadence',
+  'nav_upload_method',
+  'subscription_cadence',
+  'redemption_cadence',
+  'duration_months',
+  'derived_maturity_date',
+  'maturity_description',
+  'base_currency',
+  'subscription_payment_method',
+  'subscription_stablecoins',
+  'redemption_payment_method',
+  'redemption_stablecoin_type',
+  'minimum_redemption_amount',
+  'whitelisted_wallets_required',
+  'p2p_transfer_allowed',
+  'prototype_network',
+  'protocol_base',
+  'compliance_model',
+  'evidence_model',
 ] satisfies ProductSetupFieldKey[];
 
 export const deploymentProductSetupFieldKeys = [
@@ -264,6 +331,14 @@ export const deploymentProductSetupFieldKeys = [
 export const allProductSetupFieldKeys = [
   'product_name',
   'token_symbol',
+  'product_launch_date',
+  'product_wrapper',
+  'underlying_asset_class',
+  'product_structure',
+  'offering_type',
+  'eligible_investor_type',
+  'maximum_investor_count',
+  'distribution_jurisdiction',
   'issuer_owner',
   'product_type',
   'base_currency',
@@ -273,17 +348,28 @@ export const allProductSetupFieldKeys = [
   'investor_wallet_rule',
   'whitelisted_wallets_required',
   'subscription_cadence',
+  'subscription_payment_method',
   'subscription_stablecoins',
   'subscription_receiving_wallet',
   'redemption_cadence',
+  'redemption_payment_method',
+  'redemption_stablecoin_type',
   'redemption_schedule',
   'redemption_payout_delay',
   'income_payout_cadence',
   'redemption_payout_cadence',
+  'minimum_redemption_amount',
+  'p2p_transfer_allowed',
+  'compliance_model',
+  'evidence_model',
+  'duration_months',
+  'derived_maturity_date',
+  'maturity_description',
   'redemption_wallet',
   'admin_wallet',
   'burn_lock_rule',
   'nav_cadence',
+  'nav_upload_method',
   'nav_source',
   'investor_update_rule',
   'initial_distribution_date',

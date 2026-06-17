@@ -3138,7 +3138,7 @@ summary {
   border-top: 1px solid #e6edf6;
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(170px, 0.5fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(220px, 28%) minmax(0, 1fr) max-content;
   padding: 14px 4px;
 }
 
@@ -3156,11 +3156,12 @@ summary {
 .product-profile-list article strong {
   color: #172033;
   font-size: 18px;
+  min-width: 0;
 }
 
 .product-profile-list article p {
   color: #506079;
-  grid-column: 2 / -1;
+  grid-column: 2 / 3;
   margin: -2px 0 0;
 }
 
@@ -3290,6 +3291,42 @@ summary {
 .product-setup-update-list small {
   color: #506079;
   margin: 0;
+}
+
+.product-setup-pack-meta {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.product-setup-pack-meta article {
+  background: #ffffff;
+  border: 1px solid #e6edf6;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.product-setup-pack-meta span,
+.product-setup-pack-includes span {
+  color: #68798c;
+  display: block;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.product-setup-pack-meta strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.product-setup-pack-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .workflow-button.compact {
