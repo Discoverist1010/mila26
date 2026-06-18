@@ -299,10 +299,18 @@ type DurableRecordStatus = {
 type ProductSetupPrdArtifacts = {
   versionLabel: string;
   generatedAtIso: string;
-  payload: ReturnType<typeof createProductSetupPackPayload>;
+  payload: ProductSetupPackArtifactPayload;
   markdown: string;
   docxContent: Uint8Array;
   setupJson: string;
+};
+
+type ProductSetupPackArtifactPayload = ReturnType<typeof createProductSetupPackPayload> & {
+  downloadableArtifacts?: {
+    markdown: string;
+    setupJson: string;
+    docxBase64: string;
+  };
 };
 
 function createLocalEngineerResponse(content: string): BlockchainEngineerChatResponse {
@@ -2096,6 +2104,11 @@ export function App() {
     const result = await listWorkspaceArtifactRecords({ projectId: selectedProjectId });
     if (result.ok) {
       setDurableArtifactRecords(result.data.artifactRecords);
+      const hydratedProductSetupArtifacts = hydrateProductSetupPrdArtifactsFromRecords(result.data.artifactRecords);
+      if (hydratedProductSetupArtifacts) {
+        setProductSetupPrdArtifacts(hydratedProductSetupArtifacts);
+        setProductSetupPackStatus(`Product PRD ${hydratedProductSetupArtifacts.versionLabel} loaded from Evidence Vault.`);
+      }
       setArtifactVaultStatus({
         status: 'loaded',
         message: `${result.data.artifactRecords.length} generated artifact record(s) loaded.`,
@@ -2104,6 +2117,27 @@ export function App() {
     }
 
     setArtifactVaultStatus({ status: 'error', message: result.message });
+  }
+
+  function hydrateProductSetupPrdArtifactsFromRecords(records: WorkspaceArtifactRecord[]): ProductSetupPrdArtifacts | undefined {
+    const productSetupRecords = records
+      .filter((record) => record.artifactType === 'product_setup_pack')
+      .map((record) => record.artifactPayload as ProductSetupPackArtifactPayload)
+      .filter((payload) => payload.downloadableArtifacts)
+      .sort((left, right) => String(right.generatedAtIso).localeCompare(String(left.generatedAtIso)));
+    const payload = productSetupRecords[0];
+    if (!payload?.downloadableArtifacts?.markdown || !payload.downloadableArtifacts.setupJson || !payload.downloadableArtifacts.docxBase64) {
+      return undefined;
+    }
+
+    return {
+      versionLabel: payload.versionLabel ?? 'v1.0',
+      generatedAtIso: payload.generatedAtIso,
+      payload,
+      markdown: payload.downloadableArtifacts.markdown,
+      setupJson: payload.downloadableArtifacts.setupJson,
+      docxContent: base64ToUint8Array(payload.downloadableArtifacts.docxBase64),
+    };
   }
 
   function addInvestorRegistryWallet() {
@@ -2750,17 +2784,25 @@ export function App() {
     const generatedAtIso = new Date().toISOString();
     const versionLabel = nextProductSetupPrdVersionLabel();
     const generationOptions = { generatedAtIso, versionLabel };
-    const payload = createProductSetupPackPayload(productSetupRecord, productSetupReadModel, generationOptions);
+    const basePayload = createProductSetupPackPayload(productSetupRecord, productSetupReadModel, generationOptions);
     const markdown = createProductSetupPrdMarkdown(productSetupRecord, productSetupReadModel, generationOptions);
     const docxContent = createProductSetupPrdDocxContent(productSetupRecord, productSetupReadModel, generationOptions);
     const setupJson = JSON.stringify(
       {
-        artifact: payload,
+        artifact: basePayload,
         productSetupRecord,
       },
       null,
       2,
     );
+    const payload: ProductSetupPackArtifactPayload = {
+      ...basePayload,
+      downloadableArtifacts: {
+        markdown,
+        setupJson,
+        docxBase64: uint8ArrayToBase64(docxContent),
+      },
+    };
     const artifacts: ProductSetupPrdArtifacts = {
       versionLabel,
       generatedAtIso,
@@ -2864,6 +2906,25 @@ export function App() {
     const copy = new Uint8Array(bytes.byteLength);
     copy.set(bytes);
     return copy.buffer;
+  }
+
+  function uint8ArrayToBase64(bytes: Uint8Array): string {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      const chunk = bytes.slice(offset, offset + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    return btoa(binary);
+  }
+
+  function base64ToUint8Array(value: string): Uint8Array {
+    const binary = atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
   }
 
   function acknowledgeDeploymentWarnings() {

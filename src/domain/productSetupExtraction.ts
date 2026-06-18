@@ -168,21 +168,45 @@ function extractSettlementAndWalletAssertions({
   sourceRef,
 }: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
   const updates: ProductSetupSuggestedUpdate[] = [];
+  const stablecoinMentioned = /\bstablecoin|usdc|usdt\b/.test(normalized);
+  const offchainMentioned = /\bfiat\b|off[-\s]?chain|bank transfer|wire transfer/.test(normalized);
+  const subscriptionPaymentContext =
+    /\b(subscription|subscriptions|subscribe|subscribing|mint|buy|entry|new investors?)[^.!?;]{0,80}\b(stablecoin|usdc|usdt)\b/.test(normalized) ||
+    /\b(stablecoin|usdc|usdt)\b[^.!?;]{0,80}\b(subscription|subscriptions|subscribe|subscribing|mint|buy|entry|new investors?)\b/.test(normalized);
+  const redemptionPaymentContext =
+    /\b(redemption|redemptions|redeem|payout|payouts|payment|payments|settlement|sell out|exit)[^.!?;]{0,80}\b(stablecoin|usdc|usdt)\b/.test(normalized) ||
+    /\b(stablecoin|usdc|usdt)\b[^.!?;]{0,80}\b(redemption|redemptions|redeem|payout|payouts|payment|payments|settlement|sell out|exit)\b/.test(normalized);
+  const subscriptionOffchainContext =
+    /\b(subscription|subscriptions|subscribe|subscribing|mint|buy|entry|new investors?)[^.!?;]{0,80}\b(fiat|off[-\s]?chain|bank transfer|wire transfer)\b/.test(normalized) ||
+    /\b(fiat|off[-\s]?chain|bank transfer|wire transfer)\b[^.!?;]{0,80}\b(subscription|subscriptions|subscribe|subscribing|mint|buy|entry|new investors?)\b/.test(normalized);
+  const redemptionOffchainContext =
+    /\b(redemption|redemptions|redeem|payout|payouts|payment|payments|settlement|sell out|exit)[^.!?;]{0,80}\b(fiat|off[-\s]?chain|bank transfer|wire transfer)\b/.test(normalized) ||
+    /\b(fiat|off[-\s]?chain|bank transfer|wire transfer)\b[^.!?;]{0,80}\b(redemption|redemptions|redeem|payout|payouts|payment|payments|settlement|sell out|exit)\b/.test(normalized);
+  const bothPaymentContexts =
+    /\b(subscription(?:s)?\s+(?:and|\/)\s+redemption(?:s)?|subscription(?:s)?\s+(?:and|\/)\s+payout(?:s)?|subscription(?:s)?\/redemption(?:s)?|subscription(?:s)?\s+and\s+payout(?:s)?)\b/.test(normalized);
 
-  if (/\bstablecoin|usdc|usdt\b/.test(normalized)) {
+  if (stablecoinMentioned && (subscriptionPaymentContext || bothPaymentContexts)) {
     updates.push(createSuggestedUpdate('subscription_payment_method', 'Stablecoin', 'User described stablecoin subscription payment.', sourceRef, 0.82));
-    updates.push(createSuggestedUpdate('redemption_payment_method', 'Stablecoin', 'User described stablecoin redemption payout.', sourceRef, 0.76));
   }
-  if (/\bfiat\b|off[-\s]?chain|bank transfer|wire transfer/.test(normalized)) {
+  if (stablecoinMentioned && (redemptionPaymentContext || bothPaymentContexts)) {
+    updates.push(createSuggestedUpdate('redemption_payment_method', 'Stablecoin', 'User described stablecoin redemption payout.', sourceRef, 0.8));
+  }
+  if (offchainMentioned && (subscriptionOffchainContext || bothPaymentContexts)) {
     updates.push(createSuggestedUpdate('subscription_payment_method', 'Offchain transfer', 'User described offchain or fiat subscription payment.', sourceRef, 0.8));
-    updates.push(createSuggestedUpdate('redemption_payment_method', 'Offchain transfer', 'User described offchain or fiat redemption payout.', sourceRef, 0.76));
   }
-  if (normalized.includes('usdc')) {
+  if (offchainMentioned && (redemptionOffchainContext || bothPaymentContexts)) {
+    updates.push(createSuggestedUpdate('redemption_payment_method', 'Offchain transfer', 'User described offchain or fiat redemption payout.', sourceRef, 0.8));
+  }
+  if (normalized.includes('usdc') && (subscriptionPaymentContext || bothPaymentContexts)) {
     updates.push(createSuggestedUpdate('subscription_stablecoins', ['USDC'], 'User mentioned USDC subscription or payout rails.', sourceRef, 0.9));
+  }
+  if (normalized.includes('usdc') && (redemptionPaymentContext || bothPaymentContexts)) {
     updates.push(createSuggestedUpdate('redemption_stablecoin_type', 'USDC', 'User mentioned USDC redemption payout rails.', sourceRef, 0.78));
   }
-  if (normalized.includes('usdt')) {
+  if (normalized.includes('usdt') && (subscriptionPaymentContext || bothPaymentContexts)) {
     updates.push(createSuggestedUpdate('subscription_stablecoins', ['USDT'], 'User mentioned USDT subscription or payout rails.', sourceRef, 0.9));
+  }
+  if (normalized.includes('usdt') && (redemptionPaymentContext || bothPaymentContexts)) {
     updates.push(createSuggestedUpdate('redemption_stablecoin_type', 'USDT', 'User mentioned USDT redemption payout rails.', sourceRef, 0.78));
   }
   if (normalized.includes('whitelist') || normalized.includes('approved wallet') || normalized.includes('approved wallets')) {
@@ -274,15 +298,20 @@ export function createProductSetupSuggestionsFromStructuredUpdates(
       normalizedUpdates.push({ fieldKey: 'duration_months', proposedValue: derivedDurationMonths });
     }
 
-    return normalizedUpdates.map(({ fieldKey, proposedValue: normalizedProposedValue }) => ({
-      id: `${fieldKey}-${sourceRef}`,
-      fieldKey,
-      proposedValue: normalizedProposedValue,
-      rationale: update.rationale,
-      sourceType: 'assistant_inference',
-      sourceRef,
-      confidence: update.confidence,
-    }));
+    return normalizedUpdates.flatMap(({ fieldKey, proposedValue: normalizedProposedValue }) => {
+      const fieldScopedValue = normalizeSuggestedUpdateValueForField(fieldKey, normalizedProposedValue);
+      if (fieldScopedValue === undefined) return [];
+
+      return [{
+        id: `${fieldKey}-${sourceRef}`,
+        fieldKey,
+        proposedValue: fieldScopedValue,
+        rationale: update.rationale,
+        sourceType: 'assistant_inference',
+        sourceRef,
+        confidence: update.confidence,
+      }];
+    });
   });
 }
 
@@ -310,7 +339,10 @@ function normalizeProductSetupFieldAliases(field: string): ProductSetupFieldKey[
     income_distribution: 'income_treatment',
     income_treatment_rule: 'income_treatment',
     subscription_frequency: 'subscription_cadence',
+    subscription_stablecoin_type: 'subscription_stablecoins',
+    subscription_stablecoin: 'subscription_stablecoins',
     redemption_frequency: 'redemption_cadence',
+    redemption_stablecoin: 'redemption_stablecoin_type',
     valuation_cadence: 'nav_cadence',
     valuation_update_requirement: 'nav_cadence',
     nav_cadence_format: 'nav_cadence',
@@ -327,6 +359,46 @@ function normalizeSuggestedUpdateValue(value: unknown): ProductSetupFieldValue |
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
   if (Array.isArray(value) && value.every((item): item is string => typeof item === 'string')) return value;
   return undefined;
+}
+
+function normalizeSuggestedUpdateValueForField(
+  fieldKey: ProductSetupFieldKey,
+  value: ProductSetupFieldValue,
+): ProductSetupFieldValue | undefined {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const normalized = trimmed.toLowerCase();
+
+  if (fieldKey === 'protocol_base') {
+    if (/customi[sz]ed\s+erc-?\s*20|custom\s+erc-?\s*20/.test(normalized)) return 'Customised ERC-20';
+    if (/erc-?\s*3643|erc3643/.test(normalized)) return 'ERC-3643';
+    if (/erc-?\s*20|erc20/.test(normalized)) return 'ERC-20';
+  }
+
+  if (fieldKey === 'base_currency') return trimmed.toUpperCase();
+
+  if (fieldKey === 'subscription_payment_method' || fieldKey === 'redemption_payment_method') {
+    if (/stablecoin|usdc|usdt/.test(normalized)) return 'Stablecoin';
+    if (/fiat|off[-\s]?chain|bank|wire/.test(normalized)) return 'Offchain transfer';
+  }
+
+  if (fieldKey === 'subscription_stablecoins') {
+    if (/usdc/.test(normalized)) return ['USDC'];
+    if (/usdt/.test(normalized)) return ['USDT'];
+  }
+
+  if (fieldKey === 'redemption_stablecoin_type') {
+    if (/usdc/.test(normalized)) return 'USDC';
+    if (/usdt/.test(normalized)) return 'USDT';
+  }
+
+  if (fieldKey === 'income_treatment') {
+    if (/^no\b|no income|accumulat|reinvest/.test(normalized)) return 'No income distribution';
+    if (/yes|distribut|dividend|coupon|income/.test(normalized)) return 'Distributing';
+  }
+
+  return value;
 }
 
 function titleCaseProductSetupValue(value: string): string {

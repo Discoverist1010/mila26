@@ -411,6 +411,73 @@ describe('Product Setup record', () => {
     expect(protocolRow).toMatchObject({ value: 'ERC-20', provenanceLabel: 'Stated' });
   });
 
+  it('keeps subscription and redemption payment rails scoped to the user wording', () => {
+    const suggestions = createProductSetupSuggestionsFromText(
+      'Subscriptions should use USDC stablecoin. Redemptions and payouts should be offchain fiat bank transfer.',
+      'chat_turn_mixed_payment_rails',
+    );
+    const result = reconcileProductSetupSuggestedUpdates(createInitialProductSetupRecord(facts), suggestions);
+
+    expect(result.record.fields.subscription_payment_method).toMatchObject({
+      value: 'Stablecoin',
+      status: 'user_stated',
+    });
+    expect(result.record.fields.subscription_stablecoins).toMatchObject({
+      value: ['USDC'],
+      status: 'user_stated',
+    });
+    expect(result.record.fields.redemption_payment_method).toMatchObject({
+      value: 'Offchain transfer',
+      status: 'user_stated',
+    });
+    expect(result.record.fields.redemption_stablecoin_type.value).toBeUndefined();
+  });
+
+  it('normalizes structured extractor values before reconciling Product Setup fields', () => {
+    const suggestions = createProductSetupSuggestionsFromStructuredUpdates(
+      [
+        {
+          field: 'protocol_base',
+          proposedValue: 'erc 3643',
+          rationale: 'User selected the protocol base.',
+          confidence: 0.9,
+        },
+        {
+          field: 'base currency',
+          proposedValue: 'sgd',
+          rationale: 'User stated SGD as the base currency.',
+          confidence: 0.9,
+        },
+        {
+          field: 'subscription payment method',
+          proposedValue: 'USDC stablecoin',
+          rationale: 'User selected USDC stablecoin subscriptions.',
+          confidence: 0.9,
+        },
+        {
+          field: 'subscription stablecoin type',
+          proposedValue: 'usdc',
+          rationale: 'User selected USDC.',
+          confidence: 0.9,
+        },
+      ],
+      'chat_turn_structured_normalized',
+    );
+    const record = setProductSetupSuggestedUpdates(createInitialProductSetupRecord(facts), suggestions);
+    const byField = new Map(record.pendingSuggestedUpdates.map((update) => [update.fieldKey, update.proposedValue]));
+    const readModel = toProductSetupReadModel(record);
+
+    expect(byField.get('protocol_base')).toBe('ERC-3643');
+    expect(byField.get('base_currency')).toBe('SGD');
+    expect(byField.get('subscription_payment_method')).toBe('Stablecoin');
+    expect(byField.get('subscription_stablecoins')).toEqual(['USDC']);
+    expect(readModel.profileRows.find((row) => row.id === 'protocol_base')).toMatchObject({
+      value: 'ERC-3643',
+      provenanceLabel: 'Needs review',
+    });
+    expect(record.fields.protocol_base.status).toBe('missing');
+  });
+
   it('promotes a suggested field only after user confirmation', () => {
     const record = setProductSetupSuggestedUpdates(
       createInitialProductSetupRecord(facts),
@@ -646,6 +713,31 @@ describe('Product Setup record', () => {
     expect(markdown).toContain('Recommended architecture target');
     expect(markdown).toContain('Current executable prototype');
     expect(markdown).toContain('Conditional transfers with clawback');
+  });
+
+  it('escapes user-provided Markdown table content in generated PRD artifacts', () => {
+    let record = createInitialProductSetupRecord(facts);
+    record = updateProductSetupField(record, {
+      fieldKey: 'product_name',
+      value: 'MILA | Income\nFund',
+      sourceType: 'user_message',
+      sourceRef: 'chat_turn_markdown_safety',
+      status: 'user_stated',
+    });
+    record = updateProductSetupField(record, {
+      fieldKey: 'nav_source',
+      value: 'CSV upload | custodian file\nreviewed monthly',
+      sourceType: 'user_message',
+      sourceRef: 'chat_turn_markdown_safety',
+      status: 'user_stated',
+    });
+
+    const markdown = createProductSetupPackMarkdown(record);
+    const docx = createProductSetupPrdDocxContent(record);
+
+    expect(markdown).toContain('| Product name | MILA \\| Income Fund |');
+    expect(markdown).toContain('| NAV source | CSV upload \\| custodian file reviewed monthly |');
+    expect(new TextDecoder().decode(docx)).toContain('word/document.xml');
   });
 
   it('generates a real DOCX package for the Product Setup PRD download', () => {

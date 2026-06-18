@@ -7,10 +7,25 @@ import {
   type WorkspacePersistenceRepository,
 } from '../server/persistence/workspacePersistenceRepository';
 import { createInitialMila26LifecycleState, createInvestorRegistryEntry } from '../src/domain/lifecycleState';
+import {
+  createInitialProductSetupRecord,
+  createProductSetupPackPayload,
+  createProductSetupPrdDocxContent,
+  createProductSetupPrdMarkdown,
+} from '../src/domain/productSetup';
+import type { FundFacts } from '../src/domain/schemas';
 
 const transactionHash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const contractAddress = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 const investorWallet = '0x1111111111111111111111111111111111111111';
+const productSetupFacts: FundFacts = {
+  fundName: 'Alpha Income Fund I',
+  tokenSymbol: 'AIF',
+  jurisdiction: 'Singapore',
+  targetInvestors: 'Approved investors',
+  totalSupply: 1_000_000,
+  initialNav: 1_000_000,
+};
 
 let repositories: WorkspacePersistenceRepository[] = [];
 
@@ -238,6 +253,61 @@ describe('workspace evidence and artifact API', () => {
             lifecycleContextStatus: 'stale_context',
           },
         ],
+      },
+    });
+  });
+
+  it('stores Product Setup PRD downloadable artifact content for later redownload', async () => {
+    const repository = createRepository();
+    const app = createApp({ workspacePersistenceRepository: repository });
+    await saveWorkspace(app);
+    const record = createInitialProductSetupRecord(productSetupFacts);
+    const options = { generatedAtIso: '2026-06-07T00:00:00.000Z', versionLabel: 'v1.0' };
+    const basePayload = createProductSetupPackPayload(record, undefined, options);
+    const markdown = createProductSetupPrdMarkdown(record, undefined, options);
+    const docxContent = createProductSetupPrdDocxContent(record, undefined, options);
+    const setupJson = JSON.stringify({ artifact: basePayload, productSetupRecord: record }, null, 2);
+
+    const saveArtifactsResponse = await app.inject({
+      method: 'POST',
+      url: '/api/workspace/artifacts/save',
+      payload: {
+        projectId: 'alpha-income-fund',
+        records: [
+          {
+            artifactType: 'product_setup_pack',
+            artifactPayload: {
+              ...basePayload,
+              downloadableArtifacts: {
+                markdown,
+                setupJson,
+                docxBase64: Buffer.from(docxContent).toString('base64'),
+              },
+            },
+          },
+        ],
+      },
+    });
+    const listArtifactsResponse = await app.inject({
+      method: 'POST',
+      url: '/api/workspace/artifacts/list',
+      payload: { projectId: 'alpha-income-fund' },
+    });
+
+    await app.close();
+
+    expect(saveArtifactsResponse.statusCode).toBe(200);
+    expect(listArtifactsResponse.statusCode).toBe(200);
+    expect(listArtifactsResponse.json().data.artifactRecords[0]).toMatchObject({
+      artifactType: 'product_setup_pack',
+      artifactStatus: 'PRD generated',
+      artifactPayload: {
+        versionLabel: 'v1.0',
+        downloadableArtifacts: {
+          markdown: expect.stringContaining('Product Requirements Document'),
+          setupJson: expect.stringContaining('product-setup-alpha-income-fund-i'),
+          docxBase64: expect.any(String),
+        },
       },
     });
   });

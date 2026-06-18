@@ -852,6 +852,14 @@ const ProductSetupPackArtifactRecordSchema = z
           .max(20),
         deploymentWarningAcknowledgements: z.array(ProductSetupDeploymentWarningAcknowledgementPersistenceSchema).max(40),
         unsupportedRequirementDecisions: z.array(UnsupportedRequirementDecisionPersistenceSchema).max(40),
+        downloadableArtifacts: z
+          .object({
+            markdown: z.string().min(1).max(250_000),
+            setupJson: z.string().min(1).max(250_000),
+            docxBase64: z.string().min(1).max(750_000),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
     lifecycleSnapshotVersion: z.number().int().positive().optional(),
