@@ -3654,6 +3654,425 @@ summary {
   gap: 16px;
 }
 
+.contract-ops-cockpit {
+  background: #f8fbff;
+}
+
+.contract-ops-hero {
+  align-items: start;
+}
+
+.contract-ops-progress {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.contract-ops-progress-step,
+.contract-ops-section,
+.contract-ops-snapshot-item,
+.protocol-choice-card,
+.contract-ops-explanation-panel,
+.contract-ops-spec-row,
+.contract-ops-feature-row,
+.contract-ops-readiness-item,
+.post-deploy-card,
+.zilio-launch-hud {
+  border: 1px solid #dce5f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.contract-ops-progress-step {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 12px;
+}
+
+.contract-ops-progress-step strong,
+.contract-ops-snapshot-item strong,
+.contract-ops-spec-row strong,
+.contract-ops-feature-row strong,
+.post-deploy-card strong {
+  color: #0f172a;
+}
+
+.contract-ops-progress-step small,
+.contract-ops-snapshot-item p,
+.contract-ops-spec-row p,
+.contract-ops-feature-row small,
+.contract-ops-readiness-item p,
+.post-deploy-card p,
+.zilio-launch-hud p,
+.zilio-launch-hud li,
+.zilio-launch-hud small {
+  color: #475569;
+}
+
+.status-dot {
+  background: #f59e0b;
+  border-radius: 999px;
+  height: 10px;
+  margin-top: 5px;
+  width: 10px;
+}
+
+.complete .status-dot,
+.ready .status-dot {
+  background: #22c55e;
+}
+
+.current .status-dot {
+  background: #2563eb;
+}
+
+.locked .status-dot,
+.needed_later .status-dot {
+  background: #94a3b8;
+}
+
+.blocked .status-dot {
+  background: #dc2626;
+}
+
+.contract-ops-section {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.contract-ops-section h4 {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.contract-ops-section-number {
+  align-items: center;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 900;
+  height: 24px;
+  justify-content: center;
+  line-height: 1;
+  width: 24px;
+}
+
+.contract-ops-snapshot-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.contract-ops-snapshot-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.contract-ops-snapshot-item span,
+.contract-ops-spec-row span,
+.contract-ops-feature-row span,
+.protocol-choice-meta,
+.protocol-choice-tradeoff {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.protocol-card-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.protocol-choice-card {
+  color: #0f172a;
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  min-height: 252px;
+  padding: 16px;
+  text-align: left;
+}
+
+.protocol-choice-card:hover,
+.protocol-choice-card:focus-visible {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  outline: none;
+}
+
+.protocol-choice-card.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.protocol-choice-card.recommended:not(.selected) {
+  border-color: #f7c66f;
+  background: #fffaf0;
+}
+
+.protocol-choice-card.disabled {
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+  opacity: 0.74;
+}
+
+.protocol-choice-card.disabled:hover,
+.protocol-choice-card.disabled:focus-visible {
+  border-color: #dce5f0;
+  box-shadow: none;
+}
+
+.protocol-choice-title {
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.protocol-choice-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.protocol-choice-badges small,
+.contract-ops-status-pill {
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  padding: 4px 9px;
+  text-transform: uppercase;
+}
+
+.protocol-choice-copy {
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.protocol-choice-tradeoff {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.contract-ops-status-pill.ready,
+.contract-ops-status-pill.complete {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #047857;
+}
+
+.contract-ops-status-pill.current {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.contract-ops-status-pill.needs_input {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.contract-ops-status-pill.needed_later,
+.contract-ops-status-pill.locked {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.contract-ops-status-pill.blocked {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.contract-ops-explanation-panel {
+  align-items: start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 14px;
+}
+
+.contract-ops-confidence-pill {
+  border: 1px solid #86efac;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #047857;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  padding: 7px 12px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.read-once-briefing {
+  border-top: 1px solid #e2e8f0;
+  grid-column: 1 / -1;
+  padding-top: 10px;
+}
+
+.read-once-briefing-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: #1d4ed8;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 900;
+  gap: 8px;
+  padding: 0;
+}
+
+.read-once-briefing-body {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.read-once-briefing-body p {
+  color: #475569;
+  margin: 0;
+}
+
+.contract-ops-inline-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.contract-ops-spec-table,
+.contract-ops-feature-table,
+.contract-ops-readiness-list,
+.post-deploy-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.contract-ops-spec-table {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.contract-ops-spec-table.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.contract-ops-spec-row,
+.contract-ops-feature-row {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  position: relative;
+}
+
+.contract-ops-spec-row .contract-ops-status-pill,
+.contract-ops-feature-row .contract-ops-status-pill {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+}
+
+.contract-ops-spec-row strong,
+.contract-ops-feature-row strong {
+  padding-right: 120px;
+}
+
+.contract-ops-feature-table {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.contract-ops-readiness-list,
+.post-deploy-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.contract-ops-readiness-note {
+  align-items: center;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  background: #fffbeb;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.contract-ops-readiness-note p {
+  color: #7c4a03;
+  margin: 0;
+}
+
+.contract-ops-readiness-note .chat-status {
+  flex-basis: 100%;
+}
+
+.contract-ops-readiness-item,
+.post-deploy-card {
+  align-items: start;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 12px;
+}
+
+.post-deploy-card {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.deploy-panel {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.action-trace-panel details {
+  display: grid;
+  gap: 10px;
+}
+
+.action-trace-panel summary {
+  color: #0f172a;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.action-trace-panel ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.action-trace-panel li {
+  color: #475569;
+}
+
+.action-trace-panel time,
+.action-trace-panel strong {
+  margin-right: 8px;
+}
+
 .contract-ops-summary {
   display: grid;
   gap: 12px;
@@ -3718,6 +4137,30 @@ summary {
   border-radius: 999px;
   background: #f8fafc;
   padding: 6px 10px;
+}
+
+.zilio-launch-hud {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+}
+
+.zilio-launch-hud h2 {
+  color: #0f172a;
+  font-size: 17px;
+  margin: 0;
+}
+
+.zilio-launch-hud ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.zilio-hud-note {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 8px;
 }
 
 .compact-subsection-heading {
@@ -4280,6 +4723,14 @@ summary {
     grid-template-columns: 1fr;
   }
 
+  .protocol-card-grid,
+  .contract-ops-snapshot-grid,
+  .contract-ops-spec-table,
+  .contract-ops-spec-table.compact,
+  .contract-ops-feature-table {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .test-wallet-controls {
     grid-template-columns: 1fr;
   }
@@ -4356,6 +4807,13 @@ summary {
   .artifact-grid,
   .durable-record-grid,
   .registry-summary,
+  .protocol-card-grid,
+  .contract-ops-snapshot-grid,
+  .contract-ops-spec-table,
+  .contract-ops-spec-table.compact,
+  .contract-ops-feature-table,
+  .contract-ops-readiness-list,
+  .post-deploy-grid,
   .parameter-grid,
   .registry-form,
   .registry-row,

@@ -804,7 +804,7 @@ const ProductSetupPackArtifactRecordSchema = z
         warning: z.string().trim().min(1).max(800),
         statusLabel: z.string().trim().min(1).max(160),
         readinessLabel: z.string().trim().min(1).max(160),
-        recommendedArchitectureTarget: z.enum(['ERC-20', 'Customised ERC-20', 'ERC-3643']),
+        recommendedArchitectureTarget: z.enum(['ERC-20', 'Customised ERC-20', 'ERC-3643', 'ERC-4626']),
         currentExecutablePrototype: z.string().trim().min(1).max(420),
         definitions: z.array(z.string().trim().min(1).max(420)).min(1).max(20),
         profileRows: z

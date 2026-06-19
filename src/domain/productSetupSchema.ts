@@ -2,6 +2,7 @@ export const supportedProtocolBases = [
   'ERC-20',
   'Customised ERC-20',
   'ERC-3643',
+  'ERC-4626',
 ] as const;
 
 export type ProductSetupProtocolBase = (typeof supportedProtocolBases)[number];

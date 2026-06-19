@@ -21,6 +21,11 @@ import {
   createRequirementBrief,
 } from './agents/agentRuntime';
 import { toCockpitActionViewModel } from './domain/cockpitActionRegistry';
+import {
+  toContractOpsCockpitReadModel,
+  type ContractOpsProtocolOption,
+  type ContractOpsStatus,
+} from './domain/contractOpsCockpit';
 import { toBlockchainEngineerResponseViewModel } from './domain/blockchainEngineerResponseViewModel';
 import { toDeploymentEvidenceReadModel } from './domain/deploymentEvidenceReadModel';
 import { toDeploymentGateReadModel } from './domain/deploymentGateReadModel';
@@ -279,6 +284,30 @@ const uiActions = {
   allocationMint: 'allocation_mint',
 } as const;
 
+const contractOpsBriefingStorageKey = 'mila26-contract-ops-read-once-briefings-v1';
+
+type ContractOpsActionTraceEntry = {
+  id: string;
+  timestamp: string;
+  actionId: string;
+  label: string;
+  detail: string;
+};
+
+type ContractOpsBriefingState = Record<string, boolean>;
+
+function loadContractOpsBriefingState(): ContractOpsBriefingState {
+  if (typeof window === 'undefined') return {};
+  try {
+    const rawValue = window.localStorage.getItem(contractOpsBriefingStorageKey);
+    if (!rawValue) return {};
+    const parsed = JSON.parse(rawValue);
+    return parsed && typeof parsed === 'object' ? (parsed as ContractOpsBriefingState) : {};
+  } catch {
+    return {};
+  }
+}
+
 type GeneratedArtifactCard = {
   label: string;
   status: string;
@@ -359,7 +388,7 @@ function createWalletConnectionResponse(walletConnection: WalletConnectionReadMo
       'Deployment remains not executed.',
       'No contract address or transaction hash exists.',
     ],
-    nextRecommendedAction: 'Next milestone is wallet-signed Sepolia deployment from the reviewed unsigned deployment intent.',
+    nextRecommendedAction: 'Next step is to review Contract Ops readiness before requesting wallet-signed Sepolia deployment.',
     createdAt: new Date(0).toISOString(),
   };
 }
@@ -499,6 +528,16 @@ function fundingTargetStatusLabel(status: 'ready' | 'needs_funding' | 'blocked' 
   return 'Check';
 }
 
+function contractOpsStatusLabel(status: ContractOpsStatus) {
+  if (status === 'complete') return 'Complete';
+  if (status === 'ready') return 'Ready';
+  if (status === 'current') return 'Current';
+  if (status === 'needed_later') return 'Needed later';
+  if (status === 'locked') return 'Locked';
+  if (status === 'blocked') return 'Blocked';
+  return 'Needs input';
+}
+
 function initialWalletConnectionInput(): WalletConnectionReadModelInput {
   return getBrowserEthereumProvider()
     ? {
@@ -600,6 +639,13 @@ export function App() {
   const [productSetupPackStatus, setProductSetupPackStatus] = useState<string | undefined>();
   const [productSetupWalletMessage, setProductSetupWalletMessage] = useState<string | undefined>();
   const [contractOpsDeploymentWarningMessage, setContractOpsDeploymentWarningMessage] = useState<string | undefined>();
+  const [contractOpsSpecsConfirmed, setContractOpsSpecsConfirmed] = useState(false);
+  const [contractOpsFeatureMappingConfirmed, setContractOpsFeatureMappingConfirmed] = useState(false);
+  const [contractOpsCriticalOnly, setContractOpsCriticalOnly] = useState(false);
+  const [contractOpsActionTrace, setContractOpsActionTrace] = useState<ContractOpsActionTraceEntry[]>([]);
+  const [contractOpsBriefingsCollapsed, setContractOpsBriefingsCollapsed] = useState<ContractOpsBriefingState>(() =>
+    loadContractOpsBriefingState(),
+  );
   const [productSetupWalletInputs, setProductSetupWalletInputs] = useState({
     admin_wallet: '',
   });
@@ -707,6 +753,14 @@ export function App() {
       window.removeEventListener('pointerup', handlePointerUp);
     };
   }, [isRightRailResizing]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(contractOpsBriefingStorageKey, JSON.stringify(contractOpsBriefingsCollapsed));
+    } catch {
+      // Local storage is only a convenience for read-once UI hints.
+    }
+  }, [contractOpsBriefingsCollapsed]);
 
   const requirementBriefContract = useMemo(
     () => (brief ? toRequirementBriefContract(brief, 'ready_for_approval') : undefined),
@@ -1227,6 +1281,41 @@ export function App() {
     if (!selectedAllocationMintInvestorWhitelisted) return 'Whitelist the selected investor wallet before Allocation / Mint.';
     return 'Contract authorization is enforced on-chain.';
   })();
+  const contractOpsReadModel = useMemo(
+    () =>
+      toContractOpsCockpitReadModel({
+        productSetupRecord,
+        productSetupReadModel,
+        walletConnection: walletConnectionReadModel,
+        deploymentEvidence: deploymentEvidenceReadModel,
+        recordNavOperation: recordNavOperationReadModel,
+        walletWhitelistOperation: walletWhitelistOperationReadModel,
+        walletAllocationMintOperation: walletAllocationMintOperationReadModel,
+        contractSpecsConfirmed: contractOpsSpecsConfirmed,
+        featureMappingConfirmed: contractOpsFeatureMappingConfirmed,
+        adminWalletInput: productSetupWalletInputs.admin_wallet,
+        canRequestSepoliaDeployment,
+        deploymentStatusLabel: formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus),
+        walletStatusLabel: formatWalletConnectionStatus(walletConnectionReadModel.walletConnectionStatus),
+        walletAddressDisplay,
+        chainStatusLabel: formatWalletChainStatus(walletConnectionReadModel.chainStatus),
+      }),
+    [
+      productSetupRecord,
+      productSetupReadModel,
+      walletConnectionReadModel,
+      deploymentEvidenceReadModel,
+      recordNavOperationReadModel,
+      walletWhitelistOperationReadModel,
+      walletAllocationMintOperationReadModel,
+      contractOpsSpecsConfirmed,
+      contractOpsFeatureMappingConfirmed,
+      productSetupWalletInputs.admin_wallet,
+      canRequestSepoliaDeployment,
+      walletSignedDeploymentState.deploymentStatus,
+      walletAddressDisplay,
+    ],
+  );
   const generatedArtifactCards = useMemo<GeneratedArtifactCard[]>(
     () =>
       smartContractGenerationStatus === 'ready'
@@ -2760,6 +2849,60 @@ export function App() {
     setProductSetupWalletMessage(result.message);
   }
 
+  function appendContractOpsTrace(actionId: string, label: string, detail: string) {
+    setContractOpsActionTrace((current) => [
+      {
+        id: `contract-ops-trace-${current.length + 1}-${Date.now()}`,
+        timestamp: new Date().toLocaleTimeString(),
+        actionId,
+        label,
+        detail,
+      },
+      ...current,
+    ]);
+  }
+
+  function selectContractOpsProtocol(option: ContractOpsProtocolOption) {
+    appendContractOpsTrace(option.actionId, option.title, option.status === 'planned' ? 'Protocol is planned only and cannot be selected.' : 'Protocol selected for Contract Ops review.');
+    if (!option.protocolBase || option.status === 'planned') return;
+    setProductSetupRecord((current) =>
+      updateProductSetupField(current, {
+        fieldKey: 'protocol_base',
+        value: option.protocolBase,
+        sourceType: 'direct_form_input',
+        sourceRef: 'contract_ops_protocol_selector',
+        status: 'user_confirmed',
+        confidence: 1,
+      }),
+    );
+  }
+
+  function acceptRecommendedContractOpsProtocol() {
+    const recommendedProtocol = productSetupReadModel.protocolRecommendation.recommendedProtocol;
+    appendContractOpsTrace(
+      'accept-recommended-protocol',
+      'Accept recommended protocol',
+      `${recommendedProtocol} selected from the current Product Setup recommendation.`,
+    );
+    setProductSetupRecord((current) =>
+      updateProductSetupField(current, {
+        fieldKey: 'protocol_base',
+        value: recommendedProtocol,
+        sourceType: 'direct_form_input',
+        sourceRef: 'contract_ops_accept_recommended_protocol',
+        status: 'user_confirmed',
+        confidence: productSetupReadModel.protocolRecommendation.confidence,
+      }),
+    );
+  }
+
+  function toggleContractOpsBriefing(briefingId: string) {
+    setContractOpsBriefingsCollapsed((current) => ({
+      ...current,
+      [briefingId]: !current[briefingId],
+    }));
+  }
+
   function nextProductSetupPrdVersionLabel(): string {
     const versionLabels = [
       productSetupPrdArtifacts?.versionLabel,
@@ -3578,326 +3721,606 @@ export function App() {
             )}
 
             {activeWorkspaceTab.id === 'smart_contract' && (
-              <section className="parameter-panel contract-ops-workspace" aria-label="Contract Ops workspace" data-testid="smart-contract-control">
-                <div className="registry-panel-heading">
+              <section className="parameter-panel contract-ops-workspace contract-ops-cockpit" aria-label="Contract Ops workspace" data-testid="smart-contract-control">
+                <div className="registry-panel-heading contract-ops-hero">
                   <div>
-                    <h3>Contract operations</h3>
-                    <p>
-                      Review and run the wallet-signed Sepolia operations that are actually available from the current shared lifecycle state.
-                    </p>
+                    <h3>Contract Ops</h3>
+                    <p>Select, configure, and deploy the ERC contract for this product to Sepolia.</p>
                   </div>
-                  <span className={`gate-badge ${smartContractControlPanel.status === 'ready_for_spec' ? 'ready' : 'draft'}`}>
-                    {smartContractControlPanel.statusLabel}
+                  <span className={`gate-badge ${deploymentEvidenceReadModel.status === 'confirmed' ? 'ready' : 'draft'}`}>
+                    {deploymentEvidenceReadModel.status === 'confirmed' ? 'Deployment evidence ready' : 'Deployment not started'}
                   </span>
                 </div>
-                {renderProductSetupDraftNotes('contract_ops')}
 
-                <section className="product-setup-blockers" aria-label="Contract Ops Product Setup warnings">
-                  <div>
-                    <h4>Product Setup deployment warnings</h4>
-                    {productSetupReadModel.deploymentWarnings.length > 0 ? (
-                      <ul className="registry-warnings">
-                        {productSetupReadModel.deploymentWarnings.map((warning) => (
-                          <li key={warning.fieldKey}>
-                            {warning.message} Likely error: {warning.likelyError}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p>Product Setup has no open deployment warnings.</p>
-                    )}
-                    {contractOpsDeploymentWarningMessage && <p className="chat-status">{contractOpsDeploymentWarningMessage}</p>}
-                  </div>
-                  {productSetupReadModel.hasUnacknowledgedDeploymentWarnings && (
-                    <button type="button" className="workflow-button" onClick={acknowledgeDeploymentWarnings}>
-                      Proceed with warnings
-                    </button>
-                  )}
-                </section>
+                <div className="contract-ops-progress" aria-label="Contract Ops lifecycle progress">
+                  {contractOpsReadModel.progressSteps.map((step) => (
+                    <article className={`contract-ops-progress-step ${step.status}`} key={step.id}>
+                      <span className="status-dot" aria-hidden="true" />
+                      <div>
+                        <strong>{step.label}</strong>
+                        <small>{contractOpsStatusLabel(step.status)} · {step.detail}</small>
+                      </div>
+                    </article>
+                  ))}
+                </div>
 
-                <section className="contract-ops-role-panel" aria-label="Contract Ops deployment roles">
+                <section className="contract-ops-section" aria-label="Contract Ops Product Setup snapshot">
                   <div className="registry-panel-heading compact-subsection-heading">
                     <div>
-                      <h4>Deployment role wallet</h4>
-                      <p>
-                        Save the public admin wallet address or a role placeholder. Never paste private keys, seed phrases, or
-                        recovery phrases.
-                      </p>
+                      <h4><span className="contract-ops-section-number">1</span> Product Setup snapshot</h4>
+                      <p>Contract Ops reads these facts from the Product Setup PRD intake. Deployment blockers are separated from later lifecycle needs.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="workflow-button compact"
+                      data-action-id="review-product-setup"
+                      onClick={() => {
+                        appendContractOpsTrace('review-product-setup', 'Review Product Setup', 'Product Setup tab selected for source review.');
+                        setSelectedWorkspaceTab('requirements');
+                      }}
+                    >
+                      Review Product Setup
+                    </button>
+                  </div>
+                  {renderProductSetupDraftNotes('contract_ops')}
+                  <div className="contract-ops-snapshot-grid">
+                    {contractOpsReadModel.snapshotItems.map((item) => (
+                      <article key={item.id} className={`contract-ops-snapshot-item ${item.status}`}>
+                        <span>{item.label}</span>
+                        <strong>{item.value}</strong>
+                        <p>{item.helper}</p>
+                        <small className={`contract-ops-status-pill ${item.status}`}>{contractOpsStatusLabel(item.status)}</small>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="contract-ops-section" aria-label="ERC Protocol Recommendation">
+                  <div className="registry-panel-heading compact-subsection-heading">
+                    <div>
+                      <h4><span className="contract-ops-section-number">2</span> ERC protocol recommendation</h4>
+                      <p>Choose the contract architecture target. The current executable prototype remains Sepolia ERC-20-compatible unless an adapter exists.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="workflow-button primary-action compact"
+                      data-action-id="accept-recommended-protocol"
+                      onClick={acceptRecommendedContractOpsProtocol}
+                    >
+                      Accept recommended protocol
+                    </button>
+                  </div>
+                  <div className="protocol-card-grid">
+                    {contractOpsReadModel.protocolOptions.map((option) => (
+                      <button
+                        type="button"
+                        key={option.id}
+                        className={`protocol-choice-card ${option.selected ? 'selected' : ''} ${option.recommended ? 'recommended' : ''} ${option.status === 'planned' ? 'disabled' : ''}`}
+                        data-action-id={option.actionId}
+                        disabled={option.status === 'planned'}
+                        onClick={() => selectContractOpsProtocol(option)}
+                      >
+                        <span className="protocol-choice-title">{option.title}</span>
+                        <span className="protocol-choice-badges">
+                          {option.recommended && <small>Recommended</small>}
+                          {option.selected && <small>Selected</small>}
+                          {option.executablePrototype && <small>Executable now</small>}
+                          {option.status === 'planned' && <small>Planned / not available</small>}
+                        </span>
+                        <span className="protocol-choice-copy">{option.blurb}</span>
+                        <span className="protocol-choice-meta">Best for: {option.bestFor.join(', ')}</span>
+                        <span className="protocol-choice-tradeoff">{option.tradeoff}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <article className="contract-ops-explanation-panel">
+                    <div>
+                      <span className="section-kicker">Recommendation</span>
+                      <h4>Recommended: {contractOpsReadModel.recommendation.protocol}</h4>
+                      <p>{contractOpsReadModel.recommendation.reasons.join(' ')}</p>
+                    </div>
+                    <span className="contract-ops-confidence-pill">Confidence: {contractOpsReadModel.recommendation.confidence}</span>
+                    <div className="read-once-briefing">
+                      <button
+                        type="button"
+                        className="read-once-briefing-toggle"
+                        aria-expanded={!contractOpsBriefingsCollapsed.protocolTradeoffs}
+                        onClick={() => toggleContractOpsBriefing('protocolTradeoffs')}
+                      >
+                        <span aria-hidden="true">{contractOpsBriefingsCollapsed.protocolTradeoffs ? '▸' : '▾'}</span>
+                        Quick protocol trade-offs
+                      </button>
+                      {!contractOpsBriefingsCollapsed.protocolTradeoffs && (
+                        <div className="read-once-briefing-body">
+                          <p>{contractOpsReadModel.recommendation.whyNotPlainErc20}</p>
+                          <p>{contractOpsReadModel.recommendation.whenErc4626}</p>
+                          <p>{contractOpsReadModel.recommendation.whenErc1400}</p>
+                          <p>{contractOpsReadModel.recommendation.plannedOnly}</p>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                </section>
+
+                <section className="contract-ops-section" aria-label="Smart Contract Specs">
+                  <div className="registry-panel-heading compact-subsection-heading">
+                    <div>
+                      <h4><span className="contract-ops-section-number">3</span> Smart Contract Specs</h4>
+                      <p>Review the deployable contract specification before Sepolia deployment.</p>
+                    </div>
+                    <div className="contract-ops-inline-actions">
+                      <button
+                        type="button"
+                        className="workflow-button compact"
+                        data-action-id="export-contract-specs-preview"
+                        onClick={() => appendContractOpsTrace('export-contract-specs-preview', 'Export specs preview', 'Structured contract specification preview recorded in the action trace.')}
+                      >
+                        Export specs preview
+                      </button>
+                      <button
+                        type="button"
+                        className="workflow-button primary-action compact"
+                        data-action-id="confirm-contract-specs"
+                        onClick={() => {
+                          setContractOpsSpecsConfirmed(true);
+                          appendContractOpsTrace('confirm-contract-specs', 'Confirm contract specs', 'Contract specification marked ready for deployment review.');
+                        }}
+                      >
+                        {contractOpsSpecsConfirmed ? 'Contract specs confirmed' : 'Confirm contract specs'}
+                      </button>
                     </div>
                   </div>
-                  <div className="parameter-grid">
-                    <label htmlFor="contract-ops-admin-wallet">
-                      Admin wallet
+                  <div className="contract-ops-spec-table">
+                    {contractOpsReadModel.specRows.map((row) => (
+                      <article className="contract-ops-spec-row" key={row.id}>
+                        <span>{row.label}</span>
+                        <strong>{row.value}</strong>
+                        <p>{row.helper}</p>
+                        <small className={`contract-ops-status-pill ${row.status}`}>{contractOpsStatusLabel(row.status)}</small>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="contract-ops-role-panel" aria-label="Contract Ops deployment roles">
+                    <div className="parameter-grid">
+                      <label htmlFor="contract-ops-admin-wallet">
+                        Admin wallet
+                        <input
+                          id="contract-ops-admin-wallet"
+                          value={productSetupWalletInputs.admin_wallet}
+                          onChange={(event) =>
+                            setProductSetupWalletInputs((current) => ({
+                              ...current,
+                              admin_wallet: event.target.value,
+                            }))
+                          }
+                          placeholder="0x... public wallet address"
+                          autoComplete="off"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="workflow-button primary-action"
+                        data-action-id="add-admin-wallet"
+                        onClick={() => {
+                          updateProductSetupWalletField('admin_wallet', productSetupWalletInputs.admin_wallet);
+                          appendContractOpsTrace('add-admin-wallet', 'Save admin wallet', 'Admin wallet input saved to the Product Setup record if valid.');
+                        }}
+                      >
+                        Save admin wallet
+                      </button>
+                    </div>
+                    <p>Admin wallet means the public address allowed to manage roles. Never paste private keys or seed phrases.</p>
+                    {productSetupWalletMessage && <p className="chat-status">{productSetupWalletMessage}</p>}
+                  </div>
+                </section>
+
+                <section className="contract-ops-section" aria-label="Features and Events Mapping">
+                  <div className="registry-panel-heading compact-subsection-heading">
+                    <div>
+                      <h4><span className="contract-ops-section-number">4</span> Features & Events Mapping</h4>
+                      <p>Map product lifecycle requirements into contract features and evidence records.</p>
+                    </div>
+                    <div className="contract-ops-inline-actions">
+                      <button
+                        type="button"
+                        className="workflow-button compact"
+                        data-action-id="filter-deployment-critical-features"
+                        onClick={() => {
+                          setContractOpsCriticalOnly((current) => !current);
+                          appendContractOpsTrace('filter-deployment-critical-features', 'Toggle deployment-critical features', 'Feature table filter changed.');
+                        }}
+                      >
+                        {contractOpsCriticalOnly ? 'Show full lifecycle mapping' : 'Show only deployment-critical features'}
+                      </button>
+                      <button
+                        type="button"
+                        className="workflow-button primary-action compact"
+                        data-action-id="confirm-feature-event-mapping"
+                        onClick={() => {
+                          setContractOpsFeatureMappingConfirmed(true);
+                          appendContractOpsTrace('confirm-feature-event-mapping', 'Confirm feature mapping', 'Feature and event mapping marked ready.');
+                        }}
+                      >
+                        {contractOpsFeatureMappingConfirmed ? 'Feature mapping confirmed' : 'Confirm feature mapping'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="contract-ops-feature-table">
+                    {contractOpsReadModel.featureEventRows
+                      .filter((row) => !contractOpsCriticalOnly || row.deploymentCritical)
+                      .map((row) => (
+                        <article className="contract-ops-feature-row" key={row.id}>
+                          <span>{row.productRequirement}</span>
+                          <strong>{row.contractFeature}</strong>
+                          <p>{row.evidenceRecord}</p>
+                          <small>{row.sourceTab} · {row.notes}</small>
+                          <em className={`contract-ops-status-pill ${row.status}`}>{contractOpsStatusLabel(row.status)}</em>
+                        </article>
+                      ))}
+                  </div>
+                </section>
+
+                <section className="contract-ops-section" aria-label="Deployment Readiness">
+                  <div className="registry-panel-heading compact-subsection-heading">
+                    <div>
+                      <h4><span className="contract-ops-section-number">5</span> Deployment Readiness</h4>
+                      <p>Only true blockers stop deployment. Later lifecycle details stay visible without becoming errors.</p>
+                    </div>
+                  </div>
+                  <div className="contract-ops-readiness-list">
+                    {contractOpsReadModel.readinessItems.map((item) => (
+                      <article key={item.id} className={`contract-ops-readiness-item ${item.status}`}>
+                        <span className={`contract-ops-status-pill ${item.status}`}>{contractOpsStatusLabel(item.status)}</span>
+                        <div>
+                          <strong>{item.label}</strong>
+                          <p>{item.explanation}</p>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                  {productSetupReadModel.hasUnacknowledgedDeploymentWarnings && (
+                    <div className="contract-ops-readiness-note" aria-label="Product Setup warning acknowledgement">
+                      <p>
+                        Product Setup has {productSetupReadModel.deploymentWarnings.length} warning(s) to acknowledge before wallet-signed deployment.
+                      </p>
+                      <button type="button" className="workflow-button compact" onClick={acknowledgeDeploymentWarnings}>
+                        Record proceed decision
+                      </button>
+                      {contractOpsDeploymentWarningMessage && <p className="chat-status">{contractOpsDeploymentWarningMessage}</p>}
+                    </div>
+                  )}
+                  <div className="contract-ops-inline-actions">
+                    <button
+                      type="button"
+                      className="workflow-button"
+                      data-action-id={uiActions.connectWallet}
+                      onClick={() => {
+                        appendContractOpsTrace(uiActions.connectWallet, 'Connect wallet', 'User requested wallet connection from Contract Ops.');
+                        void connectWallet();
+                      }}
+                    >
+                      Connect wallet
+                    </button>
+                    <button
+                      type="button"
+                      className="workflow-button"
+                      data-action-id="check-sepolia-readiness"
+                      onClick={() => {
+                        appendContractOpsTrace('check-sepolia-readiness', 'Check Sepolia readiness', 'Sepolia readiness check requested.');
+                        void checkSepoliaWalletReadiness();
+                      }}
+                      disabled={!sepoliaDemoWalletReadinessReadModel.canCheckReadiness}
+                      title={sepoliaDemoWalletReadinessReadModel.disabledReason}
+                    >
+                      {sepoliaDemoWalletReadinessState.checkStatus === 'checking' ? 'Checking Sepolia readiness...' : 'Check Sepolia readiness'}
+                    </button>
+                  </div>
+                </section>
+
+                <section className="contract-ops-section deploy-panel" aria-label="Deploy to Sepolia">
+                  <div className="registry-panel-heading compact-subsection-heading">
+                    <div>
+                      <h4><span className="contract-ops-section-number">6</span> Deploy to Sepolia</h4>
+                      <p>Your connected wallet signs the deployment transaction. ZiliOS will not hold private keys.</p>
+                    </div>
+                  </div>
+                  <div className="contract-ops-spec-table compact">
+                    {contractOpsReadModel.deploymentSummary.map((row) => (
+                      <article className="contract-ops-spec-row" key={row.id}>
+                        <span>{row.label}</span>
+                        <strong>{row.value}</strong>
+                        <p>{row.helper}</p>
+                        <small className={`contract-ops-status-pill ${row.status}`}>{contractOpsStatusLabel(row.status)}</small>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="contract-ops-actions" aria-label="Contract Ops actions">
+                    <button
+                      type="button"
+                      className="workflow-button primary-action"
+                      data-action-id={uiActions.deployToSepolia}
+                      disabled={!contractOpsReadModel.deployButtonEnabled}
+                      onClick={() => {
+                        appendContractOpsTrace(uiActions.deployToSepolia, 'Deploy to Sepolia with Wallet', 'Wallet-signed Sepolia deployment requested.');
+                        void requestSepoliaDeployment();
+                      }}
+                      title={
+                        contractOpsReadModel.deployButtonEnabled
+                          ? undefined
+                          : contractOpsReadModel.launchHud.blockers[0] ?? deploymentActionDisabledReason
+                      }
+                    >
+                      {walletSignedDeploymentState.deploymentStatus === 'awaiting_wallet_confirmation'
+                        ? 'Awaiting Wallet Confirmation...'
+                        : walletSignedDeploymentState.deploymentStatus === 'submitted'
+                          ? 'Deployment Submitted to Sepolia'
+                          : walletSignedDeploymentState.deploymentStatus === 'confirmed'
+                            ? 'Deployment Confirmed on Sepolia'
+                            : 'Deploy to Sepolia with Wallet'}
+                    </button>
+                  </div>
+                </section>
+
+                <section className="contract-ops-section" aria-label="Contract Ops evidence summary">
+                  <div className="registry-panel-heading compact-subsection-heading">
+                    <div>
+                      <h4><span className="contract-ops-section-number">7</span> Deployment Evidence</h4>
+                      <p>Evidence appears after real provider-returned transaction or receipt data is available.</p>
+                    </div>
+                  </div>
+                  <div className="contract-ops-evidence">
+                    <span>Deployment evidence: {deploymentEvidenceReadModel.statusLabel}</span>
+                    <span>Record NAV: {recordNavOperationReadModel.statusLabel}</span>
+                    <span>Wallet whitelist: {walletWhitelistOperationReadModel.statusLabel}</span>
+                    <span>Allocation / Mint: {walletAllocationMintOperationReadModel.statusLabel}</span>
+                    <span>Safety: user wallet signs, backend holds no private keys, Sepolia only.</span>
+                  </div>
+                  <div className="contract-ops-spec-table compact">
+                    {contractOpsReadModel.evidenceRows.map((row) => (
+                      <article className="contract-ops-spec-row" key={row.id}>
+                        <span>{row.label}</span>
+                        <strong>{row.value}</strong>
+                        <p>{row.helper}</p>
+                        <small className={`contract-ops-status-pill ${row.status}`}>{contractOpsStatusLabel(row.status)}</small>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="contract-ops-section" aria-label="Post-deployment operations">
+                  <div className="registry-panel-heading compact-subsection-heading">
+                    <div>
+                      <h4><span className="contract-ops-section-number">8</span> Post-deployment operations</h4>
+                      <p>These actions unlock after confirmed deployment evidence and their own lifecycle inputs are ready.</p>
+                    </div>
+                  </div>
+                  <div className="post-deploy-grid">
+                    {contractOpsReadModel.postDeploymentCards.map((card) => (
+                      <article key={card.id} className={`post-deploy-card ${card.status}`}>
+                        <span className={`contract-ops-status-pill ${card.status}`}>{contractOpsStatusLabel(card.status)}</span>
+                        <strong>{card.title}</strong>
+                        <p>{card.needs}</p>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="contract-ops-actions" aria-label="Contract Ops post-deployment actions">
+                    <button
+                      type="button"
+                      className="workflow-button"
+                      data-action-id={uiActions.recordNavEvent}
+                      disabled={!canRequestRecordNavOperation}
+                      onClick={() => {
+                        appendContractOpsTrace(uiActions.recordNavEvent, 'Record NAV Event', 'Wallet-signed Record NAV operation requested.');
+                        void requestRecordNavOperation();
+                      }}
+                      title={canRequestRecordNavOperation ? undefined : recordNavOperationDisabledReason}
+                    >
+                      {recordNavOperationState.operationStatus === 'awaiting_wallet_confirmation'
+                        ? 'Awaiting Wallet Confirmation...'
+                        : recordNavOperationState.operationStatus === 'submitted'
+                          ? 'Record NAV Submitted to Sepolia'
+                          : recordNavOperationState.operationStatus === 'confirmed'
+                            ? 'Record NAV Confirmed on Sepolia'
+                            : 'Record NAV Event'}
+                    </button>
+                    <label className="field-label compact-operation-field" htmlFor="wallet-whitelist-target">
+                      Whitelist target wallet
                       <input
-                        id="contract-ops-admin-wallet"
-                        value={productSetupWalletInputs.admin_wallet}
-                        onChange={(event) =>
-                          setProductSetupWalletInputs((current) => ({
-                            ...current,
-                            admin_wallet: event.target.value,
-                          }))
-                        }
-                        placeholder="0x... or issuer operations wallet"
+                        id="wallet-whitelist-target"
+                        value={walletWhitelistTargetWallet}
+                        onChange={(event) => updateWalletWhitelistTargetWallet(event.target.value)}
+                        placeholder="0x..."
                         autoComplete="off"
+                        disabled={isWalletWhitelistOperationInFlight(walletWhitelistOperationState)}
                       />
                     </label>
                     <button
                       type="button"
-                      className="workflow-button primary-action"
-                      onClick={() => updateProductSetupWalletField('admin_wallet', productSetupWalletInputs.admin_wallet)}
+                      className="workflow-button"
+                      data-action-id={uiActions.whitelistWallet}
+                      disabled={!canRequestWalletWhitelistOperation}
+                      onClick={() => {
+                        appendContractOpsTrace(uiActions.whitelistWallet, 'Whitelist Wallet', 'Wallet-signed whitelist operation requested.');
+                        void requestWalletWhitelistOperation();
+                      }}
+                      title={canRequestWalletWhitelistOperation ? undefined : walletWhitelistOperationDisabledReason}
                     >
-                      Save admin wallet
+                      {walletWhitelistOperationState.operationStatus === 'awaiting_wallet_confirmation'
+                        ? 'Wallet whitelist status: Awaiting wallet confirmation'
+                        : walletWhitelistOperationState.operationStatus === 'submitted'
+                          ? 'Wallet whitelist submitted to Sepolia'
+                          : selectedWhitelistTargetAlreadyConfirmed
+                            ? 'Wallet whitelist confirmed on Sepolia'
+                            : 'Whitelist Wallet'}
                     </button>
-                  </div>
-                  {productSetupWalletMessage && <p className="chat-status">{productSetupWalletMessage}</p>}
-                </section>
-
-                <div className="contract-ops-summary" aria-label="Contract Ops summary">
-                  <article>
-                    <span>Deployment</span>
-                    <strong>{formatWalletSignedDeploymentStatus(walletSignedDeploymentState.deploymentStatus)}</strong>
-                    <p>{deploymentEvidenceReadModel.contractAddress ?? 'No receipt-returned contract address yet.'}</p>
-                  </article>
-                  <article>
-                    <span>Wallet</span>
-                    <strong>{formatWalletConnectionStatus(walletConnectionReadModel.walletConnectionStatus)}</strong>
-                    <p>{walletAddressDisplay ? `${walletAddressDisplay} / ${formatWalletChainStatus(walletConnectionReadModel.chainStatus)}` : 'Connect a Sepolia wallet.'}</p>
-                  </article>
-                  <article>
-                    <span>Operations</span>
-                    <strong>{deploymentEvidenceReadModel.status === 'confirmed' ? 'Gated operations available' : 'Waiting for deployment evidence'}</strong>
-                    <p>Record NAV, Whitelist Wallet, and Allocation / Mint are released operation-by-operation.</p>
-                  </article>
-                </div>
-
-                <div className="contract-ops-actions" aria-label="Contract Ops actions">
-                  <button
-                    type="button"
-                    className="workflow-button primary-action"
-                    data-action-id={uiActions.deployToSepolia}
-                    disabled={!canRequestSepoliaDeployment}
-                    onClick={() => void requestSepoliaDeployment()}
-                    title={canRequestSepoliaDeployment ? undefined : deploymentActionDisabledReason}
-                  >
-                    {walletSignedDeploymentState.deploymentStatus === 'awaiting_wallet_confirmation'
-                      ? 'Awaiting Wallet Confirmation...'
-                      : walletSignedDeploymentState.deploymentStatus === 'submitted'
-                        ? 'Deployment Submitted to Sepolia'
-                        : walletSignedDeploymentState.deploymentStatus === 'confirmed'
-                          ? 'Deployment Confirmed on Sepolia'
-                          : 'Deploy to Sepolia with Wallet'}
-                  </button>
-                  <button
-                    type="button"
-                    className="workflow-button"
-                    data-action-id={uiActions.recordNavEvent}
-                    disabled={!canRequestRecordNavOperation}
-                    onClick={() => void requestRecordNavOperation()}
-                    title={canRequestRecordNavOperation ? undefined : recordNavOperationDisabledReason}
-                  >
-                    {recordNavOperationState.operationStatus === 'awaiting_wallet_confirmation'
-                      ? 'Awaiting Wallet Confirmation...'
-                      : recordNavOperationState.operationStatus === 'submitted'
-                        ? 'Record NAV Submitted to Sepolia'
-                        : recordNavOperationState.operationStatus === 'confirmed'
-                          ? 'Record NAV Confirmed on Sepolia'
-                          : 'Record NAV Event'}
-                  </button>
-                  <label className="field-label compact-operation-field" htmlFor="wallet-whitelist-target">
-                    Whitelist target wallet
-                    <input
-                      id="wallet-whitelist-target"
-                      value={walletWhitelistTargetWallet}
-                      onChange={(event) => updateWalletWhitelistTargetWallet(event.target.value)}
-                      placeholder="0x..."
-                      autoComplete="off"
-                      disabled={isWalletWhitelistOperationInFlight(walletWhitelistOperationState)}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className="workflow-button"
-                    data-action-id={uiActions.whitelistWallet}
-                    disabled={!canRequestWalletWhitelistOperation}
-                    onClick={() => void requestWalletWhitelistOperation()}
-                    title={canRequestWalletWhitelistOperation ? undefined : walletWhitelistOperationDisabledReason}
-                  >
-                    {walletWhitelistOperationState.operationStatus === 'awaiting_wallet_confirmation'
-                      ? 'Wallet whitelist status: Awaiting wallet confirmation'
-                      : walletWhitelistOperationState.operationStatus === 'submitted'
-                        ? 'Wallet whitelist submitted to Sepolia'
-                        : selectedWhitelistTargetAlreadyConfirmed
-                          ? 'Wallet whitelist confirmed on Sepolia'
-                          : 'Whitelist Wallet'}
-                  </button>
-                  <button
-                    type="button"
-                    className="workflow-button"
-                    data-action-id={uiActions.allocationMint}
-                    disabled={!canRequestAllocationMintOperation}
-                    onClick={() => void requestAllocationMintOperation()}
-                    title={canRequestAllocationMintOperation ? undefined : allocationMintOperationDisabledReason}
-                  >
-                    {walletAllocationMintOperationState.operationStatus === 'awaiting_wallet_confirmation'
-                      ? 'Allocation / Mint awaiting wallet confirmation'
-                      : walletAllocationMintOperationState.operationStatus === 'submitted'
-                        ? 'Allocation / Mint submitted to Sepolia'
-                        : selectedAllocationMintAlreadyConfirmed
-                          ? 'Allocation / Mint confirmed on Sepolia'
-                          : 'Submit Allocation / Mint'}
-                  </button>
-                </div>
-
-                <div className="contract-ops-evidence" aria-label="Contract Ops evidence summary">
-                  <span>Deployment evidence: {deploymentEvidenceReadModel.statusLabel}</span>
-                  <span>Record NAV: {recordNavOperationReadModel.statusLabel}</span>
-                  <span>Wallet whitelist: {walletWhitelistOperationReadModel.statusLabel}</span>
-                  <span>Allocation / Mint: {walletAllocationMintOperationReadModel.statusLabel}</span>
-                  <span>Safety: user wallet signs, backend holds no private keys, Sepolia only.</span>
-                </div>
-
-                <div className="registry-panel-heading compact-subsection-heading">
-                  <div>
-                    <h3>Allocation / Mint setup</h3>
-                    <p>
-                      Prepare single-investor allocation parameters from Investor Wallets and Subscription state before submitting the wallet-signed mint.
-                    </p>
-                  </div>
-                  <span className={`gate-badge ${allocationMint.status === 'ready' ? 'ready' : 'draft'}`}>
-                    {allocationMint.statusLabel}
-                  </span>
-                </div>
-
-                <div className="allocation-mint-workspace" aria-label="Allocation Mint workspace">
-                <div className="parameter-grid">
-                  <label htmlFor="allocation-target-wallet">
-                    Allocation target wallet
-                    <select
-                      id="allocation-target-wallet"
-                      value={lifecycleState.allocationMintParameters.targetWalletAddress ?? ''}
-                      onChange={(event) => updateAllocationMintParameters({ targetWalletAddress: event.target.value || undefined })}
-                    >
-                      <option value="">Choose registered investor wallet</option>
-                      {lifecycleReadModel.investorRegistry.entries
-                        .filter((entry) => entry.canUseForAllocationMint)
-                        .map((entry) => (
-                          <option key={entry.id} value={entry.walletAddress}>
-                            {entry.walletAddress}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-                  <label htmlFor="allocation-token-amount">
-                    Token allocation amount
-                    <input
-                      id="allocation-token-amount"
-                      value={lifecycleState.allocationMintParameters.tokenAmount ?? ''}
-                      onChange={(event) => updateAllocationMintParameters({ tokenAmount: event.target.value })}
-                      inputMode="decimal"
-                      placeholder="1000"
-                    />
-                  </label>
-                </div>
-
-                <div className="allocation-context" aria-label="Allocation Mint dependencies">
-                  <article>
-                    <span>Investor Wallets</span>
-                    <strong>{lifecycleReadModel.investorRegistry.statusLabel}</strong>
-                    <p>{lifecycleReadModel.investorRegistry.statusDetail}</p>
-                  </article>
-                  <article>
-                    <span>Subscription</span>
-                    <strong>{lifecycleReadModel.subscription.statusLabel}</strong>
-                    <p>{lifecycleReadModel.subscription.statusDetail}</p>
-                  </article>
-                  <article>
-                    <span>Template reference</span>
-                    <strong>
-                      {lifecycleReadModel.subscription.normalizedPermittedStablecoins.length > 0
-                        ? lifecycleReadModel.subscription.normalizedPermittedStablecoins.join(', ')
-                        : 'Stablecoin not set'}
-                    </strong>
-                    <p>Payment per token: {lifecycleState.subscriptionParameters.paymentPerToken ?? 'Not set'}</p>
-                  </article>
-                  <article>
-                    <span>Investor whitelist</span>
-                    <strong>{selectedAllocationMintInvestorWhitelisted ? 'Whitelisted locally' : 'Whitelist required'}</strong>
-                    <p>{selectedAllocationMintInvestorWhitelisted ? 'Selected wallet can receive minted allocation.' : 'Use Wallet Whitelist before minting.'}</p>
-                  </article>
-                </div>
-
-                <div className="parameter-status" aria-label="Allocation Mint validation status">
-                  <p>{allocationMint.statusDetail}</p>
-                  {allocationMint.blockingReasons.length > 0 || allocationMint.validationMessages.length > 0 ? (
-                    <ul>
-                      {[...allocationMint.blockingReasons, ...allocationMint.validationMessages]
-                        .filter((message) => message !== allocationMint.statusDetail)
-                        .map((message) => (
-                          <li key={message}>{message}</li>
-                        ))}
-                    </ul>
-                  ) : (
-                    <p>Allocation / Mint parameters are ready for review.</p>
-                  )}
-                  <p>{walletAllocationMintOperationReadModel.statusDetail}</p>
-                </div>
-
-                <div className="parameter-status" aria-label="Sepolia demo wallet readiness">
-                  <div className="status-row">
-                    <p>{sepoliaDemoWalletReadinessReadModel.statusDetail}</p>
                     <button
                       type="button"
                       className="workflow-button"
-                      onClick={() => void checkSepoliaWalletReadiness()}
-                      disabled={!sepoliaDemoWalletReadinessReadModel.canCheckReadiness}
-                      title={sepoliaDemoWalletReadinessReadModel.disabledReason}
+                      data-action-id={uiActions.allocationMint}
+                      disabled={!canRequestAllocationMintOperation}
+                      onClick={() => {
+                        appendContractOpsTrace(uiActions.allocationMint, 'Submit Allocation / Mint', 'Wallet-signed Allocation / Mint operation requested.');
+                        void requestAllocationMintOperation();
+                      }}
+                      title={canRequestAllocationMintOperation ? undefined : allocationMintOperationDisabledReason}
                     >
-                      {sepoliaDemoWalletReadinessState.checkStatus === 'checking' ? 'Checking Sepolia Readiness...' : 'Check Sepolia Readiness'}
+                      {walletAllocationMintOperationState.operationStatus === 'awaiting_wallet_confirmation'
+                        ? 'Allocation / Mint awaiting wallet confirmation'
+                        : walletAllocationMintOperationState.operationStatus === 'submitted'
+                          ? 'Allocation / Mint submitted to Sepolia'
+                          : selectedAllocationMintAlreadyConfirmed
+                            ? 'Allocation / Mint confirmed on Sepolia'
+                            : 'Submit Allocation / Mint'}
                     </button>
                   </div>
-                  <div className="readiness-list">
-                    {sepoliaDemoWalletReadinessReadModel.items.map((item) => (
-                      <span key={item.label}>
-                        <strong>{item.label}</strong>
-                        {item.detail}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="funding-helper" aria-label="Sepolia funding helper">
-                    <div className="funding-helper-heading">
-                      <div>
-                        <strong>Funding helper</strong>
-                        <p>Copy the wallets that need test funds. MILA26 does not auto-fund wallets or hold private keys.</p>
+
+                  <div className="allocation-mint-workspace" aria-label="Allocation Mint workspace">
+                    <div className="parameter-grid">
+                      <label htmlFor="allocation-target-wallet">
+                        Allocation target wallet
+                        <select
+                          id="allocation-target-wallet"
+                          value={lifecycleState.allocationMintParameters.targetWalletAddress ?? ''}
+                          onChange={(event) => updateAllocationMintParameters({ targetWalletAddress: event.target.value || undefined })}
+                        >
+                          <option value="">Choose registered investor wallet</option>
+                          {lifecycleReadModel.investorRegistry.entries
+                            .filter((entry) => entry.canUseForAllocationMint)
+                            .map((entry) => (
+                              <option key={entry.id} value={entry.walletAddress}>
+                                {entry.walletAddress}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                      <label htmlFor="allocation-token-amount">
+                        Token allocation amount
+                        <input
+                          id="allocation-token-amount"
+                          value={lifecycleState.allocationMintParameters.tokenAmount ?? ''}
+                          onChange={(event) => updateAllocationMintParameters({ tokenAmount: event.target.value })}
+                          inputMode="decimal"
+                          placeholder="1000"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="allocation-context" aria-label="Allocation Mint dependencies">
+                      <article>
+                        <span>Investor Wallets</span>
+                        <strong>{lifecycleReadModel.investorRegistry.statusLabel}</strong>
+                        <p>{lifecycleReadModel.investorRegistry.statusDetail}</p>
+                      </article>
+                      <article>
+                        <span>Subscription</span>
+                        <strong>{lifecycleReadModel.subscription.statusLabel}</strong>
+                        <p>{lifecycleReadModel.subscription.statusDetail}</p>
+                      </article>
+                      <article>
+                        <span>Template reference</span>
+                        <strong>
+                          {lifecycleReadModel.subscription.normalizedPermittedStablecoins.length > 0
+                            ? lifecycleReadModel.subscription.normalizedPermittedStablecoins.join(', ')
+                            : 'Stablecoin not set'}
+                        </strong>
+                        <p>Payment per token: {lifecycleState.subscriptionParameters.paymentPerToken ?? 'Not set'}</p>
+                      </article>
+                      <article>
+                        <span>Investor whitelist</span>
+                        <strong>{selectedAllocationMintInvestorWhitelisted ? 'Whitelisted locally' : 'Whitelist required'}</strong>
+                        <p>{selectedAllocationMintInvestorWhitelisted ? 'Selected wallet can receive minted allocation.' : 'Use Wallet Whitelist before minting.'}</p>
+                      </article>
+                    </div>
+
+                    <div className="parameter-status" aria-label="Allocation Mint validation status">
+                      <p>{allocationMint.statusDetail}</p>
+                      {allocationMint.blockingReasons.length > 0 || allocationMint.validationMessages.length > 0 ? (
+                        <ul>
+                          {[...allocationMint.blockingReasons, ...allocationMint.validationMessages]
+                            .filter((message) => message !== allocationMint.statusDetail)
+                            .map((message) => (
+                              <li key={message}>{message}</li>
+                            ))}
+                        </ul>
+                      ) : (
+                        <p>Allocation / Mint parameters are ready for review.</p>
+                      )}
+                      <p>{walletAllocationMintOperationReadModel.statusDetail}</p>
+                    </div>
+
+                    <div className="parameter-status" aria-label="Sepolia demo wallet readiness">
+                      <div className="status-row">
+                        <p>{sepoliaDemoWalletReadinessReadModel.statusDetail}</p>
                       </div>
-                      <span>{sepoliaDemoWalletReadinessReadModel.fundingTargets.length} target(s)</span>
-                    </div>
-                    <div className="funding-target-list">
-                      {sepoliaDemoWalletReadinessReadModel.fundingTargets.map((target) => (
-                        <article className="funding-target" key={target.id}>
+                      <div className="readiness-list">
+                        {sepoliaDemoWalletReadinessReadModel.items.map((item) => (
+                          <span key={item.label}>
+                            <strong>{item.label}</strong>
+                            {item.detail}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="funding-helper" aria-label="Sepolia funding helper">
+                        <div className="funding-helper-heading">
                           <div>
-                            <div className="funding-target-title">
-                              <strong>{target.label}</strong>
-                              <span className={`funding-status ${target.status}`}>{fundingTargetStatusLabel(target.status)}</span>
-                            </div>
-                            <small>{target.role}</small>
-                            <p>{target.detail}</p>
-                            {target.address && <code>{target.address}</code>}
+                            <strong>Funding helper</strong>
+                            <p>Copy public wallets that need test funds. ZiliOS does not auto-fund wallets or hold private keys.</p>
                           </div>
-                          <button
-                            type="button"
-                            className="workflow-button compact"
-                            onClick={() => void copyFundingTarget(target.label, target.copyValue)}
-                            disabled={!target.copyValue}
-                          >
-                            Copy
-                          </button>
-                        </article>
-                      ))}
+                          <span>{sepoliaDemoWalletReadinessReadModel.fundingTargets.length} target(s)</span>
+                        </div>
+                        <div className="funding-target-list">
+                          {sepoliaDemoWalletReadinessReadModel.fundingTargets.map((target) => (
+                            <article className="funding-target" key={target.id}>
+                              <div>
+                                <div className="funding-target-title">
+                                  <strong>{target.label}</strong>
+                                  <span className={`funding-status ${target.status}`}>{fundingTargetStatusLabel(target.status)}</span>
+                                </div>
+                                <small>{target.role}</small>
+                                <p>{target.detail}</p>
+                                {target.address && <code>{target.address}</code>}
+                              </div>
+                              <button
+                                type="button"
+                                className="workflow-button compact"
+                                data-action-id="copy-funding-addresses"
+                                onClick={() => {
+                                  appendContractOpsTrace('copy-funding-addresses', `Copy ${target.label}`, 'Funding helper public address copied when available.');
+                                  void copyFundingTarget(target.label, target.copyValue);
+                                }}
+                                disabled={!target.copyValue}
+                              >
+                                Copy
+                              </button>
+                            </article>
+                          ))}
+                        </div>
+                        {fundingHelperMessage && <p className="funding-helper-message">{fundingHelperMessage}</p>}
+                      </div>
                     </div>
-                    {fundingHelperMessage && <p className="funding-helper-message">{fundingHelperMessage}</p>}
                   </div>
-                </div>
-                </div>
+                </section>
+
+                <section className="contract-ops-section action-trace-panel" aria-label="Contract Ops action trace">
+                  <details>
+                    <summary><span className="contract-ops-section-number">9</span> Action Trace</summary>
+                    {contractOpsActionTrace.length === 0 ? (
+                      <p>No Contract Ops actions traced yet.</p>
+                    ) : (
+                      <ol>
+                        {contractOpsActionTrace.map((entry) => (
+                          <li key={entry.id}>
+                            <time>{entry.timestamp}</time>
+                            <strong>{entry.actionId}</strong>
+                            <span>{entry.label}</span>
+                            <p>{entry.detail}</p>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </details>
+                </section>
               </section>
             )}
 
@@ -4637,6 +5060,26 @@ export function App() {
                     </div>
                   )}
                 </section>
+
+                {activeWorkspaceTab.id === 'smart_contract' && (
+                  <section className="zilio-launch-hud" aria-label="Contract Ops launch readiness">
+                    <span className="section-kicker">Launch readiness</span>
+                    <h2>{contractOpsReadModel.launchHud.statusLabel}</h2>
+                    {contractOpsReadModel.launchHud.blockers.length > 0 ? (
+                      <ul>
+                        {contractOpsReadModel.launchHud.blockers.map((blocker) => (
+                          <li key={blocker}>{blocker}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>No launch blockers in the current review state.</p>
+                    )}
+                    {contractOpsReadModel.launchHud.laterNeeds.length > 0 && (
+                      <p className="zilio-hud-note">{contractOpsReadModel.launchHud.laterNeeds.length} later lifecycle item(s) are visible but not deployment blockers.</p>
+                    )}
+                    <small>{contractOpsReadModel.launchHud.evidenceStatus}</small>
+                  </section>
+                )}
 
                 <section className="zilio-chat-console" aria-label="Ask ZiLi-OS">
                   <div className="zilio-console-heading compact">
