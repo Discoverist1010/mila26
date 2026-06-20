@@ -625,7 +625,7 @@ export function App() {
   const [fundingHelperMessage, setFundingHelperMessage] = useState<string | undefined>();
   const [workspacePersistenceStatus, setWorkspacePersistenceStatus] = useState<WorkspacePersistenceStatus>({
     status: 'idle',
-    message: 'Current session only until saved.',
+    message: 'No saved draft yet.',
   });
   const [evidenceVaultStatus, setEvidenceVaultStatus] = useState<DurableRecordStatus>({
     status: 'idle',
@@ -1100,6 +1100,8 @@ export function App() {
       'subscription_payment_method',
       'redemption_cadence',
       'redemption_payment_method',
+      'redemption_schedule',
+      'redemption_payout_delay',
       'income_payout_cadence',
       'redemption_payout_cadence',
       'subscription_stablecoins',
@@ -1109,12 +1111,14 @@ export function App() {
       'nav_cadence',
       'nav_upload_method',
       'nav_source',
+      'investor_update_rule',
       'initial_distribution_date',
       'initial_investor_register_rule',
       'duration_months',
       'derived_maturity_date',
       'maturity_description',
       'maturity_date',
+      'maturity_closeout_rule',
       'compliance_model',
       'evidence_model',
       'prototype_network',
@@ -1865,13 +1869,19 @@ export function App() {
     setProductSetupPackStatus(undefined);
   }
 
+  function formatDraftSavedAt(createdAtIso: string) {
+    const savedAt = new Date(createdAtIso);
+    if (Number.isNaN(savedAt.getTime())) return 'Saved locally';
+    return `Saved locally at ${savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  }
+
   async function saveWorkspaceToBackend() {
     const result = await saveWorkspaceSnapshotForPersistence();
 
     if (result) {
       setWorkspacePersistenceStatus({
         status: 'saved',
-        message: `Snapshot v${result.snapshot.version} saved. Evidence remains local-session only.`,
+        message: formatDraftSavedAt(result.snapshot.createdAtIso),
       });
     }
   }
@@ -1880,12 +1890,12 @@ export function App() {
     if (selectedProjectId === 'workspace') {
       setWorkspacePersistenceStatus({
         status: 'error',
-        message: 'Choose a project before saving a workspace snapshot.',
+        message: 'Choose a project before saving a local draft.',
       });
       return undefined;
     }
 
-    setWorkspacePersistenceStatus({ status: 'saving', message: 'Saving workspace snapshot...' });
+    setWorkspacePersistenceStatus({ status: 'saving', message: 'Saving draft...' });
     const result = await saveWorkspaceSnapshot({
       projectId: selectedProjectId,
       projectName: activeProjectTitle,
@@ -1906,12 +1916,12 @@ export function App() {
     if (selectedProjectId === 'workspace') {
       setWorkspacePersistenceStatus({
         status: 'error',
-        message: 'Choose a project before loading a workspace snapshot.',
+        message: 'Choose a project before loading a local draft.',
       });
       return;
     }
 
-    setWorkspacePersistenceStatus({ status: 'loading', message: 'Loading latest workspace snapshot...' });
+    setWorkspacePersistenceStatus({ status: 'loading', message: 'Loading latest draft...' });
     const result = await loadLatestWorkspaceSnapshot({ projectId: selectedProjectId });
 
     if (result.ok) {
@@ -1933,7 +1943,7 @@ export function App() {
       setSelectedWorkspaceTab('overview');
       setWorkspacePersistenceStatus({
         status: 'loaded',
-        message: `Snapshot v${result.data.snapshot.version} loaded. Local-only wallet evidence was reset.`,
+        message: `Latest local draft loaded · ${formatDraftSavedAt(result.data.snapshot.createdAtIso).toLowerCase()}.`,
       });
       return;
     }
@@ -2100,7 +2110,7 @@ export function App() {
   async function saveEvidenceVaultRecords() {
     const workspaceRecord = await saveWorkspaceSnapshotForPersistence();
     if (!workspaceRecord) {
-      setEvidenceVaultStatus({ status: 'error', message: 'Save the workspace snapshot before storing evidence.' });
+      setEvidenceVaultStatus({ status: 'error', message: 'Save a local draft before storing evidence.' });
       return;
     }
 
@@ -2154,7 +2164,7 @@ export function App() {
   async function saveGeneratedArtifactRecords() {
     const workspaceRecord = await saveWorkspaceSnapshotForPersistence();
     if (!workspaceRecord) {
-      setArtifactVaultStatus({ status: 'error', message: 'Save the workspace snapshot before storing artifacts.' });
+      setArtifactVaultStatus({ status: 'error', message: 'Save a local draft before storing artifacts.' });
       return;
     }
 
@@ -2964,7 +2974,7 @@ export function App() {
     if (!workspaceRecord) {
       setArtifactVaultStatus({
         status: 'error',
-        message: `Product PRD ${versionLabel} generated in session. Save a workspace snapshot before storing it in Evidence Vault.`,
+        message: `Product PRD ${versionLabel} generated in session. Save a local draft before storing it in Evidence Vault.`,
       });
       return;
     }
@@ -2999,10 +3009,10 @@ export function App() {
   async function saveProductSetupDraft() {
     const result = await saveWorkspaceSnapshotForPersistence();
     if (result) {
-      setProductSetupPackStatus(`Product Setup draft saved as snapshot v${result.snapshot.version}. PRD download buttons remain inactive until finalisation.`);
+      setProductSetupPackStatus(`Product Setup draft saved locally. PRD download buttons remain inactive until finalisation.`);
       setWorkspacePersistenceStatus({
         status: 'saved',
-        message: `Snapshot v${result.snapshot.version} saved. Product PRD has not been finalised.`,
+        message: `${formatDraftSavedAt(result.snapshot.createdAtIso)}. Product PRD has not been finalised.`,
       });
     }
   }
@@ -3279,20 +3289,20 @@ export function App() {
                 <p>{activeWorkspaceTab.purpose}</p>
               </div>
               <div className="stage-header-actions">
-                <div className="stage-persistence" aria-label="Workspace snapshot actions">
+                <div className="stage-persistence" aria-label="Workspace draft actions">
                   <button
                     type="button"
                     onClick={() => void saveWorkspaceToBackend()}
                     disabled={workspacePersistenceStatus.status === 'saving' || workspacePersistenceStatus.status === 'loading'}
                   >
-                    {workspacePersistenceStatus.status === 'saving' ? 'Saving...' : 'Save'}
+                    {workspacePersistenceStatus.status === 'saving' ? 'Saving...' : 'Save draft'}
                   </button>
                   <button
                     type="button"
                     onClick={() => void loadLatestWorkspaceFromBackend()}
                     disabled={workspacePersistenceStatus.status === 'saving' || workspacePersistenceStatus.status === 'loading'}
                   >
-                    {workspacePersistenceStatus.status === 'loading' ? 'Loading...' : 'Load latest'}
+                    {workspacePersistenceStatus.status === 'loading' ? 'Loading...' : 'Load latest draft'}
                   </button>
                   <span className={`workspace-persistence-message ${workspacePersistenceStatus.status}`} aria-label="Workspace persistence status">
                     {workspacePersistenceStatus.message}
@@ -4440,7 +4450,7 @@ export function App() {
                   <div>
                     <h3>Durable evidence and artifact records</h3>
                     <p>
-                      Save provider-derived Sepolia evidence and generated artifacts against the current workspace snapshot.
+                      Save provider-derived Sepolia evidence and generated artifacts against the current local draft.
                       Loading these records does not restore local wallet session state.
                     </p>
                   </div>

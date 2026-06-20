@@ -76,12 +76,7 @@ describe('blockchain engineer prompt construction', () => {
         selectedProtocolBase: null,
         recommendedProtocol: 'ERC-3643',
         missingCanonicalInputs: expect.arrayContaining(['Missing 0']),
-        canonicalFields: {
-          protocol_base: expect.objectContaining({
-            label: 'Protocol base',
-            status: 'missing',
-          }),
-        },
+        canonicalFields: {},
       },
       currentTurnExtractedFacts: [
         expect.objectContaining({
@@ -93,6 +88,7 @@ describe('blockchain engineer prompt construction', () => {
     expect(compact?.productSetup).toHaveProperty('pendingSuggestedUpdates');
     expect(JSON.stringify(compact)).not.toContain(hugeIgnoredValue);
     expect(JSON.stringify(compact?.productSetup)).not.toContain('irrelevant_large_field');
+    expect(JSON.stringify((compact?.productSetup as { canonicalFields: unknown }).canonicalFields)).not.toContain('Protocol base');
     expect((compact?.productSetup as { missingCanonicalInputs: string[] }).missingCanonicalInputs).toHaveLength(12);
     expect(serialized).toMatch(/Current workspace context, compact JSON/);
     expect(serialized.length).toBeLessThan(2_500);

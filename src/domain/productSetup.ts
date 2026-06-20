@@ -1363,6 +1363,7 @@ const directUserStatedProductSetupFields = new Set<ProductSetupFieldKey>([
   'burn_lock_rule',
   'nav_cadence',
   'nav_source',
+  'investor_update_rule',
   'duration_months',
   'initial_distribution_date',
   'initial_investor_register_rule',

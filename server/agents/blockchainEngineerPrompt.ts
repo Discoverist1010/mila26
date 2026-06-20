@@ -13,10 +13,10 @@ const agentIdentity = [
 
 const productSetupIntake = [
   'In Product Setup, act as a conversation-first intake agent before implementation advisor.',
-  'For rough or incomplete notes: replay understanding, list only latest user-stated facts, identify missing canonical Product Setup inputs, then ask focused next questions.',
+  'For rough notes: replay understanding, list latest user-stated facts, identify missing canonical Product Setup inputs, then ask focused next questions.',
   'If the latest message mainly expresses confusion about ERC standards, protocol base, Sepolia, recommended architecture target, or current executable prototype, pause requirement gathering and clarify the concept first.',
   'Usually ask 1-3 questions for readability, but ask more when the user changes direction or crucial setup fields remain unclear.',
-  'If the user revises intent, acknowledge the revision, update the working interpretation, and ask only what keeps the canonical record coherent.',
+  'If the user revises intent, acknowledge it and ask only what keeps the canonical record coherent.',
   'After about three setup Q&A turns, consolidate: replay draft requirements, separate deployment blockers from later workflow gaps, and ask whether to confirm, revise, or defer.',
   'Do not jump to deployment, minting, onboarding, or full implementation plans from early setup notes unless explicitly asked.',
   'Lead toward a downloadable Product Setup Pack built from confirmed, user-stated, inferred, or deferred canonical fields with provenance.',
@@ -29,7 +29,8 @@ const productSetupDataRules = [
   'Do not invent or prefill product_name or token_symbol. Ask for them when missing.',
   'Say "recommended architecture target" for inferred protocol recommendations; say "selected protocol base" only after protocol_base is user_confirmed.',
   'If selectedProtocolBase is already present, respect it as the working choice. Do not stage a different protocol_base as a captured fact unless the latest user message explicitly changes the choice.',
-  'Prioritize missing canonical inputs: product name, token symbol, product type, base currency, protocol base, expected investors, wallet rule, subscription/redemption cadence, income treatment, payout cadence, NAV cadence/source, stablecoins, and burn/lock rule.',
+  'Prioritize missing Product Setup required fields. Do not ask again for user_stated fields unless ambiguous.',
+  'If duration_months and product_launch_date are present, derived_maturity_date is calculated; mention weekend adjustment only if it differs from the calendar anniversary.',
 ];
 
 const protocolRules = [
@@ -37,7 +38,7 @@ const protocolRules = [
   'ERC-721 may be explained as out of MVP scope, not as an active ZiLi-OS choice.',
   'Always distinguish recommended architecture target from current executable prototype.',
   'Current executable prototype: Sepolia restricted ERC-20-compatible unless a future adapter is implemented.',
-  'If the user is confused about ERC-3643 versus ERC-20, explain that ERC-3643 is the recommended architecture target for restricted/approved-wallet products, while the Sepolia ERC-20-compatible prototype is what ZiLi-OS can deploy and test now.',
+  'If confused about ERC-3643 versus ERC-20, explain ERC-3643 is the architecture target for restricted products, while Sepolia ERC-20-compatible is deployable/testable now.',
   'If the user selected ERC-20 while whitelisted wallets are also required, explain the tradeoff: ERC-20 is acceptable as the working protocol when restrictions are handled by ZiLi-OS workflow or custom contract logic, while ERC-3643 is the stronger native permissioning target. Say the protocol can be revisited in Contract Ops before finalisation.',
   'Do not ask the user to choose a protocol in the same reply when they are confused about the distinction; first ask whether the explanation clarifies it.',
   'Before concluding Product Setup, provide protocol fit: recommended architecture target, current executable prototype, and unsupported/custom requirement notes.',
@@ -81,21 +82,48 @@ const advisorSystemInstruction = [
 const canonicalFieldPriority = [
   'product_name',
   'token_symbol',
+  'product_launch_date',
+  'product_wrapper',
+  'underlying_asset_class',
+  'product_structure',
+  'offering_type',
+  'eligible_investor_type',
+  'maximum_investor_count',
+  'distribution_jurisdiction',
   'product_type',
   'base_currency',
   'income_treatment',
   'protocol_base',
   'expected_investor_count',
   'investor_wallet_rule',
+  'whitelisted_wallets_required',
+  'p2p_transfer_allowed',
   'subscription_cadence',
-  'redemption_cadence',
-  'income_payout_cadence',
-  'redemption_payout_cadence',
+  'subscription_payment_method',
   'subscription_stablecoins',
+  'redemption_cadence',
+  'redemption_payment_method',
+  'redemption_stablecoin_type',
+  'redemption_schedule',
+  'income_payout_cadence',
+  'redemption_payout_delay',
+  'redemption_payout_cadence',
+  'minimum_redemption_amount',
   'burn_lock_rule',
   'nav_cadence',
+  'nav_upload_method',
   'nav_source',
+  'investor_update_rule',
+  'initial_distribution_date',
+  'initial_investor_register_rule',
+  'duration_months',
+  'derived_maturity_date',
   'maturity_date',
+  'maturity_description',
+  'maturity_closeout_rule',
+  'compliance_model',
+  'evidence_model',
+  'prototype_network',
 ] as const;
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -115,10 +143,14 @@ function toStringArray(value: unknown, maxItems: number): string[] | undefined {
 
 function compactField(field: unknown): UnknownRecord | undefined {
   if (!isRecord(field)) return undefined;
+  const hasValue = field.value !== null && field.value !== undefined && field.value !== '';
+  const status = typeof field.status === 'string' ? field.status : undefined;
+  const hasMeaningfulEmptyStatus = status === 'deferred' || status === 'conflicting';
+  if (!hasValue && !hasMeaningfulEmptyStatus) return undefined;
   return {
     label: typeof field.label === 'string' ? field.label : undefined,
     value: field.value ?? null,
-    status: typeof field.status === 'string' ? field.status : undefined,
+    status,
     sourceType: typeof field.sourceType === 'string' ? field.sourceType : null,
     confirmedByUser: field.confirmedByUser === true,
   };

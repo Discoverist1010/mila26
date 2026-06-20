@@ -201,6 +201,52 @@ describe('Product Setup record', () => {
     expect(rowsById.get('derived_maturity_date')).toMatchObject({ value: '2029-11-08', provenanceLabel: 'Assumed' });
   });
 
+  it('captures a messy closed-ended fund transcript without misrouting timing or eligibility details', () => {
+    const transcript = [
+      'i want to create a tokenised close-ended fund to distribute to 32 investors. the fund name is TEST, symbol is TST and the launch date is 11 Nov 2026. it will be for 3 years.',
+      'the base currency is SGD. investor wallets will be whitelisted. subscription will have an initial issuance at launch, and then open on a quarterly basis. redemption will also be on a quarterly basis. nav is monthly that will be pushed to the investors whitelisted address.',
+      'the underlying product is a fund. income is distributed to token holders before redemption starts. income distribution is also quarterly minus 1 day so that redemption happens next day.',
+      'eligible investors will be kyc off chain. investors subscribe via fiat curreny that is also done offchain. redemption is also in fiat done offchain.',
+      'i thought i had stated the produt will run for 3 years',
+      'offering type is private placement',
+    ];
+    const record = transcript.reduce((currentRecord, message, index) => {
+      const suggestions = createProductSetupSuggestionsFromText(message, `chat_turn_messy_${index + 1}`);
+      return reconcileProductSetupSuggestedUpdates(currentRecord, suggestions).record;
+    }, createInitialProductSetupRecord(facts));
+    const readModel = toProductSetupReadModel(record);
+    const rowsById = new Map(readModel.profileRows.map((row) => [row.id, row]));
+
+    expect(record.fields.product_name).toMatchObject({ value: 'TEST', status: 'user_stated' });
+    expect(record.fields.token_symbol).toMatchObject({ value: 'TST', status: 'user_stated' });
+    expect(record.fields.product_wrapper).toMatchObject({ value: 'Fund', status: 'user_stated' });
+    expect(record.fields.product_type).toMatchObject({ value: 'Fund', status: 'user_stated' });
+    expect(record.fields.product_structure).toMatchObject({ value: 'Closed-ended', status: 'user_stated' });
+    expect(record.fields.expected_investor_count).toMatchObject({ value: 32, status: 'user_stated' });
+    expect(record.fields.maximum_investor_count).toMatchObject({ value: 32, status: 'user_stated' });
+    expect(record.fields.product_launch_date).toMatchObject({ value: '2026-11-11', status: 'user_stated' });
+    expect(record.fields.duration_months).toMatchObject({ value: 36, status: 'user_stated' });
+    expect(record.fields.derived_maturity_date).toMatchObject({ value: '2029-11-12', status: 'system_default' });
+    expect(record.fields.base_currency).toMatchObject({ value: 'SGD', status: 'user_stated' });
+    expect(record.fields.whitelisted_wallets_required).toMatchObject({ value: true, status: 'user_stated' });
+    expect(record.fields.investor_wallet_rule).toMatchObject({ value: 'Approved wallets only; transfers should stay between approved wallets.', status: 'user_stated' });
+    expect(record.fields.subscription_cadence).toMatchObject({ value: 'One-time at launch, then Quarterly', status: 'user_stated' });
+    expect(record.fields.redemption_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(record.fields.nav_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
+    expect(record.fields.investor_update_rule).toMatchObject({ status: 'user_stated' });
+    expect(record.fields.income_treatment).toMatchObject({ value: 'Distributing', status: 'user_stated' });
+    expect(record.fields.income_payout_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(record.fields.subscription_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
+    expect(record.fields.redemption_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
+    expect(record.fields.offering_type).toMatchObject({ value: 'Private Placement', status: 'user_stated' });
+
+    expect(record.fields.underlying_asset_class.status).toBe('missing');
+    expect(record.fields.eligible_investor_type.status).toBe('missing');
+    expect(record.fields.redemption_payout_delay.status).toBe('missing');
+    expect(rowsById.get('derived_maturity_date')).toMatchObject({ value: '2029-11-12', provenanceLabel: 'Assumed' });
+    expect(rowsById.get('offering_type')).toMatchObject({ value: 'Private Placement', provenanceLabel: 'Stated' });
+  });
+
   it('extracts base currency, maturity term, and approved-wallet rule from direct answers', () => {
     const suggestions = createProductSetupSuggestionsFromText(
       'The base currency is usd. Maturity is 3 years after launch. Yes, approved wallets only.',

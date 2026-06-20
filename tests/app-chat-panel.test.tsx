@@ -818,8 +818,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('1 ready, 0 whitelisted')).toBeVisible();
     expect(screen.queryByLabelText('Product setup status')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Project navigation')).toBeVisible();
-    expect(screen.getByLabelText('Workspace snapshot actions')).toHaveTextContent('Save');
-    expect(screen.getByLabelText('Workspace snapshot actions')).toHaveTextContent('Load latest');
+    expect(screen.getByLabelText('Workspace draft actions')).toHaveTextContent('Save draft');
+    expect(screen.getByLabelText('Workspace draft actions')).toHaveTextContent('Load latest draft');
     expect(screen.getByLabelText('ZiLi-OS console')).toBeVisible();
 
     fireEvent.click(within(registry).getByRole('button', { name: 'Use for wallet whitelist' }));
@@ -1042,12 +1042,11 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Investor Wallets/ }));
     fireEvent.change(screen.getByLabelText('Investor wallet address'), { target: { value: investorWallet } });
     fireEvent.click(screen.getByRole('button', { name: 'Add wallet' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Workspace persistence status')).toHaveTextContent(
-        'Snapshot v1 saved. Evidence remains local-session only.',
-      );
+      expect(screen.getByLabelText('Workspace persistence status')).toHaveTextContent('Saved locally');
+      expect(screen.getByLabelText('Workspace persistence status')).not.toHaveTextContent(/Snapshot v/i);
     });
 
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:5174/api/workspace/save', {
@@ -1149,12 +1148,11 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Load latest' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Load latest draft' }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Workspace persistence status')).toHaveTextContent(
-        'Snapshot v2 loaded. Local-only wallet evidence was reset.',
-      );
+      expect(screen.getByLabelText('Workspace persistence status')).toHaveTextContent('Latest local draft loaded');
+      expect(screen.getByLabelText('Workspace persistence status')).not.toHaveTextContent(/Snapshot v/i);
     });
 
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:5174/api/workspace/load-latest', {

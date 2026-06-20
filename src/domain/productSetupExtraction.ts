@@ -60,7 +60,11 @@ function extractIdentityAndTypeAssertions({
   const structureMatch =
     normalized.match(/\b(?:product\s+)?(?:term|structure)\s+(?:type\s+)?(?:is|=|:)?\s+(open[-\s]?ended|close[-\s]?ended|closed[-\s]?ended|fixed maturity)\b/) ??
     normalized.match(/\b(open[-\s]?ended|close[-\s]?ended|closed[-\s]?ended|fixed maturity)\b/);
-  const offeringMatch = normalized.match(/\b(restricted|private|institutional[-\s]?only|retail|all)\s+(?:offering|distribution|product)\b/);
+  const offeringMatch =
+    normalized.match(/\boffering\s+type\s+(?:is|=|:)?\s+(private\s+placement|restricted|private|institutional[-\s]?only|retail|all)\b/) ??
+    normalized.match(/\b(?:offering|distribution)\s+(?:is|=|:)?\s+(private\s+placement|restricted|private|institutional[-\s]?only|retail|all)\b/) ??
+    normalized.match(/\b(private\s+placement)\b/) ??
+    normalized.match(/\b(restricted|private|institutional[-\s]?only|retail|all)\s+(?:offering|distribution|product)\b/);
   const investorTypeMatch = normalized.match(/\b(retail|high net worth|accredited investor|institutional|all)\s+(?:investors?|holders?)\b/);
   const investorMatch = normalized.match(/(?:about\s*)?(\d{1,3})(?:\s*-\s*\d{1,3})?\s+(?:investors|wallets)|(\d{1,3})\s*-\s*(\d{1,3})\s+investors/);
 
@@ -106,13 +110,14 @@ function extractTimingAssertions({
   sourceRef,
 }: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
   const updates: ProductSetupSuggestedUpdate[] = [];
-  const delayMatch = normalized.match(/(\d{1,3})\s*(?:business\s*)?(?:day|days|hour|hours|week|weeks)/);
+  const payoutDelay = extractRedemptionPayoutDelayAssertion(normalized);
   const ipoDateMatch = original.match(/\b(?:ipo|launch|initial\s+distribution)\s+date(?:\s+\w+){0,3}\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
   const initialRegisterMatch = original.match(/\binitial\s+register\s+of\s+(\d{1,3})\s+investors?\s+will\s+be\s+([^.,;]+)/i);
   const maturityTermMatch =
     original.match(/\bmaturity\s*(?:is|=|:)?\s*(\d{1,3}\s+(?:years?|months?|quarters?)\s+after\s+(?:launch|ipo|ipo\s+date|opo|opo\s+date|initial\s+distribution)(?:\s+(?:date\s+)?of\s+\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})?)\b/i) ??
     original.match(/\b(?:term|tenor)\s*(?:is|=|:)?\s*(\d{1,3}[-\s]?(?:years?|months?|quarters?))\b/i) ??
     original.match(/\b(\d{1,3}[-\s]?(?:years?|months?|quarters?))\s+(?:term|tenor)\b/i) ??
+    original.match(/\b(?:it|product|fund|portfolio|vehicle)\s+will\s+be\s+for\s+(\d{1,3}[-\s]?(?:years?|months?|quarters?))\b/i) ??
     original.match(/\bwill\s+run(?:\s+as\s+a\s+[^.,;]{0,60}?)?\s+for\s+(\d{1,3}[-\s]?(?:years?|months?|quarters?))\b/i) ??
     original.match(/\brun(?:s|ning)?(?:\s+as\s+a\s+[^.,;]{0,60}?)?\s+for\s+(\d{1,3}[-\s]?(?:years?|months?|quarters?))\b/i);
   const maturityDateMatch =
@@ -153,8 +158,8 @@ function extractTimingAssertions({
   if (initialRegisterMatch?.[1] && initialRegisterMatch[2]) {
     updates.push(createSuggestedUpdate('initial_investor_register_rule', `Initial register of ${initialRegisterMatch[1]} investors will be ${initialRegisterMatch[2].trim()}.`, 'User described the initial investor register process.', sourceRef, 0.78));
   }
-  if (delayMatch?.[0]) {
-    updates.push(createSuggestedUpdate('redemption_payout_delay', delayMatch[0], 'User described a redemption payout delay.', sourceRef, 0.84));
+  if (payoutDelay) {
+    updates.push(createSuggestedUpdate('redemption_payout_delay', payoutDelay, 'User described a redemption payout delay.', sourceRef, 0.84));
   }
   if (subscriptionCadence) {
     updates.push(createSuggestedUpdate('subscription_cadence', subscriptionCadence, `User described ${subscriptionCadence.toLowerCase()} subscription timing.`, sourceRef, 0.83));
@@ -270,8 +275,8 @@ function extractServicingAssertions({
   if (/\bnav\b[^.!?;]{0,80}\b(?:provided|uploaded|supplied)\s+by\s+(?:myself|me|us|my team|issuer|admin|manager)\b|\b(?:provided|uploaded|supplied)\s+by\s+(?:myself|me|us|my team|issuer|admin|manager)\b[^.!?;]{0,80}\bnav\b/.test(normalized)) {
     updates.push(createSuggestedUpdate('nav_source', 'User-provided upload', 'User described who will provide NAV updates.', sourceRef, 0.82));
   }
-  if (/push|send|distribute/.test(normalized) && /wallet|investor/.test(normalized) && /information|update|notice/.test(normalized)) {
-    updates.push(createSuggestedUpdate('investor_update_rule', 'ZiLi-OS should prepare investor update records; wallet-pushed notices remain a custom requirement for review.', 'User described pushing investment information to investors.', sourceRef, 0.72));
+  if (/push|send|distribute/.test(normalized) && /wallet|investor/.test(normalized) && /information|update|notice|\bnav\b/.test(normalized)) {
+    updates.push(createSuggestedUpdate('investor_update_rule', 'ZiLi-OS should prepare investor update records; wallet-pushed notices remain a custom requirement for review.', 'User described pushing product or NAV updates to investors.', sourceRef, 0.8));
   }
 
   return updates;
@@ -365,6 +370,13 @@ function normalizeProductSetupFieldAliases(field: string): ProductSetupFieldKey[
     product_term_type: 'product_structure',
     term_type: 'product_structure',
     structure: 'product_structure',
+    product_duration: 'duration_months',
+    duration: 'duration_months',
+    duration_in_months: 'duration_months',
+    product_duration_months: 'duration_months',
+    offering: 'offering_type',
+    offering_model: 'offering_type',
+    distribution_model: 'offering_type',
     income_distribution: 'income_treatment',
     income_treatment_rule: 'income_treatment',
     subscription_frequency: 'subscription_cadence',
@@ -379,6 +391,9 @@ function normalizeProductSetupFieldAliases(field: string): ProductSetupFieldKey[
     nav_cadence_format: 'nav_cadence',
     nav_provider: 'nav_source',
     nav_source_actor: 'nav_source',
+    nav_update_rule: 'investor_update_rule',
+    investor_updates: 'investor_update_rule',
+    investor_update: 'investor_update_rule',
     wallet_whitelist_requirement: 'whitelisted_wallets_required',
     whitelist_requirement: 'whitelisted_wallets_required',
     wallet_rule: 'investor_wallet_rule',
@@ -412,6 +427,11 @@ function normalizeSuggestedUpdateValueForField(
   if (fieldKey === 'base_currency') return trimmed.toUpperCase();
 
   if (fieldKey === 'product_structure') return normalizeProductStructure(trimmed);
+
+  if (fieldKey === 'duration_months') {
+    const parsedDuration = durationMonthsFromTerm(trimmed) ?? Number(trimmed);
+    return Number.isFinite(parsedDuration) && parsedDuration > 0 ? parsedDuration : undefined;
+  }
 
   if (fieldKey === 'subscription_payment_method' || fieldKey === 'redemption_payment_method') {
     if (/stablecoin|usdc|usdt/.test(normalized)) return 'Stablecoin';
@@ -554,6 +574,13 @@ function extractRedemptionScheduleAssertion(value: string): string | undefined {
   const match = value.match(/\bredemption(?:s)?\s+(?:starts?|begins?|commences?)\s+(\d{1,3}\s+(?:days?|weeks?|months?|quarters?|years?)\s+after\s+(?:launch date|launch|ipo date|ipo|initial distribution))\b/i);
   if (!match?.[1]) return undefined;
   return `Starts ${match[1]}`;
+}
+
+function extractRedemptionPayoutDelayAssertion(value: string): string | undefined {
+  const match = value.match(
+    /\b(?:redemption\s+)?(?:payout|payment|settlement|settle|paid)[^.!?;]{0,60}\b(?:delay|delayed|after|within|takes?|t\+)?\s*(\d{1,3}\s*(?:business\s*)?(?:days?|hours?|weeks?))\b|\b(\d{1,3}\s*(?:business\s*)?(?:days?|hours?|weeks?))\s+(?:redemption\s+)?(?:payout|payment|settlement|settle)\s*(?:delay|period|window)?\b/i,
+  );
+  return match?.[1] ?? match?.[2];
 }
 
 function cadenceLabelFromText(value: string): string | undefined {

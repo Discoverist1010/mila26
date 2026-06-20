@@ -24,6 +24,10 @@ describe('Product Setup extraction API', () => {
         );
         expect(request.messages[0]?.content).toMatch(/Do not invent/i);
         expect(request.messages[0]?.content).toMatch(/income distribution yes/i);
+        expect(request.messages[0]?.content).toMatch(/private placement/i);
+        expect(request.messages[0]?.content).toMatch(/it will be for 3 years/i);
+        expect(request.messages[0]?.content).toMatch(/income is distributed one day before redemption/i);
+        expect(request.messages[0]?.content).toMatch(/NAV pushed\/sent to investors/i);
         expect(request.messages[1]?.content).toContain('Income distribution - yes');
 
         return {
