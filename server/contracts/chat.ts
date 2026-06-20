@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ContractOpsSkillInvocationTraceSchema } from './contractOpsSkills';
 
 export const ChatMessageSchema = z.object({
   messageId: z.string().min(1),
@@ -56,6 +57,7 @@ export const BlockchainEngineerChatResponseSchema = z.object({
     .optional(),
   riskNotes: z.array(z.string()).optional(),
   nextRecommendedAction: z.string().optional(),
+  skillInvocationTrace: ContractOpsSkillInvocationTraceSchema.optional(),
   createdAt: z.string().min(1),
 });
 
@@ -63,3 +65,4 @@ export type BlockchainEngineerChatRequestInput = z.input<typeof BlockchainEngine
 export type BlockchainEngineerChatRequest = z.output<typeof BlockchainEngineerChatRequestSchema>;
 export type BlockchainEngineerChatResponse = z.infer<typeof BlockchainEngineerChatResponseSchema>;
 export type AssistantMode = z.infer<typeof AssistantModeSchema>;
+export type RequestedFocus = z.infer<typeof RequestedFocusSchema>;

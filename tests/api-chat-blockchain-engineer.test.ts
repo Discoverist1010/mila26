@@ -246,6 +246,9 @@ describe('blockchain engineer chat api', () => {
         expect(systemInstruction).toMatch(/"canonicalFields":/i);
         expect(systemInstruction).toMatch(/Sepolia\/testnet-only/i);
         expect(systemInstruction).toMatch(/current executable prototype/i);
+        expect(systemInstruction).toMatch(/Contract Ops skills/i);
+        expect(systemInstruction).toMatch(/User wallet signs/i);
+        expect(systemInstruction).not.toMatch(/Scaffold-ETH|foundryup|forge test|https:\/\/ethskills\.com/i);
         expect(systemInstruction.length).toBeLessThan(6_500);
         expect(request.messages.at(-1)).toMatchObject({
           role: 'user',
@@ -257,6 +260,9 @@ describe('blockchain engineer chat api', () => {
         expect(request.textVerbosity).toBe('low');
         expect(request.metadata).toEqual(
           expect.objectContaining({
+            contractOpsSkillIds: 'wallet-deployment-reviewer,contract-spec-compiler',
+            contractOpsSkillTraceId: expect.stringMatching(/^contract-ops-skill-/),
+            contractOpsTaskType: 'deployment_readiness',
             promptBudgetName: 'blockchain_engineer_chat',
             estimatedInputTokens: expect.any(Number),
             maxEstimatedInputTokens: 6000,
@@ -350,8 +356,59 @@ describe('blockchain engineer chat api', () => {
     expect(body.data.responseSource).toBe('live_model');
     expect(body.data.content).toContain('Provider answer');
     expect(body.data.nextRecommendedAction).toMatch(/Continue Product Setup/i);
+    expect(body.data.skillInvocationTrace).toMatchObject({
+      taskType: 'deployment_readiness',
+      skillIds: ['wallet-deployment-reviewer', 'contract-spec-compiler'],
+      safetyGate: 'allowed',
+    });
     expect(JSON.stringify(body)).not.toContain('test-model');
     expect(JSON.stringify(body)).not.toContain('rawProviderDebug');
+  });
+
+  it('blocks secret-like wallet/deployment input before calling the injected provider', async () => {
+    let providerCalled = false;
+    const provider: Mila26LlmProvider = {
+      provider: 'openai',
+      model: 'test-model',
+      async complete() {
+        providerCalled = true;
+        return {
+          content: 'This should not be used.',
+          provider: 'openai',
+          model: 'test-model',
+        };
+      },
+    };
+
+    const app = createApp({ blockchainEngineerLlmProvider: provider });
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/chat/blockchain-engineer',
+      payload: {
+        userMessage:
+          'Deploy this using my private key 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        requestedFocus: 'deployment',
+        projectContext: {
+          activeTab: {
+            id: 'contract-ops',
+            label: 'Contract Ops',
+          },
+        },
+      },
+    });
+    await app.close();
+    const body = response.json();
+
+    expect(providerCalled).toBe(false);
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.responseSource).toBe('local_fallback');
+    expect(body.data.content).toMatch(/cannot process private keys/i);
+    expect(body.data.skillInvocationTrace).toMatchObject({
+      taskType: 'deployment_readiness',
+      safetyGate: 'blocked',
+    });
+    expect(JSON.stringify(body)).not.toContain('aaaaaaaaaaaaaaaa');
   });
 
   it('omits oldest optional history instead of truncating the current user message', async () => {

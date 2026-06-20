@@ -1,4 +1,5 @@
-import type { AssistantMode, BlockchainEngineerChatRequest } from '../contracts/chat';
+import type { AssistantMode, BlockchainEngineerChatRequest, RequestedFocus } from '../contracts/chat';
+import { resolveContractOpsSkillInvocation } from '../contractOpsSkills/registry';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -99,6 +100,11 @@ const canonicalFieldPriority = [
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function activeTabLabelFromContext(context: BlockchainEngineerChatRequest['projectContext']): string | undefined {
+  const activeTab = isRecord(context?.activeTab) ? context.activeTab : undefined;
+  return typeof activeTab?.label === 'string' ? activeTab.label : undefined;
 }
 
 function toStringArray(value: unknown, maxItems: number): string[] | undefined {
@@ -222,7 +228,14 @@ export function workspaceContextInstruction(context: BlockchainEngineerChatReque
 export function systemInstructionForAssistantMode(
   assistantMode: AssistantMode,
   context: BlockchainEngineerChatRequest['projectContext'],
+  requestedFocus?: RequestedFocus,
+  userMessage?: string,
 ): string {
   const baseInstruction = assistantMode === 'advisor' ? advisorSystemInstruction : engineeringSystemInstruction;
-  return `${baseInstruction}${workspaceContextInstruction(context)}`;
+  const skillInvocation = resolveContractOpsSkillInvocation({
+    activeTabLabel: activeTabLabelFromContext(context),
+    requestedFocus,
+    userMessage,
+  });
+  return `${baseInstruction}${workspaceContextInstruction(context)}${skillInvocation ? `\n\n${skillInvocation.promptInstruction}` : ''}`;
 }

@@ -4,6 +4,12 @@ import {
   type BlockchainEngineerChatRequest,
   type BlockchainEngineerChatResponse,
 } from '../contracts/chat';
+import type { ContractOpsSkillInvocationTrace } from '../contracts/contractOpsSkills';
+import { resolveContractOpsSkillInvocation } from '../contractOpsSkills/registry';
+import {
+  evaluateContractOpsUserTextSafety,
+  includesUnsafeContractOpsOutput,
+} from '../contractOpsSkills/safety';
 import {
   buildBudgetedChatPromptMessages,
   toPromptBudgetMetadata,
@@ -32,6 +38,7 @@ export function toBlockchainEngineerHistoryMessages(request: BlockchainEngineerC
 function toLlmResponse(
   request: BlockchainEngineerChatRequest,
   content: string,
+  skillInvocationTrace?: ContractOpsSkillInvocationTrace,
 ): BlockchainEngineerChatResponse {
   return BlockchainEngineerChatResponseSchema.parse({
     messageId: createMessageId(),
@@ -41,6 +48,26 @@ function toLlmResponse(
     openQuestions: [],
     riskNotes: ['This is engineering planning guidance, not legal, investment, tax, or formal audit advice.'],
     nextRecommendedAction: toNextRecommendedAction(request),
+    skillInvocationTrace,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+function toSafetyBlockedResponse(
+  request: BlockchainEngineerChatRequest,
+  reason: string,
+  skillInvocationTrace?: ContractOpsSkillInvocationTrace,
+): BlockchainEngineerChatResponse {
+  return BlockchainEngineerChatResponseSchema.parse({
+    messageId: createMessageId(),
+    agentId,
+    content:
+      'ZiLiOS cannot process private keys, seed phrases, recovery phrases, API keys, or secret-like values. Please provide only public wallet addresses, public transaction hashes with context, or plain product requirements.',
+    responseSource: 'local_fallback',
+    openQuestions: ['Can you resend the requirement without any secret material?'],
+    riskNotes: [reason, 'Backend never holds private keys. User wallets sign Sepolia deployment and operation transactions.'],
+    nextRecommendedAction: toNextRecommendedAction(request),
+    skillInvocationTrace,
     createdAt: new Date().toISOString(),
   });
 }
@@ -79,13 +106,37 @@ export async function answerWithBlockchainEngineerLlm(
   request: BlockchainEngineerChatRequest,
   provider?: Mila26LlmProvider,
 ): Promise<BlockchainEngineerChatResponse> {
+  const activeTabLabel = activeTabLabelFromContext(request.projectContext);
+  const skillResolutionInput = {
+    activeTabLabel,
+    requestedFocus: request.requestedFocus,
+    userMessage: request.userMessage,
+  };
+  const safety = evaluateContractOpsUserTextSafety(request.userMessage);
+
+  if (!safety.ok) {
+    const blockedInvocation = resolveContractOpsSkillInvocation({
+      ...skillResolutionInput,
+      safetyGate: 'blocked',
+      redactedReason: safety.reason,
+    });
+    return toSafetyBlockedResponse(request, safety.reason, blockedInvocation?.trace);
+  }
+
+  const skillInvocation = resolveContractOpsSkillInvocation(skillResolutionInput);
+
   if (!provider || provider.provider === 'mock') {
     return answerWithBlockchainEngineerMock(request);
   }
 
   try {
     const promptMessages = buildBudgetedChatPromptMessages({
-      systemInstruction: systemInstructionForAssistantMode(request.assistantMode, request.projectContext),
+      systemInstruction: systemInstructionForAssistantMode(
+        request.assistantMode,
+        request.projectContext,
+        request.requestedFocus,
+        request.userMessage,
+      ),
       historyMessages: toBlockchainEngineerHistoryMessages(request),
       userMessage: request.userMessage,
     });
@@ -105,17 +156,20 @@ export async function answerWithBlockchainEngineerLlm(
         projectIdPresent: Boolean(request.projectId),
         runIdPresent: Boolean(request.runId),
         requestedFocus: request.requestedFocus || 'none',
+        contractOpsSkillTraceId: skillInvocation?.trace.traceId ?? 'none',
+        contractOpsTaskType: skillInvocation?.trace.taskType ?? 'none',
+        contractOpsSkillIds: skillInvocation?.trace.skillIds.join(',') ?? 'none',
         ...toPromptBudgetMetadata(promptMessages.diagnostics),
       },
     });
 
     const content = llmResponse.content.trim();
 
-    if (!content || includesUnsafeProviderText(content)) {
+    if (!content || includesUnsafeProviderText(content) || includesUnsafeContractOpsOutput(content)) {
       return answerWithBlockchainEngineerMock(request);
     }
 
-    return toLlmResponse(request, content);
+    return toLlmResponse(request, content, skillInvocation?.trace);
   } catch {
     return answerWithBlockchainEngineerMock(request);
   }
