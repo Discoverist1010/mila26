@@ -1,8 +1,8 @@
 # Delivery Role Skills - MILA26
 
 ## Status: ACTIVE
-**Version:** 1.3.1
-**Last updated:** 2026-06-06
+**Version:** 1.4.0
+**Last updated:** 2026-06-20
 **Applies to:** MILA26 delivery roles in `AGENTS.md`
 **File path:** `docs/handover/08-delivery-role-skills.md`
 
@@ -99,6 +99,9 @@ Reviewers detect drift and recommend corrections. The Lead Implementer owns the 
 - Happy path, failure path, and boundary path.
 - Multi-item flows, not just the first item.
 - Cross-tab state visibility when tabs are visual only.
+- Product Setup -> Contract Ops handoff scenarios cover novice, informed, intermediate, advanced, and expert tokenised-product paths when those surfaces change.
+- Contract Ops specialist-skill routing has deterministic fixtures for protocol advice, contract-spec compilation, Solidity review, test planning, deployment readiness, evidence planning, and QA review.
+- Skill/eval tests verify user-selected protocol respect, ERC tradeoff explanation, deploy blocker classification, and no full EthSkills source-doc injection into runtime prompts.
 - Direct-input bypass attempts for operation surfaces.
 - Wrong-chain, rejected-wallet, duplicate-submit, and receipt-failure paths for wallet work.
 - Negative guardrail assertions: no fake hash/address/status, no KYC/legal/advice/audit claims.
@@ -143,6 +146,9 @@ Reviewers detect drift and recommend corrections. The Lead Implementer owns the 
 - Which module owns the rule?
 - Is the read model the single derivation point?
 - Are UI tabs creating state silos?
+- Are Contract Ops skill cards, runtime catalog entries, prompt fragments, and tests deriving from one explicit catalog rather than copied prompt text?
+- Does Product Setup remain the typed PRD source for Contract Ops, with raw chat used only as proposed updates before confirmation?
+- Are protocol selection, deployment readiness, evidence, and lifecycle-handoff rules duplicated across UI, backend prompts, and tests?
 - Are raw stored labels used where effective eligibility should be used?
 - Are operation gates duplicated instead of derived?
 - Can the second, third, and fiftieth item follow the same path as the first?
@@ -228,6 +234,10 @@ This is a triggered lens, not a separate always-on reviewer. Apply it inside Qua
 
 - backend-only secrets and LLM calls;
 - no private keys in backend, frontend, env examples, fixtures, logs, or docs;
+- specialised Contract Ops skills treat user chat, uploaded docs, and generated code as untrusted input;
+- prompt-injection cannot override Sepolia-only, wallet-signed, no-private-key, no-fake-evidence, or no-production-claim rules;
+- skill traces include IDs, versions, source hashes, schema results, and safety outcomes without logging raw prompts by default;
+- private keys, seed phrases, RPC keys, API keys, raw signatures, and long secret-like hex strings are redacted from prompts, traces, logs, evidence, and screenshots;
 - browser wallet signs all transactions;
 - account and chain rechecked before `eth_sendTransaction`;
 - no mainnet RPC/chain references;
@@ -264,6 +274,9 @@ This is a triggered lens, not a separate always-on reviewer. Apply it inside Qua
 - Solidity compiler version is pinned;
 - artifacts come from compiled contracts, not manual bytecode/hash construction;
 - OpenZeppelin use is explicit and justified;
+- Contract Ops protocol advice distinguishes selected protocol, recommended architecture target, current executable prototype, and unsupported/future requirements;
+- generated Solidity is produced only from confirmed contract specs and remains draft until review, tests, and user confirmation pass;
+- ERC-20, Customised ERC-20, ERC-3643, ERC-4626, ERC-1400-style, and planned ERC-7683 are reviewed for deployability honestly against the current template/adapters;
 - access control matches the product operation model;
 - whitelist, subscription, redemption, NAV, maturity, and allocation logic use explicit invariants;
 - events cover evidence needs;
@@ -301,6 +314,10 @@ This is a triggered lens, not a separate always-on reviewer. Apply it inside Qua
 - Engineering Bot answer area remains readable and central;
 - tabs orient the user but do not imply code segregation;
 - the user can understand the current stage, what has already been captured, what is missing, and what happens next;
+- ZiLiOS responses are tab-aware and must not tell the user to open the tab they are already using;
+- specialist capability labels stay subtle and product-facing; do not force the user to manage internal agents or delivery roles;
+- review queues stay bounded and do not squeeze or hide the persistent chat composer;
+- Product Setup remains PRD intake, and Contract Ops remains contract specification/readiness/deployment; operational execution details do not leak into the wrong tab;
 - lifecycle flow feels continuous from the user's perspective even when implementation spans multiple modules;
 - suggested next actions match the user's stated intent and the actual capability gaps;
 - right rail does not contain wallet signing, deployment, mint, whitelist, NAV, redemption execution, or other contract-operation controls;
@@ -344,6 +361,9 @@ This is a triggered lens, not a separate always-on reviewer. Apply it inside Qua
 - working tree state and branch;
 - validation commands and results;
 - env/config changes documented;
+- Contract Ops skill catalog versions, source hashes, and focused evals/tests are updated when skill behavior changes;
+- runtime prompts still use distilled MILA26 skill cards, not full EthSkills snapshots;
+- no generated skill, eval, trace, build, screenshot, or local evidence artifact is committed unintentionally;
 - no generated build artifacts accidentally committed unless intended;
 - reviewer gates completed;
 - app is not claiming production/mainnet/audit readiness prematurely;
@@ -424,6 +444,7 @@ Claude, or another independent external model reviewer, should be added only whe
 
 | Version | Date | Change | Author |
 |---|---|---|---|
+| 1.4.0 | 2026-06-20 | Added Contract Ops specialist-skill review checks for Test, Quality, Security, Solidity, Frontend/UX, and Release roles. | Codex |
 | 1.3.1 | 2026-06-06 | Added universal anti-tunnel-vision review rule. | Codex |
 | 1.3.0 | 2026-06-06 | Added State / Memory / Performance as a triggered review lens. | Codex |
 | 1.2.0 | 2026-06-06 | Added explicit user-perspective lifecycle UX review checks. | Codex |

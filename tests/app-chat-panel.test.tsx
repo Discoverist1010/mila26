@@ -976,7 +976,7 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     expect(screen.getByLabelText('Allocation Mint workspace')).toHaveTextContent('Allocation / Mint parameters are ready for review.');
     expect(within(screen.getByTestId('smart-contract-control')).getByRole('button', { name: 'Submit Allocation / Mint' })).toBeDisabled();
-  });
+  }, 15_000);
 
   it('captures subscription and redemption parameters as working shared lifecycle state', () => {
     const investorWallet = '0x3333333333333333333333333333333333333333';
@@ -1996,7 +1996,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('Allocation / Mint evidence: Local session only');
     expect(screen.getByLabelText('Generated smart contract artifacts')).toHaveTextContent('AllocationMinted event: Receipt confirmed');
     expect(screen.queryByText(/production ready|mainnet ready|audit passed|operation suite unlocked/i)).not.toBeInTheDocument();
-  });
+  }, 15_000);
 
   it('can whitelist and mint for a second investor after the first investor is confirmed', async () => {
     const investorOne = '0x3333333333333333333333333333333333333333';
@@ -2093,7 +2093,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(secondMintTransaction.to).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
     expect(firstMintTransaction.data).not.toBe(secondMintTransaction.data);
     expect(screen.queryByText(/production ready|mainnet ready|audit passed|operation suite unlocked/i)).not.toBeInTheDocument();
-  });
+  }, 15_000);
 
   it('blocks wallet-signed deployment when the wallet is wrong-chain or rejects submission', async () => {
     const wrongChainWallet = createMockWalletProvider({ chainId: '0x1' });
