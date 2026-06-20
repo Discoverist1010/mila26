@@ -460,6 +460,101 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('What is this product')).toHaveTextContent('To be filled');
   });
 
+  it('finalises a Product Setup PRD from available canonical fields and exposes only PRD downloads', async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/workspace/save')) {
+        return Promise.resolve(
+          createJsonResponse({
+            ok: true,
+            data: {
+              project: {
+                id: 'usequities',
+                name: 'Alpha Income Fund I',
+                investorCap: 50,
+                createdAtIso: '2026-06-07T00:00:00.000Z',
+                updatedAtIso: '2026-06-07T00:00:00.000Z',
+              },
+              snapshot: {
+                id: 'usequities-snapshot-1',
+                projectId: 'usequities',
+                version: 1,
+                source: 'user_action',
+                lifecycleState: {
+                  investorRegistryEntries: [],
+                  subscriptionParameters: { permittedStablecoins: [] },
+                  redemptionParameters: {},
+                  maturityParameters: {},
+                  allocationMintParameters: {},
+                },
+                investorWalletCount: 0,
+                createdAtIso: '2026-06-07T00:00:00.000Z',
+              },
+              investorWallets: [],
+            },
+          }),
+        );
+      }
+
+      if (url.endsWith('/api/workspace/artifacts/save')) {
+        const body = JSON.parse(String(init?.body));
+        expect(body.records.map((record: { artifactType: string }) => record.artifactType)).toEqual(['product_setup_pack']);
+        expect(JSON.stringify(body)).toContain('Product Requirements Document');
+
+        return Promise.resolve(
+          createJsonResponse({
+            ok: true,
+            data: {
+              projectId: 'usequities',
+              latestSnapshotVersion: 1,
+              artifactRecords: body.records.map((record: { artifactType: string; artifactPayload: unknown }, index: number) => ({
+                id: `product-setup-artifact-${index + 1}`,
+                projectId: 'usequities',
+                artifactType: record.artifactType,
+                artifactId: `product-setup-prd-${index + 1}`,
+                artifactStatus: 'generated',
+                lifecycleSnapshotVersion: 1,
+                lifecycleContextStatus: 'current_context',
+                contentHash: `${index}`.padStart(64, 'b'),
+                artifactPayload: record.artifactPayload,
+                createdAtIso: '2026-06-07T00:00:00.000Z',
+                updatedAtIso: '2026-06-07T00:00:00.000Z',
+              })),
+            },
+          }),
+        );
+      }
+
+      return Promise.resolve(createJsonResponse({ ok: false, error: { code: 'UNEXPECTED', message: 'Unexpected route.' } }, { status: 400 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    const pack = screen.getByLabelText('Product Setup Pack');
+
+    expect(within(pack).getByRole('button', { name: 'Finalise PRD' })).toBeEnabled();
+    expect(within(pack).getByRole('button', { name: 'Download PRD .docx' })).toBeDisabled();
+    expect(within(pack).getByRole('button', { name: 'Download PRD .md' })).toBeDisabled();
+    expect(within(pack).queryByRole('button', { name: 'Download setup JSON' })).not.toBeInTheDocument();
+    expect(within(pack).queryByRole('button', { name: 'Edit further' })).not.toBeInTheDocument();
+
+    fireEvent.click(within(pack).getByRole('button', { name: 'Finalise PRD' }));
+
+    await waitFor(() => {
+      expect(within(pack).getByRole('button', { name: 'Download PRD .docx' })).toBeEnabled();
+      expect(within(pack).getByRole('button', { name: 'Download PRD .md' })).toBeEnabled();
+    });
+    expect(pack).toHaveTextContent('Product PRD v1.0 generated');
+    expect(pack).toHaveTextContent('Stored in Evidence Vault');
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(
+      expect.arrayContaining([
+        'http://127.0.0.1:5174/api/workspace/save',
+        'http://127.0.0.1:5174/api/workspace/artifacts/save',
+      ]),
+    );
+  });
+
   it('sends confirmed Product Setup operational details as draft notes to the focused workflow tab', async () => {
     vi.stubGlobal(
       'fetch',

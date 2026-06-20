@@ -3017,7 +3017,7 @@ export function App() {
     }
   }
 
-  function downloadProductSetupArtifact(format: 'markdown' | 'json' | 'docx') {
+  function downloadProductSetupArtifact(format: 'markdown' | 'docx') {
     if (!productSetupPrdArtifacts) {
       setProductSetupPackStatus('Finalise the Product PRD before downloading artefacts.');
       return;
@@ -3026,21 +3026,14 @@ export function App() {
     const content =
       format === 'markdown'
         ? productSetupPrdArtifacts.markdown
-        : format === 'json'
-          ? productSetupPrdArtifacts.setupJson
-          : productSetupPrdArtifacts.docxContent;
+        : productSetupPrdArtifacts.docxContent;
     const mimeType =
-      format === 'json'
-        ? 'application/json'
-        : format === 'markdown'
+      format === 'markdown'
           ? 'text/markdown'
           : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     const extension = format === 'markdown' ? 'md' : format;
     const versionSuffix = productSetupPrdArtifacts.versionLabel.replaceAll('.', '-');
-    const baseName =
-      format === 'json'
-        ? `product-setup-${versionSuffix}`
-        : `product-prd-${versionSuffix}`;
+    const baseName = `product-prd-${versionSuffix}`;
     const blobPart = content instanceof Uint8Array ? uint8ArrayToArrayBuffer(content) : content;
 
     try {
@@ -4681,7 +4674,6 @@ export function App() {
                       <button
                         type="button"
                         className="workflow-button primary-action"
-                        disabled={productSetupReadModel.missingEssentials.length > 0}
                         onClick={() => void finaliseProductSetupPrd()}
                       >
                         Finalise PRD
@@ -4692,22 +4684,6 @@ export function App() {
                         onClick={() => void saveProductSetupDraft()}
                       >
                         Save as draft
-                      </button>
-                      <button
-                        type="button"
-                        className="workflow-button"
-                        disabled={productSetupReadModel.missingEssentials.length === 0}
-                        onClick={() => {
-                          setSelectedWorkspaceTab('requirements');
-                          setProductSetupPackStatus(
-                            `Open questions: ${productSetupReadModel.missingEssentials
-                              .slice(0, 5)
-                              .map((field) => field.label)
-                              .join(', ') || 'none'}.`,
-                          );
-                        }}
-                      >
-                        Edit further
                       </button>
                     </div>
                     <button
@@ -4725,14 +4701,6 @@ export function App() {
                       onClick={() => downloadProductSetupArtifact('markdown')}
                     >
                       Download PRD .md
-                    </button>
-                    <button
-                      type="button"
-                      className="workflow-button"
-                      disabled={!productSetupPrdArtifacts}
-                      onClick={() => downloadProductSetupArtifact('json')}
-                    >
-                      Download setup JSON
                     </button>
                     {productSetupPackStatus && <p className="chat-status">{productSetupPackStatus}</p>}
                   </section>

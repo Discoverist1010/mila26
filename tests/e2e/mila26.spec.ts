@@ -79,7 +79,8 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await expect(productSetupArtifact.getByLabel('Product Setup Pack')).toContainText('Draft');
   await expect(productSetupArtifact.getByLabel('Product Setup Pack').getByRole('button', { name: 'Download PRD .docx' })).toBeDisabled();
   await expect(productSetupArtifact.getByLabel('Product Setup Pack').getByRole('button', { name: 'Download PRD .md' })).toBeDisabled();
-  await expect(productSetupArtifact.getByLabel('Product Setup Pack').getByRole('button', { name: 'Download setup JSON' })).toBeDisabled();
+  await expect(productSetupArtifact.getByLabel('Product Setup Pack').getByRole('button', { name: 'Download setup JSON' })).toHaveCount(0);
+  await expect(productSetupArtifact.getByLabel('Product Setup Pack').getByRole('button', { name: 'Edit further' })).toHaveCount(0);
 });
 
 test('guided beta journey creates requirements and exposes Engineering Brief action', async ({ page }) => {
