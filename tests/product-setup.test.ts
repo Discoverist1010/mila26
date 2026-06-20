@@ -160,6 +160,47 @@ describe('Product Setup record', () => {
     expect(String(byField.get('initial_investor_register_rule'))).toMatch(/initial register of 27 investors/i);
   });
 
+  it('keeps the Product Profile in sync with a multi-turn Product Setup transcript', () => {
+    const transcript = [
+      'i want to create a tokenised fund to be distributed to 23 investors. the fund name is TEST and symbol is TST. the launch date is 8 Nov 2026 and will run as a close-ended fund for 3 years. what else do you need to draft the prd and start creating this tokenised product?',
+      'the base currency is SGD. subscription is one time at launch and then on a quarterly basis. redemption starts 3 months after launch date and runs on a quarterly basis too. income will be distirbuted as dividend quarterly, before redemption begins. NAV is uploaded monthly.',
+      'the underlying asset class is a portfolio while the product term is close-ended',
+      'yes product display name is TEST. product type is portfolio and the maturity is correct. the nav will be provided by myself.',
+    ];
+    const record = transcript.reduce((currentRecord, message, index) => {
+      const suggestions = createProductSetupSuggestionsFromText(message, `chat_turn_transcript_${index + 1}`);
+      return reconcileProductSetupSuggestedUpdates(currentRecord, suggestions).record;
+    }, createInitialProductSetupRecord(facts));
+    const readModel = toProductSetupReadModel(record);
+    const rowsById = new Map(readModel.profileRows.map((row) => [row.id, row]));
+
+    expect(record.fields.product_name).toMatchObject({ value: 'TEST', status: 'user_stated' });
+    expect(record.fields.token_symbol).toMatchObject({ value: 'TST', status: 'user_stated' });
+    expect(record.fields.product_launch_date).toMatchObject({ value: '2026-11-08', status: 'user_stated' });
+    expect(record.fields.product_wrapper).toMatchObject({ value: 'Fund', status: 'user_stated' });
+    expect(record.fields.underlying_asset_class).toMatchObject({ value: 'Portfolio', status: 'user_stated' });
+    expect(record.fields.product_structure).toMatchObject({ value: 'Closed-ended', status: 'user_stated' });
+    expect(record.fields.product_type).toMatchObject({ value: 'Portfolio', status: 'user_stated' });
+    expect(record.fields.base_currency).toMatchObject({ value: 'SGD', status: 'user_stated' });
+    expect(record.fields.subscription_cadence).toMatchObject({ value: 'One-time at launch, then Quarterly', status: 'user_stated' });
+    expect(record.fields.redemption_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(record.fields.redemption_schedule).toMatchObject({ value: 'Starts 3 months after launch date', status: 'user_stated' });
+    expect(record.fields.income_treatment).toMatchObject({ value: 'Distributing', status: 'user_stated' });
+    expect(record.fields.income_payout_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(record.fields.nav_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
+    expect(record.fields.nav_source).toMatchObject({ value: 'User-provided upload', status: 'user_stated' });
+    expect(record.fields.duration_months).toMatchObject({ value: 36, status: 'user_stated' });
+    expect(record.fields.derived_maturity_date).toMatchObject({ value: '2029-11-08', status: 'system_default' });
+    expect(record.fields.maturity_date).toMatchObject({ value: '3 years', status: 'user_stated' });
+
+    expect(rowsById.get('product_name')).toMatchObject({ value: 'TEST', provenanceLabel: 'Stated' });
+    expect(rowsById.get('product_structure')).toMatchObject({ value: 'Closed-ended', provenanceLabel: 'Stated' });
+    expect(rowsById.get('subscription_cadence')).toMatchObject({ value: 'One-time at launch, then Quarterly', provenanceLabel: 'Stated' });
+    expect(rowsById.get('redemption_cadence')).toMatchObject({ value: 'Quarterly', provenanceLabel: 'Stated' });
+    expect(rowsById.get('duration_months')).toMatchObject({ value: '36 months', provenanceLabel: 'Stated' });
+    expect(rowsById.get('derived_maturity_date')).toMatchObject({ value: '2029-11-08', provenanceLabel: 'Assumed' });
+  });
+
   it('extracts base currency, maturity term, and approved-wallet rule from direct answers', () => {
     const suggestions = createProductSetupSuggestionsFromText(
       'The base currency is usd. Maturity is 3 years after launch. Yes, approved wallets only.',

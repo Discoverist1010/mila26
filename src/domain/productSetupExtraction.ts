@@ -42,15 +42,24 @@ function extractIdentityAndTypeAssertions({
   sourceRef,
 }: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
   const updates: ProductSetupSuggestedUpdate[] = [];
-  const productNameMatch = original.match(/\bproduct\s+name\s+is\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s+(?:and|with|as|it\s+is|symbol\s+is)|[.?!,]|$)/i);
+  const productNameMatch = firstMatch(original, [
+    /\b(?:product|fund|portfolio|vehicle)\s+name\s+(?:is|=|:)\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s+(?:and|with|as|it\s+is|symbol\s+is)|[.?!,]|$)/i,
+    /\bproduct\s+display\s+name\s+(?:is|=|:)\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s+(?:and|with|as|it\s+is|symbol\s+is)|[.?!,]|$)/i,
+  ]);
   const tokenSymbolMatch = original.match(/\b(?:token\s+)?symbol\s+is\s+([A-Z][A-Z0-9]{1,11})\b/i);
   const baseCurrencyMatch =
     normalized.match(/\b(?:with\s+)?([a-z]{3,6})\s+as\s+(?:a\s+)?base\s+currency\b/) ??
     normalized.match(/\bbase\s+currency\s*(?:is|=|:)?\s*([a-z]{3,6})\b/);
-  const productTypeMatch = normalized.match(/\b(?:it\s+is\s+)?(?:a\s+)?(pooled\s+fund|private\s+credit\s+fund|credit\s+fund|investment\s+fund|fund|note|bond|portfolio)\b/);
+  const productTypeMatch =
+    normalized.match(/\bproduct\s+type\s+(?:is|=|:)\s+(pooled\s+fund|private\s+credit\s+fund|credit\s+fund|investment\s+fund|fund|note|bond|portfolio)\b/) ??
+    normalized.match(/\b(?:it\s+is\s+)?(?:a\s+)?(pooled\s+fund|private\s+credit\s+fund|credit\s+fund|investment\s+fund|fund|note|bond|portfolio)\b/);
   const wrapperMatch = normalized.match(/\b(fund|bond|equity|private asset)\b/);
-  const assetClassMatch = normalized.match(/\b(equities|equity|bonds|private credit|money market fund|mixed portfolio)\b/);
-  const structureMatch = normalized.match(/\b(open[-\s]?ended|closed[-\s]?ended|fixed maturity)\b/);
+  const assetClassMatch =
+    normalized.match(/\b(?:underlying\s+)?asset\s+class\s+(?:is|=|:)?\s+(?:a\s+)?(equities|equity|bonds|private credit|money market fund|mixed portfolio|portfolio)\b/) ??
+    normalized.match(/\b(equities|equity|bonds|private credit|money market fund|mixed portfolio)\b/);
+  const structureMatch =
+    normalized.match(/\b(?:product\s+)?(?:term|structure)\s+(?:type\s+)?(?:is|=|:)?\s+(open[-\s]?ended|close[-\s]?ended|closed[-\s]?ended|fixed maturity)\b/) ??
+    normalized.match(/\b(open[-\s]?ended|close[-\s]?ended|closed[-\s]?ended|fixed maturity)\b/);
   const offeringMatch = normalized.match(/\b(restricted|private|institutional[-\s]?only|retail|all)\s+(?:offering|distribution|product)\b/);
   const investorTypeMatch = normalized.match(/\b(retail|high net worth|accredited investor|institutional|all)\s+(?:investors?|holders?)\b/);
   const investorMatch = normalized.match(/(?:about\s*)?(\d{1,3})(?:\s*-\s*\d{1,3})?\s+(?:investors|wallets)|(\d{1,3})\s*-\s*(\d{1,3})\s+investors/);
@@ -71,7 +80,7 @@ function extractIdentityAndTypeAssertions({
     updates.push(createSuggestedUpdate('underlying_asset_class', titleCaseProductSetupValue(assetClassMatch[1]), 'User described the underlying asset class.', sourceRef, 0.82));
   }
   if (structureMatch?.[1]) {
-    updates.push(createSuggestedUpdate('product_structure', titleCaseProductSetupValue(structureMatch[1].replace(/\s+/, '-')), 'User described the product structure.', sourceRef, 0.82));
+    updates.push(createSuggestedUpdate('product_structure', normalizeProductStructure(structureMatch[1]), 'User described the product structure.', sourceRef, 0.82));
   }
   if (offeringMatch?.[1]) {
     updates.push(createSuggestedUpdate('offering_type', titleCaseProductSetupValue(offeringMatch[1].replace('-', ' ')), 'User described the offering type.', sourceRef, 0.78));
@@ -103,18 +112,21 @@ function extractTimingAssertions({
   const maturityTermMatch =
     original.match(/\bmaturity\s*(?:is|=|:)?\s*(\d{1,3}\s+(?:years?|months?|quarters?)\s+after\s+(?:launch|ipo|ipo\s+date|opo|opo\s+date|initial\s+distribution)(?:\s+(?:date\s+)?of\s+\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})?)\b/i) ??
     original.match(/\b(?:term|tenor)\s*(?:is|=|:)?\s*(\d{1,3}[-\s]?(?:years?|months?|quarters?))\b/i) ??
-    original.match(/\b(\d{1,3}[-\s]?(?:years?|months?|quarters?))\s+(?:term|tenor)\b/i);
+    original.match(/\b(\d{1,3}[-\s]?(?:years?|months?|quarters?))\s+(?:term|tenor)\b/i) ??
+    original.match(/\bwill\s+run(?:\s+as\s+a\s+[^.,;]{0,60}?)?\s+for\s+(\d{1,3}[-\s]?(?:years?|months?|quarters?))\b/i) ??
+    original.match(/\brun(?:s|ning)?(?:\s+as\s+a\s+[^.,;]{0,60}?)?\s+for\s+(\d{1,3}[-\s]?(?:years?|months?|quarters?))\b/i);
   const maturityDateMatch =
     original.match(/\bmaturity(?:\s+date)?\s*(?:is|=|:)?\s*(\d{4}-\d{2}-\d{2})\b/i) ??
     original.match(/\bmaturity(?:\s+date)?\s*(?:is|=|:)?\s*(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
-  const subscriptionCadence = extractCadenceNear(
+  const subscriptionCadence = extractSubscriptionCadenceAssertion(normalized) ?? extractCadenceNear(
     normalized,
     '(?:subscrib\\w*|subscription\\w*|buy|new\\s+investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|accept\\s+new\\s+investors?|new\\s+money\\s+comes?\\s+in)',
   );
-  const redemptionCadence = extractCadenceNear(
+  const redemptionCadence = extractRedemptionCadenceAssertion(normalized) ?? extractCadenceNear(
     normalized,
     '(?:redeem\\w*|redemption\\w*|existing\\s+investors?\\s+(?:can\\s+)?(?:sell\\s+out|exit|cash\\s+out|withdraw)|investors?\\s+(?:can\\s+)?(?:sell\\s+out|exit|cash\\s+out|withdraw)|sell\\s+out|cash\\s+out|withdraw)',
   );
+  const redemptionSchedule = extractRedemptionScheduleAssertion(normalized);
   const redemptionPayoutCadence = extractCadenceNear(normalized, '(?:redemption payout|settle\\w*|settlement\\w*)');
   const combinedSubscriptionRedemptionCadence =
     extractCombinedSubscriptionRedemptionCadence(normalized) ??
@@ -149,6 +161,9 @@ function extractTimingAssertions({
   }
   if (redemptionCadence) {
     updates.push(createSuggestedUpdate('redemption_cadence', redemptionCadence, `User described ${redemptionCadence.toLowerCase()} redemption timing.`, sourceRef, 0.83));
+  }
+  if (redemptionSchedule) {
+    updates.push(createSuggestedUpdate('redemption_schedule', redemptionSchedule, 'User described when redemptions begin.', sourceRef, 0.8));
   }
   if (combinedSubscriptionRedemptionCadence && !subscriptionCadence) {
     updates.push(createSuggestedUpdate('subscription_cadence', combinedSubscriptionRedemptionCadence, `User described ${combinedSubscriptionRedemptionCadence.toLowerCase()} subscription timing.`, sourceRef, 0.82));
@@ -252,6 +267,9 @@ function extractServicingAssertions({
   if (/uploaded file|upload file|file upload|uploaded via a file|ingested from uploaded file/.test(normalized)) {
     updates.push(createSuggestedUpdate('nav_source', 'Uploaded file', 'User described NAV or valuation coming from an uploaded file.', sourceRef, 0.84));
   }
+  if (/\bnav\b[^.!?;]{0,80}\b(?:provided|uploaded|supplied)\s+by\s+(?:myself|me|us|my team|issuer|admin|manager)\b|\b(?:provided|uploaded|supplied)\s+by\s+(?:myself|me|us|my team|issuer|admin|manager)\b[^.!?;]{0,80}\bnav\b/.test(normalized)) {
+    updates.push(createSuggestedUpdate('nav_source', 'User-provided upload', 'User described who will provide NAV updates.', sourceRef, 0.82));
+  }
   if (/push|send|distribute/.test(normalized) && /wallet|investor/.test(normalized) && /information|update|notice/.test(normalized)) {
     updates.push(createSuggestedUpdate('investor_update_rule', 'ZiLi-OS should prepare investor update records; wallet-pushed notices remain a custom requirement for review.', 'User described pushing investment information to investors.', sourceRef, 0.72));
   }
@@ -332,20 +350,35 @@ function normalizeProductSetupFieldAliases(field: string): ProductSetupFieldKey[
     expected_investors: 'expected_investor_count',
     investor_count: 'expected_investor_count',
     target_investors: 'expected_investor_count',
+    product_display_name: 'product_name',
+    display_name: 'product_name',
+    fund_name: 'product_name',
+    portfolio_name: 'product_name',
+    vehicle_name: 'product_name',
+    product_short_name: 'token_symbol',
+    short_name: 'token_symbol',
     base_currency_denomination: 'base_currency',
     maturity: 'maturity_date',
     term: 'maturity_date',
     launch_date_term: 'maturity_date',
+    product_term: 'product_structure',
+    product_term_type: 'product_structure',
+    term_type: 'product_structure',
+    structure: 'product_structure',
     income_distribution: 'income_treatment',
     income_treatment_rule: 'income_treatment',
     subscription_frequency: 'subscription_cadence',
+    subscription_mint_cadence: 'subscription_cadence',
     subscription_stablecoin_type: 'subscription_stablecoins',
     subscription_stablecoin: 'subscription_stablecoins',
     redemption_frequency: 'redemption_cadence',
+    redemption_burn_cadence: 'redemption_cadence',
     redemption_stablecoin: 'redemption_stablecoin_type',
     valuation_cadence: 'nav_cadence',
     valuation_update_requirement: 'nav_cadence',
     nav_cadence_format: 'nav_cadence',
+    nav_provider: 'nav_source',
+    nav_source_actor: 'nav_source',
     wallet_whitelist_requirement: 'whitelisted_wallets_required',
     whitelist_requirement: 'whitelisted_wallets_required',
     wallet_rule: 'investor_wallet_rule',
@@ -378,6 +411,8 @@ function normalizeSuggestedUpdateValueForField(
 
   if (fieldKey === 'base_currency') return trimmed.toUpperCase();
 
+  if (fieldKey === 'product_structure') return normalizeProductStructure(trimmed);
+
   if (fieldKey === 'subscription_payment_method' || fieldKey === 'redemption_payment_method') {
     if (/stablecoin|usdc|usdt/.test(normalized)) return 'Stablecoin';
     if (/fiat|off[-\s]?chain|bank|wire/.test(normalized)) return 'Offchain transfer';
@@ -407,6 +442,22 @@ function titleCaseProductSetupValue(value: string): string {
     .filter(Boolean)
     .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
     .join(' ');
+}
+
+function firstMatch(value: string, patterns: RegExp[]): RegExpMatchArray | null {
+  for (const pattern of patterns) {
+    const match = value.match(pattern);
+    if (match) return match;
+  }
+  return null;
+}
+
+function normalizeProductStructure(value: string): string {
+  const normalized = value.trim().toLowerCase().replace(/\s+/, '-');
+  if (/^open-?ended$/.test(normalized)) return 'Open-ended';
+  if (/^close-?ended$|^closed-?ended$/.test(normalized)) return 'Closed-ended';
+  if (/fixed\s*maturity|fixed-maturity/.test(normalized)) return 'Fixed maturity';
+  return titleCaseProductSetupValue(value);
 }
 
 function normalizeMaturityTerm(value: string): string {
@@ -478,6 +529,50 @@ function extractCadenceNear(value: string, contextPattern: string): string | und
   }
 
   return undefined;
+}
+
+function extractSubscriptionCadenceAssertion(value: string): string | undefined {
+  const relevantText = relevantTextForContext(value, /\b(subscription|subscriptions|subscribe|subscribing|new investors?|investors? can buy|buy)\b/);
+  if (!relevantText) return undefined;
+  const cadence = cadenceLabelFromText(relevantText);
+  if (!cadence) return undefined;
+  if (/\bone[-\s]?time\b|\bone\s+time\b|\binitial\b|\bat\s+launch\b|\bonce\s+at\s+launch\b/.test(relevantText)) {
+    if (/\bthen\b|\bafter\s+launch\b|\bpost[-\s]?launch\b|\bon\s+a\b/.test(relevantText)) {
+      return `One-time at launch, then ${cadence}`;
+    }
+  }
+  return cadence;
+}
+
+function extractRedemptionCadenceAssertion(value: string): string | undefined {
+  const relevantText = relevantTextForContext(value, /\b(redemption|redemptions|redeem|existing investors?|sell out|exit|withdraw)\b/);
+  if (!relevantText) return undefined;
+  return cadenceLabelFromText(relevantText);
+}
+
+function extractRedemptionScheduleAssertion(value: string): string | undefined {
+  const match = value.match(/\bredemption(?:s)?\s+(?:starts?|begins?|commences?)\s+(\d{1,3}\s+(?:days?|weeks?|months?|quarters?|years?)\s+after\s+(?:launch date|launch|ipo date|ipo|initial distribution))\b/i);
+  if (!match?.[1]) return undefined;
+  return `Starts ${match[1]}`;
+}
+
+function cadenceLabelFromText(value: string): string | undefined {
+  if (/\bintraday\b/.test(value)) return 'Intraday';
+  if (/\bdaily\b|\beach day\b/.test(value)) return 'Daily';
+  if (/\bweekly\b|\beach week\b/.test(value)) return 'Weekly';
+  if (/\bmonthly\b|\beach month\b/.test(value)) return 'Monthly';
+  if (/\bquarterly\b|\beach quarter\b|\bquarter\b/.test(value)) return 'Quarterly';
+  if (/\bhalf[-\s]?yearly\b|\bsemi[-\s]?annual(?:ly)?\b/.test(value)) return 'Half-yearly';
+  if (/\byearly\b|\bannually\b|\bannual\b/.test(value)) return 'Yearly';
+  return undefined;
+}
+
+function relevantTextForContext(value: string, contextPattern: RegExp): string {
+  return value
+    .split(/[.!?;]+/)
+    .map((segment) => segment.trim())
+    .filter((segment) => contextPattern.test(segment))
+    .join(' ');
 }
 
 function extractCombinedSubscriptionRedemptionCadence(value: string): string | undefined {

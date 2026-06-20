@@ -1356,6 +1356,7 @@ const directUserStatedProductSetupFields = new Set<ProductSetupFieldKey>([
   'redemption_payment_method',
   'redemption_stablecoin_type',
   'redemption_cadence',
+  'redemption_schedule',
   'income_payout_cadence',
   'redemption_payout_cadence',
   'minimum_redemption_amount',
@@ -1494,7 +1495,7 @@ export function updateProductSetupField(
       : 'user_confirmed');
   const confirmedByUser = nextStatus === 'user_confirmed';
 
-  return {
+  return deriveProductSetupFields({
     ...record,
     fields: {
       ...record.fields,
@@ -1511,7 +1512,7 @@ export function updateProductSetupField(
       },
     },
     updatedAtIso: new Date().toISOString(),
-  };
+  });
 }
 
 export function handleProductSetupWalletInput(

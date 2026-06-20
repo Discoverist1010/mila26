@@ -71,7 +71,7 @@ test('product setup turns unstructured chat into reviewable requirements', async
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Subscription/ }).click();
   await expect(page.getByLabel('Subscription Product Setup draft notes')).toContainText('Subscription mechanics');
   await expect(page.getByLabel('Permitted stablecoins')).toHaveValue('');
-  await page.getByLabel('Subscription Product Setup draft notes').getByRole('button', { name: 'Apply' }).click();
+  await page.getByLabel('Subscription Product Setup draft notes').getByRole('button', { name: 'Apply Subscription stablecoin type' }).click();
   await expect(page.getByLabel('Subscription Product Setup draft notes')).toContainText('Applied');
   await expect(page.getByLabel('Permitted stablecoins')).toHaveValue('USDC');
   await page.getByLabel('Tokenisation lifecycle tabs').getByRole('button', { name: /Product Setup/ }).click();

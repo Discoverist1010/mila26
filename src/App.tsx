@@ -1603,6 +1603,7 @@ export function App() {
                               <button
                                 type="button"
                                 className="workflow-button compact primary-action"
+                                aria-label={`Apply ${suggestion.label}`}
                                 disabled={!canApply}
                                 onClick={() => applyProductSetupStarterSuggestion(note, suggestion)}
                               >
@@ -1611,6 +1612,7 @@ export function App() {
                               <button
                                 type="button"
                                 className="workflow-button compact"
+                                aria-label={`Dismiss ${suggestion.label}`}
                                 onClick={() => dismissProductSetupStarterSuggestion(note.id, suggestion.id)}
                               >
                                 Dismiss

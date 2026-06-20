@@ -415,7 +415,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     const redemptionPayoutDelayArticle = within(screen.getByLabelText('Redemption Product Setup draft notes'))
       .getByText('Redemption payout delay')
       .closest('.product-setup-starter-suggestion') as HTMLElement;
-    fireEvent.click(within(redemptionPayoutDelayArticle).getByRole('button', { name: 'Apply' }));
+    fireEvent.click(within(redemptionPayoutDelayArticle).getByRole('button', { name: 'Apply Redemption payout delay' }));
     expect(screen.getByLabelText('Redemption Product Setup draft notes')).toHaveTextContent('Applied');
     expect(screen.getByLabelText('Redemption delay unit')).toHaveValue('days');
     expect(screen.getByLabelText('Redemption delay duration')).toHaveValue('10');
@@ -502,7 +502,11 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Subscription mechanics');
     expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Subscription stablecoin type: USDC');
     expect(screen.getByLabelText('Permitted stablecoins')).toHaveValue('');
-    fireEvent.click(within(screen.getByLabelText('Subscription Product Setup draft notes')).getByRole('button', { name: 'Apply' }));
+    fireEvent.click(
+      within(screen.getByLabelText('Subscription Product Setup draft notes')).getByRole('button', {
+        name: 'Apply Subscription stablecoin type',
+      }),
+    );
     expect(screen.getByLabelText('Subscription Product Setup draft notes')).toHaveTextContent('Applied');
     expect(screen.getByLabelText('Permitted stablecoins')).toHaveValue('USDC');
   });
