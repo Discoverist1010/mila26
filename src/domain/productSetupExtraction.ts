@@ -19,13 +19,30 @@ export function createProductSetupSuggestionsFromText(
   text: string,
   sourceRef: string,
 ): ProductSetupSuggestedUpdate[] {
+  const original = text.trim();
   const context: ProductSetupTextExtractionContext = {
-    original: text.trim(),
-    normalized: text.toLowerCase(),
+    original,
+    normalized: normalizeProductSetupExtractionText(original),
     sourceRef,
   };
 
   return productSetupTextExtractionRules.flatMap((rule) => rule(context));
+}
+
+function normalizeProductSetupExtractionText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\bnon[-\s]+white[-\s]+listed\b/g, 'non-whitelisted')
+    .replace(/\bwhite[-\s]+listed\b/g, 'whitelisted')
+    .replace(/\bwhite[-\s]+list\b/g, 'whitelist')
+    .replace(/\bkyc\s+off\s+chain\b/g, 'kyc offchain')
+    .replace(/\boff\s+chain\b/g, 'offchain')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function hasProductSetupIntent(value: string): boolean {
+  return /\b(tokenise|tokenize|tokenised|tokenized|fund|product|portfolio|token|symbol)\b/.test(value);
 }
 
 const productSetupTextExtractionRules: ProductSetupTextExtractionRule[] = [
@@ -42,9 +59,15 @@ function extractIdentityAndTypeAssertions({
   sourceRef,
 }: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
   const updates: ProductSetupSuggestedUpdate[] = [];
+  const allowGenericNameAssertion = hasProductSetupIntent(normalized);
   const productNameMatch = firstMatch(original, [
     /\b(?:product|fund|portfolio|vehicle)\s+name\s+(?:is|=|:)\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s+(?:and|with|as|it\s+is|symbol\s+is)|[.?!,]|$)/i,
     /\bproduct\s+display\s+name\s+(?:is|=|:)\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s+(?:and|with|as|it\s+is|symbol\s+is)|[.?!,]|$)/i,
+    ...(allowGenericNameAssertion
+      ? [
+          /\b(?:the\s+)?name\s+(?:is|=|:)\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s+(?:and|with|as|it\s+is|symbol\s+is)|[.?!,]|$)/i,
+        ]
+      : []),
   ]);
   const tokenSymbolMatch = original.match(/\b(?:token\s+)?symbol\s+is\s+([A-Z][A-Z0-9]{1,11})\b/i);
   const baseCurrencyMatch =
@@ -111,7 +134,9 @@ function extractTimingAssertions({
 }: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
   const updates: ProductSetupSuggestedUpdate[] = [];
   const payoutDelay = extractRedemptionPayoutDelayAssertion(normalized);
-  const ipoDateMatch = original.match(/\b(?:ipo|launch|initial\s+distribution)\s+date(?:\s+\w+){0,3}\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
+  const ipoDateMatch =
+    original.match(/\b(?:ipo|launch|initial\s+distribution)\s+date(?:\s+\w+){0,3}\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i) ??
+    original.match(/\b(?:launch(?:es|ed)?|launched|starts?|started)\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
   const initialRegisterMatch = original.match(/\binitial\s+register\s+of\s+(\d{1,3})\s+investors?\s+will\s+be\s+([^.,;]+)/i);
   const maturityTermMatch =
     original.match(/\bmaturity\s*(?:is|=|:)?\s*(\d{1,3}\s+(?:years?|months?|quarters?)\s+after\s+(?:launch|ipo|ipo\s+date|opo|opo\s+date|initial\s+distribution)(?:\s+(?:date\s+)?of\s+\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})?)\b/i) ??
@@ -119,7 +144,8 @@ function extractTimingAssertions({
     original.match(/\b(\d{1,3}[-\s]?(?:years?|months?|quarters?))\s+(?:term|tenor)\b/i) ??
     original.match(/\b(?:it|product|fund|portfolio|vehicle)\s+will\s+be\s+for\s+(\d{1,3}[-\s]?(?:years?|months?|quarters?))\b/i) ??
     original.match(/\bwill\s+run(?:\s+as\s+a\s+[^.,;]{0,60}?)?\s+for\s+(\d{1,3}[-\s]?(?:years?|months?|quarters?))\b/i) ??
-    original.match(/\brun(?:s|ning)?(?:\s+as\s+a\s+[^.,;]{0,60}?)?\s+for\s+(\d{1,3}[-\s]?(?:years?|months?|quarters?))\b/i);
+    original.match(/\brun(?:s|ning)?(?:\s+as\s+a\s+[^.,;]{0,60}?)?\s+for\s+(\d{1,3}[-\s]?(?:years?|months?|quarters?))\b/i) ??
+    original.match(/\b(?:close[-\s]?ended|closed[-\s]?ended|open[-\s]?ended|fixed\s+maturity|fund|product|portfolio|vehicle)[^.!?;]{0,100}\bfor\s+(\d{1,3}[-\s]?(?:years?|months?|quarters?))\b/i);
   const maturityDateMatch =
     original.match(/\bmaturity(?:\s+date)?\s*(?:is|=|:)?\s*(\d{4}-\d{2}-\d{2})\b/i) ??
     original.match(/\bmaturity(?:\s+date)?\s*(?:is|=|:)?\s*(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
@@ -233,7 +259,7 @@ function extractSettlementAndWalletAssertions({
     updates.push(createSuggestedUpdate('whitelisted_wallets_required', true, 'User described approved or whitelisted wallet access.', sourceRef, 0.9));
     updates.push(createSuggestedUpdate('investor_wallet_rule', 'Approved wallets only; transfers should stay between approved wallets.', 'User described approved or whitelisted wallet access.', sourceRef, 0.86));
   }
-  if (/peer\s*to\s*peer|p2p|buy-sell|buy sell|transfer.+each other/.test(normalized)) {
+  if (/peer\s*to\s*peer|p2p|buy-sell|buy sell|transfer.+each other|transact(?:ions?)?\s+between\s+themselves|trade\s+between\s+themselves|transfer\s+between\s+(?:investors|holders|wallets)/.test(normalized)) {
     updates.push(createSuggestedUpdate('p2p_transfer_allowed', true, 'User described investor peer-to-peer transfers.', sourceRef, 0.82));
     updates.push(createSuggestedUpdate('investor_wallet_rule', 'Approved investors may transfer peer-to-peer only to other approved wallets.', 'User described investor peer-to-peer transfers.', sourceRef, 0.82));
   }

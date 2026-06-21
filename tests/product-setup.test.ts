@@ -417,6 +417,56 @@ describe('Product Setup record', () => {
     expect(profileRowsById.get('redemption_cadence')).toMatchObject({ value: 'Quarterly', provenanceLabel: 'Stated' });
   });
 
+  it('commits a full unstructured Product Setup paragraph into canonical Product Profile fields', () => {
+    const message = [
+      'I want to tokenise a fund product to distribute to 32 investors. The name is TEST and symbol is TST. The base currency is SGD. The underlying is a portfolio of equities. It will be launched on 17 Nov 2026 as a close-ended fund for 3 years.',
+      'Investors wallet addresses will be white listed. They can transact between themselves but only based on white listed addresses. Tokens cannot be transferred to non-white listed addresses.',
+      'NAV is monthly and remains at $1 per token. It will be uploaded 1 day before subscription day. Subscription period is 1 week before launch date after which it will close on launch date.',
+      'Redemption and subscription is on quarterly basis. Eligible investors are verified offchain so the smart contract don’t need to verify investors.',
+    ].join('\n\n');
+
+    const result = reconcileProductSetupIntake(createInitialProductSetupRecord(facts), {
+      userMessage: message,
+      sourceRef: 'chat_turn_full_unstructured_profile',
+    });
+    const readModel = toProductSetupReadModel(result.record);
+    const profileRowsById = new Map(readModel.profileRows.map((row) => [row.id, row]));
+
+    expect(result.record.fields.product_name).toMatchObject({ value: 'TEST', status: 'user_stated' });
+    expect(result.record.fields.token_symbol).toMatchObject({ value: 'TST', status: 'user_stated' });
+    expect(result.record.fields.product_launch_date).toMatchObject({ value: '2026-11-17', status: 'user_stated' });
+    expect(result.record.fields.product_wrapper).toMatchObject({ value: 'Fund', status: 'user_stated' });
+    expect(result.record.fields.product_type).toMatchObject({ value: 'Fund', status: 'user_stated' });
+    expect(result.record.fields.underlying_asset_class).toMatchObject({ value: 'Equities', status: 'user_stated' });
+    expect(result.record.fields.product_structure).toMatchObject({ value: 'Closed-ended', status: 'user_stated' });
+    expect(result.record.fields.base_currency).toMatchObject({ value: 'SGD', status: 'user_stated' });
+    expect(result.record.fields.expected_investor_count).toMatchObject({ value: 32, status: 'user_stated' });
+    expect(result.record.fields.maximum_investor_count).toMatchObject({ value: 32, status: 'user_stated' });
+    expect(result.record.fields.whitelisted_wallets_required).toMatchObject({ value: true, status: 'user_stated' });
+    expect(result.record.fields.p2p_transfer_allowed).toMatchObject({ value: true, status: 'user_stated' });
+    expect(result.record.fields.nav_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
+    expect(result.record.fields.subscription_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(result.record.fields.redemption_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(result.record.fields.duration_months).toMatchObject({ value: 36, status: 'user_stated' });
+    expect(result.record.fields.derived_maturity_date).toMatchObject({
+      value: '2029-11-19',
+      status: 'system_default',
+      sourceRef: 'derived_from_launch_date_and_duration',
+    });
+
+    expect(result.record.fields.eligible_investor_type.status).toBe('missing');
+    expect(profileRowsById.get('product_name')).toMatchObject({ value: 'TEST', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('product_launch_date')).toMatchObject({ value: '2026-11-17', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('product_structure')).toMatchObject({ value: 'Closed-ended', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('whitelisted_wallets_required')).toMatchObject({ value: 'Yes', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('p2p_transfer_allowed')).toMatchObject({ value: 'Yes', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('duration_months')).toMatchObject({ value: '36 months', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('derived_maturity_date')).toMatchObject({
+      value: '2029-11-19',
+      provenanceLabel: 'Assumed',
+    });
+  });
+
   it('does not convert quarterly income distribution into a redemption schedule', () => {
     const suggestions = createProductSetupSuggestionsFromText(
       'Income will be distributed quarterly.',
