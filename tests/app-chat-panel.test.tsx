@@ -853,6 +853,64 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Redemption');
   });
 
+  it('projects a realistic unstructured Product Setup transcript into the Product Profile', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse({
+        ok: true,
+        data: {
+          messageId: 'engineering-response-product-setup-transcript',
+          agentId: 'blockchain-engineer',
+          content: 'Engineering Bot: captured the Product Setup facts and will ask only for missing items.',
+          openQuestions: [],
+          riskNotes: [],
+          nextRecommendedAction: 'Continue Product Setup.',
+          createdAt: '2026-05-21T00:00:00.000Z',
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    const composer = screen.getByRole('textbox', { name: 'Product Setup chat' });
+
+    fireEvent.change(composer, {
+      target: {
+        value:
+          'i want to create a tokenised close-ended fund to distribute to 32 investors. the fund name is TEST, symbol is TST and the launch date is 11 Nov 2026. it will be for 3 years.',
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('What is this product')).toHaveTextContent('TEST');
+    });
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('TST');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('2026-11-11');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Closed-ended');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('36 months');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('2029-11-12');
+
+    fireEvent.change(composer, {
+      target: {
+        value:
+          'the base currency is SGD. investor wallets will be whitelisted. subscription will have an initial issuance at launch, and then open on a quarterly basis. redemption will also be on a quarterly basis. nav is monthly that will be pushed to the investors whitelisted address.',
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('What is this product')).toHaveTextContent('SGD');
+    });
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Quarterly');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Monthly');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Yes');
+    expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Investor Wallets');
+    expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Subscription');
+    expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Asset Servicing');
+  });
+
   it('shows a safe error and deterministic Copilot answer when the backend is unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('ECONNREFUSED')));
 

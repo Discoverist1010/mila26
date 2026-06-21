@@ -79,6 +79,9 @@ export type ProductSetupIntakeReconciliationResult = ProductSetupSuggestionRecon
   mergedSuggestions: ProductSetupSuggestedUpdate[];
   unsupportedRequirementDecisions: UnsupportedRequirementDecision[];
   committedFacts: ProductSetupCommittedFact[];
+  appliedFacts: ProductSetupCommittedFact[];
+  reviewFacts: ProductSetupCommittedFact[];
+  derivedFacts: ProductSetupCommittedFact[];
 };
 
 function createField(input: Omit<ProductSetupField, 'confirmedByUser'> & { confirmedByUser?: boolean }): ProductSetupField {
@@ -1408,6 +1411,9 @@ export function reconcileProductSetupIntake(
     mergedSuggestions,
     unsupportedRequirementDecisions,
     committedFacts,
+    appliedFacts: committedFacts.filter((fact) => fact.disposition === 'applied'),
+    reviewFacts: committedFacts.filter((fact) => fact.disposition === 'pending_review'),
+    derivedFacts: committedFacts.filter((fact) => fact.disposition === 'derived'),
   };
 }
 
@@ -1531,6 +1537,13 @@ export function dismissProductSetupSuggestedUpdate(
     pendingSuggestedUpdates: record.pendingSuggestedUpdates.filter((candidate) => candidate.id !== updateId),
     updatedAtIso: new Date().toISOString(),
   };
+}
+
+export function rejectProductSetupSuggestedUpdate(
+  record: ProductSetupRecord,
+  updateId: string,
+): ProductSetupRecord {
+  return dismissProductSetupSuggestedUpdate(record, updateId);
 }
 
 export function deferProductSetupField(

@@ -74,6 +74,7 @@ import {
   productSetupHandoffTargetLabel,
   reconcileProductSetupIntake,
   reconcileProductSetupSuggestedUpdates,
+  rejectProductSetupSuggestedUpdate,
   reviewProductSetupHandoffNote,
   sendProductSetupHandoffNote,
   toProductSetupReadModel,
@@ -2885,8 +2886,26 @@ export function App() {
     setProductSetupRecord((current) => confirmProductSetupUpdate(current, update.id));
   }
 
-  function dismissProductSetupSuggestion(update: ProductSetupSuggestedUpdate) {
+  function editProductSetupSuggestion(update: ProductSetupSuggestedUpdate) {
+    const fieldLabel = productSetupRecord.fields[update.fieldKey].label;
+    const previousValue = formatReviewValue(update.proposedValue);
     setProductSetupRecord((current) => dismissProductSetupSuggestedUpdate(current, update.id));
+    publishEngineerResponse(
+      createLocalEngineerResponse(
+        [
+          `I cleared the captured ${fieldLabel.toLowerCase()} value (${previousValue}) from review.`,
+          `Please provide the corrected ${fieldLabel.toLowerCase()} in plain language and I will update the Product Profile.`,
+        ].join('\n\n'),
+      ),
+      'local',
+      'engineering',
+      'engineering',
+      ['Engineering Bot'],
+    );
+  }
+
+  function rejectProductSetupSuggestion(update: ProductSetupSuggestedUpdate) {
+    setProductSetupRecord((current) => rejectProductSetupSuggestedUpdate(current, update.id));
   }
 
   function updateProductSetupFieldFromTab(
@@ -5064,7 +5083,7 @@ export function App() {
                     <div className="zilio-review-list">
                       {visibleReviewUpdates.map((update) => (
                         <article key={update.id}>
-                          <span>Captured fact</span>
+                          <span>Captured Product Setup fact</span>
                           <strong>{productSetupRecord.fields[update.fieldKey].label}</strong>
                           <p>{formatReviewValue(update.proposedValue)}</p>
                           <small>{Math.round(update.confidence * 100)}% confidence · {update.sourceType}</small>
@@ -5072,8 +5091,11 @@ export function App() {
                             <button type="button" className="workflow-button primary-action compact" onClick={() => confirmProductSetupSuggestion(update)}>
                               Confirm
                             </button>
-                            <button type="button" className="workflow-button compact" onClick={() => dismissProductSetupSuggestion(update)}>
-                              Dismiss
+                            <button type="button" className="workflow-button compact" onClick={() => editProductSetupSuggestion(update)}>
+                              Edit
+                            </button>
+                            <button type="button" className="workflow-button compact" onClick={() => rejectProductSetupSuggestion(update)}>
+                              Reject
                             </button>
                           </div>
                         </article>
