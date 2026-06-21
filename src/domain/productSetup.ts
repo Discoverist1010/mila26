@@ -75,6 +75,31 @@ export type ProductSetupCommittedFact = {
   disposition: 'applied' | 'pending_review' | 'derived';
 };
 
+export type ProductSetupRejectedFact = {
+  fieldKey?: ProductSetupFieldKey;
+  value?: ProductSetupFieldValue;
+  sourceRef: string;
+  reason: string;
+};
+
+export type ProductSetupClarifyingQuestion = {
+  id: string;
+  fieldKeys: ProductSetupFieldKey[];
+  prompt: string;
+  priority: 'high' | 'medium' | 'low';
+};
+
+export type ProductSetupIntakeTransaction = {
+  id: string;
+  sourceRef: string;
+  appliedFacts: ProductSetupCommittedFact[];
+  reviewFacts: ProductSetupCommittedFact[];
+  rejectedFacts: ProductSetupRejectedFact[];
+  derivedFacts: ProductSetupCommittedFact[];
+  handoffCandidates: ProductSetupHandoffNote[];
+  clarifyingQuestions: ProductSetupClarifyingQuestion[];
+};
+
 export type ProductSetupIntakeReconciliationResult = ProductSetupSuggestionReconciliationResult & {
   mergedSuggestions: ProductSetupSuggestedUpdate[];
   unsupportedRequirementDecisions: UnsupportedRequirementDecision[];
@@ -82,6 +107,7 @@ export type ProductSetupIntakeReconciliationResult = ProductSetupSuggestionRecon
   appliedFacts: ProductSetupCommittedFact[];
   reviewFacts: ProductSetupCommittedFact[];
   derivedFacts: ProductSetupCommittedFact[];
+  transaction: ProductSetupIntakeTransaction;
 };
 
 function createField(input: Omit<ProductSetupField, 'confirmedByUser'> & { confirmedByUser?: boolean }): ProductSetupField {
@@ -1404,6 +1430,21 @@ export function reconcileProductSetupIntake(
       disposition: 'derived',
     });
   }
+  const appliedFacts = committedFacts.filter((fact) => fact.disposition === 'applied');
+  const reviewFacts = committedFacts.filter((fact) => fact.disposition === 'pending_review');
+  const derivedFacts = committedFacts.filter((fact) => fact.disposition === 'derived');
+  const transaction: ProductSetupIntakeTransaction = {
+    id: `product_setup_intake_${input.sourceRef}`,
+    sourceRef: input.sourceRef,
+    appliedFacts,
+    reviewFacts,
+    rejectedFacts: [],
+    derivedFacts,
+    handoffCandidates: toProductSetupDownstreamHandoffs(recordWithUnsupportedDecisions).filter(
+      (note) => note.status === 'draft_note_ready',
+    ),
+    clarifyingQuestions: createProductSetupClarifyingQuestions(recordWithUnsupportedDecisions),
+  };
 
   return {
     ...reconciled,
@@ -1411,10 +1452,43 @@ export function reconcileProductSetupIntake(
     mergedSuggestions,
     unsupportedRequirementDecisions,
     committedFacts,
-    appliedFacts: committedFacts.filter((fact) => fact.disposition === 'applied'),
-    reviewFacts: committedFacts.filter((fact) => fact.disposition === 'pending_review'),
-    derivedFacts: committedFacts.filter((fact) => fact.disposition === 'derived'),
+    appliedFacts,
+    reviewFacts,
+    derivedFacts,
+    transaction,
   };
+}
+
+const productSetupClarifyingQuestionFields: ProductSetupFieldKey[] = [
+  'product_name',
+  'product_launch_date',
+  'product_wrapper',
+  'underlying_asset_class',
+  'product_structure',
+  'base_currency',
+  'eligible_investor_type',
+  'offering_type',
+  'nav_cadence',
+  'subscription_cadence',
+  'redemption_cadence',
+  'subscription_payment_method',
+  'redemption_payment_method',
+  'whitelisted_wallets_required',
+  'p2p_transfer_allowed',
+  'duration_months',
+  'protocol_base',
+];
+
+function createProductSetupClarifyingQuestions(record: ProductSetupRecord): ProductSetupClarifyingQuestion[] {
+  return productSetupClarifyingQuestionFields
+    .filter((fieldKey) => !fieldDisplayValue(record.fields[fieldKey]) && record.fields[fieldKey].status === 'missing')
+    .slice(0, 3)
+    .map((fieldKey, index) => ({
+      id: `clarify_${fieldKey}`,
+      fieldKeys: [fieldKey],
+      prompt: `Please provide ${record.fields[fieldKey].label.toLowerCase()}.`,
+      priority: index === 0 ? 'high' : 'medium',
+    }));
 }
 
 const directUserStatedProductSetupFields = new Set<ProductSetupFieldKey>([

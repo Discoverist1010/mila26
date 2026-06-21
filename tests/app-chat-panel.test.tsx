@@ -378,8 +378,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByText('ERC-20: Fungible portfolio shares with broad wallet support.')).toBeVisible();
     expect(screen.getByText('ERC-3643: Permissioned token for approved wallets.')).toBeVisible();
     expect(screen.getByText('ERC-721: Unique token IDs are out of MVP scope.')).toBeVisible();
-    expect(screen.getByText('Suggested requirement updates')).toBeVisible();
-    expect(screen.getByText('protocol_base: ERC-3643. The stated income product needs approved-wallet controls.')).toBeVisible();
+    expect(screen.queryByText('Suggested requirement updates')).not.toBeInTheDocument();
+    expect(screen.queryByText('protocol_base: ERC-3643. The stated income product needs approved-wallet controls.')).not.toBeInTheDocument();
     expect(screen.getByText('Open questions')).toBeVisible();
     expect(screen.getByText('Should every approved investor hold identical share units?')).toBeVisible();
     expect(screen.queryByText('Risk notes')).not.toBeInTheDocument();
@@ -390,6 +390,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
     expect(screen.queryByLabelText('Next suggested action')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Expected investors');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('25');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('USDC');
+    expect(screen.getByLabelText('What is this product')).toHaveTextContent('Quarterly');
     fireEvent.click(within(screen.getByLabelText('Needs your review')).getByRole('button', { name: 'Review all' }));
     expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Subscription stablecoin type');
     expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Redemption payout delay');
@@ -909,6 +912,66 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Investor Wallets');
     expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Subscription');
     expect(screen.getByLabelText('Product Setup downstream handoffs')).toHaveTextContent('Asset Servicing');
+  });
+
+  it('commits a full messy Product Setup paragraph to visible Product Profile rows before rendering the bot reply', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse({
+        ok: true,
+        data: {
+          messageId: 'engineering-response-product-setup-full-paragraph',
+          agentId: 'blockchain-engineer',
+          content: 'Engineering Bot: captured the facts and will ask only for open PRD fields.',
+          suggestedRequirementUpdates: [
+            {
+              field: 'product_name',
+              proposedValue: 'WRONG RESPONSE NAME',
+              rationale: 'Conflicting assistant-side suggestion should not mutate Product Setup.',
+              confidence: 0.99,
+            },
+          ],
+          openQuestions: [],
+          riskNotes: [],
+          nextRecommendedAction: 'Continue Product Setup.',
+          createdAt: '2026-05-21T00:00:00.000Z',
+        },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Product Setup chat' }), {
+      target: {
+        value: [
+          'I want to tokenise a fund product to distribute to 32 investors. The name is TEST and symbol is TST. The base currency is SGD. The underlying is a portfolio of equities. It will be launched on 17 Nov 2026 as a close-ended fund for 3 years.',
+          'Investors wallet addresses will be white listed. They can transact between themselves but only based on white listed addresses. Tokens cannot be transferred to non-white listed addresses.',
+          'NAV is monthly and remains at $1 per token. It will be uploaded 1 day before subscription day. Subscription period is 1 week before launch date after which it will close on launch date.',
+          'Redemption and subscription is on quarterly basis. Eligible investors are verified offchain so the smart contract don’t need to verify investors.',
+        ].join('\n\n'),
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    const profile = screen.getByLabelText('What is this product');
+    await waitFor(() => {
+      expect(profile).toHaveTextContent('TEST');
+    });
+    expect(profile).toHaveTextContent('TST');
+    expect(profile).toHaveTextContent('2026-11-17');
+    expect(profile).toHaveTextContent('Fund');
+    expect(profile).toHaveTextContent('Equities');
+    expect(profile).toHaveTextContent('Closed-ended');
+    expect(profile).toHaveTextContent('SGD');
+    expect(profile).toHaveTextContent('32');
+    expect(profile).toHaveTextContent('Yes');
+    expect(profile).toHaveTextContent('Monthly');
+    expect(profile).toHaveTextContent('Quarterly');
+    expect(profile).toHaveTextContent('36 months');
+    expect(profile).toHaveTextContent('2029-11-19');
+    expect(profile).not.toHaveTextContent('WRONG RESPONSE NAME');
+    expect(screen.queryByText(/product_name: WRONG RESPONSE NAME/i)).not.toBeInTheDocument();
   });
 
   it('shows a safe error and deterministic Copilot answer when the backend is unavailable', async () => {

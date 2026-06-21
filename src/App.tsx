@@ -63,17 +63,14 @@ import {
   createProductSetupPackPayload,
   createProductSetupPrdDocxContent,
   createProductSetupPrdMarkdown,
-  createProductSetupSuggestionsFromStructuredUpdates,
   decideUnsupportedRequirement,
   dismissProductSetupHandoffSuggestion,
   dismissProductSetupSuggestedUpdate,
-  filterProductSetupSuggestedUpdates,
   fieldDisplayValue,
   handleProductSetupWalletInput,
   normalizeProductSetupRecord,
   productSetupHandoffTargetLabel,
   reconcileProductSetupIntake,
-  reconcileProductSetupSuggestedUpdates,
   rejectProductSetupSuggestedUpdate,
   reviewProductSetupHandoffNote,
   sendProductSetupHandoffNote,
@@ -1471,32 +1468,13 @@ export function App() {
 
   function sanitizeProductSetupResponseSuggestions(
     response: BlockchainEngineerChatResponse,
-    acceptedSuggestions: ProductSetupSuggestedUpdate[],
   ): BlockchainEngineerChatResponse {
     if (!response.suggestedRequirementUpdates?.length) return response;
 
-    const acceptedSuggestionKeys = new Set(
-      acceptedSuggestions.map((update) => `${update.fieldKey}:${stringifyProductSetupSuggestedValue(update.proposedValue)}`),
-    );
-    const suggestedRequirementUpdates = response.suggestedRequirementUpdates.filter((update) => {
-      const normalizedUpdates = createProductSetupSuggestionsFromStructuredUpdates([update], 'response_preview');
-      if (normalizedUpdates.length === 0) return true;
-
-      return normalizedUpdates.some((normalizedUpdate) =>
-        acceptedSuggestionKeys.has(
-          `${normalizedUpdate.fieldKey}:${stringifyProductSetupSuggestedValue(normalizedUpdate.proposedValue)}`,
-        ),
-      );
-    });
-
     return {
       ...response,
-      suggestedRequirementUpdates,
+      suggestedRequirementUpdates: [],
     };
-  }
-
-  function stringifyProductSetupSuggestedValue(value: ProductSetupSuggestedUpdate['proposedValue']): string {
-    return Array.isArray(value) ? value.join('|') : String(value);
   }
 
   function renderEngineerResponse(response: BlockchainEngineerChatResponse) {
@@ -1698,7 +1676,6 @@ export function App() {
       },
     ]);
     const chatSourceRef = `chat_turn_${Date.now()}`;
-    let productSetupSuggestions: ProductSetupSuggestedUpdate[] = [];
     let productSetupRecordForThisTurn = productSetupRecord;
     let currentTurnExtractedFacts: Array<{
       fieldKey: ProductSetupFieldKey;
@@ -1729,9 +1706,12 @@ export function App() {
         sourceRef: chatSourceRef,
         structuredSuggestions,
       });
-      productSetupSuggestions = intakeResult.mergedSuggestions;
       productSetupRecordForThisTurn = intakeResult.record;
-      currentTurnExtractedFacts = intakeResult.committedFacts.map((fact) => ({
+      currentTurnExtractedFacts = [
+        ...intakeResult.transaction.appliedFacts,
+        ...intakeResult.transaction.reviewFacts,
+        ...intakeResult.transaction.derivedFacts,
+      ].map((fact) => ({
         fieldKey: fact.fieldKey,
         label: intakeResult.record.fields[fact.fieldKey].label,
         value: fact.value,
@@ -1819,6 +1799,7 @@ export function App() {
         workspaceDefaults,
         contextRules: [
           'currentTurnExtractedFacts are the latest facts after canonical Product Setup reconciliation. Do not ask for these same facts again unless they need confirmation.',
+          'Product Setup state has already been updated through the canonical intake transaction for this user message. Do not rely on response suggestedRequirementUpdates to mutate Product Setup.',
           'workspaceDefaults are existing workspace defaults or approved prior artifacts; do not describe them as user-stated unless confirmed.',
           'canonicalFields with status system_default or inferred are assumptions/defaults to confirm, not facts the user just stated.',
         ],
@@ -1828,32 +1809,7 @@ export function App() {
     setIsBotReplyLoading(false);
 
     if (result.ok) {
-      const structuredProductSetupSuggestions = createProductSetupSuggestionsFromStructuredUpdates(
-        result.data.suggestedRequirementUpdates,
-        chatSourceRef,
-      );
-      const currentTurnSuggestionsByField = new Map(
-        productSetupSuggestions.map((update) => [update.fieldKey, update]),
-      );
-      const acceptedStructuredProductSetupSuggestions = filterProductSetupSuggestedUpdates(
-        productSetupRecordForThisTurn,
-        structuredProductSetupSuggestions,
-      ).filter((update) => {
-        const currentTurnSuggestion = currentTurnSuggestionsByField.get(update.fieldKey);
-        if (!currentTurnSuggestion) return true;
-        return false;
-      });
-      if (acceptedStructuredProductSetupSuggestions.length > 0) {
-        productSetupRecordForThisTurn = reconcileProductSetupSuggestedUpdates(
-          productSetupRecordForThisTurn,
-          acceptedStructuredProductSetupSuggestions,
-        ).record;
-        setProductSetupRecord(productSetupRecordForThisTurn);
-      }
-      const responseForDisplay = sanitizeProductSetupResponseSuggestions(
-        result.data,
-        acceptedStructuredProductSetupSuggestions,
-      );
+      const responseForDisplay = sanitizeProductSetupResponseSuggestions(result.data);
       publishEngineerResponse(
         responseForDisplay,
         result.data.responseSource === 'live_model' ? 'live_model' : 'backend',
