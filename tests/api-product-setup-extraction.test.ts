@@ -108,6 +108,77 @@ describe('Product Setup extraction API', () => {
     });
   });
 
+  it('accepts rich extraction responses across the expanded Product Setup PRD field set', async () => {
+    const richFacts = [
+      ['product_name', 'TEST'],
+      ['token_symbol', 'TST'],
+      ['product_launch_date', '2026-11-11'],
+      ['product_wrapper', 'Fund'],
+      ['underlying_asset_class', 'Mixed portfolio'],
+      ['product_structure', 'Closed-ended'],
+      ['offering_type', 'Private placement'],
+      ['eligible_investor_type', 'Accredited investor'],
+      ['maximum_investor_count', 32],
+      ['product_type', 'Fund'],
+      ['base_currency', 'SGD'],
+      ['income_treatment', 'Distributing'],
+      ['expected_investor_count', 32],
+      ['investor_wallet_rule', 'Whitelisted wallets required'],
+      ['whitelisted_wallets_required', true],
+      ['subscription_cadence', 'Quarterly'],
+      ['redemption_cadence', 'Quarterly'],
+      ['nav_cadence', 'Monthly'],
+      ['duration_months', 36],
+      ['subscription_payment_method', 'Offchain transfer'],
+      ['redemption_payment_method', 'Offchain transfer'],
+      ['income_payout_cadence', 'Quarterly'],
+    ] as const;
+    const provider: Mila26LlmProvider = {
+      provider: 'openai',
+      model: 'test-model',
+      async complete() {
+        return {
+          content: JSON.stringify({
+            facts: richFacts.map(([fieldKey, value]) => ({
+              fieldKey,
+              value,
+              status: 'user_stated',
+              confidence: 0.9,
+              sourceQuote: `${fieldKey}: ${String(value)}`,
+              rationale: `User stated ${fieldKey}.`,
+              targetTab: 'product_setup',
+            })),
+            warnings: [],
+          }),
+          provider: 'openai',
+          model: 'test-model',
+        };
+      },
+    };
+    const app = createApp({ productSetupExtractionLlmProvider: provider });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/product-setup/extract',
+      payload: {
+        userMessage: 'Rich product setup message with many PRD facts.',
+        sourceRef: 'chat_turn_rich',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      ok: true,
+      data: {
+        facts: expect.arrayContaining([
+          expect.objectContaining({ fieldKey: 'product_name', value: 'TEST' }),
+          expect.objectContaining({ fieldKey: 'redemption_payment_method', value: 'Offchain transfer' }),
+        ]),
+      },
+    });
+    expect(response.json().data.facts).toHaveLength(richFacts.length);
+  });
+
   it('returns a fallback signal when no real provider is configured', async () => {
     const app = createApp();
     const response = await app.inject({

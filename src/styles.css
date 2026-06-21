@@ -2621,6 +2621,20 @@ summary {
   width: 34px;
 }
 
+.brand-logo-mark {
+  background: #ffffff;
+  border: 1px solid rgb(125 211 252 / 0.35);
+  overflow: hidden;
+  padding: 5px;
+}
+
+.brand-logo-mark img {
+  display: block;
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
 .rail-label {
   color: #94a8c7;
   font-size: 11px;

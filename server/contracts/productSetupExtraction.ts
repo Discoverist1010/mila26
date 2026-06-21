@@ -92,7 +92,7 @@ export const ProductSetupExtractionRequestSchema = z
 export const ProductSetupExtractionResponseSchema = z
   .object({
     extractionSource: z.enum(['llm', 'fallback_unavailable']),
-    facts: z.array(ProductSetupExtractionFactSchema).max(16),
+    facts: z.array(ProductSetupExtractionFactSchema).max(40),
     warnings: z.array(z.string().trim().min(1).max(240)).max(8),
   })
   .strict();

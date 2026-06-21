@@ -214,7 +214,7 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   });
 
   await page.goto('/');
-  await expect(page.getByLabel('Project navigation').getByText('MILA26', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Project navigation').getByText('ZiliOS', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Alpha Income Fund I' })).toBeVisible();
   await expect(page.getByLabel('Project navigation')).toBeVisible();
   await expect(page.getByLabel('ZiLi-OS console')).toBeVisible();
@@ -282,7 +282,7 @@ test('guided beta journey creates requirements and exposes Engineering Brief act
   await expect(page.getByLabel('Contract Ops evidence summary')).toContainText('Deployment evidence');
   await expect(page.getByRole('button', { name: 'Record NAV Event' })).toBeVisible();
 
-  const cockpitBox = await page.getByLabel('MILA26 tokenisation workspace').boundingBox();
+  const cockpitBox = await page.getByLabel('ZiLiOS tokenisation workspace').boundingBox();
   const controlBox = await page.getByTestId('smart-contract-control').boundingBox();
   expect(controlBox?.y).toBeGreaterThan((cockpitBox?.y ?? 0) + 80);
 
@@ -385,7 +385,7 @@ test('dashboard shell remains usable on a narrow viewport', async ({ page }) => 
   await page.setViewportSize({ width: 900, height: 900 });
   await page.goto('/');
 
-  await expect(page.getByLabel('Project navigation').getByText('MILA26', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Project navigation').getByText('ZiliOS', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Alpha Income Fund I' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
   await expect(page.getByLabel('ZiLi-OS console')).toBeVisible();

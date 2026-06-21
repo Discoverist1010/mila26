@@ -64,21 +64,18 @@ import {
   createProductSetupPrdDocxContent,
   createProductSetupPrdMarkdown,
   createProductSetupSuggestionsFromStructuredUpdates,
-  createProductSetupSuggestionsFromText,
-  createUnsupportedRequirementDecisionsFromText,
   decideUnsupportedRequirement,
   dismissProductSetupHandoffSuggestion,
   dismissProductSetupSuggestedUpdate,
   filterProductSetupSuggestedUpdates,
   fieldDisplayValue,
   handleProductSetupWalletInput,
-  mergeProductSetupSuggestedUpdates,
   normalizeProductSetupRecord,
   productSetupHandoffTargetLabel,
+  reconcileProductSetupIntake,
   reconcileProductSetupSuggestedUpdates,
   reviewProductSetupHandoffNote,
   sendProductSetupHandoffNote,
-  setUnsupportedRequirementDecisions,
   toProductSetupReadModel,
   updateProductSetupField,
   type ProductSetupHandoffNote,
@@ -1167,7 +1164,10 @@ export function App() {
   const subscriptionRedemptionTemplate = lifecycleReadModel.subscriptionRedemptionTemplate;
   const hasSubscriptionRedemptionTemplateInput = subscriptionRedemptionTemplate.status !== 'needs_parameters';
   const selectedProject = demoProjectFolders.find((project) => project.id === selectedProjectId);
-  const activeProjectTitle = selectedProject?.title ?? 'All Projects';
+  const productSetupProductName = fieldDisplayValue(productSetupRecord.fields.product_name);
+  const productSetupTokenSymbol = fieldDisplayValue(productSetupRecord.fields.token_symbol);
+  const activeProjectTitle = productSetupProductName || selectedProject?.title || 'All Projects';
+  const activeProjectSymbol = (productSetupTokenSymbol || selectedProject?.tokenSymbol || 'SC').slice(0, 2).toUpperCase();
   const tokenModelSummary =
     requirementBriefContract?.tokenModel.assumption ?? 'Token model will be confirmed in the Requirement Brief.';
   const primaryWorkflowAction = cockpitActionViewModel.primaryEngineeringBotAction;
@@ -1698,6 +1698,16 @@ export function App() {
     ]);
     const chatSourceRef = `chat_turn_${Date.now()}`;
     let productSetupSuggestions: ProductSetupSuggestedUpdate[] = [];
+    let productSetupRecordForThisTurn = productSetupRecord;
+    let currentTurnExtractedFacts: Array<{
+      fieldKey: ProductSetupFieldKey;
+      label: string;
+      value: unknown;
+      sourceType: string;
+      sourceRef: string;
+      confidence?: number;
+      disposition?: string;
+    }> = [];
     if (copilotRoute.shouldExtractRequirements) {
       const extractionResult = await Promise.race([
         extractProductSetupFacts({
@@ -1709,28 +1719,33 @@ export function App() {
       ]);
       const extractionFacts =
         extractionResult.ok && Array.isArray(extractionResult.data?.facts) ? extractionResult.data.facts : [];
-      const localSuggestions = createProductSetupSuggestionsFromText(submittedQuestion, chatSourceRef);
       const structuredSuggestions =
         extractionResult.ok && extractionFacts.length > 0
           ? toProductSetupSuggestedUpdatesFromExtraction(extractionResult.data, chatSourceRef)
           : [];
-      productSetupSuggestions = mergeProductSetupSuggestedUpdates(localSuggestions, structuredSuggestions);
-    }
-    const unsupportedRequirementDecisions =
-      copilotRoute.shouldExtractRequirements ? createUnsupportedRequirementDecisionsFromText(submittedQuestion, chatSourceRef) : [];
-    const currentTurnExtractedFacts = productSetupSuggestions.map((update) => ({
-      fieldKey: update.fieldKey,
-      label: productSetupRecord.fields[update.fieldKey].label,
-      value: update.proposedValue,
-      sourceType: update.sourceType,
-      sourceRef: update.sourceRef,
-      confidence: update.confidence,
-    }));
-    if (productSetupSuggestions.length > 0 || unsupportedRequirementDecisions.length > 0) {
-      setProductSetupRecord((current) => {
-        const reconciled = reconcileProductSetupSuggestedUpdates(current, productSetupSuggestions).record;
-        return setUnsupportedRequirementDecisions(reconciled, unsupportedRequirementDecisions);
+      const intakeResult = reconcileProductSetupIntake(productSetupRecord, {
+        userMessage: submittedQuestion,
+        sourceRef: chatSourceRef,
+        structuredSuggestions,
       });
+      productSetupSuggestions = intakeResult.mergedSuggestions;
+      productSetupRecordForThisTurn = intakeResult.record;
+      currentTurnExtractedFacts = intakeResult.committedFacts.map((fact) => ({
+        fieldKey: fact.fieldKey,
+        label: intakeResult.record.fields[fact.fieldKey].label,
+        value: fact.value,
+        sourceType: fact.sourceType,
+        sourceRef: fact.sourceRef,
+        confidence: fact.confidence,
+        disposition: fact.disposition,
+      }));
+      if (
+        intakeResult.mergedSuggestions.length > 0 ||
+        intakeResult.unsupportedRequirementDecisions.length > 0 ||
+        intakeResult.committedFacts.length > 0
+      ) {
+        setProductSetupRecord(intakeResult.record);
+      }
     }
 
     const workspaceDefaults = brief
@@ -1757,17 +1772,52 @@ export function App() {
           },
         }
       : undefined;
+    const productSetupReadModelForThisTurn = toProductSetupReadModel(productSetupRecordForThisTurn);
+    const productSetupContextForRequest = {
+      ...productSetupChatContext,
+      productSetup: {
+        ...productSetupChatContext.productSetup,
+        status: productSetupRecordForThisTurn.status,
+        selectedProtocolBase: fieldDisplayValue(productSetupRecordForThisTurn.fields.protocol_base) || null,
+        recommendedProtocol: productSetupReadModelForThisTurn.protocolRecommendation.recommendedProtocol,
+        currentExecutablePrototype: productSetupReadModelForThisTurn.protocolRecommendation.executablePrototypeLabel,
+        missingCanonicalInputs: productSetupReadModelForThisTurn.missingEssentials.map((field) => field.label),
+        pendingSuggestedUpdates: productSetupRecordForThisTurn.pendingSuggestedUpdates.slice(0, 8).map((update) => ({
+          field: productSetupRecordForThisTurn.fields[update.fieldKey].label,
+          fieldKey: update.fieldKey,
+          proposedValue: Array.isArray(update.proposedValue) ? update.proposedValue.join(', ') : String(update.proposedValue),
+          confidence: update.confidence,
+        })),
+        canonicalFields: Object.fromEntries(
+          Object.keys(productSetupChatContext.productSetup.canonicalFields).map((fieldKey) => {
+            const typedFieldKey = fieldKey as ProductSetupFieldKey;
+            const field = productSetupRecordForThisTurn.fields[typedFieldKey];
+            return [
+              typedFieldKey,
+              {
+                label: field.label,
+                value: fieldDisplayValue(field) || field.rolePlaceholder || null,
+                status: field.status,
+                sourceType: field.sourceType ?? null,
+                sourceRef: field.sourceRef ?? null,
+                confirmedByUser: field.confirmedByUser,
+              },
+            ];
+          }),
+        ),
+      },
+    };
 
     const result = await askBlockchainEngineer({
       userMessage: submittedQuestion,
       conversationHistory: toChatHistory(engineeringBotConversation),
       assistantMode: copilotRoute.assistantMode,
       projectContext: {
-        ...productSetupChatContext,
+        ...productSetupContextForRequest,
         currentTurnExtractedFacts,
         workspaceDefaults,
         contextRules: [
-          'currentTurnExtractedFacts are the only facts captured from the latest user message.',
+          'currentTurnExtractedFacts are the latest facts after canonical Product Setup reconciliation. Do not ask for these same facts again unless they need confirmation.',
           'workspaceDefaults are existing workspace defaults or approved prior artifacts; do not describe them as user-stated unless confirmed.',
           'canonicalFields with status system_default or inferred are assumptions/defaults to confirm, not facts the user just stated.',
         ],
@@ -1785,7 +1835,7 @@ export function App() {
         productSetupSuggestions.map((update) => [update.fieldKey, update]),
       );
       const acceptedStructuredProductSetupSuggestions = filterProductSetupSuggestedUpdates(
-        productSetupRecord,
+        productSetupRecordForThisTurn,
         structuredProductSetupSuggestions,
       ).filter((update) => {
         const currentTurnSuggestion = currentTurnSuggestionsByField.get(update.fieldKey);
@@ -1793,9 +1843,11 @@ export function App() {
         return false;
       });
       if (acceptedStructuredProductSetupSuggestions.length > 0) {
-        setProductSetupRecord((current) =>
-          reconcileProductSetupSuggestedUpdates(current, acceptedStructuredProductSetupSuggestions).record,
-        );
+        productSetupRecordForThisTurn = reconcileProductSetupSuggestedUpdates(
+          productSetupRecordForThisTurn,
+          acceptedStructuredProductSetupSuggestions,
+        ).record;
+        setProductSetupRecord(productSetupRecordForThisTurn);
       }
       const responseForDisplay = sanitizeProductSetupResponseSuggestions(
         result.data,
@@ -3130,7 +3182,7 @@ export function App() {
       <section
         className={`cockpit-shell product-workspace-shell ${isLeftRailOpen ? '' : 'left-collapsed'} ${isRightRailOpen ? '' : 'right-collapsed'}`}
         style={shellStyle}
-        aria-label="MILA26 tokenisation workspace"
+        aria-label="ZiLiOS tokenisation workspace"
       >
         <button
           className="rail-toggle left-toggle"
@@ -3158,27 +3210,35 @@ export function App() {
         {isLeftRailOpen && (
           <aside className="left-rail mila-left-rail" id="left-rail" aria-label="Project navigation">
             <div className="brand-block mila-brand">
-              <div className="brand-mark" aria-hidden="true">M</div>
+              <div className="brand-mark brand-logo-mark" aria-hidden="true">
+                <img src="/assets/brand/kangle-ai-logo.png" alt="" />
+              </div>
               <div>
-                <strong>MILA26</strong>
+                <strong>ZiliOS</strong>
                 <span>AI Tokenisation Copilot</span>
               </div>
             </div>
 
-            <nav className="project-nav project-directory" aria-label="MILA26 project folders">
+            <nav className="project-nav project-directory" aria-label="ZiLiOS project folders">
               <p className="rail-label">Project</p>
-              {demoProjectFolders.map((project) => (
-                <button
-                  type="button"
-                  className="project-nav-button"
-                  aria-current={selectedProjectId === project.id ? 'page' : undefined}
-                  key={project.id}
-                  onClick={() => setSelectedProjectId(project.id)}
-                >
-                  <span>{project.label}</span>
-                  <small>{project.marketScope}</small>
-                </button>
-              ))}
+              {demoProjectFolders.map((project) => {
+                const isSelectedProject = selectedProjectId === project.id;
+                const projectLabel = isSelectedProject && productSetupProductName ? productSetupProductName : project.label;
+                const projectScope = isSelectedProject && productSetupTokenSymbol ? productSetupTokenSymbol : project.marketScope;
+
+                return (
+                  <button
+                    type="button"
+                    className="project-nav-button"
+                    aria-current={isSelectedProject ? 'page' : undefined}
+                    key={project.id}
+                    onClick={() => setSelectedProjectId(project.id)}
+                  >
+                    <span>{projectLabel}</span>
+                    <small>{projectScope}</small>
+                  </button>
+                );
+              })}
             </nav>
 
             <nav className="project-nav rail-section" aria-label="Workspace navigation">
@@ -3239,7 +3299,7 @@ export function App() {
         <section className="workspace" id="workspace">
           <header className="project-topbar">
             <div className="project-title-block">
-              <div className="project-icon" aria-hidden="true">SC</div>
+              <div className="project-icon" aria-hidden="true">{activeProjectSymbol}</div>
               <div>
                 <h1>{activeProjectTitle}</h1>
                 <p>
@@ -4614,23 +4674,20 @@ export function App() {
                               <button
                                 type="button"
                                 className="workflow-button"
+                                data-action-id={`accept-unsupported-equivalent-${item.id}`}
+                                disabled={item.decision === 'accepted_equivalent'}
                                 onClick={() => setProductSetupRecord((current) => decideUnsupportedRequirement(current, item.id, 'accepted_equivalent'))}
                               >
-                                Accept equivalent
+                                {item.decision === 'accepted_equivalent' ? 'Equivalent accepted' : 'Accept equivalent'}
                               </button>
                               <button
                                 type="button"
                                 className="workflow-button"
-                                onClick={() => setProductSetupRecord((current) => decideUnsupportedRequirement(current, item.id, 'rejected_equivalent'))}
-                              >
-                                Reject
-                              </button>
-                              <button
-                                type="button"
-                                className="workflow-button"
+                                data-action-id={`exclude-unsupported-requirement-${item.id}`}
+                                disabled={item.decision === 'excluded_from_mvp'}
                                 onClick={() => setProductSetupRecord((current) => decideUnsupportedRequirement(current, item.id, 'excluded_from_mvp'))}
                               >
-                                Exclude from MVP
+                                {item.decision === 'excluded_from_mvp' ? 'Excluded from MVP' : 'Reject - exclude from MVP'}
                               </button>
                             </div>
                           </article>

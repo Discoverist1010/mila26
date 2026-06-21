@@ -2,6 +2,10 @@ import type { FundFacts } from './schemas';
 import { isValidNonZeroEvmAddress } from './recordNavOperationReadModel';
 import { createDocxContentFromMarkdown } from './docxExport';
 import {
+  createProductSetupSuggestionsFromText,
+  createUnsupportedRequirementDecisionsFromText,
+} from './productSetupExtraction';
+import {
   deploymentProductSetupFieldKeys,
   productSetupPrdFieldKeys,
   type ProductSetupDeploymentWarning,
@@ -60,6 +64,21 @@ export type ProductSetupSuggestionReconciliationResult = {
   acceptedUpdates: ProductSetupSuggestedUpdate[];
   appliedUpdates: ProductSetupSuggestedUpdate[];
   pendingUpdates: ProductSetupSuggestedUpdate[];
+};
+
+export type ProductSetupCommittedFact = {
+  fieldKey: ProductSetupFieldKey;
+  value: ProductSetupFieldValue;
+  sourceType: ProductSetupFieldSourceType;
+  sourceRef: string;
+  confidence?: number;
+  disposition: 'applied' | 'pending_review' | 'derived';
+};
+
+export type ProductSetupIntakeReconciliationResult = ProductSetupSuggestionReconciliationResult & {
+  mergedSuggestions: ProductSetupSuggestedUpdate[];
+  unsupportedRequirementDecisions: UnsupportedRequirementDecision[];
+  committedFacts: ProductSetupCommittedFact[];
 };
 
 function createField(input: Omit<ProductSetupField, 'confirmedByUser'> & { confirmedByUser?: boolean }): ProductSetupField {
@@ -1332,6 +1351,66 @@ export function reconcileProductSetupSuggestedUpdates(
   };
 }
 
+export function reconcileProductSetupIntake(
+  record: ProductSetupRecord,
+  input: {
+    userMessage: string;
+    sourceRef: string;
+    structuredSuggestions?: ProductSetupSuggestedUpdate[];
+    unsupportedRequirementDecisions?: UnsupportedRequirementDecision[];
+  },
+): ProductSetupIntakeReconciliationResult {
+  const localSuggestions = createProductSetupSuggestionsFromText(input.userMessage, input.sourceRef);
+  const mergedSuggestions = mergeProductSetupSuggestedUpdates(localSuggestions, input.structuredSuggestions ?? []);
+  const beforeDerivedMaturityDate = fieldDisplayValue(record.fields.derived_maturity_date);
+  const reconciled = reconcileProductSetupSuggestedUpdates(record, mergedSuggestions);
+  const unsupportedRequirementDecisions =
+    input.unsupportedRequirementDecisions ??
+    createUnsupportedRequirementDecisionsFromText(input.userMessage, input.sourceRef);
+  const recordWithUnsupportedDecisions =
+    unsupportedRequirementDecisions.length > 0
+      ? setUnsupportedRequirementDecisions(reconciled.record, unsupportedRequirementDecisions)
+      : reconciled.record;
+  const afterDerivedMaturityDate = fieldDisplayValue(recordWithUnsupportedDecisions.fields.derived_maturity_date);
+  const committedFacts: ProductSetupCommittedFact[] = [
+    ...reconciled.appliedUpdates.map((update) => ({
+      fieldKey: update.fieldKey,
+      value: update.proposedValue,
+      sourceType: update.sourceType,
+      sourceRef: update.sourceRef,
+      confidence: update.confidence,
+      disposition: 'applied' as const,
+    })),
+    ...reconciled.pendingUpdates.map((update) => ({
+      fieldKey: update.fieldKey,
+      value: update.proposedValue,
+      sourceType: update.sourceType,
+      sourceRef: update.sourceRef,
+      confidence: update.confidence,
+      disposition: 'pending_review' as const,
+    })),
+  ];
+
+  if (afterDerivedMaturityDate && afterDerivedMaturityDate !== beforeDerivedMaturityDate) {
+    committedFacts.push({
+      fieldKey: 'derived_maturity_date',
+      value: afterDerivedMaturityDate,
+      sourceType: 'system_default',
+      sourceRef: 'derived_from_launch_date_and_duration',
+      confidence: 1,
+      disposition: 'derived',
+    });
+  }
+
+  return {
+    ...reconciled,
+    record: recordWithUnsupportedDecisions,
+    mergedSuggestions,
+    unsupportedRequirementDecisions,
+    committedFacts,
+  };
+}
+
 const directUserStatedProductSetupFields = new Set<ProductSetupFieldKey>([
   'product_name',
   'token_symbol',
@@ -1621,13 +1700,123 @@ export function decideUnsupportedRequirement(
   decisionId: string,
   decision: UnsupportedRequirementDecision['decision'],
 ): ProductSetupRecord {
-  return {
+  const updatedAtIso = new Date().toISOString();
+  const targetDecision = record.unsupportedRequirementDecisions.find((item) => item.id === decisionId);
+  const recordWithDecision: ProductSetupRecord = {
     ...record,
     unsupportedRequirementDecisions: record.unsupportedRequirementDecisions.map((item) =>
       item.id === decisionId ? { ...item, decision } : item,
     ),
-    updatedAtIso: new Date().toISOString(),
+    updatedAtIso,
   };
+
+  if (!targetDecision || decision !== 'accepted_equivalent') {
+    return recordWithDecision;
+  }
+
+  return applyAcceptedUnsupportedRequirementEquivalent(recordWithDecision, targetDecision);
+}
+
+type AcceptedEquivalentFieldUpdate = {
+  fieldKey: ProductSetupFieldKey;
+  value: ProductSetupFieldValue;
+  confidence: number;
+};
+
+function applyAcceptedUnsupportedRequirementEquivalent(
+  record: ProductSetupRecord,
+  decision: UnsupportedRequirementDecision,
+): ProductSetupRecord {
+  const updates = acceptedEquivalentFieldUpdates(decision);
+  if (updates.length === 0) return record;
+
+  return updates.reduce(
+    (currentRecord, update) =>
+      updateProductSetupField(currentRecord, {
+        fieldKey: update.fieldKey,
+        value: update.value,
+        sourceType: 'user_confirmation',
+        sourceRef: decision.id,
+        status: 'user_confirmed',
+        confidence: update.confidence,
+      }),
+    record,
+  );
+}
+
+function acceptedEquivalentFieldUpdates(decision: UnsupportedRequirementDecision): AcceptedEquivalentFieldUpdate[] {
+  const normalized = `${decision.id} ${decision.requirement}`.toLowerCase();
+
+  if (normalized.includes('p2p') || normalized.includes('peer-to-peer')) {
+    return [
+      {
+        fieldKey: 'whitelisted_wallets_required',
+        value: true,
+        confidence: 0.94,
+      },
+      {
+        fieldKey: 'p2p_transfer_allowed',
+        value: true,
+        confidence: 0.9,
+      },
+      {
+        fieldKey: 'investor_wallet_rule',
+        value:
+          'Approved investors may transfer peer-to-peer only to other approved wallets; matching, liquidity, and settlement workflow are excluded from MVP execution.',
+        confidence: 0.9,
+      },
+    ];
+  }
+
+  if (normalized.includes('clawback') || normalized.includes('conditional transfers')) {
+    return [
+      {
+        fieldKey: 'whitelisted_wallets_required',
+        value: true,
+        confidence: 0.9,
+      },
+      {
+        fieldKey: 'investor_wallet_rule',
+        value:
+          'Approved wallets only; transfers stay between approved wallets. Clawback remains manual exception handling outside MVP execution.',
+        confidence: 0.86,
+      },
+    ];
+  }
+
+  if (normalized.includes('wallet-push') || normalized.includes('push investment information')) {
+    return [
+      {
+        fieldKey: 'investor_update_rule',
+        value:
+          'ZiLi-OS should prepare investor update records; wallet-pushed notices remain outside MVP execution.',
+        confidence: 0.84,
+      },
+    ];
+  }
+
+  if (normalized.includes('auto-oracle') || normalized.includes('oracle-driven')) {
+    return [
+      {
+        fieldKey: 'nav_source',
+        value: 'Reviewed uploaded or source-checked valuation input; automatic oracle ingestion is outside MVP execution.',
+        confidence: 0.82,
+      },
+    ];
+  }
+
+  if (normalized.includes('legal-compliance') || normalized.includes('legal or regulatory compliance')) {
+    return [
+      {
+        fieldKey: 'compliance_model',
+        value:
+          'Whitelist-based transfer restrictions; legal and compliance determinations remain counsel/compliance confirmation items.',
+        confidence: 0.82,
+      },
+    ];
+  }
+
+  return [];
 }
 
 export type ProductSetupPackGenerationOptions = {

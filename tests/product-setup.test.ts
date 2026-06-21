@@ -10,6 +10,7 @@ import {
   createProductSetupSuggestionsFromStructuredUpdates,
   createProductSetupSuggestionsFromText,
   createUnsupportedRequirementDecisionsFromText,
+  decideUnsupportedRequirement,
   deferProductSetupField,
   dismissProductSetupHandoffSuggestion,
   handleProductSetupWalletInput,
@@ -17,6 +18,7 @@ import {
   mergeProductSetupSuggestedUpdates,
   normalizeProductSetupRecord,
   recommendProductSetupProtocol,
+  reconcileProductSetupIntake,
   reconcileProductSetupSuggestedUpdates,
   reviewProductSetupHandoffNote,
   setUnsupportedRequirementDecisions,
@@ -361,6 +363,58 @@ describe('Product Setup record', () => {
     expect(result.record.fields.base_currency).toMatchObject({ value: 'SGD', status: 'user_stated' });
     expect(result.record.fields.subscription_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
     expect(result.record.fields.redemption_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+  });
+
+  it('keeps Product Profile in sync through the unified intake reconciliation path', () => {
+    const transcript = [
+      'i want to create a tokenised close-ended fund to distribute to 32 investors. the fund name is TEST, symbol is TST and the launch date is 11 Nov 2026. it will be for 3 years.',
+      'the base currency is SGD. investor wallets will be whitelisted. subscription will have an initial issuance at launch, and then open on a quarterly basis. redemption will also be on a quarterly basis. nav is monthly that will be pushed to the investors whitelisted address.',
+      'the underlying product is a fund. income is distributed to token holders before redemption starts. income distribution is also quarterly minus 1 day so that redemption happens next day.',
+      'eligible investors will be kyc off chain. investors subscribe via fiat currency that is also done offchain. redemption is also in fiat done offchain.',
+      'offering type is private placement',
+    ];
+    const record = transcript.reduce((currentRecord, message, index) => {
+      return reconcileProductSetupIntake(currentRecord, {
+        userMessage: message,
+        sourceRef: `chat_turn_unified_${index + 1}`,
+      }).record;
+    }, createInitialProductSetupRecord(facts));
+    const readModel = toProductSetupReadModel(record);
+    const profileRowsById = new Map(readModel.profileRows.map((row) => [row.id, row]));
+
+    expect(record.fields.product_name).toMatchObject({ value: 'TEST', status: 'user_stated' });
+    expect(record.fields.token_symbol).toMatchObject({ value: 'TST', status: 'user_stated' });
+    expect(record.fields.product_launch_date).toMatchObject({ value: '2026-11-11', status: 'user_stated' });
+    expect(record.fields.duration_months).toMatchObject({ value: 36, status: 'user_stated' });
+    expect(record.fields.derived_maturity_date).toMatchObject({
+      value: '2029-11-12',
+      status: 'system_default',
+      sourceRef: 'derived_from_launch_date_and_duration',
+    });
+    expect(record.fields.base_currency).toMatchObject({ value: 'SGD', status: 'user_stated' });
+    expect(record.fields.subscription_cadence).toMatchObject({
+      value: 'One-time at launch, then Quarterly',
+      status: 'user_stated',
+    });
+    expect(record.fields.redemption_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(record.fields.nav_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
+    expect(record.fields.income_treatment).toMatchObject({ value: 'Distributing', status: 'user_stated' });
+    expect(record.fields.income_payout_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(record.fields.subscription_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
+    expect(record.fields.redemption_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
+    expect(record.fields.offering_type).toMatchObject({ value: 'Private Placement', status: 'user_stated' });
+
+    expect(profileRowsById.get('product_launch_date')).toMatchObject({ value: '2026-11-11', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('duration_months')).toMatchObject({ value: '36 months', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('derived_maturity_date')).toMatchObject({
+      value: '2029-11-12',
+      provenanceLabel: 'Assumed',
+    });
+    expect(profileRowsById.get('subscription_cadence')).toMatchObject({
+      value: 'One-time at launch, then Quarterly',
+      provenanceLabel: 'Stated',
+    });
+    expect(profileRowsById.get('redemption_cadence')).toMatchObject({ value: 'Quarterly', provenanceLabel: 'Stated' });
   });
 
   it('does not convert quarterly income distribution into a redemption schedule', () => {
@@ -786,6 +840,58 @@ describe('Product Setup record', () => {
         'Conditional transfers with clawback',
       ]),
     );
+  });
+
+  it('translates an accepted P2P equivalent into non-conflicting smart contract rules', () => {
+    const decisions = createUnsupportedRequirementDecisionsFromText(
+      'Investors should be able to buy-sell peer to peer with each other.',
+      'chat_turn_p2p_equivalent',
+    );
+    const record = setUnsupportedRequirementDecisions(createInitialProductSetupRecord(facts), decisions);
+    const decided = decideUnsupportedRequirement(record, decisions[0].id, 'accepted_equivalent');
+
+    expect(decided.unsupportedRequirementDecisions[0]).toMatchObject({
+      decision: 'accepted_equivalent',
+    });
+    expect(decided.fields.whitelisted_wallets_required).toMatchObject({
+      value: true,
+      status: 'user_confirmed',
+      sourceType: 'user_confirmation',
+      sourceRef: decisions[0].id,
+    });
+    expect(decided.fields.p2p_transfer_allowed).toMatchObject({
+      value: true,
+      status: 'user_confirmed',
+      sourceType: 'user_confirmation',
+      sourceRef: decisions[0].id,
+    });
+    expect(decided.fields.investor_wallet_rule).toMatchObject({
+      status: 'user_confirmed',
+      sourceType: 'user_confirmation',
+      sourceRef: decisions[0].id,
+    });
+    expect(String(decided.fields.investor_wallet_rule.value)).toContain(
+      'Approved investors may transfer peer-to-peer only to other approved wallets',
+    );
+    expect(String(decided.fields.investor_wallet_rule.value)).toContain(
+      'matching, liquidity, and settlement workflow are excluded from MVP execution',
+    );
+  });
+
+  it('excludes unsupported requirements from MVP without mutating canonical contract rules', () => {
+    const decisions = createUnsupportedRequirementDecisionsFromText(
+      'Investors should be able to buy-sell peer to peer with each other.',
+      'chat_turn_p2p_excluded',
+    );
+    const record = setUnsupportedRequirementDecisions(createInitialProductSetupRecord(facts), decisions);
+    const decided = decideUnsupportedRequirement(record, decisions[0].id, 'excluded_from_mvp');
+
+    expect(decided.unsupportedRequirementDecisions[0]).toMatchObject({
+      decision: 'excluded_from_mvp',
+    });
+    expect(decided.fields.whitelisted_wallets_required.status).toBe('missing');
+    expect(decided.fields.p2p_transfer_allowed.status).toBe('missing');
+    expect(decided.fields.investor_wallet_rule.status).toBe('missing');
   });
 
   it('generates a Product Setup PRD with definitions, protocol fit, provenance, and unsupported decisions', () => {

@@ -310,7 +310,7 @@ describe('App Blockchain Engineer Bot panel', () => {
 
     render(<App />);
 
-    expect(screen.getByText('MILA26')).toBeVisible();
+    expect(screen.getByText('ZiliOS')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Alpha Income Fund I' })).toBeVisible();
     expect(screen.getByLabelText('Project navigation')).toBeVisible();
     expect(screen.getByLabelText('ZiLi-OS console')).toBeVisible();
@@ -458,6 +458,35 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.queryByLabelText('Product Setup missing fields')).not.toBeInTheDocument();
     expect(screen.getByLabelText('What is this product')).toHaveTextContent('Product name');
     expect(screen.getByLabelText('What is this product')).toHaveTextContent('To be filled');
+  });
+
+  it('updates the workspace title from the canonical Product Setup product name', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        createJsonResponse({
+          ok: true,
+          data: {
+            content: 'Captured product identity for the Product Setup PRD.',
+            assistantMode: 'engineering',
+            nextRecommendedAction: 'Review captured details.',
+          },
+        }),
+      ),
+    );
+
+    render(<App />);
+
+    fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Product Setup chat' }), {
+      target: { value: 'The product name is TEST and symbol is TST.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'TEST' })).toBeVisible();
+    });
+    expect(screen.getByRole('button', { name: /TEST TST/i })).toBeVisible();
   });
 
   it('finalises a Product Setup PRD from available canonical fields and exposes only PRD downloads', async () => {
@@ -802,7 +831,13 @@ describe('App Blockchain Engineer Bot panel', () => {
       expect.objectContaining({ status: 'missing', value: null, confirmedByUser: false }),
     );
     expect(requestBody.projectContext.productSetup.canonicalFields.expected_investor_count).toEqual(
-      expect.objectContaining({ status: 'missing', value: null, confirmedByUser: false }),
+      expect.objectContaining({ status: 'user_stated', value: '24', sourceType: 'user_message', confirmedByUser: false }),
+    );
+    expect(requestBody.projectContext.productSetup.canonicalFields.subscription_cadence).toEqual(
+      expect.objectContaining({ status: 'user_stated', value: 'Monthly', sourceType: 'user_message', confirmedByUser: false }),
+    );
+    expect(requestBody.projectContext.productSetup.canonicalFields.redemption_cadence).toEqual(
+      expect.objectContaining({ status: 'user_stated', value: 'Monthly', sourceType: 'user_message', confirmedByUser: false }),
     );
     expect(requestBody.projectContext.productSetup.protocolRecommendationCaveat).toMatch(/selected only after the user confirms/i);
     expect(screen.getByLabelText('Needs your review')).toHaveTextContent('Investor Wallets');
