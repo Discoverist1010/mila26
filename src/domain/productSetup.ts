@@ -277,6 +277,13 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
         usedByTabs: ['Subscription', 'Contract Ops'],
         smartContractRelevance: 'contract_parameter',
       }),
+      minimum_subscription_amount: createField({
+        key: 'minimum_subscription_amount',
+        label: 'Minimum subscription amount',
+        status: 'missing',
+        usedByTabs: ['Subscription', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
       subscription_receiving_wallet: createField({
         key: 'subscription_receiving_wallet',
         label: 'Subscription receiving wallet',
@@ -679,7 +686,9 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
 }
 
 function toRequiredProductSetupFieldKeys(record: ProductSetupRecord): ProductSetupFieldKey[] {
-  const keys = [...productSetupPrdFieldKeys];
+  const keys: ProductSetupFieldKey[] = productSetupPrdFieldKeys.filter(
+    (fieldKey) => fieldKey !== 'subscription_stablecoins' && fieldKey !== 'redemption_stablecoin_type',
+  );
   if (String(record.fields.subscription_payment_method.value ?? '').toLowerCase() === 'stablecoin') {
     keys.push('subscription_stablecoins');
   }
@@ -718,7 +727,14 @@ export function isDeploymentReadyField(field: ProductSetupField): boolean {
 }
 
 export function toProductSetupDeploymentWarnings(record: ProductSetupRecord): ProductSetupDeploymentWarning[] {
-  return deploymentProductSetupFieldKeys
+  const deploymentFieldKeys = deploymentProductSetupFieldKeys.filter((fieldKey) => {
+    if (fieldKey === 'subscription_stablecoins') {
+      return String(record.fields.subscription_payment_method.value ?? '').toLowerCase() === 'stablecoin';
+    }
+    return true;
+  });
+
+  return deploymentFieldKeys
     .map((fieldKey) => record.fields[fieldKey])
     .filter((field) => !isDeploymentReadyField(field))
     .map((field) => ({
@@ -822,6 +838,7 @@ function toProductSetupRequirementSections(record: ProductSetupRecord): ProductS
     ...(String(record.fields.subscription_payment_method.value ?? '').toLowerCase() === 'stablecoin'
       ? (['subscription_stablecoins'] as const)
       : []),
+    'minimum_subscription_amount',
     'redemption_payment_method',
     ...(String(record.fields.redemption_payment_method.value ?? '').toLowerCase() === 'stablecoin'
       ? (['redemption_stablecoin_type'] as const)
@@ -888,6 +905,7 @@ function productSetupFieldHelperText(fieldKey: ProductSetupFieldKey): string | u
     base_currency: 'Only one base currency is allowed.',
     subscription_payment_method: 'Subscription payment method determines whether stablecoin details are needed.',
     subscription_stablecoins: 'Shown only when subscription payment method is stablecoin.',
+    minimum_subscription_amount: 'Minimum subscription amount is staged for the Subscription tab and PRD assumptions.',
     redemption_payment_method: 'Redemption payment method determines whether stablecoin payout details are needed.',
     redemption_stablecoin_type: 'Shown only when redemption payment method is stablecoin.',
     minimum_redemption_amount: 'Default MVP assumption: 1 token.',
@@ -1071,6 +1089,7 @@ function productSetupHandoffTargetFieldKey(
     subscription: {
       subscription_cadence: 'subscriptionCadence',
       subscription_stablecoins: 'permittedStablecoins',
+      minimum_subscription_amount: 'minimumSubscriptionAmount',
       subscription_receiving_wallet: 'paymentAddress',
       initial_distribution_date: 'subscriptionWindow',
     },
@@ -1512,6 +1531,7 @@ const directUserStatedProductSetupFields = new Set<ProductSetupFieldKey>([
   'subscription_cadence',
   'subscription_payment_method',
   'subscription_stablecoins',
+  'minimum_subscription_amount',
   'redemption_payment_method',
   'redemption_stablecoin_type',
   'redemption_cadence',

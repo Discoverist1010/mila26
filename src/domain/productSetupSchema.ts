@@ -51,6 +51,7 @@ export type ProductSetupFieldKey =
   | 'subscription_cadence'
   | 'subscription_payment_method'
   | 'subscription_stablecoins'
+  | 'minimum_subscription_amount'
   | 'subscription_receiving_wallet'
   | 'redemption_cadence'
   | 'redemption_payment_method'
@@ -351,6 +352,7 @@ export const allProductSetupFieldKeys = [
   'subscription_cadence',
   'subscription_payment_method',
   'subscription_stablecoins',
+  'minimum_subscription_amount',
   'subscription_receiving_wallet',
   'redemption_cadence',
   'redemption_payment_method',

@@ -94,6 +94,7 @@ const ProductSetupFieldKeyPersistenceSchema = z.enum([
   'subscription_cadence',
   'subscription_payment_method',
   'subscription_stablecoins',
+  'minimum_subscription_amount',
   'subscription_receiving_wallet',
   'redemption_cadence',
   'redemption_payment_method',
@@ -319,6 +320,14 @@ const ProductSetupFieldsPersistenceSchema = z
       }),
     ),
     subscription_stablecoins: ProductSetupFieldPersistenceSchema,
+    minimum_subscription_amount: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'minimum_subscription_amount',
+        label: 'Minimum subscription amount',
+        usedByTabs: ['Subscription', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
     subscription_receiving_wallet: ProductSetupFieldPersistenceSchema.default(() =>
       defaultProductSetupField({
         key: 'subscription_receiving_wallet',

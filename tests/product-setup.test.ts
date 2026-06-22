@@ -467,6 +467,86 @@ describe('Product Setup record', () => {
     });
   });
 
+  it('commits a low-mess PRD setup script without requiring stablecoins for offchain payments', () => {
+    const message = [
+      'hi, i need to set up a new tokenised fund. here are the details:',
+      'product name: MERIDIAN Growth Fund',
+      'short name / symbol: MGF',
+      'launch date: 1 April 2027',
+      'base currency: USD',
+      'product wrapper: fund',
+      'underlying asset class: fixed income (bonds)',
+      'product term type: closed-ended',
+      'duration: 24 months (so maturity would be April 2029)',
+      'income treatment: distribute',
+      'offering type: private placement',
+      'eligible investor type: accredited investors',
+      'max investors: 30 (i know the cap is 50, just want 30 for this one)',
+      'distribution jurisdiction: Singapore',
+      'nav cadence: monthly, fixed at $1 per token',
+      'nav upload method: CSV (as per default)',
+      'nav uploaded 1 day before subscription day',
+      'subscription / mint cadence: monthly',
+      'redemption / burn cadence: monthly',
+      'subscription payment method: fiat, off-chain',
+      'redemption payment method: fiat, off-chain',
+      'minimum subscription amount: $10,000',
+      'minimum redemption amount: 1 token (default is fine)',
+      'subscription window opens 2 weeks before launch date, closes on launch date',
+      'whitelisted wallets required: yes',
+      'p2p transfer allowed: yes, but only between whitelisted wallets',
+      'compliance model: whitelist-based transfer restrictions (default)',
+      'income distribution: monthly, paid 1 day before redemption date',
+      'eligible investors verified offchain — smart contract does not need to handle investor verification',
+      'blockchain network: Sepolia testnet (default)',
+      'protocol base: ERC-20 customised',
+      'evidence model: store PRD, approvals, tx hashes, artefacts, version history (default)',
+    ].join('\n');
+
+    const result = reconcileProductSetupIntake(createInitialProductSetupRecord(facts), {
+      userMessage: message,
+      sourceRef: 'chat_turn_v3_low_mess',
+    });
+    const readModel = toProductSetupReadModel(result.record);
+    const profileRowsById = new Map(readModel.profileRows.map((row) => [row.id, row]));
+
+    expect(result.record.fields.product_name).toMatchObject({ value: 'MERIDIAN Growth Fund', status: 'user_stated' });
+    expect(result.record.fields.token_symbol).toMatchObject({ value: 'MGF', status: 'user_stated' });
+    expect(result.record.fields.product_launch_date).toMatchObject({ value: '2027-04-01', status: 'user_stated' });
+    expect(result.record.fields.base_currency).toMatchObject({ value: 'USD', status: 'user_stated' });
+    expect(result.record.fields.product_wrapper).toMatchObject({ value: 'Fund', status: 'user_stated' });
+    expect(result.record.fields.underlying_asset_class).toMatchObject({ value: 'Bonds', status: 'user_stated' });
+    expect(result.record.fields.product_structure).toMatchObject({ value: 'Closed-ended', status: 'user_stated' });
+    expect(result.record.fields.duration_months).toMatchObject({ value: 24, status: 'user_stated' });
+    expect(result.record.fields.derived_maturity_date).toMatchObject({ value: '2029-04-02', status: 'system_default' });
+    expect(result.record.fields.income_treatment).toMatchObject({ value: 'Distributing', status: 'user_stated' });
+    expect(result.record.fields.income_payout_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
+    expect(result.record.fields.offering_type).toMatchObject({ value: 'Private', status: 'user_stated' });
+    expect(result.record.fields.eligible_investor_type).toMatchObject({ value: 'Accredited investor', status: 'user_stated' });
+    expect(result.record.fields.expected_investor_count).toMatchObject({ value: 30, status: 'user_stated' });
+    expect(result.record.fields.maximum_investor_count).toMatchObject({ value: 30, status: 'user_stated' });
+    expect(result.record.fields.nav_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
+    expect(result.record.fields.nav_upload_method).toMatchObject({ value: 'CSV', status: 'locked' });
+    expect(result.record.fields.subscription_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
+    expect(result.record.fields.redemption_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
+    expect(result.record.fields.subscription_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
+    expect(result.record.fields.redemption_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
+    expect(result.record.fields.minimum_subscription_amount).toMatchObject({ value: '$10,000', status: 'user_stated' });
+    expect(result.record.fields.minimum_redemption_amount).toMatchObject({ value: '1 token', status: 'user_stated' });
+    expect(result.record.fields.whitelisted_wallets_required).toMatchObject({ value: true, status: 'user_stated' });
+    expect(result.record.fields.p2p_transfer_allowed).toMatchObject({ value: true, status: 'user_stated' });
+    expect(result.record.fields.prototype_network).toMatchObject({ value: 'Sepolia testnet', status: 'locked' });
+    expect(result.record.fields.protocol_base).toMatchObject({ value: 'Customised ERC-20', status: 'user_stated' });
+    expect(result.record.fields.redemption_payout_delay.status).toBe('missing');
+
+    expect(readModel.missingEssentials).not.toEqual(expect.arrayContaining(['subscription_stablecoins', 'redemption_stablecoin_type']));
+    expect(profileRowsById.get('product_name')).toMatchObject({ value: 'MERIDIAN Growth Fund', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('product_launch_date')).toMatchObject({ value: '2027-04-01', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('duration_months')).toMatchObject({ value: '24 months', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('derived_maturity_date')).toMatchObject({ value: '2029-04-02', provenanceLabel: 'Assumed' });
+    expect(profileRowsById.get('protocol_base')).toMatchObject({ value: 'Customised ERC-20', provenanceLabel: 'Stated' });
+  });
+
   it('decomposes compound offering and eligibility phrases without misusing product structure', () => {
     const textSuggestions = createProductSetupSuggestionsFromText(
       'Offering type is private placement to accredited investors.',

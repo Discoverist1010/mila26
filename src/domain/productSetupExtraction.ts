@@ -48,12 +48,74 @@ function hasProductSetupIntent(value: string): boolean {
 }
 
 const productSetupTextExtractionRules: ProductSetupTextExtractionRule[] = [
+  extractSchemaFirstAssertions,
   extractIdentityAndTypeAssertions,
   extractTimingAssertions,
   extractSettlementAndWalletAssertions,
   extractServicingAssertions,
   extractProtocolAssertions,
 ];
+
+function extractSchemaFirstAssertions({
+  original,
+  sourceRef,
+}: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
+  return parseProductSetupLabeledAssertions(original).flatMap(({ label, value }) => {
+    const fieldKeys = normalizeProductSetupFieldAliases(label);
+    if (fieldKeys.length === 0) return [];
+
+    const proposedValue = normalizeSuggestedUpdateValue(value);
+    if (proposedValue === undefined) return [];
+
+    return fieldKeys.flatMap((fieldKey) => {
+      const normalizedUpdates = decomposeStructuredProductSetupUpdate(fieldKey, proposedValue);
+      return normalizedUpdates.flatMap(({ fieldKey: normalizedFieldKey, proposedValue: normalizedProposedValue }) => {
+        const fieldScopedValue = normalizeSuggestedUpdateValueForField(normalizedFieldKey, normalizedProposedValue);
+        if (fieldScopedValue === undefined) return [];
+
+        return createSuggestedUpdate(
+          normalizedFieldKey,
+          fieldScopedValue,
+          `User provided ${humanizeProductSetupFieldLabel(label)} as a labeled Product Setup field.`,
+          sourceRef,
+          0.94,
+        );
+      });
+    });
+  });
+}
+
+function parseProductSetupLabeledAssertions(text: string): Array<{ label: string; value: string }> {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/^[-*•]\s*/, ''))
+    .filter(Boolean)
+    .flatMap((line) => {
+      const explicitSeparatorMatch = line.match(
+        /^([A-Za-z][A-Za-z0-9\s/()&+_.-]{1,90}?)(?:\s*(?:->|=>|=|:)\s*)(.+)$/i,
+      );
+      if (explicitSeparatorMatch?.[1] && explicitSeparatorMatch[2]) {
+        return [{ label: explicitSeparatorMatch[1].trim(), value: explicitSeparatorMatch[2].trim() }];
+      }
+
+      const fieldLikeIsMatch = line.match(
+        /^(product\s+name|fund\s+name|portfolio\s+name|short\s+name(?:\s*\/\s*symbol)?|symbol|ticker|launch\s+date|base\s+(?:ccy|currency)|product\s+wrapper|underlying(?:\s+asset\s+class)?|asset\s+class|product\s+term\s+type|product\s+structure|duration|offering\s+type|eligible\s+investor\s+type|maximum\s+number\s+of\s+investors|max\s+investors|nav\s+cadence|nav\s+upload\s+method|subscription\s*\/\s*mint\s+cadence|redemption\s*\/\s*burn\s+cadence|subscription\s+payment\s+method|redemption\s+payment\s+method|minimum\s+subscription\s+amount|minimum\s+redemption\s+amount|whitelisted\s+wallets\s+required|p2p\s+transfer\s+allowed|blockchain\s+network|protocol\s+base|compliance\s+model|evidence\s+model)\s+(?:is|are)\s+(.+)$/i,
+      );
+      if (fieldLikeIsMatch?.[1] && fieldLikeIsMatch[2]) {
+        return [{ label: fieldLikeIsMatch[1].trim(), value: fieldLikeIsMatch[2].trim() }];
+      }
+
+      return [];
+    });
+}
+
+function humanizeProductSetupFieldLabel(label: string): string {
+  return label
+    .trim()
+    .replace(/[_/]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
 
 function extractIdentityAndTypeAssertions({
   original,
@@ -374,6 +436,15 @@ function decomposeStructuredProductSetupUpdate(
 ): Array<{ fieldKey: ProductSetupFieldKey; proposedValue: ProductSetupFieldValue }> {
   if (typeof proposedValue !== 'string') return [{ fieldKey, proposedValue }];
 
+  if (fieldKey === 'income_treatment') {
+    const updates: Array<{ fieldKey: ProductSetupFieldKey; proposedValue: ProductSetupFieldValue }> = [];
+    const incomeTreatment = normalizeSuggestedUpdateValueForField(fieldKey, proposedValue);
+    const incomeCadence = cadenceLabelFromText(normalizeProductSetupExtractionText(proposedValue));
+    if (incomeTreatment) updates.push({ fieldKey, proposedValue: incomeTreatment });
+    if (incomeCadence) updates.push({ fieldKey: 'income_payout_cadence', proposedValue: incomeCadence });
+    return updates;
+  }
+
   if (fieldKey === 'offering_type') {
     const updates: Array<{ fieldKey: ProductSetupFieldKey; proposedValue: ProductSetupFieldValue }> = [];
     const offeringType = normalizeOfferingTypeValue(proposedValue);
@@ -412,6 +483,10 @@ function normalizeProductSetupFieldAliases(field: string): ProductSetupFieldKey[
     return ['subscription_cadence', 'redemption_cadence'];
   }
 
+  if (/^(?:max|maximum).*investors?$|^maximum_number_of_investors$|^investor_cap$/.test(normalized)) {
+    return ['expected_investor_count', 'maximum_investor_count'];
+  }
+
   const aliases: Record<string, ProductSetupFieldKey> = {
     expected_investors: 'expected_investor_count',
     investor_count: 'expected_investor_count',
@@ -423,12 +498,23 @@ function normalizeProductSetupFieldAliases(field: string): ProductSetupFieldKey[
     vehicle_name: 'product_name',
     product_short_name: 'token_symbol',
     short_name: 'token_symbol',
+    short_name_symbol: 'token_symbol',
+    symbol: 'token_symbol',
+    ticker: 'token_symbol',
+    launch_date: 'product_launch_date',
+    ipo_date: 'product_launch_date',
+    base_ccy: 'base_currency',
     base_currency_denomination: 'base_currency',
+    wrapper: 'product_wrapper',
+    underlying: 'underlying_asset_class',
+    underlying_asset: 'underlying_asset_class',
+    asset_class: 'underlying_asset_class',
     maturity: 'maturity_date',
     term: 'maturity_date',
     launch_date_term: 'maturity_date',
     product_term: 'product_structure',
     product_term_type: 'product_structure',
+    product_structure_type: 'product_structure',
     term_type: 'product_structure',
     structure: 'product_structure',
     product_duration: 'duration_months',
@@ -442,14 +528,23 @@ function normalizeProductSetupFieldAliases(field: string): ProductSetupFieldKey[
     income_treatment_rule: 'income_treatment',
     subscription_frequency: 'subscription_cadence',
     subscription_mint_cadence: 'subscription_cadence',
+    subscription_payment: 'subscription_payment_method',
     subscription_stablecoin_type: 'subscription_stablecoins',
     subscription_stablecoin: 'subscription_stablecoins',
+    minimum_subscription: 'minimum_subscription_amount',
+    minimum_subscription_amount: 'minimum_subscription_amount',
+    minimum_sub_amount: 'minimum_subscription_amount',
+    min_subscription_amount: 'minimum_subscription_amount',
     redemption_frequency: 'redemption_cadence',
     redemption_burn_cadence: 'redemption_cadence',
+    redemption_payment: 'redemption_payment_method',
     redemption_stablecoin: 'redemption_stablecoin_type',
+    minimum_redemption: 'minimum_redemption_amount',
+    min_redemption_amount: 'minimum_redemption_amount',
     valuation_cadence: 'nav_cadence',
     valuation_update_requirement: 'nav_cadence',
     nav_cadence_format: 'nav_cadence',
+    nav_upload_method: 'nav_upload_method',
     nav_provider: 'nav_source',
     nav_source_actor: 'nav_source',
     nav_update_rule: 'investor_update_rule',
@@ -457,7 +552,15 @@ function normalizeProductSetupFieldAliases(field: string): ProductSetupFieldKey[
     investor_update: 'investor_update_rule',
     wallet_whitelist_requirement: 'whitelisted_wallets_required',
     whitelist_requirement: 'whitelisted_wallets_required',
+    whitelist_required: 'whitelisted_wallets_required',
+    whitelisted_wallets_required: 'whitelisted_wallets_required',
+    p2p_transfer_allowed: 'p2p_transfer_allowed',
+    peer_to_peer_transfer_allowed: 'p2p_transfer_allowed',
     wallet_rule: 'investor_wallet_rule',
+    blockchain_network: 'prototype_network',
+    network: 'prototype_network',
+    protocol: 'protocol_base',
+    token_protocol_preference: 'protocol_base',
     burn_rule: 'burn_lock_rule',
   };
 
@@ -480,9 +583,38 @@ function normalizeSuggestedUpdateValueForField(
   const normalized = trimmed.toLowerCase();
 
   if (fieldKey === 'protocol_base') {
-    if (/customi[sz]ed\s+erc-?\s*20|custom\s+erc-?\s*20/.test(normalized)) return 'Customised ERC-20';
+    if (/(?:customi[sz]ed|custom)[\s-]*erc-?\s*20|erc-?\s*20[\s-]*(?:customi[sz]ed|custom)/.test(normalized)) {
+      return 'Customised ERC-20';
+    }
     if (/erc-?\s*3643|erc3643/.test(normalized)) return 'ERC-3643';
+    if (/erc-?\s*4626|erc4626/.test(normalized)) return 'ERC-4626';
     if (/erc-?\s*20|erc20/.test(normalized)) return 'ERC-20';
+  }
+
+  if (fieldKey === 'product_launch_date') return normalizeProductSetupDate(trimmed);
+
+  if (fieldKey === 'product_wrapper') {
+    if (/\bfund\b/.test(normalized)) return 'Fund';
+    if (/\bbond\b|\bnote\b/.test(normalized)) return 'Bond';
+    if (/\bequity\b|\bshare\b/.test(normalized)) return 'Equity';
+    if (/\bprivate\s+asset\b|\bprivate\b/.test(normalized)) return 'Private asset';
+    return 'Other';
+  }
+
+  if (fieldKey === 'underlying_asset_class') {
+    if (/\bfixed\s+income\b|\bbonds?\b/.test(normalized)) return 'Bonds';
+    if (/\bequit(?:y|ies)\b|\bstocks?\b/.test(normalized)) return 'Equities';
+    if (/\bprivate\s+credit\b/.test(normalized)) return 'Private credit';
+    if (/\bmoney\s+market\b/.test(normalized)) return 'Money market fund';
+    if (/\bmixed\b|\bportfolio\b/.test(normalized)) return 'Mixed portfolio';
+    return titleCaseProductSetupValue(trimmed);
+  }
+
+  if (fieldKey === 'product_type') return titleCaseProductSetupValue(trimmed);
+
+  if (fieldKey === 'expected_investor_count' || fieldKey === 'maximum_investor_count') {
+    const count = Number(trimmed.match(/\b(\d{1,4})\b/)?.[1] ?? trimmed);
+    return Number.isFinite(count) && count > 0 ? count : undefined;
   }
 
   if (fieldKey === 'base_currency') return trimmed.toUpperCase();
@@ -496,6 +628,21 @@ function normalizeSuggestedUpdateValueForField(
   if (fieldKey === 'duration_months') {
     const parsedDuration = durationMonthsFromTerm(trimmed) ?? Number(trimmed);
     return Number.isFinite(parsedDuration) && parsedDuration > 0 ? parsedDuration : undefined;
+  }
+
+  if (
+    fieldKey === 'subscription_cadence' ||
+    fieldKey === 'redemption_cadence' ||
+    fieldKey === 'income_payout_cadence' ||
+    fieldKey === 'redemption_payout_cadence' ||
+    fieldKey === 'nav_cadence'
+  ) {
+    return cadenceLabelFromText(normalized) ?? trimmed;
+  }
+
+  if (fieldKey === 'nav_upload_method') {
+    if (/\bcsv\b/.test(normalized)) return 'CSV';
+    return trimmed.toUpperCase();
   }
 
   if (fieldKey === 'subscription_payment_method' || fieldKey === 'redemption_payment_method') {
@@ -516,6 +663,20 @@ function normalizeSuggestedUpdateValueForField(
   if (fieldKey === 'income_treatment') {
     if (/^no\b|no income|accumulat|reinvest/.test(normalized)) return 'No income distribution';
     if (/yes|distribut|dividend|coupon|income/.test(normalized)) return 'Distributing';
+  }
+
+  if (fieldKey === 'whitelisted_wallets_required' || fieldKey === 'p2p_transfer_allowed') {
+    if (/\b(no|false|not required|disabled|disallowed|not allowed)\b/.test(normalized)) return false;
+    if (/\b(yes|true|required|enabled|allowed|only|whitelist|whitelisted)\b/.test(normalized)) return true;
+  }
+
+  if (fieldKey === 'prototype_network') {
+    if (/\bsepolia\b/.test(normalized)) return 'Sepolia testnet';
+    return trimmed;
+  }
+
+  if (fieldKey === 'minimum_subscription_amount' || fieldKey === 'minimum_redemption_amount') {
+    return trimmed.replace(/\s*\([^)]*\)\s*$/g, '').trim();
   }
 
   return value;
@@ -690,6 +851,13 @@ function extractRedemptionScheduleAssertion(value: string): string | undefined {
 }
 
 function extractRedemptionPayoutDelayAssertion(value: string): string | undefined {
+  if (
+    /\b(income|distribution|dividend|coupon)\b/i.test(value) &&
+    !/\bredemption\s+(?:payout|payment|settlement)\b/i.test(value)
+  ) {
+    return undefined;
+  }
+
   const match = value.match(
     /\b(?:redemption\s+)?(?:payout|payment|settlement|settle|paid)[^.!?;]{0,60}\b(?:delay|delayed|after|within|takes?|t\+)?\s*(\d{1,3}\s*(?:business\s*)?(?:days?|hours?|weeks?))\b|\b(\d{1,3}\s*(?:business\s*)?(?:days?|hours?|weeks?))\s+(?:redemption\s+)?(?:payout|payment|settlement|settle)\s*(?:delay|period|window)?\b/i,
   );
