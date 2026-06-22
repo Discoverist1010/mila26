@@ -32,6 +32,8 @@ export function createProductSetupSuggestionsFromText(
 function normalizeProductSetupExtractionText(value: string): string {
   return value
     .toLowerCase()
+    .replace(/\bdistro\b/g, 'distribution')
+    .replace(/\bsub\s*\+\s*redemption\b/g, 'subscription and redemption')
     .replace(/\bnon[-\s]+white[-\s]+listed\b/g, 'non-whitelisted')
     .replace(/\bwhite[-\s]+listed\b/g, 'whitelisted')
     .replace(/\bwhite[-\s]+list\b/g, 'whitelist')
@@ -61,7 +63,9 @@ function extractIdentityAndTypeAssertions({
   const updates: ProductSetupSuggestedUpdate[] = [];
   const allowGenericNameAssertion = hasProductSetupIntent(normalized);
   const productNameMatch = firstMatch(original, [
+    /\b(?:actually\s+)?(?:let'?s\s+)?(?:just\s+)?call\s+it\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s*(?:,\s*)?(?:symbol|ticker)\b|[.?!,]|$)/i,
     /\b(?:product|fund|portfolio|vehicle)\s+name\s+(?:is|=|:)\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s+(?:and|with|as|it\s+is|symbol\s+is)|[.?!,]|$)/i,
+    /\b(?:fund|product|portfolio|vehicle)\s*=\s*([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s*(?:,\s*)?(?:symbol|ticker)\b|[.?!,]|$)/i,
     /\bproduct\s+display\s+name\s+(?:is|=|:)\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s+(?:and|with|as|it\s+is|symbol\s+is)|[.?!,]|$)/i,
     ...(allowGenericNameAssertion
       ? [
@@ -69,10 +73,11 @@ function extractIdentityAndTypeAssertions({
         ]
       : []),
   ]);
-  const tokenSymbolMatch = original.match(/\b(?:token\s+)?symbol\s+is\s+([A-Z][A-Z0-9]{1,11})\b/i);
+  const tokenSymbolMatch = original.match(/\b(?:token\s+)?(?:symbol|ticker)\s*(?:is|=|:)?\s+([A-Z][A-Z0-9]{1,11})\b/i);
   const baseCurrencyMatch =
     normalized.match(/\b(?:with\s+)?([a-z]{3,6})\s+as\s+(?:a\s+)?base\s+currency\b/) ??
-    normalized.match(/\bbase\s+currency\s*(?:is|=|:)?\s*([a-z]{3,6})\b/);
+    normalized.match(/\bbase\s+currency\s*(?:is|=|:)?\s*([a-z]{3,6})\b/) ??
+    normalized.match(/\bccy\s*(?:is|=|:)?\s*([a-z]{3,6})\b/);
   const productTypeMatch =
     normalized.match(/\bproduct\s+type\s+(?:is|=|:)\s+(pooled\s+fund|private\s+credit\s+fund|credit\s+fund|investment\s+fund|fund|note|bond|portfolio)\b/) ??
     normalized.match(/\b(?:it\s+is\s+)?(?:a\s+)?(pooled\s+fund|private\s+credit\s+fund|credit\s+fund|investment\s+fund|fund|note|bond|portfolio)\b/);
@@ -88,7 +93,7 @@ function extractIdentityAndTypeAssertions({
     normalized.match(/\b(?:offering|distribution)\s+(?:is|=|:)?\s+(private\s+placement|restricted|private|institutional[-\s]?only|retail|all)\b/) ??
     normalized.match(/\b(private\s+placement)\b/) ??
     normalized.match(/\b(restricted|private|institutional[-\s]?only|retail|all)\s+(?:offering|distribution|product)\b/);
-  const investorTypeMatch = normalized.match(/\b(retail|high net worth|accredited investor|institutional|all)\s+(?:investors?|holders?)\b/);
+  const eligibleInvestorType = extractEligibleInvestorTypeValue(normalized);
   const investorMatch = normalized.match(/(?:about\s*)?(\d{1,3})(?:\s*-\s*\d{1,3})?\s+(?:investors|wallets)|(\d{1,3})\s*-\s*(\d{1,3})\s+investors/);
 
   if (productNameMatch?.[1]) {
@@ -110,10 +115,13 @@ function extractIdentityAndTypeAssertions({
     updates.push(createSuggestedUpdate('product_structure', normalizeProductStructure(structureMatch[1]), 'User described the product structure.', sourceRef, 0.82));
   }
   if (offeringMatch?.[1]) {
-    updates.push(createSuggestedUpdate('offering_type', titleCaseProductSetupValue(offeringMatch[1].replace('-', ' ')), 'User described the offering type.', sourceRef, 0.78));
+    const offeringType = normalizeOfferingTypeValue(offeringMatch[1]);
+    if (offeringType) {
+      updates.push(createSuggestedUpdate('offering_type', offeringType, 'User described the offering type.', sourceRef, 0.78));
+    }
   }
-  if (investorTypeMatch?.[1]) {
-    updates.push(createSuggestedUpdate('eligible_investor_type', titleCaseProductSetupValue(investorTypeMatch[1]), 'User described the eligible investor type.', sourceRef, 0.8));
+  if (eligibleInvestorType) {
+    updates.push(createSuggestedUpdate('eligible_investor_type', eligibleInvestorType, 'User described the eligible investor type.', sourceRef, 0.8));
   }
   if (baseCurrencyMatch?.[1]) {
     updates.push(createSuggestedUpdate('base_currency', baseCurrencyMatch[1].toUpperCase(), 'User stated the base currency.', sourceRef, 0.88));
@@ -136,7 +144,7 @@ function extractTimingAssertions({
   const payoutDelay = extractRedemptionPayoutDelayAssertion(normalized);
   const ipoDateMatch =
     original.match(/\b(?:ipo|launch|initial\s+distribution)\s+date(?:\s+\w+){0,3}\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i) ??
-    original.match(/\b(?:launch(?:es|ed)?|launched|starts?|started)\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
+    original.match(/\b(?:launch(?:es|ed|ing)?|launched|starts?|started)\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
   const initialRegisterMatch = original.match(/\binitial\s+register\s+of\s+(\d{1,3})\s+investors?\s+will\s+be\s+([^.,;]+)/i);
   const maturityTermMatch =
     original.match(/\bmaturity\s*(?:is|=|:)?\s*(\d{1,3}\s+(?:years?|months?|quarters?)\s+after\s+(?:launch|ipo|ipo\s+date|opo|opo\s+date|initial\s+distribution)(?:\s+(?:date\s+)?of\s+\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})?)\b/i) ??
@@ -149,22 +157,22 @@ function extractTimingAssertions({
   const maturityDateMatch =
     original.match(/\bmaturity(?:\s+date)?\s*(?:is|=|:)?\s*(\d{4}-\d{2}-\d{2})\b/i) ??
     original.match(/\bmaturity(?:\s+date)?\s*(?:is|=|:)?\s*(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
-  const subscriptionCadence = extractSubscriptionCadenceAssertion(normalized) ?? extractCadenceNear(
-    normalized,
-    '(?:subscrib\\w*|subscription\\w*|buy|new\\s+investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|accept\\s+new\\s+investors?|new\\s+money\\s+comes?\\s+in)',
-  );
-  const redemptionCadence = extractRedemptionCadenceAssertion(normalized) ?? extractCadenceNear(
-    normalized,
-    '(?:redeem\\w*|redemption\\w*|existing\\s+investors?\\s+(?:can\\s+)?(?:sell\\s+out|exit|cash\\s+out|withdraw)|investors?\\s+(?:can\\s+)?(?:sell\\s+out|exit|cash\\s+out|withdraw)|sell\\s+out|cash\\s+out|withdraw)',
-  );
-  const redemptionSchedule = extractRedemptionScheduleAssertion(normalized);
-  const redemptionPayoutCadence = extractCadenceNear(normalized, '(?:redemption payout|settle\\w*|settlement\\w*)');
   const combinedSubscriptionRedemptionCadence =
     extractCombinedSubscriptionRedemptionCadence(normalized) ??
     extractCadenceNear(
       normalized,
       '(?:subscription\\s*/\\s*redemption|subscription\\s+and\\s+redemption|subscriptions\\s*/\\s*redemptions|subscribe\\s+and\\s+redeem)',
     );
+  const subscriptionCadence = combinedSubscriptionRedemptionCadence ?? extractSubscriptionCadenceAssertion(normalized) ?? extractCadenceNear(
+    normalized,
+    '(?:subscrib\\w*|subscription\\w*|buy|new\\s+investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|accept\\s+new\\s+investors?|new\\s+money\\s+comes?\\s+in)',
+  );
+  const redemptionCadence = combinedSubscriptionRedemptionCadence ?? extractRedemptionCadenceAssertion(normalized) ?? extractCadenceNear(
+    normalized,
+    '(?:redeem\\w*|redemption\\w*|existing\\s+investors?\\s+(?:can\\s+)?(?:sell\\s+out|exit|cash\\s+out|withdraw)|investors?\\s+(?:can\\s+)?(?:sell\\s+out|exit|cash\\s+out|withdraw)|sell\\s+out|cash\\s+out|withdraw)',
+  );
+  const redemptionSchedule = extractRedemptionScheduleAssertion(normalized);
+  const redemptionPayoutCadence = extractCadenceNear(normalized, '(?:redemption payout|settle\\w*|settlement\\w*)');
 
   if (ipoDateMatch?.[1]) {
     const normalizedDate = normalizeProductSetupDate(ipoDateMatch[1]);
@@ -195,12 +203,6 @@ function extractTimingAssertions({
   }
   if (redemptionSchedule) {
     updates.push(createSuggestedUpdate('redemption_schedule', redemptionSchedule, 'User described when redemptions begin.', sourceRef, 0.8));
-  }
-  if (combinedSubscriptionRedemptionCadence && !subscriptionCadence) {
-    updates.push(createSuggestedUpdate('subscription_cadence', combinedSubscriptionRedemptionCadence, `User described ${combinedSubscriptionRedemptionCadence.toLowerCase()} subscription timing.`, sourceRef, 0.82));
-  }
-  if (combinedSubscriptionRedemptionCadence && !redemptionCadence) {
-    updates.push(createSuggestedUpdate('redemption_cadence', combinedSubscriptionRedemptionCadence, `User described ${combinedSubscriptionRedemptionCadence.toLowerCase()} redemption timing.`, sourceRef, 0.82));
   }
   if (redemptionPayoutCadence) {
     updates.push(createSuggestedUpdate('redemption_payout_cadence', redemptionPayoutCadence, `User described ${redemptionPayoutCadence.toLowerCase()} redemption payout settlement timing.`, sourceRef, 0.78));
@@ -259,7 +261,7 @@ function extractSettlementAndWalletAssertions({
     updates.push(createSuggestedUpdate('whitelisted_wallets_required', true, 'User described approved or whitelisted wallet access.', sourceRef, 0.9));
     updates.push(createSuggestedUpdate('investor_wallet_rule', 'Approved wallets only; transfers should stay between approved wallets.', 'User described approved or whitelisted wallet access.', sourceRef, 0.86));
   }
-  if (/peer\s*to\s*peer|p2p|buy-sell|buy sell|transfer.+each other|transact(?:ions?)?\s+between\s+themselves|trade\s+between\s+themselves|transfer\s+between\s+(?:investors|holders|wallets)/.test(normalized)) {
+  if (/peer\s*to\s*peer|p2p|buy-sell|buy sell|(?:transfer|move)\s+(?:tokens?\s+)?between\s+each other|transact(?:ions?)?\s+between\s+(?:themselves|each other)|trade\s+between\s+themselves|transfer\s+between\s+(?:investors|holders|wallets)/.test(normalized)) {
     updates.push(createSuggestedUpdate('p2p_transfer_allowed', true, 'User described investor peer-to-peer transfers.', sourceRef, 0.82));
     updates.push(createSuggestedUpdate('investor_wallet_rule', 'Approved investors may transfer peer-to-peer only to other approved wallets.', 'User described investor peer-to-peer transfers.', sourceRef, 0.82));
   }
@@ -275,8 +277,11 @@ function extractServicingAssertions({
   sourceRef,
 }: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
   const updates: ProductSetupSuggestedUpdate[] = [];
-  const valuationCadence = extractCadenceNear(normalized, '(?:valuation|nav)');
-  const incomePayoutCadence = extractCadenceNear(
+  const valuationCadence = extractLabeledCadence(normalized, '(?:valuation|nav)') ?? extractCadenceNear(normalized, '(?:valuation|nav)');
+  const incomePayoutCadence = extractLabeledCadence(
+    normalized,
+    '(?:income\\s+distribution|distribution\\w*|distribut\\w*|dividend\\w*|coupon\\w*|income payout|cash distribution)',
+  ) ?? extractCadenceNear(
     normalized,
     '(?:income\\s+distribution|distribution\\w*|distribut\\w*|dividend\\w*|coupon\\w*|income payout|cash distribution)',
   );
@@ -339,10 +344,9 @@ export function createProductSetupSuggestionsFromStructuredUpdates(
       typeof proposedValue === 'string' && fieldKeys.includes('maturity_date')
         ? durationMonthsFromTerm(proposedValue)
         : undefined;
-    const normalizedUpdates = fieldKeys.map((fieldKey) => ({
-      fieldKey,
-      proposedValue,
-    }));
+    const normalizedUpdates = fieldKeys.flatMap((fieldKey) =>
+      decomposeStructuredProductSetupUpdate(fieldKey, proposedValue),
+    );
     if (derivedDurationMonths !== undefined && !fieldKeys.includes('duration_months')) {
       normalizedUpdates.push({ fieldKey: 'duration_months', proposedValue: derivedDurationMonths });
     }
@@ -362,6 +366,37 @@ export function createProductSetupSuggestionsFromStructuredUpdates(
       }];
     });
   });
+}
+
+function decomposeStructuredProductSetupUpdate(
+  fieldKey: ProductSetupFieldKey,
+  proposedValue: ProductSetupFieldValue,
+): Array<{ fieldKey: ProductSetupFieldKey; proposedValue: ProductSetupFieldValue }> {
+  if (typeof proposedValue !== 'string') return [{ fieldKey, proposedValue }];
+
+  if (fieldKey === 'offering_type') {
+    const updates: Array<{ fieldKey: ProductSetupFieldKey; proposedValue: ProductSetupFieldValue }> = [];
+    const offeringType = normalizeOfferingTypeValue(proposedValue);
+    const eligibleInvestorType = extractEligibleInvestorTypeValue(proposedValue);
+    const productStructure = extractProductStructureValue(proposedValue);
+
+    if (offeringType) updates.push({ fieldKey: 'offering_type', proposedValue: offeringType });
+    if (eligibleInvestorType) updates.push({ fieldKey: 'eligible_investor_type', proposedValue: eligibleInvestorType });
+    if (productStructure) updates.push({ fieldKey: 'product_structure', proposedValue: productStructure });
+    return updates;
+  }
+
+  if (fieldKey === 'eligible_investor_type') {
+    const eligibleInvestorType = extractEligibleInvestorTypeValue(proposedValue);
+    return eligibleInvestorType ? [{ fieldKey, proposedValue: eligibleInvestorType }] : [];
+  }
+
+  if (fieldKey === 'product_structure') {
+    const productStructure = extractProductStructureValue(proposedValue);
+    return productStructure ? [{ fieldKey, proposedValue: productStructure }] : [{ fieldKey, proposedValue }];
+  }
+
+  return [{ fieldKey, proposedValue }];
 }
 
 function normalizeProductSetupFieldAliases(field: string): ProductSetupFieldKey[] {
@@ -452,7 +487,11 @@ function normalizeSuggestedUpdateValueForField(
 
   if (fieldKey === 'base_currency') return trimmed.toUpperCase();
 
-  if (fieldKey === 'product_structure') return normalizeProductStructure(trimmed);
+  if (fieldKey === 'offering_type') return normalizeOfferingTypeValue(trimmed);
+
+  if (fieldKey === 'eligible_investor_type') return extractEligibleInvestorTypeValue(trimmed);
+
+  if (fieldKey === 'product_structure') return extractProductStructureValue(trimmed) ?? normalizeProductStructure(trimmed);
 
   if (fieldKey === 'duration_months') {
     const parsedDuration = durationMonthsFromTerm(trimmed) ?? Number(trimmed);
@@ -506,6 +545,44 @@ function normalizeProductStructure(value: string): string {
   return titleCaseProductSetupValue(value);
 }
 
+function extractProductStructureValue(value: string): string | undefined {
+  const normalized = normalizeProductSetupExtractionText(value);
+  const match = normalized.match(/\b(open[-\s]?ended|close[-\s]?ended|closed[-\s]?ended|fixed maturity)\b/);
+  return match?.[1] ? normalizeProductStructure(match[1]) : undefined;
+}
+
+function normalizeOfferingTypeValue(value: string): string | undefined {
+  const normalized = normalizeProductSetupExtractionText(value);
+  if (/\bclosed?[-\s]?ended\b|\bopen[-\s]?ended\b|\bfixed maturity\b/.test(normalized)) {
+    if (!/\b(private placement|restricted|private|institutional[-\s]?only|retail|public offering|all investors?|all offering)\b/.test(normalized)) {
+      return undefined;
+    }
+  }
+  if (/\bprivate placement\b|\bprivate\b/.test(normalized)) return 'Private';
+  if (/\brestricted\b/.test(normalized)) return 'Restricted';
+  if (/\binstitutional[-\s]?only\b|\binstitutional offering\b/.test(normalized)) return 'Institutional-only';
+  if (/\bretail\b|\bpublic offering\b/.test(normalized)) return 'Retail';
+  if (/\ball investors?\b|\ball offering\b|^all$/.test(normalized)) return 'All';
+  return undefined;
+}
+
+function extractEligibleInvestorTypeValue(value: string): string | undefined {
+  const normalized = normalizeProductSetupExtractionText(value);
+  if (/\bverified offchain\b|\bkyc offchain\b|\baml\b|\bno onchain investor verification\b|\bcontract (?:does not|don'?t|need not) verify\b/.test(normalized)) {
+    if (!/\b(retail|high net worth|hnw|accredited|professional|institutional|all investors?)\b/.test(normalized)) {
+      return undefined;
+    }
+  }
+  if (/\baccredited(?:\s+investors?)?\b|\bprofessional(?:\s+investors?)?\b|\bwholesale(?:\s+investors?)?\b/.test(normalized)) {
+    return 'Accredited investor';
+  }
+  if (/\bhigh net worth\b|\bhnw\b/.test(normalized)) return 'High net worth';
+  if (/\binstitutional(?:\s+investors?)?\b|\binstitutions\b/.test(normalized)) return 'Institutional';
+  if (/\bretail(?:\s+investors?)?\b/.test(normalized)) return 'Retail';
+  if (/\ball investors?\b|\ball eligible investors?\b|^all$/.test(normalized)) return 'All';
+  return undefined;
+}
+
 function normalizeMaturityTerm(value: string): string {
   return value
     .trim()
@@ -554,6 +631,16 @@ function normalizeProductSetupDate(value: string): string {
   const parsed = Date.parse(value);
   if (Number.isNaN(parsed)) return value.trim();
   return new Date(parsed).toISOString().slice(0, 10);
+}
+
+function extractLabeledCadence(value: string, contextPattern: string): string | undefined {
+  const match = value.match(
+    new RegExp(
+      `${contextPattern}(?:\\s+cadence|\\s+frequency|\\s+timing)?\\s*(?:->|=|:|-|–|—)?\\s*(intraday|daily|weekly|monthly|quarterly|half[-\\s]?yearly|semi[-\\s]?annual(?:ly)?|yearly|annual|annually)\\b`,
+      'i',
+    ),
+  );
+  return match?.[1] ? cadenceLabelFromTerm(match[1]) : undefined;
 }
 
 function extractCadenceNear(value: string, contextPattern: string): string | undefined {
@@ -630,7 +717,7 @@ function relevantTextForContext(value: string, contextPattern: RegExp): string {
 
 function extractCombinedSubscriptionRedemptionCadence(value: string): string | undefined {
   const match = value.match(
-    /(?:subscription\s*\/\s*redemption|subscription\s+and\s+redemption|subscriptions\s*\/\s*redemptions|subscribe\s+and\s+redeem)[^a-z0-9]{0,24}(?:cadence|frequency|timing)?[^a-z0-9]{0,24}(intraday|daily|weekly|monthly|quarterly|half[-\s]?yearly|yearly|annual|annually)\b/i,
+    /(?:subscription\s*\/\s*redemption|subscription\s+and\s+redemption|redemption\s+and\s+subscription|redemption\s*\+\s*subscription|subscription\s*\+\s*redemption|sub\s+and\s+redemption|redemption\s+and\s+sub|subscriptions\s*\/\s*redemptions|subscribe\s+and\s+redeem)[^a-z0-9]{0,24}(?:cadence|frequency|timing)?[^a-z0-9]{0,24}(intraday|daily|weekly|monthly|quarterly|half[-\s]?yearly|semi[-\s]?annual(?:ly)?|yearly|annual|annually)\b/i,
   );
   if (!match?.[1]) return undefined;
   return cadenceLabelFromTerm(match[1]);
@@ -644,6 +731,7 @@ function cadenceLabelFromTerm(term: string): string | undefined {
   if (normalized === 'monthly') return 'Monthly';
   if (normalized === 'quarterly') return 'Quarterly';
   if (/half[-\s]?yearly/.test(normalized)) return 'Half-yearly';
+  if (/semi[-\s]?annual(?:ly)?/.test(normalized)) return 'Half-yearly';
   if (normalized === 'yearly' || normalized === 'annual' || normalized === 'annually') return 'Yearly';
   return undefined;
 }

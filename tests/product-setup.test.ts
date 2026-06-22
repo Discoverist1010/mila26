@@ -240,13 +240,13 @@ describe('Product Setup record', () => {
     expect(record.fields.income_payout_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
     expect(record.fields.subscription_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
     expect(record.fields.redemption_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
-    expect(record.fields.offering_type).toMatchObject({ value: 'Private Placement', status: 'user_stated' });
+    expect(record.fields.offering_type).toMatchObject({ value: 'Private', status: 'user_stated' });
 
     expect(record.fields.underlying_asset_class.status).toBe('missing');
     expect(record.fields.eligible_investor_type.status).toBe('missing');
     expect(record.fields.redemption_payout_delay.status).toBe('missing');
     expect(rowsById.get('derived_maturity_date')).toMatchObject({ value: '2029-11-12', provenanceLabel: 'Assumed' });
-    expect(rowsById.get('offering_type')).toMatchObject({ value: 'Private Placement', provenanceLabel: 'Stated' });
+    expect(rowsById.get('offering_type')).toMatchObject({ value: 'Private', provenanceLabel: 'Stated' });
   });
 
   it('extracts base currency, maturity term, and approved-wallet rule from direct answers', () => {
@@ -402,7 +402,7 @@ describe('Product Setup record', () => {
     expect(record.fields.income_payout_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
     expect(record.fields.subscription_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
     expect(record.fields.redemption_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
-    expect(record.fields.offering_type).toMatchObject({ value: 'Private Placement', status: 'user_stated' });
+    expect(record.fields.offering_type).toMatchObject({ value: 'Private', status: 'user_stated' });
 
     expect(profileRowsById.get('product_launch_date')).toMatchObject({ value: '2026-11-11', provenanceLabel: 'Stated' });
     expect(profileRowsById.get('duration_months')).toMatchObject({ value: '36 months', provenanceLabel: 'Stated' });
@@ -465,6 +465,152 @@ describe('Product Setup record', () => {
       value: '2029-11-19',
       provenanceLabel: 'Assumed',
     });
+  });
+
+  it('decomposes compound offering and eligibility phrases without misusing product structure', () => {
+    const textSuggestions = createProductSetupSuggestionsFromText(
+      'Offering type is private placement to accredited investors.',
+      'chat_turn_compound_offering',
+    );
+    const structuredSuggestions = createProductSetupSuggestionsFromStructuredUpdates(
+      [
+        {
+          field: 'offering_type',
+          proposedValue: 'Private Placement to accredited investors',
+          rationale: 'Assistant extracted a compound offering phrase.',
+          confidence: 0.9,
+        },
+      ],
+      'chat_turn_compound_structured',
+    );
+    const closedEndedSuggestions = createProductSetupSuggestionsFromStructuredUpdates(
+      [
+        {
+          field: 'offering_type',
+          proposedValue: 'closed-ended, eligible investors verified offchain as usual',
+          rationale: 'Assistant placed structure and offchain verification under offering type.',
+          confidence: 0.88,
+        },
+      ],
+      'chat_turn_closed_ended_offering',
+    );
+    const textByField = new Map(textSuggestions.map((update) => [update.fieldKey, update.proposedValue]));
+    const structuredByField = new Map(structuredSuggestions.map((update) => [update.fieldKey, update.proposedValue]));
+    const closedEndedByField = new Map(closedEndedSuggestions.map((update) => [update.fieldKey, update.proposedValue]));
+
+    expect(textByField.get('offering_type')).toBe('Private');
+    expect(textByField.get('eligible_investor_type')).toBe('Accredited investor');
+    expect(structuredByField.get('offering_type')).toBe('Private');
+    expect(structuredByField.get('eligible_investor_type')).toBe('Accredited investor');
+    expect(closedEndedByField.get('product_structure')).toBe('Closed-ended');
+    expect(closedEndedByField.has('offering_type')).toBe(false);
+    expect(closedEndedByField.has('eligible_investor_type')).toBe(false);
+  });
+
+  it('handles a freeform NOVA setup dump without cross-attaching cadence or eligibility facts', () => {
+    const message = [
+      'need another tokenization setup, slightly diff parameters this round for testing purposes.',
+      'quick context dump:',
+      '- fund = BRIDGEWATER something... actually let’s just call it NOVA, symbol NVA',
+      '- ccy = EUR',
+      '- underlying = equities portfolio (same as usual)',
+      '- launching 3 Mar 2027',
+      '- close ended fund, term is 7 years this time (long one)',
+      '- investor count -> 18 investors only, smaller cohort for this test',
+      'whitelisting same logic as always - addresses must be whitelisted, investors can only transact peer to peer among whitelisted wallets, anything outside the whitelist = blocked, no transfers permitted to non-whitelisted addresses',
+      'nav cadence -> weekly (testing higher frequency this time)',
+      'nav fixed at $1 per token',
+      'nav uploaded 3 days ahead of the subscription day',
+      'subscription period -> opens 10 days before launch, closes on the launch date',
+      'subscriptions = fiat / off-chain',
+      'redemptions = fiat / off-chain too',
+      'sub + redemption cadence = monthly',
+      'income distro = monthly, released 3 days before the redemption date',
+      'minimum sub amount = $500',
+      'investor eligibility verified off-chain (kyc/aml done outside contract) so no onchain investor verification needed in the smart contract logic',
+      'offering type: closed-ended, eligible investors verified offchain as usual',
+    ].join('\n\n');
+
+    const result = reconcileProductSetupIntake(createInitialProductSetupRecord(facts), {
+      userMessage: message,
+      sourceRef: 'chat_turn_nova_freeform',
+    });
+    const profileRowsById = new Map(toProductSetupReadModel(result.record).profileRows.map((row) => [row.id, row]));
+
+    expect(result.record.fields.product_name).toMatchObject({ value: 'NOVA', status: 'user_stated' });
+    expect(result.record.fields.token_symbol).toMatchObject({ value: 'NVA', status: 'user_stated' });
+    expect(result.record.fields.base_currency).toMatchObject({ value: 'EUR', status: 'user_stated' });
+    expect(result.record.fields.product_wrapper).toMatchObject({ value: 'Fund', status: 'user_stated' });
+    expect(result.record.fields.underlying_asset_class).toMatchObject({ value: 'Equities', status: 'user_stated' });
+    expect(result.record.fields.product_launch_date).toMatchObject({ value: '2027-03-03', status: 'user_stated' });
+    expect(result.record.fields.product_structure).toMatchObject({ value: 'Closed-ended', status: 'user_stated' });
+    expect(result.record.fields.duration_months).toMatchObject({ value: 84, status: 'user_stated' });
+    expect(result.record.fields.derived_maturity_date).toMatchObject({ value: '2034-03-03', status: 'system_default' });
+    expect(result.record.fields.expected_investor_count).toMatchObject({ value: 18, status: 'user_stated' });
+    expect(result.record.fields.maximum_investor_count).toMatchObject({ value: 18, status: 'user_stated' });
+    expect(result.record.fields.whitelisted_wallets_required).toMatchObject({ value: true, status: 'user_stated' });
+    expect(result.record.fields.p2p_transfer_allowed).toMatchObject({ value: true, status: 'user_stated' });
+    expect(result.record.fields.nav_cadence).toMatchObject({ value: 'Weekly', status: 'user_stated' });
+    expect(result.record.fields.subscription_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
+    expect(result.record.fields.redemption_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
+    expect(result.record.fields.subscription_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
+    expect(result.record.fields.redemption_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
+    expect(result.record.fields.income_treatment).toMatchObject({ value: 'Distributing', status: 'user_stated' });
+    expect(result.record.fields.income_payout_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
+    expect(result.record.fields.offering_type.status).toBe('missing');
+    expect(result.record.fields.eligible_investor_type.status).toBe('missing');
+    expect(profileRowsById.get('nav_cadence')).toMatchObject({ value: 'Weekly', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('subscription_cadence')).toMatchObject({ value: 'Monthly', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('redemption_cadence')).toMatchObject({ value: 'Monthly', provenanceLabel: 'Stated' });
+  });
+
+  it('handles an ALPHA setup dump with shorthand labels, semi-annual cadence, and offchain eligibility notes', () => {
+    const message = [
+      'hey so i need to set up a tokenised fund thing for a client, basically distributing to around 65 investors. fund name is ALPHA, ticker ALP. base ccy USD this time not SGD.',
+      'underlying is a portfolio of equities again. launch date is 15 Jan 2027, close-ended structure, runs for 5 years.',
+      'wallets need to be whitelisted - investors can only move tokens between each other if both addresses are on the whitelist, no transfers out to randoms / non-whitelisted wallets at all.',
+      'nav - quarterly this time, fixed at $1/token same as before. nav gets uploaded 2 days before the subscription window opens.',
+      'subscription window is 2 weeks before launch, closes on launch day itself. subscriptions in fiat, off-chain, nothing onchain for that part. redemptions same - fiat, off chain.',
+      'redemption + subscription cadence -> semi-annual (every 6 months)',
+      'income distribution - semi-annual also, but paid out 2 days before the redemption date (not 1 day, want to test that variation)',
+      'minimum sub amount = $5,000',
+      'investors are kyc’d / verified offchain so contract doesn’t need to do any onchain investor verification',
+      'offering type = closed ended, eligible investors verified offchain',
+    ].join('\n\n');
+
+    const result = reconcileProductSetupIntake(createInitialProductSetupRecord(facts), {
+      userMessage: message,
+      sourceRef: 'chat_turn_alpha_freeform',
+    });
+    const profileRowsById = new Map(toProductSetupReadModel(result.record).profileRows.map((row) => [row.id, row]));
+
+    expect(result.record.fields.product_name).toMatchObject({ value: 'ALPHA', status: 'user_stated' });
+    expect(result.record.fields.token_symbol).toMatchObject({ value: 'ALP', status: 'user_stated' });
+    expect(result.record.fields.base_currency).toMatchObject({ value: 'USD', status: 'user_stated' });
+    expect(result.record.fields.product_wrapper).toMatchObject({ value: 'Fund', status: 'user_stated' });
+    expect(result.record.fields.underlying_asset_class).toMatchObject({ value: 'Equities', status: 'user_stated' });
+    expect(result.record.fields.product_launch_date).toMatchObject({ value: '2027-01-15', status: 'user_stated' });
+    expect(result.record.fields.product_structure).toMatchObject({ value: 'Closed-ended', status: 'user_stated' });
+    expect(result.record.fields.duration_months).toMatchObject({ value: 60, status: 'user_stated' });
+    expect(result.record.fields.derived_maturity_date).toMatchObject({ value: '2032-01-15', status: 'system_default' });
+    expect(result.record.fields.expected_investor_count).toMatchObject({ value: 65, status: 'user_stated' });
+    expect(result.record.fields.maximum_investor_count).toMatchObject({ value: 65, status: 'user_stated' });
+    expect(result.record.fields.whitelisted_wallets_required).toMatchObject({ value: true, status: 'user_stated' });
+    expect(result.record.fields.p2p_transfer_allowed).toMatchObject({ value: true, status: 'user_stated' });
+    expect(result.record.fields.nav_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(result.record.fields.subscription_cadence).toMatchObject({ value: 'Half-yearly', status: 'user_stated' });
+    expect(result.record.fields.redemption_cadence).toMatchObject({ value: 'Half-yearly', status: 'user_stated' });
+    expect(result.record.fields.subscription_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
+    expect(result.record.fields.redemption_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
+    expect(result.record.fields.income_treatment).toMatchObject({ value: 'Distributing', status: 'user_stated' });
+    expect(result.record.fields.income_payout_cadence).toMatchObject({ value: 'Half-yearly', status: 'user_stated' });
+    expect(result.record.fields.offering_type.status).toBe('missing');
+    expect(result.record.fields.eligible_investor_type.status).toBe('missing');
+    expect(profileRowsById.get('product_name')).toMatchObject({ value: 'ALPHA', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('product_launch_date')).toMatchObject({ value: '2027-01-15', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('nav_cadence')).toMatchObject({ value: 'Quarterly', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('subscription_cadence')).toMatchObject({ value: 'Half-yearly', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('redemption_cadence')).toMatchObject({ value: 'Half-yearly', provenanceLabel: 'Stated' });
   });
 
   it('does not convert quarterly income distribution into a redemption schedule', () => {
