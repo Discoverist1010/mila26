@@ -34,6 +34,7 @@ function normalizeProductSetupExtractionText(value: string): string {
     .toLowerCase()
     .replace(/\bdistro\b/g, 'distribution')
     .replace(/\bsub\s*\+\s*redemption\b/g, 'subscription and redemption')
+    .replace(/\bsub\b/g, 'subscription')
     .replace(/\bnon[-\s]+white[-\s]+listed\b/g, 'non-whitelisted')
     .replace(/\bwhite[-\s]+listed\b/g, 'whitelisted')
     .replace(/\bwhite[-\s]+list\b/g, 'whitelist')
@@ -53,6 +54,7 @@ const productSetupTextExtractionRules: ProductSetupTextExtractionRule[] = [
   extractTimingAssertions,
   extractSettlementAndWalletAssertions,
   extractServicingAssertions,
+  extractOperationalDefaultAssertions,
   extractProtocolAssertions,
 ];
 
@@ -125,6 +127,7 @@ function extractIdentityAndTypeAssertions({
   const updates: ProductSetupSuggestedUpdate[] = [];
   const allowGenericNameAssertion = hasProductSetupIntent(normalized);
   const productNameMatch = firstMatch(original, [
+    /\bfull\s+name\s+(?:is|=|:)?\s*([A-Za-z][A-Za-z0-9 .&-]{1,80}?)(?=\s*,?\s*(?:let'?s|use|short\s+name|symbol|ticker)\b|[.?!,]|$)/i,
     /\b(?:actually\s+)?(?:let'?s\s+)?(?:just\s+)?call\s+it\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s*(?:,\s*)?(?:symbol|ticker)\b|[.?!,]|$)/i,
     /\b(?:product|fund|portfolio|vehicle)\s+name\s+(?:is|=|:)\s+([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s+(?:and|with|as|it\s+is|symbol\s+is)|[.?!,]|$)/i,
     /\b(?:fund|product|portfolio|vehicle)\s*=\s*([A-Za-z][A-Za-z0-9 .&-]{1,60}?)(?=\s*(?:,\s*)?(?:symbol|ticker)\b|[.?!,]|$)/i,
@@ -135,7 +138,11 @@ function extractIdentityAndTypeAssertions({
         ]
       : []),
   ]);
-  const tokenSymbolMatch = original.match(/\b(?:token\s+)?(?:symbol|ticker)\s*(?:is|=|:)?\s+([A-Z][A-Z0-9]{1,11})\b/i);
+  const tokenSymbolMatch = firstMatch(original, [
+    /\b(?:token\s+)?(?:symbol|ticker)\s*(?:is|=|:)?\s+([A-Z][A-Z0-9]{1,11})\b/i,
+    /\buse\s+([A-Z][A-Z0-9]{1,11})\s+as\s+(?:the\s+)?(?:short\s+name|ticker|symbol)\b/i,
+    /\b([A-Z][A-Z0-9]{1,11})\s+as\s+(?:the\s+)?(?:short\s+name|ticker|symbol)\b/i,
+  ]);
   const baseCurrencyMatch =
     normalized.match(/\b(?:with\s+)?([a-z]{3,6})\s+as\s+(?:a\s+)?base\s+currency\b/) ??
     normalized.match(/\bbase\s+currency\s*(?:is|=|:)?\s*([a-z]{3,6})\b/) ??
@@ -145,8 +152,10 @@ function extractIdentityAndTypeAssertions({
     normalized.match(/\b(?:it\s+is\s+)?(?:a\s+)?(pooled\s+fund|private\s+credit\s+fund|credit\s+fund|investment\s+fund|fund|note|bond|portfolio)\b/);
   const wrapperMatch = normalized.match(/\b(fund|bond|equity|private asset)\b/);
   const assetClassMatch =
-    normalized.match(/\b(?:underlying\s+)?asset\s+class\s+(?:is|=|:)?\s+(?:a\s+)?(equities|equity|bonds|private credit|money market fund|mixed portfolio|portfolio)\b/) ??
-    normalized.match(/\b(equities|equity|bonds|private credit|money market fund|mixed portfolio)\b/);
+    normalized.match(/\bportfolio\s+of\s+(private equity|private credit|money market fund|mixed portfolio|equities|equity|bonds)\b/) ??
+    normalized.match(/\b(?:underlying\s+)?asset\s+class\s+(?:is|=|:)?\s+(?:a\s+)?(private equity|private credit|money market fund|mixed portfolio|equities|equity|bonds|portfolio)\b/) ??
+    normalized.match(/\bunderlying\s+(?:is|=|:)?\s+(?:a\s+)?(private equity|private credit|money market fund|mixed portfolio|equities|equity|bonds|portfolio)\b/) ??
+    normalized.match(/\b(private equity|private credit|money market fund|mixed portfolio|equities|equity|bonds)\b/);
   const structureMatch =
     normalized.match(/\b(?:product\s+)?(?:term|structure)\s+(?:type\s+)?(?:is|=|:)?\s+(open[-\s]?ended|close[-\s]?ended|closed[-\s]?ended|fixed maturity)\b/) ??
     normalized.match(/\b(open[-\s]?ended|close[-\s]?ended|closed[-\s]?ended|fixed maturity)\b/);
@@ -171,7 +180,7 @@ function extractIdentityAndTypeAssertions({
     updates.push(createSuggestedUpdate('product_wrapper', titleCaseProductSetupValue(wrapperMatch[1]), 'User described the product wrapper.', sourceRef, 0.82));
   }
   if (assetClassMatch?.[1]) {
-    updates.push(createSuggestedUpdate('underlying_asset_class', titleCaseProductSetupValue(assetClassMatch[1]), 'User described the underlying asset class.', sourceRef, 0.82));
+    updates.push(createSuggestedUpdate('underlying_asset_class', normalizeUnderlyingAssetClassValue(assetClassMatch[1]), 'User described the underlying asset class.', sourceRef, 0.82));
   }
   if (structureMatch?.[1]) {
     updates.push(createSuggestedUpdate('product_structure', normalizeProductStructure(structureMatch[1]), 'User described the product structure.', sourceRef, 0.82));
@@ -206,6 +215,7 @@ function extractTimingAssertions({
   const payoutDelay = extractRedemptionPayoutDelayAssertion(normalized);
   const ipoDateMatch =
     original.match(/\b(?:ipo|launch|initial\s+distribution)\s+date(?:\s+\w+){0,3}\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i) ??
+    original.match(/\b(?:launch|ipo|initial\s+distribution)\s*(?:is|=|:)\s*(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i) ??
     original.match(/\b(?:launch(?:es|ed|ing)?|launched|starts?|started)\s+(?:on\s+)?(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/i);
   const initialRegisterMatch = original.match(/\binitial\s+register\s+of\s+(\d{1,3})\s+investors?\s+will\s+be\s+([^.,;]+)/i);
   const maturityTermMatch =
@@ -375,11 +385,52 @@ function extractServicingAssertions({
   return updates;
 }
 
+function extractOperationalDefaultAssertions({
+  original,
+  normalized,
+  sourceRef,
+}: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
+  const updates: ProductSetupSuggestedUpdate[] = [];
+  const minimumSubscriptionMatch = original.match(
+    /\b(?:minimum\s+sub(?:scription)?|min(?:imum)?\s+subscription(?:\s+amount)?)\s*(?:is|=|:)?\s*([A-Z]{0,4}\$?\s?[\d,]+(?:\.\d+)?(?:\s+\w+)?)\b/i,
+  );
+  const minimumRedemptionMatch = original.match(
+    /\b(?:redemption\s+minimum|minimum\s+redemption(?:\s+amount)?|min(?:imum)?\s+redemption)\s*(?:stays\s+at|is|=|:)?\s*([A-Z]{0,4}\$?\s?[\d,]+(?:\.\d+)?\s*(?:tokens?|units?)?)\b/i,
+  );
+
+  if (minimumSubscriptionMatch?.[1]) {
+    updates.push(createSuggestedUpdate(
+      'minimum_subscription_amount',
+      minimumSubscriptionMatch[1].trim(),
+      'User described the minimum subscription amount.',
+      sourceRef,
+      0.84,
+    ));
+  }
+  if (minimumRedemptionMatch?.[1]) {
+    updates.push(createSuggestedUpdate(
+      'minimum_redemption_amount',
+      minimumRedemptionMatch[1].trim(),
+      'User described the minimum redemption amount.',
+      sourceRef,
+      0.84,
+    ));
+  }
+  if (/\bcsv\s+upload\b|\bnav\s+upload\s+method\s*(?:is|=|:)?\s*csv\b/.test(normalized)) {
+    updates.push(createSuggestedUpdate('nav_upload_method', 'CSV', 'User described CSV as the NAV upload method.', sourceRef, 0.84));
+  }
+  if (/\bsepolia(?:\s+testnet)?\b/.test(normalized)) {
+    updates.push(createSuggestedUpdate('prototype_network', 'Sepolia testnet', 'User selected Sepolia testnet.', sourceRef, 0.84));
+  }
+
+  return updates;
+}
+
 function extractProtocolAssertions({
   normalized,
   sourceRef,
 }: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
-  if (/\bcustomi[sz]ed\s+erc-?\s*20\b|\bcustom\s+erc-?\s*20\b/.test(normalized)) {
+  if (/\bcustomi[sz]ed\s+erc-?\s*20\b|\bcustom\s+erc-?\s*20\b|\berc-?\s*20\s+customi[sz]ed\b|\berc-?\s*20\s+custom\b/.test(normalized)) {
     return [createSuggestedUpdate('protocol_base', 'Customised ERC-20', 'User selected customised ERC-20 as the protocol base.', sourceRef, 0.88)];
   }
   if (/\berc-?\s*20\b|\berc20\b/.test(normalized)) {
@@ -603,10 +654,12 @@ function normalizeSuggestedUpdateValueForField(
 
   if (fieldKey === 'underlying_asset_class') {
     if (/\bfixed\s+income\b|\bbonds?\b/.test(normalized)) return 'Bonds';
-    if (/\bequit(?:y|ies)\b|\bstocks?\b/.test(normalized)) return 'Equities';
     if (/\bprivate\s+credit\b/.test(normalized)) return 'Private credit';
+    if (/\bprivate\s+equity\b/.test(normalized)) return 'Private equity';
+    if (/\bequit(?:y|ies)\b|\bstocks?\b/.test(normalized)) return 'Equities';
     if (/\bmoney\s+market\b/.test(normalized)) return 'Money market fund';
-    if (/\bmixed\b|\bportfolio\b/.test(normalized)) return 'Mixed portfolio';
+    if (/\bmixed\b/.test(normalized)) return 'Mixed portfolio';
+    if (/\bportfolio\b/.test(normalized)) return 'Portfolio';
     return titleCaseProductSetupValue(trimmed);
   }
 
@@ -688,6 +741,18 @@ function titleCaseProductSetupValue(value: string): string {
     .filter(Boolean)
     .map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
     .join(' ');
+}
+
+function normalizeUnderlyingAssetClassValue(value: string): string {
+  const normalized = normalizeProductSetupExtractionText(value);
+  if (/\bfixed\s+income\b|\bbonds?\b/.test(normalized)) return 'Bonds';
+  if (/\bprivate\s+credit\b/.test(normalized)) return 'Private credit';
+  if (/\bprivate\s+equity\b/.test(normalized)) return 'Private equity';
+  if (/\bequit(?:y|ies)\b|\bstocks?\b/.test(normalized)) return 'Equities';
+  if (/\bmoney\s+market\b/.test(normalized)) return 'Money market fund';
+  if (/\bmixed\b/.test(normalized)) return 'Mixed portfolio';
+  if (/\bportfolio\b/.test(normalized)) return 'Portfolio';
+  return titleCaseProductSetupValue(value);
 }
 
 function firstMatch(value: string, patterns: RegExp[]): RegExpMatchArray | null {
@@ -885,7 +950,7 @@ function relevantTextForContext(value: string, contextPattern: RegExp): string {
 
 function extractCombinedSubscriptionRedemptionCadence(value: string): string | undefined {
   const match = value.match(
-    /(?:subscription\s*\/\s*redemption|subscription\s+and\s+redemption|redemption\s+and\s+subscription|redemption\s*\+\s*subscription|subscription\s*\+\s*redemption|sub\s+and\s+redemption|redemption\s+and\s+sub|subscriptions\s*\/\s*redemptions|subscribe\s+and\s+redeem)[^a-z0-9]{0,24}(?:cadence|frequency|timing)?[^a-z0-9]{0,24}(intraday|daily|weekly|monthly|quarterly|half[-\s]?yearly|semi[-\s]?annual(?:ly)?|yearly|annual|annually)\b/i,
+    /(?:subscription\s*\/\s*redemption|subscription\s+and\s+redemption|redemption\s+and\s+subscription|redemption\s*\+\s*subscription|subscription\s*\+\s*redemption|subscriptions\s*\/\s*redemptions|subscribe\s+and\s+redeem)[^a-z0-9]{0,24}(?:cadence|frequency|timing)?[^a-z0-9]{0,24}(?:both\s+)?(intraday|daily|weekly|monthly|quarterly|half[-\s]?yearly|semi[-\s]?annual(?:ly)?|yearly|annual|annually)\b/i,
   );
   if (!match?.[1]) return undefined;
   return cadenceLabelFromTerm(match[1]);

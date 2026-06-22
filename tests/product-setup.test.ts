@@ -547,6 +547,88 @@ describe('Product Setup record', () => {
     expect(profileRowsById.get('protocol_base')).toMatchObject({ value: 'Customised ERC-20', provenanceLabel: 'Stated' });
   });
 
+  it('commits a medium-mess PRD setup script with corrections into canonical Product Profile fields', () => {
+    const message = [
+      'ok so setting up another fund on the platform, client briefed me this morning so some of this might be slightly disorganised sorry',
+      '',
+      "name is CYPRESS something — full name CYPRESS Capital Opportunities Fund, let's use CYP as the short name/ticker. base ccy is EUR. underlying is private equity (so product wrapper = fund, asset class = private equity).",
+      '',
+      'launch is 15 September 2027. running for 4 years so maturity somewhere around Sept 2031 — system can calculate exact date. closed-ended structure. income gets distributed (not accumulated).',
+      '',
+      "for the offering — it's institutional only. eligible investors are institutional investors, all verified offchain, so no onchain verification logic needed in the contract.",
+      '',
+      'we want about 25 investors max. jurisdiction is Singapore as always (locked default anyway).',
+      '',
+      'on the NAV side — quarterly NAV this time, still $1/token fixed. CSV upload. nav file goes up 2 days before subscription opens.',
+      '',
+      'sub and redemption cadence — both quarterly. fiat off-chain for both sub and redemption payments. minimum sub is $50,000. redemption minimum stays at 1 token default.',
+      '',
+      'sub window: opens 3 weeks before launch date, closes on launch date.',
+      '',
+      'whitelist — yes wallets must be whitelisted. p2p allowed but only whitelist-to-whitelist, no transfers outside.',
+      '',
+      'income distribution quarterly, 2 days before each redemption date.',
+      '',
+      'i think protocol base should be ERC-20 customised (same recommendation as usual). Sepolia testnet. compliance = whitelist transfer restrictions. evidence vault stores everything per default.',
+      '',
+      'oh wait i forgot — offering type is private placement. eligible investor type = institutional. think i said that already but just confirming.',
+      '',
+      'let me know if anything looks off',
+    ].join('\n');
+
+    const result = reconcileProductSetupIntake(createInitialProductSetupRecord(facts), {
+      userMessage: message,
+      sourceRef: 'chat_turn_v4_medium_mess',
+    });
+    const readModel = toProductSetupReadModel(result.record);
+    const profileRowsById = new Map(readModel.profileRows.map((row) => [row.id, row]));
+
+    expect(result.record.fields.product_name).toMatchObject({
+      value: 'CYPRESS Capital Opportunities Fund',
+      status: 'user_stated',
+    });
+    expect(result.record.fields.token_symbol).toMatchObject({ value: 'CYP', status: 'user_stated' });
+    expect(result.record.fields.product_launch_date).toMatchObject({ value: '2027-09-15', status: 'user_stated' });
+    expect(result.record.fields.base_currency).toMatchObject({ value: 'EUR', status: 'user_stated' });
+    expect(result.record.fields.product_wrapper).toMatchObject({ value: 'Fund', status: 'user_stated' });
+    expect(result.record.fields.underlying_asset_class).toMatchObject({ value: 'Private equity', status: 'user_stated' });
+    expect(result.record.fields.product_structure).toMatchObject({ value: 'Closed-ended', status: 'user_stated' });
+    expect(result.record.fields.duration_months).toMatchObject({ value: 48, status: 'user_stated' });
+    expect(result.record.fields.derived_maturity_date).toMatchObject({ value: '2031-09-15', status: 'system_default' });
+    expect(result.record.fields.income_treatment).toMatchObject({ value: 'Distributing', status: 'user_stated' });
+    expect(result.record.fields.income_payout_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(result.record.fields.offering_type).toMatchObject({ value: 'Private', status: 'user_stated' });
+    expect(result.record.fields.eligible_investor_type).toMatchObject({ value: 'Institutional', status: 'user_stated' });
+    expect(result.record.fields.expected_investor_count).toMatchObject({ value: 25, status: 'user_stated' });
+    expect(result.record.fields.maximum_investor_count).toMatchObject({ value: 25, status: 'user_stated' });
+    expect(result.record.fields.nav_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(result.record.fields.nav_upload_method).toMatchObject({ value: 'CSV', status: 'locked' });
+    expect(result.record.fields.subscription_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(result.record.fields.redemption_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(result.record.fields.subscription_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
+    expect(result.record.fields.redemption_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
+    expect(result.record.fields.minimum_subscription_amount).toMatchObject({ value: '$50,000', status: 'user_stated' });
+    expect(result.record.fields.minimum_redemption_amount).toMatchObject({ value: '1 token', status: 'user_stated' });
+    expect(result.record.fields.whitelisted_wallets_required).toMatchObject({ value: true, status: 'user_stated' });
+    expect(result.record.fields.p2p_transfer_allowed).toMatchObject({ value: true, status: 'user_stated' });
+    expect(result.record.fields.prototype_network).toMatchObject({ value: 'Sepolia testnet', status: 'locked' });
+    expect(result.record.fields.protocol_base).toMatchObject({ value: 'Customised ERC-20', status: 'user_stated' });
+
+    expect(readModel.missingEssentials).not.toEqual(expect.arrayContaining(['subscription_stablecoins', 'redemption_stablecoin_type']));
+    expect(profileRowsById.get('product_name')).toMatchObject({
+      value: 'CYPRESS Capital Opportunities Fund',
+      provenanceLabel: 'Stated',
+    });
+    expect(profileRowsById.get('product_launch_date')).toMatchObject({ value: '2027-09-15', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('duration_months')).toMatchObject({ value: '48 months', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('derived_maturity_date')).toMatchObject({ value: '2031-09-15', provenanceLabel: 'Assumed' });
+    expect(profileRowsById.get('offering_type')).toMatchObject({ value: 'Private', provenanceLabel: 'Stated' });
+    expect(profileRowsById.get('eligible_investor_type')).toMatchObject({
+      value: 'Institutional',
+      provenanceLabel: 'Stated',
+    });
+  });
+
   it('decomposes compound offering and eligibility phrases without misusing product structure', () => {
     const textSuggestions = createProductSetupSuggestionsFromText(
       'Offering type is private placement to accredited investors.',
