@@ -256,7 +256,6 @@ function extractTimingAssertions({
     if (durationMonths) {
       updates.push(createSuggestedUpdate('duration_months', durationMonths, 'User described the product duration.', sourceRef, 0.86));
     }
-    updates.push(createSuggestedUpdate('maturity_date', normalizeMaturityTerm(maturityTermMatch[1]), 'User described the product maturity term.', sourceRef, 0.82));
   }
   if (!maturityTermMatch?.[1] && maturityDateMatch?.[1]) {
     updates.push(createSuggestedUpdate('maturity_date', normalizeProductSetupDate(maturityDateMatch[1]), 'User stated the maturity date.', sourceRef, 0.88));
@@ -518,6 +517,10 @@ function decomposeStructuredProductSetupUpdate(
     return productStructure ? [{ fieldKey, proposedValue: productStructure }] : [{ fieldKey, proposedValue }];
   }
 
+  if (fieldKey === 'maturity_date' && durationMonthsFromTerm(proposedValue)) {
+    return [];
+  }
+
   return [{ fieldKey, proposedValue }];
 }
 
@@ -643,6 +646,13 @@ function normalizeSuggestedUpdateValueForField(
   }
 
   if (fieldKey === 'product_launch_date') return normalizeProductSetupDate(trimmed);
+
+  if (fieldKey === 'maturity_date') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed) || /^\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}$/.test(trimmed)) {
+      return normalizeProductSetupDate(trimmed);
+    }
+    return undefined;
+  }
 
   if (fieldKey === 'product_wrapper') {
     if (/\bfund\b/.test(normalized)) return 'Fund';
@@ -807,19 +817,6 @@ function extractEligibleInvestorTypeValue(value: string): string | undefined {
   if (/\bretail(?:\s+investors?)?\b/.test(normalized)) return 'Retail';
   if (/\ball investors?\b|\ball eligible investors?\b|^all$/.test(normalized)) return 'All';
   return undefined;
-}
-
-function normalizeMaturityTerm(value: string): string {
-  return value
-    .trim()
-    .replace(/^(\d{1,3})-(year|month|quarter)s?$/i, (_match, amount: string, unit: string) => {
-      const normalizedUnit = Number(amount) === 1 ? unit.toLowerCase() : `${unit.toLowerCase()}s`;
-      return `${amount} ${normalizedUnit}`;
-    })
-    .replace(/\bopo\b/gi, 'IPO')
-    .replace(/\bipo\b/gi, 'IPO')
-    .replace(/\binitial distribution\b/gi, 'initial distribution')
-    .replace(/\s+/g, ' ');
 }
 
 function durationMonthsFromTerm(value: string): number | undefined {

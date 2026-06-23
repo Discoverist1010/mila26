@@ -61,8 +61,8 @@ describe('Product Setup extraction API', () => {
                 targetTab: 'asset_servicing',
               },
               {
-                fieldKey: 'maturity_date',
-                value: '3 years after IPO date of 8 Nov 2026',
+                fieldKey: 'duration_months',
+                value: 36,
                 status: 'user_stated',
                 confidence: 0.91,
                 sourceQuote: 'maturity is 3 years after IPO date of 8 Nov 2026',
@@ -102,7 +102,7 @@ describe('Product Setup extraction API', () => {
         expect.objectContaining({ fieldKey: 'protocol_base', value: 'ERC-20' }),
         expect.objectContaining({ fieldKey: 'income_treatment', value: 'Distributing' }),
         expect.objectContaining({ fieldKey: 'income_payout_cadence', value: 'Quarterly' }),
-        expect.objectContaining({ fieldKey: 'maturity_date', value: '3 years after IPO date of 8 Nov 2026' }),
+        expect.objectContaining({ fieldKey: 'duration_months', value: 36 }),
       ],
       warnings: [],
     });

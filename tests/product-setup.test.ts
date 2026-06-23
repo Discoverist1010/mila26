@@ -193,7 +193,7 @@ describe('Product Setup record', () => {
     expect(record.fields.nav_source).toMatchObject({ value: 'User-provided upload', status: 'user_stated' });
     expect(record.fields.duration_months).toMatchObject({ value: 36, status: 'user_stated' });
     expect(record.fields.derived_maturity_date).toMatchObject({ value: '2029-11-08', status: 'system_default' });
-    expect(record.fields.maturity_date).toMatchObject({ value: '3 years', status: 'user_stated' });
+    expect(record.fields.maturity_date.status).toBe('missing');
 
     expect(rowsById.get('product_name')).toMatchObject({ value: 'TEST', provenanceLabel: 'Stated' });
     expect(rowsById.get('product_structure')).toMatchObject({ value: 'Closed-ended', provenanceLabel: 'Stated' });
@@ -257,7 +257,8 @@ describe('Product Setup record', () => {
     const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
 
     expect(byField.get('base_currency')).toBe('USD');
-    expect(byField.get('maturity_date')).toBe('3 years after launch');
+    expect(byField.get('duration_months')).toBe(36);
+    expect(byField.has('maturity_date')).toBe(false);
     expect(byField.get('whitelisted_wallets_required')).toBe(true);
     expect(byField.get('investor_wallet_rule')).toMatch(/Approved wallets only/i);
   });
@@ -276,7 +277,8 @@ describe('Product Setup record', () => {
     expect(byField.get('base_currency')).toBe('USD');
     expect(byField.get('income_treatment')).toBe('No income distribution');
     expect(byField.has('income_payout_cadence')).toBe(false);
-    expect(byField.get('maturity_date')).toBe('3 years after IPO date of 8 Nov 2026');
+    expect(byField.get('duration_months')).toBe(36);
+    expect(byField.has('maturity_date')).toBe(false);
     expect(incomeRow).toMatchObject({ value: 'No income distribution', provenanceLabel: 'Needs review' });
     expect(durationRow).toMatchObject({ label: 'Duration of product in months', value: '36 months', provenanceLabel: 'Needs review' });
   });
@@ -319,10 +321,9 @@ describe('Product Setup record', () => {
     expect(result.record.fields.redemption_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
     expect(result.record.fields.income_treatment).toMatchObject({ value: 'Distributing', status: 'user_stated' });
     expect(result.record.fields.income_payout_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
-    expect(result.record.fields.maturity_date).toMatchObject({
-      value: '3 years after IPO date of 8 Nov 2026',
-      status: 'user_stated',
-    });
+    expect(result.record.fields.duration_months).toMatchObject({ value: 36, status: 'user_stated' });
+    expect(result.record.fields.derived_maturity_date).toMatchObject({ value: '2029-11-08', status: 'system_default' });
+    expect(result.record.fields.maturity_date.status).toBe('missing');
     expect(protocolRow).toMatchObject({ value: 'ERC-3643', provenanceLabel: 'Stated' });
     expect(currencyRow).toMatchObject({ value: 'SGD', provenanceLabel: 'Stated' });
     expect(subscriptionRow).toMatchObject({ value: 'Quarterly', provenanceLabel: 'Stated' });
@@ -519,6 +520,7 @@ describe('Product Setup record', () => {
     expect(result.record.fields.product_structure).toMatchObject({ value: 'Closed-ended', status: 'user_stated' });
     expect(result.record.fields.duration_months).toMatchObject({ value: 24, status: 'user_stated' });
     expect(result.record.fields.derived_maturity_date).toMatchObject({ value: '2029-04-02', status: 'system_default' });
+    expect(result.record.fields.maturity_date.status).toBe('missing');
     expect(result.record.fields.income_treatment).toMatchObject({ value: 'Distributing', status: 'user_stated' });
     expect(result.record.fields.income_payout_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
     expect(result.record.fields.offering_type).toMatchObject({ value: 'Private', status: 'user_stated' });
@@ -595,6 +597,7 @@ describe('Product Setup record', () => {
     expect(result.record.fields.product_structure).toMatchObject({ value: 'Closed-ended', status: 'user_stated' });
     expect(result.record.fields.duration_months).toMatchObject({ value: 48, status: 'user_stated' });
     expect(result.record.fields.derived_maturity_date).toMatchObject({ value: '2031-09-15', status: 'system_default' });
+    expect(result.record.fields.maturity_date.status).toBe('missing');
     expect(result.record.fields.income_treatment).toMatchObject({ value: 'Distributing', status: 'user_stated' });
     expect(result.record.fields.income_payout_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
     expect(result.record.fields.offering_type).toMatchObject({ value: 'Private', status: 'user_stated' });
@@ -846,7 +849,8 @@ describe('Product Setup record', () => {
     const suggestions = createProductSetupSuggestionsFromText('3-year term.', 'chat_turn_hyphen_term');
     const byField = new Map(suggestions.map((update) => [update.fieldKey, update.proposedValue]));
 
-    expect(byField.get('maturity_date')).toBe('3 years');
+    expect(byField.get('duration_months')).toBe(36);
+    expect(byField.has('maturity_date')).toBe(false);
   });
 
   it('splits combined subscription and redemption cadence into both canonical fields', () => {
@@ -862,25 +866,27 @@ describe('Product Setup record', () => {
 
   it('normalizes structured backend suggestions and shows pending profile values without mutating fields', () => {
     const record = createInitialProductSetupRecord(facts);
+    const structuredUpdates = createProductSetupSuggestionsFromStructuredUpdates(
+      [
+        {
+          field: 'subscription/redemption cadence',
+          proposedValue: 'Quarterly',
+          rationale: 'The assistant extracted a shared cadence from the latest message.',
+          confidence: 0.82,
+        },
+        {
+          field: 'maturity',
+          proposedValue: '3 years after launch',
+          rationale: 'The assistant extracted a maturity term.',
+          confidence: 0.86,
+        },
+      ],
+      'chat_turn_structured',
+    );
+    const byField = new Map(structuredUpdates.map((update) => [update.fieldKey, update.proposedValue]));
     const withSuggestions = setProductSetupSuggestedUpdates(
       record,
-      createProductSetupSuggestionsFromStructuredUpdates(
-        [
-          {
-            field: 'subscription/redemption cadence',
-            proposedValue: 'Quarterly',
-            rationale: 'The assistant extracted a shared cadence from the latest message.',
-            confidence: 0.82,
-          },
-          {
-            field: 'maturity',
-            proposedValue: '3 years after launch',
-            rationale: 'The assistant extracted a maturity term.',
-            confidence: 0.86,
-          },
-        ],
-        'chat_turn_structured',
-      ),
+      structuredUpdates,
     );
     const readModel = toProductSetupReadModel(withSuggestions);
     const subscriptionRow = readModel.profileRows.find((row) => row.id === 'subscription_cadence');
@@ -891,6 +897,8 @@ describe('Product Setup record', () => {
     expect(subscriptionRow).toMatchObject({ value: 'Quarterly', provenanceLabel: 'Needs review' });
     expect(redemptionRow).toMatchObject({ value: 'Quarterly', provenanceLabel: 'Needs review' });
     expect(durationRow).toMatchObject({ value: '36 months', provenanceLabel: 'Needs review' });
+    expect(byField.get('duration_months')).toBe(36);
+    expect(byField.has('maturity_date')).toBe(false);
   });
 
   it('does not let assistant protocol recommendations override a user-stated protocol choice', () => {
