@@ -37,6 +37,7 @@ Every specialist role must:
 - recommend a focused fix and regression test;
 - avoid rewriting unrelated code;
 - avoid adding dependencies, tools, MCPs, scanners, or frameworks without explicit approval;
+- use Context7 before code changes that depend on library APIs, framework behavior, SDK syntax, MCP integrations, OpenAI APIs, React, Vite, TypeScript, Fastify, Solidity tooling, or any other external dependency, preferring version-specific documentation where available;
 - preserve MILA26 non-negotiables: Sepolia/testnet only, user wallet signing, backend never holds private keys, no fake evidence, no per-tab state silos, and no legal/KYC/advice/audit claims.
 
 When a role finds a repeated pattern, it should suggest an update to this file or the relevant specialist contract. The Lead Implementer decides whether to apply it.
@@ -485,6 +486,7 @@ Claude, or another independent external model reviewer, should be added only whe
 
 | Version | Date | Change | Author |
 |---|---|---|---|
+| 1.5.1 | 2026-06-24 | Added Context7 documentation rule for external library/API/framework work across delivery roles. | Codex |
 | 1.5.0 | 2026-06-23 | Added failure-scenario walkthrough and Product Setup PRD/LLM artifact hardening review checks. | Codex |
 | 1.4.0 | 2026-06-20 | Added Contract Ops specialist-skill review checks for Test, Quality, Security, Solidity, Frontend/UX, and Release roles. | Codex |
 | 1.3.1 | 2026-06-06 | Added universal anti-tunnel-vision review rule. | Codex |

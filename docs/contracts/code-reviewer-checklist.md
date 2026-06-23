@@ -177,6 +177,11 @@ MILA26's architecture uses typed artifacts, thin derived read models, and explic
 - [ ] No `VITE_*LLM*` or similar frontend LLM environment variables
 - [ ] Flag any violation as **CRITICAL — Architecture Violation**
 
+### 3.1A — External API and Dependency Documentation
+- [ ] Context7 was used before implementation when changes depend on library APIs, framework behavior, SDK syntax, MCP integrations, OpenAI APIs, React, Vite, TypeScript, Fastify, Solidity tooling, or any other external dependency.
+- [ ] Version-specific documentation was preferred where available, or the version assumption is stated when the repo does not expose a clear version.
+- [ ] Flag missing Context7 lookup as **HIGH** when the diff relies on external API behavior or syntax.
+
 ### 3.2 — UI Architecture
 - [ ] Right rail contains NO wallet-signing, deployment, mint, whitelist, NAV, redemption execution, or other contract-operation controls
 - [ ] Right rail review buttons are limited to captured-fact confirmation/rejection/editing and draft handoff staging; they must not bypass center-tab state ownership or lifecycle gates
@@ -559,6 +564,7 @@ The report must include:
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 1.2.1 | 2026-06-24 | Added Context7 documentation checklist for external library/API/framework changes. | Codex |
 | 1.2.0 | 2026-06-06 | Added State / Memory / Performance checks and stale cache/memory pattern mapping | Codex |
 | 1.1.0 | 2026-06-06 | Added lifecycle source-of-truth, Investor Registry/SCP gate, multi-item flow, internal-track-label, and financial-product wording checks | Codex |
 | 1.0.2 | 2026-05-31 | Aligned Phase 1/3 with Track 15A source-sensitive submitted/confirmed labels and SCP operation-specific controls | AI Bot Factory |

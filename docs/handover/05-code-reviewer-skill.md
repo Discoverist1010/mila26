@@ -197,6 +197,7 @@ MILA26 uses typed artifacts, thin derived read models, and explicit boundaries. 
 - Cross-boundary imports that violate the architecture layers
 - Domain logic leaking into UI components
 - Connector logic leaking into domain modules
+- External library, framework, SDK, MCP, OpenAI, React, Vite, TypeScript, Fastify, or Solidity-tooling changes made without a Context7 documentation lookup where the implementation depends on API behavior or syntax
 
 **What to flag as MEDIUM:**
 - New abstraction when only one implementation exists (premature abstraction)
@@ -574,6 +575,7 @@ Conflict resolution rule: A lower-tier concern never overrides a higher-tier con
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 1.2.2 | 2026-06-24 | Added Context7 lookup expectation for external library/API/framework changes. | Codex |
 | 1.2.1 | 2026-06-06 | Added cross-lens rule to reduce tunnel-vision reviews. | Codex |
 | 1.2.0 | 2026-06-06 | Added State / Memory / Performance review lens guidance. | Codex |
 | 1.1.0 | 2026-06-06 | Added lifecycle source-of-truth and financial-product wording review principles | Codex |

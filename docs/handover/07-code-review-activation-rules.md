@@ -23,13 +23,14 @@ The main Codex session remains the Lead Implementer / Lead Integrator. The lead 
 For implementation work:
 
 1. Implement the track narrowly.
-2. Run focused tests and `npm run check` when applicable.
-3. If tests fail, actively debug within scope before reporting.
-4. Classify the diff using this file.
-5. Run the required Code Reviewer pass.
-6. Fix real Critical and High findings.
-7. Re-run affected tests/checks.
-8. Commit and push only after the reviewer gate is clear.
+2. For changes that depend on library APIs, framework behavior, SDK syntax, MCP integrations, OpenAI APIs, React, Vite, TypeScript, Fastify, Solidity tooling, or other external dependencies, consult Context7 before coding and prefer version-specific docs where available.
+3. Run focused tests and `npm run check` when applicable.
+4. If tests fail, actively debug within scope before reporting.
+5. Classify the diff using this file.
+6. Run the required Code Reviewer pass.
+7. Fix real Critical and High findings.
+8. Re-run affected tests/checks.
+9. Commit and push only after the reviewer gate is clear.
 
 For review-only work:
 
@@ -182,6 +183,7 @@ This file only decides which review pass to run. The checklist remains the autho
 
 | Version | Date | Change |
 |---|---|---|
+| 1.2.1 | 2026-06-24 | Added Context7 documentation step for external library/API/framework changes. |
 | 1.2.0 | 2026-06-06 | Added State / Memory / Performance review lens triggers. |
 | 1.1.1 | 2026-06-06 | Added lifecycle source-of-truth and Investor Registry/SCP handoff changes to Level 2 review triggers. |
 | 1.1.0 | 2026-06-05 | Added Lead Implementer ownership, active failure loop, and quality refactor authority. |

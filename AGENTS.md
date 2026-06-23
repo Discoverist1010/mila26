@@ -64,6 +64,8 @@ Use available skills and MCPs when they fit the work:
 - GitHub tooling for repository, PR, CI, and publishing work.
 - Playwright/browser tooling for real UI verification.
 
+When work touches library APIs, framework behavior, SDK syntax, MCP integrations, OpenAI APIs, React, Vite, TypeScript, Fastify, Solidity tooling, or any other external dependency, use Context7 before making code changes. Prefer version-specific documentation where available, and state any version assumption when the repo does not make the dependency version clear.
+
 When a capability gap appears:
 
 1. Inspect existing repo tools, skills, MCPs, and scripts first.
