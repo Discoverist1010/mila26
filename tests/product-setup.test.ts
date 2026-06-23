@@ -4,6 +4,7 @@ import {
   classifyWalletSetupResponse,
   acknowledgeProductSetupDeploymentWarnings,
   confirmProductSetupUpdate,
+  createProductSetupPrdArtifactKey,
   createProductSetupPackMarkdown,
   createProductSetupPrdDocxContent,
   createInitialProductSetupRecord,
@@ -17,6 +18,8 @@ import {
   markTermExplained,
   mergeProductSetupSuggestedUpdates,
   normalizeProductSetupRecord,
+  PRODUCT_SETUP_PRD_GENERATOR_VERSION,
+  productSetupPrdFieldKeys,
   recommendProductSetupProtocol,
   reconcileProductSetupIntake,
   reconcileProductSetupSuggestedUpdates,
@@ -26,6 +29,9 @@ import {
   sendProductSetupHandoffNote,
   toProductSetupReadModel,
   updateProductSetupField,
+  type ProductSetupFieldKey,
+  type ProductSetupFieldValue,
+  type ProductSetupRecord,
 } from '../src/domain/productSetup';
 import type { FundFacts } from '../src/domain/schemas';
 
@@ -37,6 +43,49 @@ const facts: FundFacts = {
   totalSupply: 1_000_000,
   initialNav: 1_000_000,
 };
+
+function createCompleteProductSetupRecord(): ProductSetupRecord {
+  const fieldValues: Partial<Record<ProductSetupFieldKey, ProductSetupFieldValue>> = {
+    product_name: 'MERIDIAN Growth Fund',
+    token_symbol: 'MGF',
+    product_launch_date: '2027-04-01',
+    product_wrapper: 'Fund',
+    underlying_asset_class: 'Fixed income (bonds)',
+    product_structure: 'Closed-ended',
+    offering_type: 'Private placement',
+    eligible_investor_type: 'Accredited investors',
+    maximum_investor_count: 30,
+    nav_cadence: 'Monthly',
+    nav_price_assumption: '$1 per token',
+    nav_upload_timing: '1 day before subscription day',
+    subscription_cadence: 'Monthly',
+    subscription_window: 'Opens 2 weeks before launch date; closes launch date',
+    subscription_payment_method: 'Fiat offchain',
+    minimum_subscription_amount: '$10,000',
+    redemption_cadence: 'Monthly',
+    redemption_payment_method: 'Fiat offchain',
+    income_treatment: 'Distributing',
+    income_payout_cadence: 'Monthly',
+    income_payout_timing: '1 day before redemption date',
+    duration_months: 24,
+    base_currency: 'USD',
+    whitelisted_wallets_required: true,
+    p2p_transfer_allowed: true,
+    protocol_base: 'Customised ERC-20',
+  };
+
+  return Object.entries(fieldValues).reduce(
+    (record, [fieldKey, value]) =>
+      updateProductSetupField(record, {
+        fieldKey: fieldKey as ProductSetupFieldKey,
+        value,
+        sourceType: 'user_message',
+        sourceRef: 'test_complete_prd',
+        status: 'user_confirmed',
+      }),
+    createInitialProductSetupRecord(facts),
+  );
+}
 
 describe('Product Setup record', () => {
   it('extracts suggestions from unstructured chat without mutating confirmed fields', () => {
@@ -528,13 +577,26 @@ describe('Product Setup record', () => {
     expect(result.record.fields.expected_investor_count).toMatchObject({ value: 30, status: 'user_stated' });
     expect(result.record.fields.maximum_investor_count).toMatchObject({ value: 30, status: 'user_stated' });
     expect(result.record.fields.nav_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
+    expect(result.record.fields.nav_price_assumption).toMatchObject({ value: '$1 per token', status: 'user_stated' });
     expect(result.record.fields.nav_upload_method).toMatchObject({ value: 'CSV', status: 'locked' });
+    expect(result.record.fields.nav_upload_timing).toMatchObject({
+      value: '1 day before subscription day',
+      status: 'user_stated',
+    });
     expect(result.record.fields.subscription_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
+    expect(result.record.fields.subscription_window).toMatchObject({
+      value: 'Opens 2 weeks before launch date; closes launch date',
+      status: 'user_stated',
+    });
     expect(result.record.fields.redemption_cadence).toMatchObject({ value: 'Monthly', status: 'user_stated' });
     expect(result.record.fields.subscription_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
     expect(result.record.fields.redemption_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
     expect(result.record.fields.minimum_subscription_amount).toMatchObject({ value: '$10,000', status: 'user_stated' });
     expect(result.record.fields.minimum_redemption_amount).toMatchObject({ value: '1 token', status: 'user_stated' });
+    expect(result.record.fields.income_payout_timing).toMatchObject({
+      value: '1 day before redemption date',
+      status: 'user_stated',
+    });
     expect(result.record.fields.whitelisted_wallets_required).toMatchObject({ value: true, status: 'user_stated' });
     expect(result.record.fields.p2p_transfer_allowed).toMatchObject({ value: true, status: 'user_stated' });
     expect(result.record.fields.prototype_network).toMatchObject({ value: 'Sepolia testnet', status: 'locked' });
@@ -611,8 +673,17 @@ describe('Product Setup record', () => {
       ]),
     );
     expect(result.record.fields.nav_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(result.record.fields.nav_price_assumption).toMatchObject({ value: '$1 per token', status: 'user_stated' });
     expect(result.record.fields.nav_upload_method).toMatchObject({ value: 'CSV', status: 'locked' });
+    expect(result.record.fields.nav_upload_timing).toMatchObject({
+      value: '2 days before subscription opens',
+      status: 'user_stated',
+    });
     expect(result.record.fields.subscription_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
+    expect(result.record.fields.subscription_window).toMatchObject({
+      value: 'Opens 3 weeks before launch date; closes launch date',
+      status: 'user_stated',
+    });
     expect(result.record.fields.redemption_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
     expect(result.record.fields.subscription_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
     expect(result.record.fields.redemption_payment_method).toMatchObject({ value: 'Offchain transfer', status: 'user_stated' });
@@ -622,6 +693,10 @@ describe('Product Setup record', () => {
     expect(result.record.fields.p2p_transfer_allowed).toMatchObject({ value: true, status: 'user_stated' });
     expect(result.record.fields.prototype_network).toMatchObject({ value: 'Sepolia testnet', status: 'locked' });
     expect(result.record.fields.protocol_base).toMatchObject({ value: 'Customised ERC-20', status: 'user_stated' });
+    expect(result.record.fields.income_payout_timing).toMatchObject({
+      value: '2 days before each redemption date',
+      status: 'user_stated',
+    });
 
     expect(readModel.missingEssentials).not.toEqual(expect.arrayContaining(['subscription_stablecoins', 'redemption_stablecoin_type']));
     expect(profileRowsById.get('product_name')).toMatchObject({
@@ -1273,6 +1348,22 @@ describe('Product Setup record', () => {
     expect(readModel.packPreview.canDownloadArtifacts).toBe(false);
   });
 
+  it('distinguishes clean PRD readiness from critical Product Setup deferrals', () => {
+    const completeRecord = createCompleteProductSetupRecord();
+    const cleanReadModel = toProductSetupReadModel(completeRecord);
+    const deferredRecord = deferProductSetupField(completeRecord, 'offering_type', 'User will confirm the offering type before final PRD approval.');
+    const deferredReadModel = toProductSetupReadModel(deferredRecord);
+
+    expect(productSetupPrdFieldKeys).toContain('offering_type');
+    expect(cleanReadModel.missingEssentials).toHaveLength(0);
+    expect(cleanReadModel.criticalDeferredEssentials).toHaveLength(0);
+    expect(cleanReadModel.packPreview.status).toBe('Ready for review');
+    expect(deferredReadModel.missingEssentials).toHaveLength(0);
+    expect(deferredReadModel.criticalDeferredEssentials.map((field) => field.key)).toContain('offering_type');
+    expect(deferredReadModel.packPreview.status).toBe('Ready with critical deferrals');
+    expect(deferredReadModel.packPreview.warning).toMatch(/critical deferred Product Setup fields/i);
+  });
+
   it('classifies wallet follow-up responses by intent', () => {
     expect(classifyWalletSetupResponse('0x1111111111111111111111111111111111111111')).toBe('address');
     expect(classifyWalletSetupResponse('Issuer operations wallet')).toBe('role_placeholder');
@@ -1411,10 +1502,48 @@ describe('Product Setup record', () => {
     const markdown = createProductSetupPackMarkdown(record);
 
     expect(markdown).toContain('# ZiLi-OS Product Requirements Document');
-    expect(markdown).toContain('## Definitions Used In This Product Setup');
+    expect(markdown).toContain('## 9. Definitions Used In This Product Setup');
     expect(markdown).toContain('Recommended architecture target');
     expect(markdown).toContain('Current executable prototype');
     expect(markdown).toContain('Conditional transfers with clawback');
+  });
+
+  it('generates narrative PRD prose from the canonical Product Setup record', () => {
+    const record = createCompleteProductSetupRecord();
+    const markdown = createProductSetupPackMarkdown(record);
+
+    expect(markdown).toContain('## 1. Executive Summary');
+    expect(markdown).toContain('MERIDIAN Growth Fund is a closed-ended fund');
+    expect(markdown).toContain('run for 24 months');
+    expect(markdown).toContain('Private placement');
+    expect(markdown).toContain('fixed income (bonds)');
+    expect(markdown).toContain('The subscription window is recorded as: Opens 2 weeks before launch date; closes launch date.');
+    expect(markdown).toContain('The current NAV price assumption is $1 per token.');
+    expect(markdown).toContain('with timing recorded as: 1 day before subscription day.');
+    expect(markdown).toContain('with timing recorded as: 1 day before redemption date.');
+    expect(markdown).toContain('with a minimum subscription amount of $10,000');
+    expect(markdown).toContain('## 7. Open Decisions And Review Items');
+    expect(markdown).toContain('- No critical deferred Product Setup fields.');
+    expect(markdown).not.toContain('### Deployment Warnings');
+    expect(markdown).not.toContain('Protocol base: Smart contract architecture may be generated against the wrong token pattern.');
+    expect(markdown).not.toContain('Expected investors: Investor Wallets capacity and distribution assumptions may be wrong.');
+    expect(markdown).not.toContain('| Minimum redemption amount | $10,000 |');
+  });
+
+  it('uses record revision and generator version for Product Setup PRD idempotency keys', () => {
+    const record = createCompleteProductSetupRecord();
+    const sameRevisionKey = createProductSetupPrdArtifactKey(record);
+    const updatedRecord = updateProductSetupField(record, {
+      fieldKey: 'base_currency',
+      value: 'EUR',
+      sourceType: 'user_message',
+      sourceRef: 'test_revision_change',
+      status: 'user_confirmed',
+    });
+
+    expect(sameRevisionKey).toBe(createProductSetupPrdArtifactKey(record));
+    expect(sameRevisionKey).toContain(PRODUCT_SETUP_PRD_GENERATOR_VERSION);
+    expect(createProductSetupPrdArtifactKey(updatedRecord)).not.toBe(sameRevisionKey);
   });
 
   it('escapes user-provided Markdown table content in generated PRD artifacts', () => {

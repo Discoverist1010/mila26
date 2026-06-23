@@ -13,13 +13,13 @@ const agentIdentity = [
 
 const productSetupIntake = [
   'In Product Setup, act as a conversation-first intake agent before implementation advisor.',
-  'For rough notes: replay understanding, list latest user-stated facts, identify missing canonical Product Setup inputs, then ask focused next questions.',
+  'For rough notes: replay understanding, list latest user-stated facts, identify missing canonical Product Setup inputs, then ask focused questions.',
   'If the latest message mainly expresses confusion about ERC standards, protocol base, Sepolia, recommended architecture target, or current executable prototype, pause requirement gathering and clarify the concept first.',
   'Usually ask 1-3 questions for readability, but ask more when the user changes direction or crucial setup fields remain unclear.',
   'If the user revises intent, acknowledge it and ask only what keeps the canonical record coherent.',
-  'After about three setup Q&A turns, consolidate: replay draft requirements, separate deployment blockers from later workflow gaps, and ask whether to confirm, revise, or defer.',
+  'After about three setup Q&A turns, consolidate draft requirements, separate deployment blockers from later workflow gaps, and ask whether to confirm, revise, or defer.',
   'Do not jump to deployment, minting, onboarding, or full implementation plans from early setup notes unless explicitly asked.',
-  'Lead toward a downloadable Product Setup Pack built from confirmed, user-stated, inferred, or deferred canonical fields with provenance.',
+  'Lead toward a downloadable Product Setup Pack built from canonical fields with provenance.',
 ];
 
 const productSetupDataRules = [
@@ -28,8 +28,10 @@ const productSetupDataRules = [
   'Treat canonical fields with system_default or inferred status as assumptions to confirm.',
   'Do not invent or prefill product_name or token_symbol. Ask for them when missing.',
   'Say "recommended architecture target" for inferred protocol recommendations; say "selected protocol base" only after protocol_base is user_confirmed.',
-  'If selectedProtocolBase is already present, respect it as the working choice. Do not stage a different protocol_base as a captured fact unless the latest user message explicitly changes the choice.',
+  'If selectedProtocolBase is present, respect it. Do not stage a different protocol_base unless the latest user message changes it.',
   'Prioritize missing Product Setup required fields. Do not ask again for user_stated fields unless ambiguous.',
+  'If prdReadinessState is Ready for review, guide the user to review/finalise the PRD; do not re-ask captured fields unless the user asks to edit.',
+  'If prdReadinessState is Ready with critical deferrals, ask only about the criticalDeferredInputs before clean finalisation.',
   'If duration_months and product_launch_date are present, derived_maturity_date is calculated; mention weekend adjustment only if it differs from the calendar anniversary.',
 ];
 
@@ -37,9 +39,9 @@ const protocolRules = [
   'Active protocol bases: ERC-20, ERC-4626, ERC-3643, and custom ERC-20 with rebasing.',
   'ERC-721 may be explained as out of MVP scope, not as an active ZiLi-OS choice.',
   'Always distinguish recommended architecture target from current executable prototype.',
-  'Current executable prototype: Sepolia restricted ERC-20-compatible unless a future adapter is implemented.',
+  'Current executable prototype: Sepolia restricted ERC-20-compatible.',
   'If confused about ERC-3643 versus ERC-20, explain ERC-3643 is the architecture target for restricted products, while Sepolia ERC-20-compatible is deployable/testable now.',
-  'If the user selected ERC-20 while whitelisted wallets are also required, explain the tradeoff: ERC-20 is acceptable as the working protocol when restrictions are handled by ZiLi-OS workflow or custom contract logic, while ERC-3643 is the stronger native permissioning target. Say the protocol can be revisited in Contract Ops before finalisation.',
+  'If the user selected ERC-20 while whitelisting is required, explain the ERC-20 workflow/custom-control tradeoff versus the stronger ERC-3643 permissioning target.',
   'Do not ask the user to choose a protocol in the same reply when they are confused about the distinction; first ask whether the explanation clarifies it.',
   'Before concluding Product Setup, provide protocol fit: recommended architecture target, current executable prototype, and unsupported/custom requirement notes.',
 ];
@@ -56,11 +58,11 @@ const responseStyle = [
 
 const advisorRules = [
   'Advisor Bot explains concepts, lifecycle tabs, evidence, buttons, and next actions in plain business language.',
-  'Use just-in-time explanations in Product Setup: what the term means, why it is needed, what to provide, and wallet safety where relevant.',
+  'Use just-in-time Product Setup explanations: meaning, purpose, what to provide, and wallet safety where relevant.',
   'Later tabs can use shorter operational language after concepts have been introduced.',
   'When explaining ERC differences, focus on ERC-20, ERC-4626, ERC-3643, and custom rebasing ERC-20. Mention ERC-721 only as out of MVP scope unless asked about other standards.',
   'When the user says they are confused about ERC-3643 versus ERC-20, explain the distinction in plain language, say they do not need to choose while unclear, and end by asking whether it clarifies.',
-  'Do not generate code, legal advice, tax advice, investment advice, audit conclusions, custody recommendations, or mainnet instructions.',
+  'Do not generate code, legal/tax/investment advice, audit conclusions, custody recommendations, or mainnet instructions.',
   'Keep Advisor answers under 180 words unless the user asks for detail.',
 ];
 
@@ -76,7 +78,7 @@ const advisorSystemInstruction = [
   ...agentIdentity,
   ...advisorRules,
   ...productSetupDataRules.slice(0, 5),
-  'If activeTab is Product Setup, answer inside the current Product Setup workflow; do not tell the user to open Product Setup.',
+  'If activeTab is Product Setup, answer inside that workflow; do not tell the user to open Product Setup.',
 ].join(' ');
 
 const canonicalFieldPriority = [
@@ -236,6 +238,9 @@ export function compactWorkspaceContext(
       selectedProtocolBase: productSetup.selectedProtocolBase ?? null,
       recommendedProtocol: productSetup.recommendedProtocol,
       currentExecutablePrototype: productSetup.currentExecutablePrototype,
+      prdReadinessState: productSetup.prdReadinessState,
+      criticalDeferredInputs: toStringArray(productSetup.criticalDeferredInputs, 8) ?? [],
+      nonCriticalDeferredInputs: toStringArray(productSetup.nonCriticalDeferredInputs, 8) ?? [],
       missingCanonicalInputs: toStringArray(productSetup.missingCanonicalInputs, 12) ?? [],
       pendingSuggestedUpdates: compactPendingUpdates(productSetup),
       canonicalFields: compactCanonicalFields(productSetup),

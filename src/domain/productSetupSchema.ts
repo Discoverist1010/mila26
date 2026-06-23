@@ -72,8 +72,12 @@ export type ProductSetupFieldKey =
   | 'burn_lock_rule'
   | 'nav_cadence'
   | 'nav_upload_method'
+  | 'nav_price_assumption'
+  | 'nav_upload_timing'
   | 'nav_source'
   | 'investor_update_rule'
+  | 'subscription_window'
+  | 'income_payout_timing'
   | 'initial_distribution_date'
   | 'initial_investor_register_rule'
   | 'maturity_date'
@@ -214,6 +218,8 @@ export type ProductSetupReadModel = {
   readinessLabel: string;
   completedEssentialCount: number;
   requiredEssentialCount: number;
+  criticalDeferredEssentials: ProductSetupField[];
+  nonCriticalDeferredEssentials: ProductSetupField[];
   understandingSummary: string;
   protocolRecommendation: {
     recommendedProtocol: ProductSetupProtocolBase;
@@ -247,7 +253,7 @@ export type ProductSetupReadModel = {
     prompt: string;
   }>;
   packPreview: {
-    status: 'Draft' | 'Ready for review' | 'Finalised' | 'PRD generated';
+    status: 'Draft' | 'Ready with critical deferrals' | 'Ready for review' | 'Finalised' | 'PRD generated';
     versionLabel: string;
     lastGeneratedAtIso?: string;
     evidenceVaultStatus: string;
@@ -376,8 +382,12 @@ export const allProductSetupFieldKeys = [
   'burn_lock_rule',
   'nav_cadence',
   'nav_upload_method',
+  'nav_price_assumption',
+  'nav_upload_timing',
   'nav_source',
   'investor_update_rule',
+  'subscription_window',
+  'income_payout_timing',
   'initial_distribution_date',
   'initial_investor_register_rule',
   'maturity_date',

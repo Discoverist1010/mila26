@@ -170,6 +170,8 @@ type ProductSetupFieldPolicy = {
   derived?: boolean;
 };
 
+export const PRODUCT_SETUP_PRD_GENERATOR_VERSION = 'product-setup-prd-renderer-v2';
+
 const productSetupFieldPolicies: Partial<Record<ProductSetupFieldKey, ProductSetupFieldPolicy>> = {
   derived_maturity_date: { commitPolicy: 'reject_if_invalid', derived: true },
   protocol_base: { commitPolicy: 'review_if_changed', deploymentMaterial: true },
@@ -188,6 +190,36 @@ const productSetupFieldPolicies: Partial<Record<ProductSetupFieldKey, ProductSet
 
 function productSetupFieldPolicy(fieldKey: ProductSetupFieldKey): ProductSetupFieldPolicy {
   return productSetupFieldPolicies[fieldKey] ?? { commitPolicy: 'safe_auto_commit' };
+}
+
+const criticalProductSetupPrdFieldKeys = new Set<ProductSetupFieldKey>([
+  'product_name',
+  'token_symbol',
+  'product_launch_date',
+  'product_wrapper',
+  'underlying_asset_class',
+  'product_structure',
+  'offering_type',
+  'eligible_investor_type',
+  'maximum_investor_count',
+  'distribution_jurisdiction',
+  'base_currency',
+  'subscription_cadence',
+  'subscription_payment_method',
+  'redemption_cadence',
+  'redemption_payment_method',
+  'duration_months',
+  'derived_maturity_date',
+  'whitelisted_wallets_required',
+  'p2p_transfer_allowed',
+  'protocol_base',
+  'prototype_network',
+  'compliance_model',
+  'evidence_model',
+]);
+
+function isCriticalProductSetupPrdField(fieldKey: ProductSetupFieldKey): boolean {
+  return criticalProductSetupPrdFieldKeys.has(fieldKey) || productSetupFieldPolicy(fieldKey).deploymentMaterial === true;
 }
 
 function productSetupRevision(record: ProductSetupRecord): number {
@@ -522,6 +554,20 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
         usedByTabs: ['Product Setup', 'Asset Servicing', 'Evidence Vault'],
         smartContractRelevance: 'evidence_metadata',
       }),
+      nav_price_assumption: createField({
+        key: 'nav_price_assumption',
+        label: 'NAV price assumption',
+        status: 'missing',
+        usedByTabs: ['Asset Servicing', 'Subscription', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      nav_upload_timing: createField({
+        key: 'nav_upload_timing',
+        label: 'NAV upload timing',
+        status: 'missing',
+        usedByTabs: ['Asset Servicing', 'Subscription', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
       nav_source: createField({
         key: 'nav_source',
         label: 'NAV source',
@@ -534,6 +580,20 @@ export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupR
         label: 'Investor update rule',
         status: 'missing',
         usedByTabs: ['Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      subscription_window: createField({
+        key: 'subscription_window',
+        label: 'Subscription window',
+        status: 'missing',
+        usedByTabs: ['Subscription', 'Investor Wallets', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+      income_payout_timing: createField({
+        key: 'income_payout_timing',
+        label: 'Income payout timing',
+        status: 'missing',
+        usedByTabs: ['Asset Servicing', 'Redemption', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
       }),
       initial_distribution_date: createField({
@@ -715,6 +775,11 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
   const protocolRecommendation = recommendProductSetupProtocol(record);
   const requiredProductSetupFieldKeys = toRequiredProductSetupFieldKeys(record);
   const completedEssentialCount = requiredProductSetupFieldKeys.filter((key) => isProductSetupRequiredFieldDrafted(record.fields[key])).length;
+  const deferredEssentials = requiredProductSetupFieldKeys
+    .map((key) => record.fields[key])
+    .filter((field) => field.status === 'deferred');
+  const criticalDeferredEssentials = deferredEssentials.filter((field) => isCriticalProductSetupPrdField(field.key));
+  const nonCriticalDeferredEssentials = deferredEssentials.filter((field) => !isCriticalProductSetupPrdField(field.key));
   const missingEssentials = requiredProductSetupFieldKeys
     .map((key) => record.fields[key])
     .filter((field) => !isProductSetupRequiredFieldDrafted(field));
@@ -727,9 +792,13 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
 
   return {
     statusLabel: record.status === 'locked' ? 'Locked Product Setup snapshot' : 'Draft Product Setup',
-    readinessLabel: `${completedEssentialCount}/${requiredProductSetupFieldKeys.length} Product Setup fields drafted, defaulted, or locked`,
+    readinessLabel:
+      `${completedEssentialCount}/${requiredProductSetupFieldKeys.length} Product Setup fields drafted, defaulted, locked, or explicitly deferred` +
+      (criticalDeferredEssentials.length > 0 ? ` · ${criticalDeferredEssentials.length} critical deferral(s)` : ''),
     completedEssentialCount,
     requiredEssentialCount: requiredProductSetupFieldKeys.length,
+    criticalDeferredEssentials,
+    nonCriticalDeferredEssentials,
     understandingSummary: createUnderstandingSummary(record, protocolRecommendation.recommendedProtocol),
     protocolRecommendation,
     missingEssentials,
@@ -749,12 +818,19 @@ export function toProductSetupReadModel(record: ProductSetupRecord): ProductSetu
       { termKey: 'burn_lock_rule', fieldKey: 'burn_lock_rule', prompt: productSetupPromptForTerm('burn_lock_rule') },
     ],
     packPreview: {
-      status: missingEssentials.length === 0 ? 'Ready for review' : 'Draft',
+      status:
+        missingEssentials.length > 0
+          ? 'Draft'
+          : criticalDeferredEssentials.length > 0
+            ? 'Ready with critical deferrals'
+            : 'Ready for review',
       versionLabel: 'Not generated',
       evidenceVaultStatus: 'Not stored yet',
       canDownloadArtifacts: false,
       warning:
-        'ZiliOS generates this pack after the product profile is reviewed and finalised. It captures the product PRD, product assumptions, compliance rules, and staged operational notes for the lifecycle tabs. Legal and compliance-sensitive items should be confirmed with counsel or compliance.',
+        criticalDeferredEssentials.length > 0
+          ? 'ZiliOS can draft the Product Setup Pack, but critical deferred Product Setup fields must be reviewed before the PRD is treated as ready for downstream workflow use.'
+          : 'ZiliOS generates this pack after the product profile is reviewed and finalised. It captures the product PRD, product assumptions, compliance rules, and staged operational notes for the lifecycle tabs. Legal and compliance-sensitive items should be confirmed with counsel or compliance.',
       includedDocuments: [
         'Product Requirements Document',
         'Product terms and lifecycle summary',
@@ -783,6 +859,7 @@ function toRequiredProductSetupFieldKeys(record: ProductSetupRecord): ProductSet
 
 function isProductSetupRequiredFieldDrafted(field: ProductSetupField): boolean {
   if (field.rolePlaceholder) return false;
+  if (field.status === 'deferred') return true;
   if (field.value === undefined || field.value === null) return false;
   if (Array.isArray(field.value)) return field.value.length > 0;
   if (typeof field.value === 'string' && field.value.trim().length === 0) return false;
@@ -1062,7 +1139,7 @@ function createProductSetupHandoffCandidates(record: ProductSetupRecord): Produc
       id: 'subscription-mechanics',
       target: 'subscription',
       title: 'Subscription mechanics',
-      fieldKeys: ['subscription_cadence', 'subscription_stablecoins', 'initial_distribution_date'],
+      fieldKeys: ['subscription_cadence', 'subscription_window', 'subscription_stablecoins', 'initial_distribution_date'],
       sourceRef: 'product_setup_subscription_mechanics',
       createdAtIso,
     }),
@@ -1078,7 +1155,16 @@ function createProductSetupHandoffCandidates(record: ProductSetupRecord): Produc
       id: 'asset-servicing-schedule',
       target: 'asset_servicing',
       title: 'Distribution, NAV, and corporate-action servicing',
-      fieldKeys: ['nav_cadence', 'nav_source', 'income_treatment', 'income_payout_cadence', 'investor_update_rule'],
+      fieldKeys: [
+        'nav_cadence',
+        'nav_price_assumption',
+        'nav_upload_timing',
+        'nav_source',
+        'income_treatment',
+        'income_payout_cadence',
+        'income_payout_timing',
+        'investor_update_rule',
+      ],
       sourceRef: 'product_setup_asset_servicing',
       createdAtIso,
     }),
@@ -1171,6 +1257,7 @@ function productSetupHandoffTargetFieldKey(
     investor_wallets: {},
     subscription: {
       subscription_cadence: 'subscriptionCadence',
+      subscription_window: 'subscriptionWindow',
       subscription_stablecoins: 'permittedStablecoins',
       minimum_subscription_amount: 'minimumSubscriptionAmount',
       subscription_receiving_wallet: 'paymentAddress',
@@ -1179,8 +1266,11 @@ function productSetupHandoffTargetFieldKey(
     contract_ops: {},
     asset_servicing: {
       nav_cadence: 'navCadence',
+      nav_price_assumption: 'navPriceAssumption',
+      nav_upload_timing: 'navUploadTiming',
       nav_source: 'navSource',
       income_payout_cadence: 'incomePayoutCadence',
+      income_payout_timing: 'incomePayoutTiming',
       investor_update_rule: 'investorUpdateRule',
     },
     redemption: {
@@ -1842,12 +1932,16 @@ const directUserStatedProductSetupFields = new Set<ProductSetupFieldKey>([
   'redemption_cadence',
   'redemption_schedule',
   'income_payout_cadence',
+  'income_payout_timing',
   'redemption_payout_cadence',
   'minimum_redemption_amount',
   'burn_lock_rule',
   'nav_cadence',
+  'nav_price_assumption',
+  'nav_upload_timing',
   'nav_source',
   'investor_update_rule',
+  'subscription_window',
   'duration_months',
   'initial_distribution_date',
   'initial_investor_register_rule',
@@ -2381,7 +2475,21 @@ function acceptedEquivalentFieldUpdates(decision: UnsupportedRequirementDecision
 export type ProductSetupPackGenerationOptions = {
   generatedAtIso?: string;
   versionLabel?: string;
+  mode?: 'standard' | 'deterministic_fallback';
 };
+
+export function createProductSetupPrdArtifactKey(
+  record: ProductSetupRecord,
+  options: Pick<ProductSetupPackGenerationOptions, 'mode'> = {},
+): string {
+  return [
+    'product-setup-prd',
+    record.id,
+    `r${productSetupRevision(record)}`,
+    PRODUCT_SETUP_PRD_GENERATOR_VERSION,
+    options.mode ?? 'standard',
+  ].join(':');
+}
 
 export function createProductSetupPackPayload(
   record: ProductSetupRecord,
@@ -2405,8 +2513,12 @@ export function createProductSetupPackPayload(
   ];
   const fields = Object.values(record.fields).map((field) => ({
     requirement: field.label,
-    userInput: fieldDisplayValue(field) || field.rolePlaceholder || 'Not provided',
-    interpretation: field.deferralReason || field.rolePlaceholder || fieldDisplayValue(field) || 'Needed before relevant workflow activation',
+    userInput: formatProductSetupFieldValue(field.key, field.value) || field.rolePlaceholder || 'Not provided',
+    interpretation:
+      field.deferralReason ||
+      field.rolePlaceholder ||
+      formatProductSetupFieldValue(field.key, field.value) ||
+      'Needed before relevant workflow activation',
     source: field.sourceType ?? 'missing',
     status: field.status,
     usedByTabs: field.usedByTabs,
@@ -2414,6 +2526,9 @@ export function createProductSetupPackPayload(
 
   return {
     recordId: record.id,
+    recordRevision: productSetupRevision(record),
+    generatorVersion: PRODUCT_SETUP_PRD_GENERATOR_VERSION,
+    artifactKey: createProductSetupPrdArtifactKey(record, options),
     artifactId: `product-setup-prd-${record.id}-${versionLabel.replaceAll('.', '-')}`,
     versionLabel,
     displayVersion: `Product PRD ${versionLabel}`,
@@ -2422,6 +2537,10 @@ export function createProductSetupPackPayload(
     warning: readModel.packPreview.warning,
     statusLabel: readModel.statusLabel,
     readinessLabel: readModel.readinessLabel,
+    readinessState: readModel.packPreview.status,
+    criticalDeferredFields: readModel.criticalDeferredEssentials.map((field) => field.label),
+    nonCriticalDeferredFields: readModel.nonCriticalDeferredEssentials.map((field) => field.label),
+    missingEssentialFields: readModel.missingEssentials.map((field) => field.label),
     recommendedArchitectureTarget: readModel.protocolRecommendation.recommendedProtocol,
     currentExecutablePrototype: readModel.protocolRecommendation.executablePrototypeLabel,
     definitions,
@@ -2440,6 +2559,40 @@ export function createProductSetupPrdMarkdown(
   options: ProductSetupPackGenerationOptions = {},
 ): string {
   const payload = createProductSetupPackPayload(record, readModel, options);
+  const productName = productSetupProseField(record, 'product_name', 'the tokenised product');
+  const tokenSymbol = productSetupProseField(record, 'token_symbol', 'the token symbol');
+  const productWrapper = productSetupProseField(record, 'product_wrapper', 'product wrapper not yet specified');
+  const productStructure = productSetupProseField(record, 'product_structure', 'term type not yet specified');
+  const underlyingAssetClass = productSetupAssetClassProse(record);
+  const launchDate = productSetupProseField(record, 'product_launch_date', 'launch date not yet specified');
+  const durationMonths = productSetupProseField(record, 'duration_months', 'duration not yet specified');
+  const maturityDate = productSetupProseField(record, 'derived_maturity_date', 'maturity date not yet derived');
+  const baseCurrency = productSetupProseField(record, 'base_currency', 'base currency not yet specified');
+  const offeringType = productSetupOfferingTypeProse(record);
+  const eligibleInvestorType = productSetupProseField(record, 'eligible_investor_type', 'eligible investor type not yet specified');
+  const maxInvestors = productSetupProseField(record, 'maximum_investor_count', 'maximum investor count not yet specified');
+  const jurisdiction = productSetupProseField(record, 'distribution_jurisdiction', 'distribution jurisdiction not yet specified');
+  const transferRule = productSetupTransferRuleProse(record);
+  const navCadence = productSetupProseField(record, 'nav_cadence', 'NAV cadence not yet specified');
+  const navUploadMethod = productSetupProseField(record, 'nav_upload_method', 'NAV upload method not yet specified');
+  const navPriceAssumption = productSetupProseField(record, 'nav_price_assumption', 'NAV price assumption not yet specified');
+  const navUploadTiming = productSetupProseField(record, 'nav_upload_timing', 'NAV upload timing not yet specified');
+  const navSource = productSetupProseField(record, 'nav_source', 'NAV source not yet specified');
+  const subscriptionCadence = productSetupProseField(record, 'subscription_cadence', 'subscription cadence not yet specified');
+  const subscriptionWindow = productSetupProseField(record, 'subscription_window', 'subscription window not yet specified');
+  const subscriptionPayment = productSetupProseField(record, 'subscription_payment_method', 'subscription payment method not yet specified');
+  const minimumSubscription = productSetupProseField(record, 'minimum_subscription_amount', 'minimum subscription amount not yet specified');
+  const redemptionCadence = productSetupProseField(record, 'redemption_cadence', 'redemption cadence not yet specified');
+  const redemptionPayment = productSetupProseField(record, 'redemption_payment_method', 'redemption payment method not yet specified');
+  const minimumRedemption = productSetupProseField(record, 'minimum_redemption_amount', 'minimum redemption amount not yet specified');
+  const incomeTreatment = productSetupProseField(record, 'income_treatment', 'income treatment not yet specified');
+  const incomePayoutCadence = productSetupProseField(record, 'income_payout_cadence', 'income payout cadence not yet specified');
+  const incomePayoutTiming = productSetupProseField(record, 'income_payout_timing', 'income payout timing not yet specified');
+  const burnLockRule = productSetupProseField(record, 'burn_lock_rule', 'burn or lock rule not yet specified');
+  const protocolBase = productSetupProseField(record, 'protocol_base', 'protocol base not yet selected');
+  const prototypeNetwork = productSetupProseField(record, 'prototype_network', 'prototype network not yet specified');
+  const complianceModel = productSetupProseField(record, 'compliance_model', 'compliance model not yet specified');
+  const evidenceModel = productSetupProseField(record, 'evidence_model', 'evidence model not yet specified');
   const fieldRows = payload.fields
     .map((field) => productSetupMarkdownTableRow([field.requirement, field.userInput, field.interpretation, field.source, field.status]))
     .join('\n');
@@ -2452,108 +2605,140 @@ export function createProductSetupPrdMarkdown(
   const handoffRows = payload.downstreamHandoffs.length > 0
     ? payload.downstreamHandoffs.map((handoff) => productSetupMarkdownTableRow([handoff.title, productSetupHandoffTargetLabel(handoff.target), handoff.status.replaceAll('_', ' '), handoff.detail])).join('\n')
     : '| None | - | - | No downstream handoffs recorded. |';
+  const criticalDeferrals =
+    payload.criticalDeferredFields.length > 0
+      ? payload.criticalDeferredFields.map((label) => `- ${markdownInlineText(label)}: explicitly deferred and requires review before clean PRD readiness.`).join('\n')
+      : '- No critical deferred Product Setup fields.';
+  const missingEssentials =
+    payload.missingEssentialFields.length > 0
+      ? payload.missingEssentialFields.map((label) => `- ${markdownInlineText(label)}: not yet provided.`).join('\n')
+      : '- No missing essential Product Setup fields.';
+  const openDecisionItems = productSetupOpenDecisionItems(record, readModel);
+  const openDecisions =
+    openDecisionItems.length > 0
+      ? openDecisionItems.map((item) => `- ${markdownInlineText(item)}`).join('\n')
+      : '- No open Product Setup decisions recorded for this PRD draft.';
 
   return [
     `# ZiLi-OS Product Requirements Document ${payload.versionLabel}`,
     '',
     `Generated at: ${payload.generatedAtIso}`,
+    `Record revision: ${payload.recordRevision}`,
+    `Generator: ${payload.generatorVersion}`,
     '',
     `> ${payload.warning}`,
     '',
-    '## 1. Product Overview',
+    '## 1. Executive Summary',
     '',
     `- Product Setup status: ${payload.statusLabel}`,
     `- Readiness: ${payload.readinessLabel}`,
+    `- PRD readiness state: ${payload.readinessState}`,
     '',
-    '## 2. Product Terms Summary',
+    `${productName} is a ${productStructure.toLowerCase()} ${productWrapper.toLowerCase()} represented in the Product Setup by token symbol ${tokenSymbol}. The product references ${underlyingAssetClass.toLowerCase()} and uses ${baseCurrency} as the base currency for valuation, subscription, redemption, and evidence assumptions.`,
+    '',
+    `The current Product Setup states that the product will launch on ${launchDate}, run for ${durationMonths}, and mature on ${maturityDate}. Investor participation is limited to ${eligibleInvestorType.toLowerCase()} under a ${offeringType.toLowerCase()} model in ${jurisdiction}.`,
+    '',
+    '## 2. Product Terms',
+    '',
+    `This PRD records the product as ${productStructure.toLowerCase()} with a maximum of ${maxInvestors} investors. These product terms are the canonical inputs used by Product Setup and passed downstream only after they are recorded or confirmed in the Product Setup record.`,
+    '',
+    '### Canonical Terms',
     '',
     '| Attribute | Value | Provenance |',
     '| --- | --- | --- |',
     profileRows,
     '',
-    '## 3. Investor Eligibility And Distribution Rules',
+    '## 3. Investor Eligibility And Transfer Rules',
+    '',
+    `Investor eligibility is handled offchain before wallet whitelisting. ${transferRule} This means Investor Wallets owns wallet registration and whitelist evidence, while Contract Ops consumes the resulting whitelist rule as a smart-contract transfer-control input.`,
     '',
     '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
     '| --- | --- | --- | --- | --- |',
     fieldRowsForLabels(payload.fields, ['Offering type', 'Eligible investor type', 'Maximum number of investors', 'Distribution jurisdiction', 'Whitelisted wallets required', 'P2P transfer allowed']),
     '',
-    '## 4. NAV And Valuation Assumptions',
+    '## 4. NAV, Subscription, Redemption, And Income Timetable',
+    '',
+    `NAV servicing is configured as ${navCadence}. The current NAV price assumption is ${navPriceAssumption}. NAV is expected to be handled through ${navUploadMethod}, with timing recorded as: ${navUploadTiming}. The stated NAV source is ${navSource}.`,
+    '',
+    `Subscriptions follow ${subscriptionCadence}. The subscription window is recorded as: ${subscriptionWindow}. Subscription payments are recorded as ${subscriptionPayment}, with a minimum subscription amount of ${minimumSubscription}.`,
+    '',
+    `Redemptions follow ${redemptionCadence}. Redemption payments are recorded as ${redemptionPayment}, with a minimum redemption amount of ${minimumRedemption}. Income treatment is ${incomeTreatment}; income payout cadence is ${incomePayoutCadence}, with timing recorded as: ${incomePayoutTiming}.`,
     '',
     '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
     '| --- | --- | --- | --- | --- |',
-    fieldRowsForLabels(payload.fields, ['NAV cadence', 'NAV upload method', 'NAV source']),
+    fieldRowsForLabels(payload.fields, [
+      'NAV cadence',
+      'NAV price assumption',
+      'NAV upload method',
+      'NAV upload timing',
+      'NAV source',
+      'Subscription / mint cadence',
+      'Subscription window',
+      'Subscription payment method',
+      'Subscription stablecoin type',
+      'Minimum subscription amount',
+      'Redemption / burn cadence',
+      'Redemption payment method',
+      'Redemption stablecoin type',
+      'Minimum redemption amount',
+      'Income treatment',
+      'Income payout cadence',
+      'Income payout timing',
+    ]),
     '',
-    '## 5. Subscription And Mint Assumptions',
-    '',
-    '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
-    '| --- | --- | --- | --- | --- |',
-    fieldRowsForLabels(payload.fields, ['Subscription / mint cadence', 'Subscription payment method', 'Subscription stablecoin type', 'Minimum redemption amount']),
-    '',
-    '## 6. Redemption And Burn Assumptions',
-    '',
-    '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
-    '| --- | --- | --- | --- | --- |',
-    fieldRowsForLabels(payload.fields, ['Redemption / burn cadence', 'Redemption payment method', 'Redemption stablecoin type', 'Burn / lock rule']),
-    '',
-    '## 7. Maturity And Final Redemption Assumptions',
-    '',
-    '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
-    '| --- | --- | --- | --- | --- |',
-    fieldRowsForLabels(payload.fields, ['Duration of product in months', 'Derived maturity date', 'Maturity description', 'Maturity date', 'Maturity closeout rule']),
-    '',
-    '## 8. Blockchain And Token Protocol Assumptions',
+    '## 5. Smart Contract And Contract Ops Inputs',
     '',
     `- Recommended architecture target: ${payload.recommendedArchitectureTarget}`,
     `- Current executable prototype: ${payload.currentExecutablePrototype}`,
+    `- Selected protocol base: ${protocolBase}`,
+    `- Prototype network: ${prototypeNetwork}`,
+    `- Compliance model: ${complianceModel}`,
+    '',
+    `Contract Ops should consume these values from the Product Setup snapshot instead of reconstructing them from chat. The currently recorded token handling rule is ${burnLockRule}; this remains an open Contract Ops/Redemption decision when not yet specified.`,
     '',
     '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
     '| --- | --- | --- | --- | --- |',
-    fieldRowsForLabels(payload.fields, ['Blockchain network', 'Protocol base']),
+    fieldRowsForLabels(payload.fields, ['Blockchain network', 'Protocol base', 'Compliance model', 'Burn / lock rule', 'Admin wallet', 'Redemption wallet']),
     '',
-    '## 9. Compliance Rules Summary',
-    '',
-    '- Whitelisted wallets only: tokens can only be minted or transferred to approved wallet addresses.',
-    '- Maximum investor count: active investors must not exceed the configured cap.',
-    '- P2P transfer restriction: if enabled, transfers remain limited to whitelisted eligible wallets.',
-    '- Maturity / redemption control: on maturity or termination, transfers can be paused and tokens move through the approved process.',
-    '',
-    'Investor type is verified offchain before wallet whitelisting. Onchain enforcement uses wallet whitelist status and configured controls; the contract does not independently verify investor type.',
-    '',
-    '## 10. Operational Assumptions',
+    '## 6. Downstream Tab Handoff Summary',
     '',
     '| Detail | Destination tab | Status | Draft note |',
     '| --- | --- | --- | --- |',
     handoffRows,
     '',
-    '## 11. Evidence And Audit Requirements',
+    '## 7. Open Decisions And Review Items',
+    '',
+    '### Missing Essential Fields',
+    '',
+    missingEssentials,
+    '',
+    '### Critical Deferred Fields',
+    '',
+    criticalDeferrals,
+    '',
+    '### Open Operational Decisions',
+    '',
+    openDecisions,
+    '',
+    '## 8. Evidence And Versioning',
+    '',
+    `Evidence model: ${evidenceModel}. PRD generation is local-session evidence until stored in Evidence Vault. Versioning uses record revision ${payload.recordRevision}, generator ${payload.generatorVersion}, and artifact key ${payload.artifactKey}.`,
     '',
     '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
     '| --- | --- | --- | --- | --- |',
     fieldRowsForLabels(payload.fields, ['Evidence model']),
     '',
-    '## 12. Open Questions / Missing Information',
-    '',
-    payload.deploymentWarnings.length > 0
-      ? payload.deploymentWarnings.map((warning) => `- ${warning.label}: ${warning.likelyError}`).join('\n')
-      : '- No open Product Setup deployment warnings recorded.',
-    '',
-    '## 13. Staged Notes For Lifecycle Tabs',
-    '',
-    '| Detail | Destination tab | Status | Draft note |',
-    '| --- | --- | --- | --- |',
-    handoffRows,
-    '',
-    '## Definitions Used In This Product Setup',
+    '## 9. Definitions Used In This Product Setup',
     '',
     ...payload.definitions.map((definition) => `- ${definition}`),
     '',
-    '## Appendix A. Product Requirements And Provenance',
+    '## Appendix A. Full Product Requirements And Provenance',
     '',
     '| Requirement | User input | ZiLi-OS interpretation | Source | Status |',
     '| --- | --- | --- | --- | --- |',
     fieldRows,
     '',
-    '## Unsupported Or Custom Requirements',
+    '## Appendix B. Unsupported Or Custom Requirements',
     '',
     unsupportedRows,
   ].join('\n');
@@ -2588,6 +2773,63 @@ function markdownInlineText(value: string): string {
     .replace(/[\r\n]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function productSetupProseField(record: ProductSetupRecord, fieldKey: ProductSetupFieldKey, fallback: string): string {
+  const field = record.fields[fieldKey];
+  const value = formatProductSetupFieldValue(fieldKey, field.value) || field.rolePlaceholder;
+  if (!value) return fallback;
+  return markdownInlineText(value);
+}
+
+function productSetupAssetClassProse(record: ProductSetupRecord): string {
+  const value = productSetupProseField(record, 'underlying_asset_class', 'underlying asset class not yet specified');
+  if (/^bonds$/i.test(value)) return 'Fixed income (bonds)';
+  return value;
+}
+
+function productSetupOfferingTypeProse(record: ProductSetupRecord): string {
+  const value = productSetupProseField(record, 'offering_type', 'offering type not yet specified');
+  if (/^private$/i.test(value)) return 'Private placement';
+  return value;
+}
+
+function productSetupTransferRuleProse(record: ProductSetupRecord): string {
+  const whitelistRequired = record.fields.whitelisted_wallets_required.value === true;
+  const p2pAllowed = record.fields.p2p_transfer_allowed.value === true;
+  if (whitelistRequired && p2pAllowed) {
+    return 'Wallets must be whitelisted, and peer-to-peer transfers are permitted only when both the sender and recipient are whitelisted.';
+  }
+  if (whitelistRequired) {
+    return 'Wallets must be whitelisted before they can receive or hold tokens.';
+  }
+  if (p2pAllowed) {
+    return 'Peer-to-peer transfers are allowed under the recorded Product Setup transfer rule.';
+  }
+  return 'Wallet whitelist and peer-to-peer transfer rules have not yet been fully specified.';
+}
+
+function productSetupOpenDecisionItems(record: ProductSetupRecord, readModel: ProductSetupReadModel): string[] {
+  const items = new Set<string>();
+  readModel.missingEssentials.forEach((field) => {
+    items.add(`${field.label}: required before Product Setup can be treated as cleanly ready for downstream workflow use.`);
+  });
+  readModel.criticalDeferredEssentials.forEach((field) => {
+    items.add(`${field.label}: explicitly deferred and requires review before clean PRD readiness.`);
+  });
+
+  const addIfMissing = (fieldKey: ProductSetupFieldKey, note: string) => {
+    const field = record.fields[fieldKey];
+    if (fieldDisplayValue(field) || field.rolePlaceholder || field.status === 'deferred') return;
+    items.add(`${field.label}: ${note}`);
+  };
+
+  addIfMissing('admin_wallet', 'needed before wallet-signed Sepolia deployment can assign operational roles.');
+  addIfMissing('burn_lock_rule', 'needed before Redemption and Contract Ops can encode burn versus lock handling.');
+  addIfMissing('redemption_wallet', 'needed later if redemption operations require a public settlement wallet.');
+  addIfMissing('nav_source', 'needed before Asset Servicing can evidence who uploads NAV.');
+
+  return [...items];
 }
 
 export function createProductSetupPackMarkdown(record: ProductSetupRecord): string {

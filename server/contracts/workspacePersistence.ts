@@ -115,8 +115,12 @@ const ProductSetupFieldKeyPersistenceSchema = z.enum([
   'burn_lock_rule',
   'nav_cadence',
   'nav_upload_method',
+  'nav_price_assumption',
+  'nav_upload_timing',
   'nav_source',
   'investor_update_rule',
+  'subscription_window',
+  'income_payout_timing',
   'initial_distribution_date',
   'initial_investor_register_rule',
   'maturity_date',
@@ -474,6 +478,22 @@ const ProductSetupFieldsPersistenceSchema = z
         smartContractRelevance: 'evidence_metadata',
       }),
     ),
+    nav_price_assumption: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'nav_price_assumption',
+        label: 'NAV price assumption',
+        usedByTabs: ['Asset Servicing', 'Subscription', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    nav_upload_timing: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'nav_upload_timing',
+        label: 'NAV upload timing',
+        usedByTabs: ['Asset Servicing', 'Subscription', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
     nav_source: ProductSetupFieldPersistenceSchema.default(() =>
       defaultProductSetupField({
         key: 'nav_source',
@@ -487,6 +507,22 @@ const ProductSetupFieldsPersistenceSchema = z
         key: 'investor_update_rule',
         label: 'Investor update rule',
         usedByTabs: ['Asset Servicing', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    subscription_window: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'subscription_window',
+        label: 'Subscription window',
+        usedByTabs: ['Subscription', 'Investor Wallets', 'Evidence Vault'],
+        smartContractRelevance: 'operational_metadata',
+      }),
+    ),
+    income_payout_timing: ProductSetupFieldPersistenceSchema.default(() =>
+      defaultProductSetupField({
+        key: 'income_payout_timing',
+        label: 'Income payout timing',
+        usedByTabs: ['Asset Servicing', 'Redemption', 'Evidence Vault'],
         smartContractRelevance: 'operational_metadata',
       }),
     ),
@@ -808,6 +844,9 @@ const ProductSetupPackArtifactRecordSchema = z
     artifactPayload: z
       .object({
         recordId: z.string().trim().min(1).max(160),
+        recordRevision: z.number().int().nonnegative().optional(),
+        generatorVersion: z.string().trim().min(1).max(120).optional(),
+        artifactKey: z.string().trim().min(1).max(320).optional(),
         artifactId: z.string().trim().min(1).max(220).optional(),
         versionLabel: z.string().trim().min(1).max(40).optional(),
         displayVersion: z.string().trim().min(1).max(80).optional(),
@@ -815,7 +854,11 @@ const ProductSetupPackArtifactRecordSchema = z
         packStatus: z.string().trim().min(1).max(80).optional(),
         warning: z.string().trim().min(1).max(800),
         statusLabel: z.string().trim().min(1).max(160),
-        readinessLabel: z.string().trim().min(1).max(160),
+        readinessLabel: z.string().trim().min(1).max(240),
+        readinessState: z.string().trim().min(1).max(80).optional(),
+        criticalDeferredFields: z.array(z.string().trim().min(1).max(160)).max(40).optional(),
+        nonCriticalDeferredFields: z.array(z.string().trim().min(1).max(160)).max(40).optional(),
+        missingEssentialFields: z.array(z.string().trim().min(1).max(160)).max(80).optional(),
         recommendedArchitectureTarget: z.enum(['ERC-20', 'Customised ERC-20', 'ERC-3643', 'ERC-4626']),
         currentExecutablePrototype: z.string().trim().min(1).max(420),
         definitions: z.array(z.string().trim().min(1).max(420)).min(1).max(20),

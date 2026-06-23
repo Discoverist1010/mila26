@@ -2,8 +2,8 @@
 
 ## Status: ACTIVE — GROWS WITH EACH REVIEW
 
-**Version:** 1.2.0
-**Last updated:** 2026-06-06
+**Version:** 1.3.0
+**Last updated:** 2026-06-23
 **Applies to:** MILA26 repository  
 **File path:** `docs/handover/06-code-reviewer-lessons.md`
 
@@ -737,6 +737,144 @@ const freshness = {
 
 ---
 
+### Pattern ID: MILA26-025
+
+**Name:** Critical deferral treated as clean readiness
+**Category:** Lifecycle State / PRD Readiness
+**Severity:** HIGH
+**First caught:** 2026-06-23 (Product Setup PRD readiness planning review)
+**Catch count:** 0
+**Checklist:** Phase 3.4, 5.6, 9.4
+**Description:** A readiness model treats "all fields captured or deferred" as clean ready-for-review state even when a critical Product Setup field is deferred, missing, or unresolved. This can produce a PRD that looks final while a deployment-material requirement is absent or unacknowledged.
+**Detection:** Review Product Setup readiness/read-model code for deferred field handling. Verify every required field has criticality or materiality metadata, and confirm that critical deferrals produce an explicit warning, review state, or user-acknowledged deferral before final PRD readiness is claimed.
+**Example:**
+
+```typescript
+// FLAGGED - all deferrals are treated as harmless.
+const prdReady = missingFields.length === 0 || deferredFields.length > 0;
+
+// CORRECT - critical deferrals block clean readiness.
+const criticalDeferredFields = deferredFields.filter((field) => field.criticality === 'critical');
+const prdReady = missingFields.length === 0 && criticalDeferredFields.length === 0;
+```
+
+**Occurrences:**
+- None yet - seeded proactively from Product Setup readiness planning.
+
+---
+
+### Pattern ID: MILA26-026
+
+**Name:** LLM-generated artifact accepted on schema shape only
+**Category:** LLM / Artifact Safety
+**Severity:** HIGH
+**First caught:** 2026-06-23 (Product Setup PRD generation planning review)
+**Catch count:** 0
+**Checklist:** Phase 2.3, 3.4, 9.6
+**Description:** A backend LLM output is accepted as a PRD, evidence summary, recommendation, or deployment-support artifact because its JSON shape is valid, without verifying that the prose is grounded in confirmed canonical state. This can silently introduce invented investor eligibility, jurisdiction, protocol, wallet, compliance, or deployment claims.
+**Detection:** For each LLM-generated artifact route, identify the canonical record used as source, the allowed fact set, grounding validation, fallback behavior, and user-visible status. Flag any path where raw model prose becomes an approved artifact without a deterministic grounding check or constrained rendering layer.
+**Example:**
+
+```typescript
+// FLAGGED - shape-valid prose is treated as approved truth.
+const prdDraft = await generatePrdWithModel(record);
+return saveFinalPrd(prdDraft);
+
+// CORRECT - generated prose is validated against canonical facts first.
+const prdDraft = await generatePrdWithModel(record);
+const grounding = validatePrdClaimsAgainstRecord(prdDraft, record);
+return grounding.ok ? saveFinalPrd(prdDraft) : saveDraftPrd(renderDeterministicPrd(record));
+```
+
+**Occurrences:**
+- None yet - seeded proactively from Product Setup PRD generation planning.
+
+---
+
+### Pattern ID: MILA26-027
+
+**Name:** Deterministic artifact fallback regresses to field dump
+**Category:** Artifact Quality / Reliability
+**Severity:** MEDIUM
+**First caught:** 2026-06-23 (Product Setup PRD generation planning review)
+**Catch count:** 0
+**Checklist:** Phase 3.4, 6.4, 9.6
+**Description:** A deterministic fallback path technically produces an artifact, but the output is a raw table or placeholder that does not meet the user-facing acceptance bar. For PRDs and Evidence Vault artifacts, fallback quality must be strong enough to review and download when LLM generation is unavailable or rejected.
+**Detection:** Trigger fallback mode or disable model generation in tests. Inspect the generated artifact for complete sections, clear paragraphs, canonical facts, explicit assumptions, open questions, and version metadata. Flag fallbacks that are just field/value dumps unless the requested artifact is explicitly JSON or CSV.
+**Example:**
+
+```typescript
+// FLAGGED - fallback is not a usable PRD.
+return Object.entries(record).map(([field, value]) => `${field}: ${value}`).join('\n');
+
+// CORRECT - fallback uses narrative templates grounded in the record.
+return [
+  renderProductSummary(record),
+  renderLifecycleTerms(record),
+  renderInvestorAndTransferRules(record),
+  renderOpenQuestions(record),
+].join('\n\n');
+```
+
+**Occurrences:**
+- None yet - seeded proactively from Product Setup PRD generation planning.
+
+---
+
+### Pattern ID: MILA26-028
+
+**Name:** Ready milestone becomes lock or advisor restart
+**Category:** UX / State Machine
+**Severity:** MEDIUM
+**First caught:** 2026-06-23 (Product Setup PRD readiness planning review)
+**Catch count:** 0
+**Checklist:** Phase 5.2, 6.4, 9.4
+**Description:** A "ready for review" milestone either prevents the user from making an explicit correction, or the Advisor/Engineering Bot restarts intake by asking for fields that are already captured or explicitly deferred. Ready state should shepherd the user to review/finalise while still allowing intentional edits.
+**Detection:** Test the chat after PRD-ready state. Verify status updates do not re-ask captured/deferred fields, and verify explicit edit commands reopen intake through a transaction. Check Advisor prompts for questions that would mutate or restart Product Setup without user intent.
+**Example:**
+
+```typescript
+// FLAGGED - ready state blocks explicit correction.
+if (productSetup.status === 'ready_for_review') return { error: 'Product Setup is locked' };
+
+// CORRECT - ready state can reopen through an explicit edit transaction.
+if (userTurn.intent === 'edit_product_setup') {
+  return openProductSetupEditTransaction(userTurn, productSetup);
+}
+```
+
+**Occurrences:**
+- None yet - seeded proactively from Product Setup PRD readiness planning.
+
+---
+
+### Pattern ID: MILA26-029
+
+**Name:** Duplicate generated artifact or LLM call on repeat action
+**Category:** Async / Idempotency
+**Severity:** HIGH
+**First caught:** 2026-06-23 (Product Setup PRD generation planning review)
+**Catch count:** 0
+**Checklist:** Phase 3.4, 5.8, 9.6
+**Description:** Repeated clicks, retries, refreshes, or rapid user actions create duplicate PRD/evidence artifacts or duplicate LLM generation calls for the same canonical Product Setup revision. Artifact generation must distinguish true duplicate retries from later edits, and idempotency keys must include every input that affects the generated output.
+**Detection:** Inspect generation routes for idempotency keys and request de-duplication. Verify keys include product identifier, canonical record revision, generator version, output format, generation mode, and relevant artifact label. Add tests for double-clicks and record-change-then-regenerate behavior.
+**Example:**
+
+```typescript
+// FLAGGED - every click creates a new artifact.
+const artifact = await generatePrdArtifact(productSetupRecord);
+evidenceVault.push(artifact);
+
+// CORRECT - same revision/generator/mode returns the same generated artifact.
+const idempotencyKey = buildArtifactKey(productId, record.revision, generatorVersion, 'prd-docx', mode);
+const artifact = await getOrCreateArtifact(idempotencyKey, () => generatePrdArtifact(record));
+```
+
+**Occurrences:**
+- None yet - seeded proactively from Product Setup PRD generation planning.
+
+---
+
 ## REVIEW SESSION LOG
 
 | Date | Track/Branch | Issues Found (C/H/M/L) | Patterns Triggered | New Patterns Added | Reviewer Version |
@@ -744,6 +882,7 @@ const freshness = {
 | 2026-05-31 | — (initial seed) | 0/0/0/0 | None | MILA26-001 through MILA26-020 | 1.0.0 |
 | 2026-05-31 | — (trio alignment) | 0/0/0/0 | None | MILA26-021; severities aligned with checklist | 1.0.1 |
 | 2026-06-06 | Sprint Track 1 review | 0/1/1/0 | MILA26-022, MILA26-023 | MILA26-022, MILA26-023 | 1.1.0 |
+| 2026-06-23 | Product Setup PRD readiness/generation planning review | 0/0/0/0 | None | MILA26-025 through MILA26-029 | 1.3.0 |
 
 ---
 
@@ -775,6 +914,11 @@ const freshness = {
 | MILA26-022 | Operation bypasses lifecycle source of truth | 1 | HIGH | 2026-06-06 |
 | MILA26-023 | Readiness count derived from stale stored status | 1 | MEDIUM | 2026-06-06 |
 | MILA26-024 | Stale cache or memory presented as current state | 0 | HIGH | — |
+| MILA26-025 | Critical deferral treated as clean readiness | 0 | HIGH | — |
+| MILA26-026 | LLM-generated artifact accepted on schema shape only | 0 | HIGH | — |
+| MILA26-027 | Deterministic artifact fallback regresses to field dump | 0 | MEDIUM | — |
+| MILA26-028 | Ready milestone becomes lock or advisor restart | 0 | MEDIUM | — |
+| MILA26-029 | Duplicate generated artifact or LLM call on repeat action | 0 | HIGH | — |
 
 ---
 
@@ -783,8 +927,8 @@ const freshness = {
 | Severity | Count | Pattern IDs |
 |----------|-------|-------------|
 | CRITICAL | 7 | 001, 002, 006, 007, 011, 014, 021 |
-| HIGH | 11 | 003, 005, 008, 010, 012, 013, 015, 018, 019, 022, 024 |
-| MEDIUM | 5 | 004, 009, 016, 017, 023 |
+| HIGH | 14 | 003, 005, 008, 010, 012, 013, 015, 018, 019, 022, 024, 025, 026, 029 |
+| MEDIUM | 7 | 004, 009, 016, 017, 023, 027, 028 |
 | LOW | 1 | 020 |
 
 ---
@@ -829,6 +973,7 @@ Then:
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 1.3.0 | 2026-06-23 | Added Product Setup PRD readiness, LLM artifact grounding, fallback quality, edit/reopen, and generation idempotency patterns | Codex |
 | 1.2.0 | 2026-06-06 | Added stale cache/memory reviewer pattern | Codex |
 | 1.1.0 | 2026-06-06 | Added lifecycle source-of-truth and stale-readiness-count patterns from Sprint Track 1 review | Codex |
 | 1.0.2 | 2026-05-31 | Aligned unsafe-label and SCP-control lessons with source-sensitive execution evidence and Track 15A operation-specific controls | AI Bot Factory |

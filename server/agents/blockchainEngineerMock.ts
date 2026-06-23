@@ -61,6 +61,23 @@ function selectedProtocolBaseFromContext(request: BlockchainEngineerChatRequest)
   return typeof productSetup.selectedProtocolBase === 'string' ? productSetup.selectedProtocolBase : undefined;
 }
 
+function productSetupContextValue(request: BlockchainEngineerChatRequest, key: string): unknown {
+  const productSetup = request.projectContext?.productSetup;
+  if (!productSetup || typeof productSetup !== 'object') return undefined;
+  return (productSetup as Record<string, unknown>)[key];
+}
+
+function prdReadinessStateFromContext(request: BlockchainEngineerChatRequest): string | undefined {
+  const value = productSetupContextValue(request, 'prdReadinessState');
+  return typeof value === 'string' ? value : undefined;
+}
+
+function stringArrayProductSetupContextValue(request: BlockchainEngineerChatRequest, key: string): string[] {
+  const value = productSetupContextValue(request, key);
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
 export function answerWithBlockchainEngineerMock(
   request: BlockchainEngineerChatRequest,
 ): BlockchainEngineerChatResponse {
@@ -130,6 +147,30 @@ export function answerWithBlockchainEngineerMock(
       ],
       riskNotes: ['Confirmed Product Setup changes should keep visible provenance instead of silently overwriting prior user intent.'],
       nextRecommendedAction: 'Clarify the changed requirement, then review the consolidated Product Setup before downstream tab work continues.',
+    });
+  }
+
+  const prdReadinessState = prdReadinessStateFromContext(request);
+  if (!request.requestedFocus && prdReadinessState === 'Ready for review') {
+    return BlockchainEngineerChatResponseSchema.parse({
+      ...base,
+      content:
+        'Engineering Bot view: the Product Setup PRD is ready for review. I will stop asking for more Product Setup fields unless you explicitly want to edit or replace a captured requirement. The next clean step is to review the Product Setup Pack, finalise the PRD, and then send the confirmed facts to the downstream lifecycle tabs.',
+      openQuestions: ['Do you want to finalise the Product Setup PRD, or edit a specific captured requirement first?'],
+      riskNotes: ['Finalisation records the PRD for workflow use; it is not legal, compliance, investment, tax, or formal audit approval.'],
+      nextRecommendedAction: 'Review and finalise the Product Setup PRD.',
+    });
+  }
+
+  if (!request.requestedFocus && prdReadinessState === 'Ready with critical deferrals') {
+    const criticalDeferredInputs = stringArrayProductSetupContextValue(request, 'criticalDeferredInputs');
+    const deferredText = criticalDeferredInputs.length > 0 ? criticalDeferredInputs.join(', ') : 'the critical deferred fields';
+    return BlockchainEngineerChatResponseSchema.parse({
+      ...base,
+      content: `Engineering Bot view: the Product Setup PRD is almost ready, but ${deferredText} still need confirmation or an explicit acknowledged deferral before clean finalisation. I will not ask for already captured fields again; I will focus only on those critical deferred items.`,
+      openQuestions: [`Confirm, edit, or keep deferred before finalisation: ${deferredText}?`],
+      riskNotes: ['Critical deferred fields can affect downstream Contract Ops, Investor Wallets, Subscription, Redemption, or Evidence Vault assumptions.'],
+      nextRecommendedAction: 'Resolve the critical deferred Product Setup fields, then finalise the PRD.',
     });
   }
 

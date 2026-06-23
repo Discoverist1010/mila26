@@ -492,7 +492,7 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(screen.getByRole('button', { name: /TEST TST/i })).toBeVisible();
   });
 
-  it('finalises a Product Setup PRD from available canonical fields and exposes only PRD downloads', async () => {
+  it('generates a Product Setup PRD draft from available canonical fields and exposes only PRD downloads', async () => {
     const fetchMock = vi.fn((url: string, init?: RequestInit) => {
       if (url.endsWith('/api/workspace/save')) {
         return Promise.resolve(
@@ -565,19 +565,19 @@ describe('App Blockchain Engineer Bot panel', () => {
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
     const pack = screen.getByLabelText('Product Setup Pack');
 
-    expect(within(pack).getByRole('button', { name: 'Finalise PRD' })).toBeEnabled();
+    expect(within(pack).getByRole('button', { name: 'Generate draft PRD' })).toBeEnabled();
     expect(within(pack).getByRole('button', { name: 'Download PRD .docx' })).toBeDisabled();
     expect(within(pack).getByRole('button', { name: 'Download PRD .md' })).toBeDisabled();
     expect(within(pack).queryByRole('button', { name: 'Download setup JSON' })).not.toBeInTheDocument();
     expect(within(pack).queryByRole('button', { name: 'Edit further' })).not.toBeInTheDocument();
 
-    fireEvent.click(within(pack).getByRole('button', { name: 'Finalise PRD' }));
+    fireEvent.click(within(pack).getByRole('button', { name: 'Generate draft PRD' }));
 
     await waitFor(() => {
       expect(within(pack).getByRole('button', { name: 'Download PRD .docx' })).toBeEnabled();
       expect(within(pack).getByRole('button', { name: 'Download PRD .md' })).toBeEnabled();
     });
-    expect(pack).toHaveTextContent('Product PRD v1.0 generated');
+    expect(pack).toHaveTextContent('Product PRD draft v1.0 generated');
     expect(pack).toHaveTextContent('Stored in Evidence Vault');
     expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(
       expect.arrayContaining([

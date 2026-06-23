@@ -19,7 +19,7 @@ describe('Contract Ops expertise skills', () => {
   it('keeps delivery-role skills upgraded for Contract Ops capability reviews', () => {
     const deliveryRoles = readFileSync('docs/handover/08-delivery-role-skills.md', 'utf8');
 
-    expect(deliveryRoles).toContain('Version:** 1.4.0');
+    expect(deliveryRoles).toContain('Version:** 1.5.0');
     expect(deliveryRoles).toMatch(/Product Setup -> Contract Ops handoff scenarios/i);
     expect(deliveryRoles).toMatch(/skill cards, runtime catalog entries, prompt fragments, and tests/i);
     expect(deliveryRoles).toMatch(/prompt-injection cannot override Sepolia-only/i);

@@ -1,8 +1,8 @@
 # Delivery Role Skills - MILA26
 
 ## Status: ACTIVE
-**Version:** 1.4.0
-**Last updated:** 2026-06-20
+**Version:** 1.5.0
+**Last updated:** 2026-06-23
 **Applies to:** MILA26 delivery roles in `AGENTS.md`
 **File path:** `docs/handover/08-delivery-role-skills.md`
 
@@ -40,6 +40,32 @@ Every specialist role must:
 - preserve MILA26 non-negotiables: Sepolia/testnet only, user wallet signing, backend never holds private keys, no fake evidence, no per-tab state silos, and no legal/KYC/advice/audit claims.
 
 When a role finds a repeated pattern, it should suggest an update to this file or the relevant specialist contract. The Lead Implementer decides whether to apply it.
+
+---
+
+## Failure-Scenario Walkthrough
+
+Before approving a readiness model, generated artifact, LLM-assisted flow, cache, idempotency guard, or user-confirmation workflow, each relevant role must walk the proposed design through concrete failure scenarios, not only the happy path.
+
+### Required Review Questions
+
+- What new failure can this safety mechanism introduce?
+- Which code path consumes each new flag, status, marker, or policy?
+- Can the behavior be expressed as predicates over real state, rather than vague terms such as "casual overwrite" or "clear correction"?
+- Does the fallback path meet the same minimum user-facing acceptance bar, or is it a degraded placeholder?
+- Does the generated output make only facts grounded in the canonical record?
+- Can rapid retries, double-clicks, refreshes, or concurrent user turns create duplicates, stale writes, or lost corrections?
+- Is the ready state a milestone that supports explicit user edits, or has it become an accidental lock?
+- Does Advisor-style guidance describe status without restarting intake or re-asking for already captured/deferred fields?
+
+### Common Counterexamples To Walk
+
+- Critical Product Setup fields are deferred: the system must not claim clean PRD readiness without a visible critical-deferral warning or user acknowledgement.
+- PRD generation route is clicked twice: repeated requests must not create duplicate artifacts or trigger duplicate LLM calls when an idempotent result is available.
+- LLM prose invents a plausible investor eligibility, protocol, jurisdiction, wallet, or compliance fact: validation must detect the ungrounded claim or fall back to deterministic prose.
+- Deterministic PRD fallback runs without an LLM: it must still read like a structured PRD, not a raw field dump.
+- User says "I need to edit this" after PRD-ready state: Product Setup must reopen through an explicit intake transaction rather than blocking the correction.
+- Advisor response after PRD-ready state: it may explain status, but must not ask for already captured or explicitly deferred fields unless the user asks to edit.
 
 ---
 
@@ -102,6 +128,9 @@ Reviewers detect drift and recommend corrections. The Lead Implementer owns the 
 - Product Setup -> Contract Ops handoff scenarios cover novice, informed, intermediate, advanced, and expert tokenised-product paths when those surfaces change.
 - Contract Ops specialist-skill routing has deterministic fixtures for protocol advice, contract-spec compilation, Solidity review, test planning, deployment readiness, evidence planning, and QA review.
 - Skill/eval tests verify user-selected protocol respect, ERC tradeoff explanation, deploy blocker classification, and no full EthSkills source-doc injection into runtime prompts.
+- Product Setup PRD readiness tests cover missing, deferred, critical-deferred, and ready-for-review states.
+- PRD generation tests cover deterministic fallback quality, duplicate-click/idempotency behavior, generated artifact versioning, and no ungrounded LLM facts.
+- Chat milestone tests verify ZiLiOS stops asking Product Setup questions when essentials are captured or explicitly deferred, but accepts explicit edit/reopen requests.
 - Direct-input bypass attempts for operation surfaces.
 - Wrong-chain, rejected-wallet, duplicate-submit, and receipt-failure paths for wallet work.
 - Negative guardrail assertions: no fake hash/address/status, no KYC/legal/advice/audit claims.
@@ -148,6 +177,9 @@ Reviewers detect drift and recommend corrections. The Lead Implementer owns the 
 - Are UI tabs creating state silos?
 - Are Contract Ops skill cards, runtime catalog entries, prompt fragments, and tests deriving from one explicit catalog rather than copied prompt text?
 - Does Product Setup remain the typed PRD source for Contract Ops, with raw chat used only as proposed updates before confirmation?
+- Does Product Setup PRD readiness distinguish captured, missing, non-critical deferred, and critical deferred fields?
+- Does every new readiness/status/uncertainty/idempotency marker have a concrete consumer and regression test?
+- Are state transitions defined as predicates over real state, not reviewer-only wording such as "casual" or "clear"?
 - Are protocol selection, deployment readiness, evidence, and lifecycle-handoff rules duplicated across UI, backend prompts, and tests?
 - Are raw stored labels used where effective eligibility should be used?
 - Are operation gates duplicated instead of derived?
@@ -200,6 +232,8 @@ This is a triggered lens, not a separate always-on reviewer. Apply it inside Qua
 - memory improves continuity without hiding user approval, provenance, or evidence traceability;
 - slow paths show responsive progress and do not block local validation or basic navigation;
 - repeated LLM, compile, test, or evidence work is avoided when deterministic cached outputs are safe and keyed correctly.
+- generated PRD, evidence, or LLM-assisted artifacts use cache/idempotency keys that include the canonical record revision, generator version, mode, and output format;
+- stale generated artifacts are not presented as current after Product Setup fields change.
 
 ### Expected Output
 
@@ -235,6 +269,8 @@ This is a triggered lens, not a separate always-on reviewer. Apply it inside Qua
 - backend-only secrets and LLM calls;
 - no private keys in backend, frontend, env examples, fixtures, logs, or docs;
 - specialised Contract Ops skills treat user chat, uploaded docs, and generated code as untrusted input;
+- LLM-generated PRDs, summaries, and recommendations are treated as untrusted drafts until grounded against the canonical record;
+- generated prose cannot add investor eligibility, jurisdiction, protocol, compliance, wallet, or deployment claims not present in confirmed Product Setup state;
 - prompt-injection cannot override Sepolia-only, wallet-signed, no-private-key, no-fake-evidence, or no-production-claim rules;
 - skill traces include IDs, versions, source hashes, schema results, and safety outcomes without logging raw prompts by default;
 - private keys, seed phrases, RPC keys, API keys, raw signatures, and long secret-like hex strings are redacted from prompts, traces, logs, evidence, and screenshots;
@@ -314,7 +350,10 @@ This is a triggered lens, not a separate always-on reviewer. Apply it inside Qua
 - Engineering Bot answer area remains readable and central;
 - tabs orient the user but do not imply code segregation;
 - the user can understand the current stage, what has already been captured, what is missing, and what happens next;
+- PRD-ready status is presented as a milestone for review/finalisation, not as a permanent lock against explicit edits;
+- critical deferred fields are visibly distinct from non-critical deferred fields and cannot be mistaken for clean readiness;
 - ZiLiOS responses are tab-aware and must not tell the user to open the tab they are already using;
+- Advisor-style responses may explain status and next actions, but must not restart intake or ask for fields that are already captured or explicitly deferred unless the user asks to edit;
 - specialist capability labels stay subtle and product-facing; do not force the user to manage internal agents or delivery roles;
 - review queues stay bounded and do not squeeze or hide the persistent chat composer;
 - Product Setup remains PRD intake, and Contract Ops remains contract specification/readiness/deployment; operational execution details do not leak into the wrong tab;
@@ -363,6 +402,8 @@ This is a triggered lens, not a separate always-on reviewer. Apply it inside Qua
 - env/config changes documented;
 - Contract Ops skill catalog versions, source hashes, and focused evals/tests are updated when skill behavior changes;
 - runtime prompts still use distilled MILA26 skill cards, not full EthSkills snapshots;
+- generated PRD/artifact routes have idempotency or de-duplication keyed to canonical record revision and generator version;
+- PRD and evidence artifact version labels clearly distinguish current, stale, draft, and finalised outputs;
 - no generated skill, eval, trace, build, screenshot, or local evidence artifact is committed unintentionally;
 - no generated build artifacts accidentally committed unless intended;
 - reviewer gates completed;
@@ -444,6 +485,7 @@ Claude, or another independent external model reviewer, should be added only whe
 
 | Version | Date | Change | Author |
 |---|---|---|---|
+| 1.5.0 | 2026-06-23 | Added failure-scenario walkthrough and Product Setup PRD/LLM artifact hardening review checks. | Codex |
 | 1.4.0 | 2026-06-20 | Added Contract Ops specialist-skill review checks for Test, Quality, Security, Solidity, Frontend/UX, and Release roles. | Codex |
 | 1.3.1 | 2026-06-06 | Added universal anti-tunnel-vision review rule. | Codex |
 | 1.3.0 | 2026-06-06 | Added State / Memory / Performance as a triggered review lens. | Codex |

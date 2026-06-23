@@ -61,6 +61,7 @@ import {
   confirmProductSetupUpdate,
   createInitialProductSetupRecord,
   createProductSetupPackPayload,
+  createProductSetupPrdArtifactKey,
   createProductSetupPrdDocxContent,
   createProductSetupPrdMarkdown,
   decideUnsupportedRequirement,
@@ -321,6 +322,9 @@ type DurableRecordStatus = {
 };
 
 type ProductSetupPrdArtifacts = {
+  artifactKey: string;
+  recordRevision: number;
+  generatorVersion: string;
   versionLabel: string;
   generatedAtIso: string;
   payload: ProductSetupPackArtifactPayload;
@@ -892,6 +896,12 @@ export function App() {
   );
   const lifecycleReadModel = useMemo(() => toMila26LifecycleReadModel(lifecycleState), [lifecycleState]);
   const productSetupReadModel = useMemo(() => toProductSetupReadModel(productSetupRecord), [productSetupRecord]);
+  const productSetupPrdArtifactKey = useMemo(() => createProductSetupPrdArtifactKey(productSetupRecord), [productSetupRecord]);
+  const isProductSetupPrdArtifactCurrent = productSetupPrdArtifacts?.artifactKey === productSetupPrdArtifactKey;
+  const productSetupPrdActionLabel =
+    productSetupReadModel.packPreview.status === 'Ready for review' ? 'Finalise PRD' : 'Generate draft PRD';
+  const productSetupPrdArtifactDescriptor =
+    productSetupReadModel.packPreview.status === 'Ready for review' ? 'Product PRD' : 'Product PRD draft';
   const productSetupPendingReviewCount = productSetupRecord.pendingSuggestedUpdates.length;
   const productSetupRowsNeedingReview = productSetupReadModel.profileRows.filter((row) =>
     ['Inferred', 'Assumed', 'Needs review'].includes(row.provenanceLabel),
@@ -1105,8 +1115,12 @@ export function App() {
       'burn_lock_rule',
       'nav_cadence',
       'nav_upload_method',
+      'nav_price_assumption',
+      'nav_upload_timing',
       'nav_source',
       'investor_update_rule',
+      'subscription_window',
+      'income_payout_timing',
       'initial_distribution_date',
       'initial_investor_register_rule',
       'duration_months',
@@ -1129,6 +1143,9 @@ export function App() {
         selectedProtocolBase: fieldDisplayValue(productSetupRecord.fields.protocol_base) || null,
         recommendedProtocol: productSetupReadModel.protocolRecommendation.recommendedProtocol,
         currentExecutablePrototype: productSetupReadModel.protocolRecommendation.executablePrototypeLabel,
+        prdReadinessState: productSetupReadModel.packPreview.status,
+        criticalDeferredInputs: productSetupReadModel.criticalDeferredEssentials.map((field) => field.label),
+        nonCriticalDeferredInputs: productSetupReadModel.nonCriticalDeferredEssentials.map((field) => field.label),
         missingCanonicalInputs: productSetupReadModel.missingEssentials.map((field) => field.label),
         pendingSuggestedUpdates: productSetupRecord.pendingSuggestedUpdates.slice(0, 8).map((update) => ({
           field: productSetupRecord.fields[update.fieldKey].label,
@@ -1762,6 +1779,9 @@ export function App() {
         selectedProtocolBase: fieldDisplayValue(productSetupRecordForThisTurn.fields.protocol_base) || null,
         recommendedProtocol: productSetupReadModelForThisTurn.protocolRecommendation.recommendedProtocol,
         currentExecutablePrototype: productSetupReadModelForThisTurn.protocolRecommendation.executablePrototypeLabel,
+        prdReadinessState: productSetupReadModelForThisTurn.packPreview.status,
+        criticalDeferredInputs: productSetupReadModelForThisTurn.criticalDeferredEssentials.map((field) => field.label),
+        nonCriticalDeferredInputs: productSetupReadModelForThisTurn.nonCriticalDeferredEssentials.map((field) => field.label),
         missingCanonicalInputs: productSetupReadModelForThisTurn.missingEssentials.map((field) => field.label),
         pendingSuggestedUpdates: productSetupRecordForThisTurn.pendingSuggestedUpdates.slice(0, 8).map((update) => ({
           field: productSetupRecordForThisTurn.fields[update.fieldKey].label,
@@ -2241,6 +2261,9 @@ export function App() {
     }
 
     return {
+      artifactKey: payload.artifactKey ?? `legacy-product-setup-prd:${payload.recordId ?? selectedProjectId}:${payload.versionLabel ?? 'v1.0'}`,
+      recordRevision: typeof payload.recordRevision === 'number' ? payload.recordRevision : -1,
+      generatorVersion: payload.generatorVersion ?? 'legacy-product-setup-prd-renderer',
       versionLabel: payload.versionLabel ?? 'v1.0',
       generatedAtIso: payload.generatedAtIso,
       payload,
@@ -2963,56 +2986,75 @@ export function App() {
   }
 
   async function finaliseProductSetupPrd() {
-    const generatedAtIso = new Date().toISOString();
-    const versionLabel = nextProductSetupPrdVersionLabel();
-    const generationOptions = { generatedAtIso, versionLabel };
-    const basePayload = createProductSetupPackPayload(productSetupRecord, productSetupReadModel, generationOptions);
-    const markdown = createProductSetupPrdMarkdown(productSetupRecord, productSetupReadModel, generationOptions);
-    const docxContent = createProductSetupPrdDocxContent(productSetupRecord, productSetupReadModel, generationOptions);
-    const setupJson = JSON.stringify(
-      {
-        artifact: basePayload,
-        productSetupRecord,
-      },
-      null,
-      2,
-    );
-    const payload: ProductSetupPackArtifactPayload = {
-      ...basePayload,
-      downloadableArtifacts: {
-        markdown,
-        setupJson,
-        docxBase64: uint8ArrayToBase64(docxContent),
-      },
-    };
-    const artifacts: ProductSetupPrdArtifacts = {
-      versionLabel,
-      generatedAtIso,
-      payload,
-      markdown,
-      docxContent,
-      setupJson,
-    };
+    if (artifactVaultStatus.status === 'saving') {
+      setProductSetupPackStatus('Product PRD is already being saved. Please wait for the current save to finish.');
+      return;
+    }
 
-    setProductSetupPrdArtifacts(artifacts);
-    setProductSetupPackStatus(`Product PRD ${versionLabel} generated. Download buttons are now available.`);
+    const existingCurrentArtifact =
+      productSetupPrdArtifacts?.artifactKey === productSetupPrdArtifactKey ? productSetupPrdArtifacts : undefined;
+    let artifacts = existingCurrentArtifact;
+
+    if (!artifacts) {
+      const generatedAtIso = new Date().toISOString();
+      const versionLabel = nextProductSetupPrdVersionLabel();
+      const generationOptions = { generatedAtIso, versionLabel };
+      const basePayload = createProductSetupPackPayload(productSetupRecord, productSetupReadModel, generationOptions);
+      const markdown = createProductSetupPrdMarkdown(productSetupRecord, productSetupReadModel, generationOptions);
+      const docxContent = createProductSetupPrdDocxContent(productSetupRecord, productSetupReadModel, generationOptions);
+      const setupJson = JSON.stringify(
+        {
+          artifact: basePayload,
+          productSetupRecord,
+        },
+        null,
+        2,
+      );
+      const payload: ProductSetupPackArtifactPayload = {
+        ...basePayload,
+        downloadableArtifacts: {
+          markdown,
+          setupJson,
+          docxBase64: uint8ArrayToBase64(docxContent),
+        },
+      };
+      artifacts = {
+        artifactKey: basePayload.artifactKey,
+        recordRevision: basePayload.recordRevision,
+        generatorVersion: basePayload.generatorVersion,
+        versionLabel,
+        generatedAtIso,
+        payload,
+        markdown,
+        docxContent,
+        setupJson,
+      };
+
+      setProductSetupPrdArtifacts(artifacts);
+      setProductSetupPackStatus(`${productSetupPrdArtifactDescriptor} ${versionLabel} generated. Download buttons are now available.`);
+    } else {
+      setProductSetupPackStatus(`${productSetupPrdArtifactDescriptor} ${artifacts.versionLabel} is already current for this Product Setup revision.`);
+      if (artifactVaultStatus.status === 'saved') {
+        return;
+      }
+    }
 
     const workspaceRecord = await saveWorkspaceSnapshotForPersistence();
     if (!workspaceRecord) {
       setArtifactVaultStatus({
         status: 'error',
-        message: `Product PRD ${versionLabel} generated in session. Save a local draft before storing it in Evidence Vault.`,
+        message: `${productSetupPrdArtifactDescriptor} ${artifacts.versionLabel} generated in session. Save a local draft before storing it in Evidence Vault.`,
       });
       return;
     }
 
-    setArtifactVaultStatus({ status: 'saving', message: `Saving Product PRD ${versionLabel} to Evidence Vault...` });
+    setArtifactVaultStatus({ status: 'saving', message: `Saving ${productSetupPrdArtifactDescriptor} ${artifacts.versionLabel} to Evidence Vault...` });
     const result = await saveWorkspaceArtifactRecords({
       projectId: workspaceRecord.project.id,
       records: [
         {
           artifactType: 'product_setup_pack',
-          artifactPayload: payload,
+          artifactPayload: artifacts.payload,
           lifecycleSnapshotVersion: workspaceRecord.snapshot.version,
         },
       ],
@@ -3022,14 +3064,14 @@ export function App() {
       setDurableArtifactRecords(result.data.artifactRecords);
       setArtifactVaultStatus({
         status: 'saved',
-        message: `Product PRD ${versionLabel} stored in Evidence Vault.`,
+        message: `${productSetupPrdArtifactDescriptor} ${artifacts.versionLabel} stored in Evidence Vault.`,
       });
       return;
     }
 
     setArtifactVaultStatus({
       status: 'error',
-      message: `Product PRD ${versionLabel} generated in session. Evidence Vault save failed: ${result.message}`,
+      message: `${productSetupPrdArtifactDescriptor} ${artifacts.versionLabel} generated in session. Evidence Vault save failed: ${result.message}`,
     });
   }
 
@@ -3047,6 +3089,10 @@ export function App() {
   function downloadProductSetupArtifact(format: 'markdown' | 'docx') {
     if (!productSetupPrdArtifacts) {
       setProductSetupPackStatus('Finalise the Product PRD before downloading artefacts.');
+      return;
+    }
+    if (!isProductSetupPrdArtifactCurrent) {
+      setProductSetupPackStatus('This Product PRD was generated from an older Product Setup revision. Regenerate it before downloading.');
       return;
     }
 
@@ -3120,12 +3166,14 @@ export function App() {
     : unsentProductSetupHandoffs.slice(0, Math.max(0, visibleReviewLimit - visibleReviewUpdates.length));
   const hiddenReviewCount = Math.max(0, rightRailReviewCount - visibleReviewUpdates.length - visibleReviewHandoffs.length);
   const productSetupPackStatusLabel = productSetupPrdArtifacts
-    ? 'PRD generated'
-    : productSetupReadModel.missingEssentials.length === 0
-      ? 'Ready for review'
-      : 'Draft';
+    ? isProductSetupPrdArtifactCurrent
+      ? 'PRD generated'
+      : 'PRD stale - regenerate'
+    : productSetupReadModel.packPreview.status;
   const productSetupEvidenceVaultLabel =
-    productSetupPrdArtifacts && artifactVaultStatus.status === 'saved'
+    productSetupPrdArtifacts && !isProductSetupPrdArtifactCurrent
+      ? 'Stale - regenerate'
+      : productSetupPrdArtifacts && artifactVaultStatus.status === 'saved'
       ? 'Stored in Evidence Vault'
       : productSetupPrdArtifacts
         ? 'Generated in session'
@@ -4708,7 +4756,7 @@ export function App() {
                         className="workflow-button primary-action"
                         onClick={() => void finaliseProductSetupPrd()}
                       >
-                        Finalise PRD
+                        {productSetupPrdActionLabel}
                       </button>
                       <button
                         type="button"
@@ -4721,7 +4769,7 @@ export function App() {
                     <button
                       type="button"
                       className="workflow-button primary-action"
-                      disabled={!productSetupPrdArtifacts}
+                      disabled={!productSetupPrdArtifacts || !isProductSetupPrdArtifactCurrent}
                       onClick={() => downloadProductSetupArtifact('docx')}
                     >
                       Download PRD .docx
@@ -4729,7 +4777,7 @@ export function App() {
                     <button
                       type="button"
                       className="workflow-button"
-                      disabled={!productSetupPrdArtifacts}
+                      disabled={!productSetupPrdArtifacts || !isProductSetupPrdArtifactCurrent}
                       onClick={() => downloadProductSetupArtifact('markdown')}
                     >
                       Download PRD .md

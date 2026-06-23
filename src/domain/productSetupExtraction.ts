@@ -101,7 +101,7 @@ function parseProductSetupLabeledAssertions(text: string): Array<{ label: string
       }
 
       const fieldLikeIsMatch = line.match(
-        /^(product\s+name|fund\s+name|portfolio\s+name|short\s+name(?:\s*\/\s*symbol)?|symbol|ticker|launch\s+date|base\s+(?:ccy|currency)|product\s+wrapper|underlying(?:\s+asset\s+class)?|asset\s+class|product\s+term\s+type|product\s+structure|duration|offering\s+type|eligible\s+investor\s+type|maximum\s+number\s+of\s+investors|max\s+investors|nav\s+cadence|nav\s+upload\s+method|subscription\s*\/\s*mint\s+cadence|redemption\s*\/\s*burn\s+cadence|subscription\s+payment\s+method|redemption\s+payment\s+method|minimum\s+subscription\s+amount|minimum\s+redemption\s+amount|whitelisted\s+wallets\s+required|p2p\s+transfer\s+allowed|blockchain\s+network|protocol\s+base|compliance\s+model|evidence\s+model)\s+(?:is|are)\s+(.+)$/i,
+        /^(product\s+name|fund\s+name|portfolio\s+name|short\s+name(?:\s*\/\s*symbol)?|symbol|ticker|launch\s+date|base\s+(?:ccy|currency)|product\s+wrapper|underlying(?:\s+asset\s+class)?|asset\s+class|product\s+term\s+type|product\s+structure|duration|offering\s+type|eligible\s+investor\s+type|maximum\s+number\s+of\s+investors|max\s+investors|nav\s+cadence|nav\s+upload\s+method|nav\s+price\s+assumption|nav\s+upload\s+timing|subscription\s+window|subscription\s*\/\s*mint\s+cadence|redemption\s*\/\s*burn\s+cadence|subscription\s+payment\s+method|redemption\s+payment\s+method|minimum\s+subscription\s+amount|minimum\s+redemption\s+amount|income\s+payout\s+timing|whitelisted\s+wallets\s+required|p2p\s+transfer\s+allowed|blockchain\s+network|protocol\s+base|compliance\s+model|evidence\s+model)\s+(?:is|are)\s+(.+)$/i,
       );
       if (fieldLikeIsMatch?.[1] && fieldLikeIsMatch[2]) {
         return [{ label: fieldLikeIsMatch[1].trim(), value: fieldLikeIsMatch[2].trim() }];
@@ -235,6 +235,7 @@ function extractTimingAssertions({
       normalized,
       '(?:subscription\\s*/\\s*redemption|subscription\\s+and\\s+redemption|subscriptions\\s*/\\s*redemptions|subscribe\\s+and\\s+redeem)',
     );
+  const subscriptionWindow = extractSubscriptionWindowAssertion(original);
   const subscriptionCadence = combinedSubscriptionRedemptionCadence ?? extractSubscriptionCadenceAssertion(normalized) ?? extractCadenceNear(
     normalized,
     '(?:subscrib\\w*|subscription\\w*|buy|new\\s+investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|investors?\\s+(?:can\\s+)?(?:come\\s+in|enter|join|buy)|accept\\s+new\\s+investors?|new\\s+money\\s+comes?\\s+in)',
@@ -268,6 +269,9 @@ function extractTimingAssertions({
   }
   if (subscriptionCadence) {
     updates.push(createSuggestedUpdate('subscription_cadence', subscriptionCadence, `User described ${subscriptionCadence.toLowerCase()} subscription timing.`, sourceRef, 0.83));
+  }
+  if (subscriptionWindow) {
+    updates.push(createSuggestedUpdate('subscription_window', subscriptionWindow, 'User described the subscription window.', sourceRef, 0.84));
   }
   if (redemptionCadence) {
     updates.push(createSuggestedUpdate('redemption_cadence', redemptionCadence, `User described ${redemptionCadence.toLowerCase()} redemption timing.`, sourceRef, 0.83));
@@ -349,6 +353,9 @@ function extractServicingAssertions({
 }: ProductSetupTextExtractionContext): ProductSetupSuggestedUpdate[] {
   const updates: ProductSetupSuggestedUpdate[] = [];
   const valuationCadence = extractLabeledCadence(normalized, '(?:valuation|nav)') ?? extractCadenceNear(normalized, '(?:valuation|nav)');
+  const navPriceAssumption = extractNavPriceAssumption(normalized);
+  const navUploadTiming = extractNavUploadTiming(normalized);
+  const incomePayoutTiming = extractIncomePayoutTiming(normalized);
   const incomePayoutCadence = extractLabeledCadence(
     normalized,
     '(?:income\\s+distribution|distribution\\w*|distribut\\w*|dividend\\w*|coupon\\w*|income payout|cash distribution)',
@@ -363,12 +370,21 @@ function extractServicingAssertions({
   if (valuationCadence) {
     updates.push(createSuggestedUpdate('nav_cadence', valuationCadence, `User described ${valuationCadence.toLowerCase()} valuation or NAV updates.`, sourceRef, 0.84));
   }
+  if (navPriceAssumption) {
+    updates.push(createSuggestedUpdate('nav_price_assumption', navPriceAssumption, 'User described a fixed NAV price assumption.', sourceRef, 0.82));
+  }
+  if (navUploadTiming) {
+    updates.push(createSuggestedUpdate('nav_upload_timing', navUploadTiming, 'User described when NAV should be uploaded.', sourceRef, 0.82));
+  }
   if (noIncomeDistribution) {
     updates.push(createSuggestedUpdate('income_treatment', 'No income distribution', 'User stated there is no income distribution.', sourceRef, 0.86));
   } else if (incomePayoutCadence || incomeDistributionAssertion) {
     updates.push(createSuggestedUpdate('income_treatment', 'Distributing', 'User described an income distribution workflow.', sourceRef, 0.74));
     if (incomePayoutCadence) {
       updates.push(createSuggestedUpdate('income_payout_cadence', incomePayoutCadence, `User described ${incomePayoutCadence.toLowerCase()} income or distribution payout timing.`, sourceRef, 0.78));
+    }
+    if (incomePayoutTiming) {
+      updates.push(createSuggestedUpdate('income_payout_timing', incomePayoutTiming, 'User described income payout timing relative to redemption.', sourceRef, 0.8));
     }
   }
   if (/uploaded file|upload file|file upload|uploaded via a file|ingested from uploaded file/.test(normalized)) {
@@ -599,6 +615,13 @@ function normalizeProductSetupFieldAliases(field: string): ProductSetupFieldKey[
     valuation_update_requirement: 'nav_cadence',
     nav_cadence_format: 'nav_cadence',
     nav_upload_method: 'nav_upload_method',
+    nav_price_assumption: 'nav_price_assumption',
+    nav_price: 'nav_price_assumption',
+    nav_upload_timing: 'nav_upload_timing',
+    nav_upload_offset: 'nav_upload_timing',
+    subscription_window: 'subscription_window',
+    subscription_period: 'subscription_window',
+    subscription_open_window: 'subscription_window',
     nav_provider: 'nav_source',
     nav_source_actor: 'nav_source',
     nav_update_rule: 'investor_update_rule',
@@ -616,6 +639,8 @@ function normalizeProductSetupFieldAliases(field: string): ProductSetupFieldKey[
     protocol: 'protocol_base',
     token_protocol_preference: 'protocol_base',
     burn_rule: 'burn_lock_rule',
+    income_payout_timing: 'income_payout_timing',
+    income_distribution_timing: 'income_payout_timing',
   };
 
   return aliases[normalized] ? [aliases[normalized]] : [];
@@ -912,6 +937,14 @@ function extractRedemptionScheduleAssertion(value: string): string | undefined {
   return `Starts ${match[1]}`;
 }
 
+function extractSubscriptionWindowAssertion(value: string): string | undefined {
+  const match = value.match(
+    /\b(?:subscription|sub)\s+(?:window|period)\s*(?::|-|=)?\s*opens?\s+([^.!?;,\r\n]+?)\s*,?\s*(?:and\s+)?closes?\s+(?:on\s+)?([^.!?;\r\n]+)/i,
+  );
+  if (!match?.[1] || !match[2]) return undefined;
+  return `Opens ${cleanProductSetupClause(match[1])}; closes ${cleanProductSetupClause(match[2])}`;
+}
+
 function extractRedemptionPayoutDelayAssertion(value: string): string | undefined {
   if (
     /\b(income|distribution|dividend|coupon)\b/i.test(value) &&
@@ -924,6 +957,37 @@ function extractRedemptionPayoutDelayAssertion(value: string): string | undefine
     /\b(?:redemption\s+)?(?:payout|payment|settlement|settle|paid)[^.!?;]{0,60}\b(?:delay|delayed|after|within|takes?|t\+)?\s*(\d{1,3}\s*(?:business\s*)?(?:days?|hours?|weeks?))\b|\b(\d{1,3}\s*(?:business\s*)?(?:days?|hours?|weeks?))\s+(?:redemption\s+)?(?:payout|payment|settlement|settle)\s*(?:delay|period|window)?\b/i,
   );
   return match?.[1] ?? match?.[2];
+}
+
+function extractNavPriceAssumption(value: string): string | undefined {
+  const match = value.match(
+    /\bnav\b[^.!?;]{0,80}\b(?:fixed|remains?|still|set)\s+(?:at\s+)?(\$?\s*[\d,]+(?:\.\d+)?)\s*(?:\/|per)\s*token\b|\b(?:fixed|remains?|still|set)\s+(?:at\s+)?(\$?\s*[\d,]+(?:\.\d+)?)\s*(?:\/|per)\s*token\b[^.!?;]{0,80}\bnav\b/i,
+  );
+  const amount = match?.[1] ?? match?.[2];
+  if (!amount) return undefined;
+  return `${amount.replace(/\s+/g, '')} per token`;
+}
+
+function extractNavUploadTiming(value: string): string | undefined {
+  const match = value.match(
+    /\bnav(?:\s+file)?[^.!?;]{0,40}\b(?:uploaded|goes\s+up|upload)[^.!?;]{0,30}\b(\d{1,3}\s+days?\s+before\s+(?:the\s+)?subscription(?:\s+(?:day|opens?|window))?)\b/i,
+  );
+  return match?.[1] ? cleanProductSetupClause(match[1]) : undefined;
+}
+
+function extractIncomePayoutTiming(value: string): string | undefined {
+  const match = value.match(
+    /\b(?:income\s+distribution|income|dividend|distribution)[^.!?;]{0,80}\b(?:(?:paid|released|distributed)[^.!?;]{0,40}\b)?(\d{1,3}\s+days?\s+before\s+(?:each\s+)?redemption(?:\s+date)?)\b/i,
+  );
+  return match?.[1] ? cleanProductSetupClause(match[1]) : undefined;
+}
+
+function cleanProductSetupClause(value: string): string {
+  return value
+    .replace(/\s+/g, ' ')
+    .replace(/^(?:on|the)\s+/i, '')
+    .replace(/[.,;:]+$/g, '')
+    .trim();
 }
 
 function cadenceLabelFromText(value: string): string | undefined {
