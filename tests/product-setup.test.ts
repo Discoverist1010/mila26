@@ -599,8 +599,14 @@ describe('Product Setup record', () => {
     expect(result.record.fields.income_payout_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
     expect(result.record.fields.offering_type).toMatchObject({ value: 'Private', status: 'user_stated' });
     expect(result.record.fields.eligible_investor_type).toMatchObject({ value: 'Institutional', status: 'user_stated' });
-    expect(result.record.fields.expected_investor_count).toMatchObject({ value: 25, status: 'user_stated' });
-    expect(result.record.fields.maximum_investor_count).toMatchObject({ value: 25, status: 'user_stated' });
+    expect(result.record.fields.expected_investor_count.status).toBe('missing');
+    expect(result.record.fields.maximum_investor_count).toMatchObject({ value: 50, status: 'system_default' });
+    expect(result.reviewFacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fieldKey: 'expected_investor_count', value: 25 }),
+        expect.objectContaining({ fieldKey: 'maximum_investor_count', value: 25 }),
+      ]),
+    );
     expect(result.record.fields.nav_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
     expect(result.record.fields.nav_upload_method).toMatchObject({ value: 'CSV', status: 'locked' });
     expect(result.record.fields.subscription_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
@@ -755,8 +761,14 @@ describe('Product Setup record', () => {
     expect(result.record.fields.product_structure).toMatchObject({ value: 'Closed-ended', status: 'user_stated' });
     expect(result.record.fields.duration_months).toMatchObject({ value: 60, status: 'user_stated' });
     expect(result.record.fields.derived_maturity_date).toMatchObject({ value: '2032-01-15', status: 'system_default' });
-    expect(result.record.fields.expected_investor_count).toMatchObject({ value: 65, status: 'user_stated' });
-    expect(result.record.fields.maximum_investor_count).toMatchObject({ value: 65, status: 'user_stated' });
+    expect(result.record.fields.expected_investor_count.status).toBe('missing');
+    expect(result.record.fields.maximum_investor_count).toMatchObject({ value: 50, status: 'system_default' });
+    expect(result.reviewFacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fieldKey: 'expected_investor_count', value: 65 }),
+        expect.objectContaining({ fieldKey: 'maximum_investor_count', value: 65 }),
+      ]),
+    );
     expect(result.record.fields.whitelisted_wallets_required).toMatchObject({ value: true, status: 'user_stated' });
     expect(result.record.fields.p2p_transfer_allowed).toMatchObject({ value: true, status: 'user_stated' });
     expect(result.record.fields.nav_cadence).toMatchObject({ value: 'Quarterly', status: 'user_stated' });
@@ -990,6 +1002,137 @@ describe('Product Setup record', () => {
     expect(confirmed.fields.expected_investor_count.status).toBe('user_confirmed');
     expect(confirmed.fields.expected_investor_count.value).toBe(25);
     expect(confirmed.pendingSuggestedUpdates.some((update) => update.id === investorUpdate!.id)).toBe(false);
+  });
+
+  it('protects confirmed fields from casual overwrite but allows explicit corrections', () => {
+    const confirmedRecord = updateProductSetupField(createInitialProductSetupRecord(facts), {
+      fieldKey: 'base_currency',
+      value: 'SGD',
+      sourceType: 'user_confirmation',
+      sourceRef: 'confirmed_base_currency',
+      status: 'user_confirmed',
+    });
+
+    const casualRetouch = reconcileProductSetupIntake(confirmedRecord, {
+      userMessage: 'base currency is USD',
+      sourceRef: 'chat_turn_base_usd_casual',
+    });
+
+    expect(casualRetouch.record.fields.base_currency).toMatchObject({
+      value: 'SGD',
+      status: 'user_confirmed',
+    });
+    expect(casualRetouch.reviewFacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldKey: 'base_currency',
+          value: 'USD',
+          reviewReason: expect.stringMatching(/already confirmed/i),
+        }),
+      ]),
+    );
+
+    const correction = reconcileProductSetupIntake(confirmedRecord, {
+      userMessage: 'Actually, base currency is USD, not SGD.',
+      sourceRef: 'chat_turn_base_usd_correction',
+    });
+
+    expect(correction.record.fields.base_currency).toMatchObject({
+      value: 'USD',
+      status: 'user_stated',
+    });
+    expect(correction.transaction.botClaimSummary.updated).toEqual(
+      expect.arrayContaining([expect.stringMatching(/Base currency: USD \(was SGD\)/)]),
+    );
+  });
+
+  it('ignores duplicate intake idempotency keys but rebases newer stale turns', () => {
+    const initialRecord = createInitialProductSetupRecord(facts);
+    const duplicate = reconcileProductSetupIntake(initialRecord, {
+      userMessage: 'Product name is DUPLICATE.',
+      sourceRef: 'chat_turn_duplicate',
+      idempotencyKey: 'same-key',
+      committedIdempotencyKeys: ['same-key'],
+    });
+
+    expect(duplicate.record.fields.product_name.status).toBe('missing');
+    expect(duplicate.transaction.rejectedFacts[0].reason).toMatch(/duplicate/i);
+
+    const advancedRecord = updateProductSetupField(initialRecord, {
+      fieldKey: 'product_name',
+      value: 'Existing Fund',
+      sourceType: 'user_message',
+      sourceRef: 'chat_turn_existing',
+      status: 'user_stated',
+    });
+    const rebased = reconcileProductSetupIntake(advancedRecord, {
+      userMessage: 'Token symbol is RBS.',
+      sourceRef: 'chat_turn_rebased',
+      previousRecordRevision: 0,
+    });
+
+    expect(rebased.record.fields.product_name.value).toBe('Existing Fund');
+    expect(rebased.record.fields.token_symbol).toMatchObject({ value: 'RBS', status: 'user_stated' });
+    expect(rebased.transaction.rebasedFromRevision).toBe(0);
+    expect(rebased.transaction.previousRecordRevision).toBe(0);
+    expect(rebased.transaction.nextRecordRevision).toBeGreaterThan(advancedRecord.revision);
+  });
+
+  it('routes direct derived maturity date candidates away from canonical writes', () => {
+    const result = reconcileProductSetupSuggestedUpdates(createInitialProductSetupRecord(facts), [
+      {
+        id: 'derived_maturity_date-test',
+        fieldKey: 'derived_maturity_date',
+        proposedValue: '2030-01-01',
+        rationale: 'User supplied a maturity date that should be derived from launch date and duration.',
+        sourceType: 'user_message',
+        sourceRef: 'chat_turn_derived_candidate',
+        confidence: 0.95,
+      },
+    ]);
+
+    expect(result.record.fields.derived_maturity_date.status).toBe('missing');
+    expect(result.rejectedUpdates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldKey: 'derived_maturity_date',
+          reason: expect.stringMatching(/derived/i),
+        }),
+      ]),
+    );
+  });
+
+  it('does not mutate Product Setup from question-mode structured candidates', () => {
+    const result = reconcileProductSetupIntake(createInitialProductSetupRecord(facts), {
+      userMessage: 'What if base currency is USD?',
+      sourceRef: 'chat_turn_question_structured',
+      structuredSuggestions: [
+        {
+          id: 'base_currency-question',
+          fieldKey: 'base_currency',
+          proposedValue: 'USD',
+          rationale: 'Question-mode candidate should be treated as exploratory.',
+          sourceType: 'user_message',
+          sourceRef: 'chat_turn_question_structured',
+          confidence: 0.98,
+        },
+      ],
+      unsupportedRequirementDecisions: [
+        {
+          id: 'unsupported-question',
+          requirement: 'custom question-only requirement',
+          mismatchReason: 'Question-mode artefact should not be persisted.',
+          decision: 'pending',
+          sourceRef: 'chat_turn_question_structured',
+        },
+      ],
+    });
+
+    expect(result.transaction.intakeMode).toBe('question');
+    expect(result.record.fields.base_currency.status).toBe('missing');
+    expect(result.record.unsupportedRequirementDecisions).toHaveLength(0);
+    expect(result.appliedFacts).toHaveLength(0);
+    expect(result.reviewFacts).toHaveLength(0);
   });
 
   it('clusters operational Product Setup facts into downstream draft handoffs without mutating target tabs', () => {

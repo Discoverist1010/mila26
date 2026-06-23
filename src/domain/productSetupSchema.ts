@@ -114,6 +114,8 @@ export type ProductSetupSuggestedUpdate = {
   sourceType: ProductSetupFieldSourceType;
   sourceRef: string;
   confidence: number;
+  uncertaintyMarkers?: string[];
+  observedIntent?: 'assert' | 'restate' | 'negate_prior' | 'withdraw';
 };
 
 export type ProductSetupStructuredSuggestionInput = {
@@ -188,6 +190,7 @@ export type ProductSetupHandoffNote = {
 
 export type ProductSetupRecord = {
   id: string;
+  revision: number;
   status: 'draft' | 'ready_for_engineering' | 'locked';
   fields: Record<ProductSetupFieldKey, ProductSetupField>;
   pendingSuggestedUpdates: ProductSetupSuggestedUpdate[];

@@ -6,6 +6,7 @@ import {
   createUnsupportedRequirementDecisionsFromText,
 } from './productSetupExtraction';
 import {
+  allProductSetupFieldKeys,
   deploymentProductSetupFieldKeys,
   productSetupPrdFieldKeys,
   type ProductSetupDeploymentWarning,
@@ -64,6 +65,7 @@ export type ProductSetupSuggestionReconciliationResult = {
   acceptedUpdates: ProductSetupSuggestedUpdate[];
   appliedUpdates: ProductSetupSuggestedUpdate[];
   pendingUpdates: ProductSetupSuggestedUpdate[];
+  rejectedUpdates: ProductSetupRejectedFact[];
 };
 
 export type ProductSetupCommittedFact = {
@@ -73,6 +75,9 @@ export type ProductSetupCommittedFact = {
   sourceRef: string;
   confidence?: number;
   disposition: 'applied' | 'pending_review' | 'derived';
+  previousValue?: ProductSetupFieldValue;
+  reviewReason?: string;
+  uncertaintyMarkers?: string[];
 };
 
 export type ProductSetupRejectedFact = {
@@ -82,22 +87,57 @@ export type ProductSetupRejectedFact = {
   reason: string;
 };
 
+export type ProductSetupIntakeMode =
+  | 'commit_candidate'
+  | 'correction'
+  | 'confirmation'
+  | 'rejection'
+  | 'question';
+
 export type ProductSetupClarifyingQuestion = {
   id: string;
   fieldKeys: ProductSetupFieldKey[];
   prompt: string;
   priority: 'high' | 'medium' | 'low';
+  reviewBatchId?: string;
+};
+
+export type ProductSetupRecordFieldDiff = {
+  fieldKey: ProductSetupFieldKey;
+  before?: ProductSetupFieldValue;
+  after?: ProductSetupFieldValue;
+  beforeStatus?: ProductSetupFieldStatus;
+  afterStatus?: ProductSetupFieldStatus;
+};
+
+export type ProductSetupBotClaimSummary = {
+  recorded: string[];
+  updated: string[];
+  needsReview: string[];
+  notApplied: string[];
+  derived: string[];
+  stillNeeded: string[];
 };
 
 export type ProductSetupIntakeTransaction = {
   id: string;
+  idempotencyKey: string;
   sourceRef: string;
+  sourceTurnId: string;
+  intakeMode: ProductSetupIntakeMode;
+  previousRecordRevision: number;
+  nextRecordRevision: number;
+  rebasedFromRevision?: number;
+  reviewBatchId: string;
   appliedFacts: ProductSetupCommittedFact[];
   reviewFacts: ProductSetupCommittedFact[];
   rejectedFacts: ProductSetupRejectedFact[];
   derivedFacts: ProductSetupCommittedFact[];
   handoffCandidates: ProductSetupHandoffNote[];
   clarifyingQuestions: ProductSetupClarifyingQuestion[];
+  recordPatch: Partial<Record<ProductSetupFieldKey, ProductSetupFieldValue | undefined>>;
+  recordDiff: ProductSetupRecordFieldDiff[];
+  botClaimSummary: ProductSetupBotClaimSummary;
 };
 
 export type ProductSetupIntakeReconciliationResult = ProductSetupSuggestionReconciliationResult & {
@@ -117,11 +157,53 @@ function createField(input: Omit<ProductSetupField, 'confirmedByUser'> & { confi
   };
 }
 
+type ProductSetupFieldCommitPolicy =
+  | 'safe_auto_commit'
+  | 'review_if_changed'
+  | 'always_review'
+  | 'reject_if_invalid'
+  | 'handoff_only';
+
+type ProductSetupFieldPolicy = {
+  commitPolicy: ProductSetupFieldCommitPolicy;
+  deploymentMaterial?: boolean;
+  derived?: boolean;
+};
+
+const productSetupFieldPolicies: Partial<Record<ProductSetupFieldKey, ProductSetupFieldPolicy>> = {
+  derived_maturity_date: { commitPolicy: 'reject_if_invalid', derived: true },
+  protocol_base: { commitPolicy: 'review_if_changed', deploymentMaterial: true },
+  maximum_investor_count: { commitPolicy: 'review_if_changed', deploymentMaterial: true },
+  whitelisted_wallets_required: { commitPolicy: 'review_if_changed', deploymentMaterial: true },
+  p2p_transfer_allowed: { commitPolicy: 'review_if_changed', deploymentMaterial: true },
+  investor_wallet_rule: { commitPolicy: 'review_if_changed', deploymentMaterial: true },
+  eligible_investor_type: { commitPolicy: 'review_if_changed', deploymentMaterial: true },
+  offering_type: { commitPolicy: 'review_if_changed', deploymentMaterial: true },
+  admin_wallet: { commitPolicy: 'always_review', deploymentMaterial: true },
+  redemption_wallet: { commitPolicy: 'always_review', deploymentMaterial: true },
+  subscription_receiving_wallet: { commitPolicy: 'always_review', deploymentMaterial: true },
+  distribution_jurisdiction: { commitPolicy: 'reject_if_invalid', deploymentMaterial: true },
+  prototype_network: { commitPolicy: 'reject_if_invalid', deploymentMaterial: true },
+};
+
+function productSetupFieldPolicy(fieldKey: ProductSetupFieldKey): ProductSetupFieldPolicy {
+  return productSetupFieldPolicies[fieldKey] ?? { commitPolicy: 'safe_auto_commit' };
+}
+
+function productSetupRevision(record: ProductSetupRecord): number {
+  return Number.isFinite(record.revision) ? record.revision : 0;
+}
+
+function nextProductSetupRevision(record: ProductSetupRecord): number {
+  return productSetupRevision(record) + 1;
+}
+
 export function createInitialProductSetupRecord(facts: FundFacts): ProductSetupRecord {
   void facts;
 
   return {
     id: 'product-setup-alpha-income-fund-i',
+    revision: 0,
     status: 'draft',
     fields: {
       product_name: createField({
@@ -535,6 +617,7 @@ export function normalizeProductSetupRecord(record: ProductSetupRecord): Product
 
   return deriveProductSetupFields({
     ...record,
+    revision: productSetupRevision(record),
     fields,
     downstreamHandoffNotes: (record.downstreamHandoffNotes ?? []).map((note) => ({
       ...note,
@@ -1316,6 +1399,7 @@ export function setProductSetupSuggestedUpdates(
 
   return {
     ...record,
+    revision: nextProductSetupRevision(record),
     pendingSuggestedUpdates: [...byId.values()],
     updatedAtIso: new Date().toISOString(),
   };
@@ -1358,10 +1442,25 @@ export function mergeProductSetupSuggestedUpdates(
 export function reconcileProductSetupSuggestedUpdates(
   record: ProductSetupRecord,
   updates: ProductSetupSuggestedUpdate[],
+  context: {
+    userMessage?: string;
+    intakeMode?: ProductSetupIntakeMode;
+  } = {},
 ): ProductSetupSuggestionReconciliationResult {
-  const acceptedUpdates = filterProductSetupSuggestedUpdates(record, updates);
-  const appliedUpdates = acceptedUpdates.filter(shouldApplyProductSetupUpdateDirectly);
-  const pendingUpdates = acceptedUpdates.filter((update) => !shouldApplyProductSetupUpdateDirectly(update));
+  const acceptedUpdates = filterProductSetupSuggestedUpdates(record, updates, context);
+  const dispositionById = new Map(
+    acceptedUpdates.map((update) => [update.id, classifyProductSetupSuggestedUpdate(record, update, context)]),
+  );
+  const appliedUpdates = acceptedUpdates.filter((update) => dispositionById.get(update.id)?.disposition === 'apply');
+  const pendingUpdates = acceptedUpdates.filter((update) => dispositionById.get(update.id)?.disposition === 'review');
+  const rejectedUpdates = acceptedUpdates
+    .filter((update) => dispositionById.get(update.id)?.disposition === 'reject')
+    .map((update) => ({
+      fieldKey: update.fieldKey,
+      value: update.proposedValue,
+      sourceRef: update.sourceRef,
+      reason: dispositionById.get(update.id)?.reason ?? 'Not applied by Product Setup reducer policy.',
+    }));
   const appliedFieldKeys = new Set(appliedUpdates.map((update) => update.fieldKey));
 
   const recordAfterAppliedUpdates = appliedUpdates.reduce((currentRecord, update) => {
@@ -1396,6 +1495,7 @@ export function reconcileProductSetupSuggestedUpdates(
     acceptedUpdates,
     appliedUpdates,
     pendingUpdates,
+    rejectedUpdates,
   };
 }
 
@@ -1406,15 +1506,69 @@ export function reconcileProductSetupIntake(
     sourceRef: string;
     structuredSuggestions?: ProductSetupSuggestedUpdate[];
     unsupportedRequirementDecisions?: UnsupportedRequirementDecision[];
+    previousRecordRevision?: number;
+    idempotencyKey?: string;
+    committedIdempotencyKeys?: Iterable<string>;
   },
 ): ProductSetupIntakeReconciliationResult {
-  const localSuggestions = createProductSetupSuggestionsFromText(input.userMessage, input.sourceRef);
-  const mergedSuggestions = mergeProductSetupSuggestedUpdates(localSuggestions, input.structuredSuggestions ?? []);
+  const intakeMode = classifyProductSetupIntakeMode(input.userMessage);
+  const idempotencyKey = input.idempotencyKey ?? createProductSetupIntakeIdempotencyKey(input.sourceRef, input.userMessage);
+  const previousRecordRevision = input.previousRecordRevision ?? productSetupRevision(record);
+  const reviewBatchId = `review_${input.sourceRef}`;
+  const committedIdempotencyKeys = Array.from(input.committedIdempotencyKeys ?? []);
+
+  if (committedIdempotencyKeys.includes(idempotencyKey)) {
+    const transaction = createProductSetupIntakeTransaction({
+      sourceRef: input.sourceRef,
+      sourceTurnId: input.sourceRef,
+      idempotencyKey,
+      intakeMode,
+      previousRecordRevision,
+      nextRecordRevision: productSetupRevision(record),
+      reviewBatchId,
+      beforeRecord: record,
+      afterRecord: record,
+      appliedFacts: [],
+      reviewFacts: [],
+      rejectedFacts: [
+        {
+          sourceRef: input.sourceRef,
+          reason: 'Duplicate Product Setup intake ignored by idempotency key.',
+        },
+      ],
+      derivedFacts: [],
+      handoffCandidates: [],
+      clarifyingQuestions: createProductSetupClarifyingQuestions(record, reviewBatchId),
+    });
+
+    return {
+      record,
+      acceptedUpdates: [],
+      appliedUpdates: [],
+      pendingUpdates: [],
+      rejectedUpdates: transaction.rejectedFacts,
+      mergedSuggestions: [],
+      unsupportedRequirementDecisions: [],
+      committedFacts: [],
+      appliedFacts: [],
+      reviewFacts: [],
+      derivedFacts: [],
+      transaction,
+    };
+  }
+
+  const canMutateFromTurn = intakeMode === 'commit_candidate' || intakeMode === 'correction';
+  const localSuggestions = canMutateFromTurn ? createProductSetupSuggestionsFromText(input.userMessage, input.sourceRef) : [];
+  const structuredSuggestions = canMutateFromTurn ? (input.structuredSuggestions ?? []) : [];
+  const mergedSuggestions = mergeProductSetupSuggestedUpdates(localSuggestions, structuredSuggestions);
   const beforeDerivedMaturityDate = fieldDisplayValue(record.fields.derived_maturity_date);
-  const reconciled = reconcileProductSetupSuggestedUpdates(record, mergedSuggestions);
-  const unsupportedRequirementDecisions =
-    input.unsupportedRequirementDecisions ??
-    createUnsupportedRequirementDecisionsFromText(input.userMessage, input.sourceRef);
+  const reconciled = reconcileProductSetupSuggestedUpdates(record, mergedSuggestions, {
+    userMessage: input.userMessage,
+    intakeMode,
+  });
+  const unsupportedRequirementDecisions = canMutateFromTurn
+    ? (input.unsupportedRequirementDecisions ?? createUnsupportedRequirementDecisionsFromText(input.userMessage, input.sourceRef))
+    : [];
   const recordWithUnsupportedDecisions =
     unsupportedRequirementDecisions.length > 0
       ? setUnsupportedRequirementDecisions(reconciled.record, unsupportedRequirementDecisions)
@@ -1428,6 +1582,8 @@ export function reconcileProductSetupIntake(
       sourceRef: update.sourceRef,
       confidence: update.confidence,
       disposition: 'applied' as const,
+      previousValue: record.fields[update.fieldKey].value,
+      uncertaintyMarkers: update.uncertaintyMarkers,
     })),
     ...reconciled.pendingUpdates.map((update) => ({
       fieldKey: update.fieldKey,
@@ -1436,6 +1592,13 @@ export function reconcileProductSetupIntake(
       sourceRef: update.sourceRef,
       confidence: update.confidence,
       disposition: 'pending_review' as const,
+      previousValue: record.fields[update.fieldKey].value,
+      reviewReason: classifyProductSetupSuggestedUpdate(record, update, {
+        userMessage: input.userMessage,
+        intakeMode,
+      }).reason,
+      uncertaintyMarkers:
+        update.uncertaintyMarkers ?? findProductSetupUncertaintyMarkersForUpdate(update, input.userMessage),
     })),
   ];
 
@@ -1452,18 +1615,26 @@ export function reconcileProductSetupIntake(
   const appliedFacts = committedFacts.filter((fact) => fact.disposition === 'applied');
   const reviewFacts = committedFacts.filter((fact) => fact.disposition === 'pending_review');
   const derivedFacts = committedFacts.filter((fact) => fact.disposition === 'derived');
-  const transaction: ProductSetupIntakeTransaction = {
-    id: `product_setup_intake_${input.sourceRef}`,
+  const transaction = createProductSetupIntakeTransaction({
     sourceRef: input.sourceRef,
+    sourceTurnId: input.sourceRef,
+    idempotencyKey,
+    intakeMode,
+    previousRecordRevision,
+    nextRecordRevision: productSetupRevision(recordWithUnsupportedDecisions),
+    rebasedFromRevision: previousRecordRevision < productSetupRevision(record) ? previousRecordRevision : undefined,
+    reviewBatchId,
+    beforeRecord: record,
+    afterRecord: recordWithUnsupportedDecisions,
     appliedFacts,
     reviewFacts,
-    rejectedFacts: [],
+    rejectedFacts: reconciled.rejectedUpdates,
     derivedFacts,
     handoffCandidates: toProductSetupDownstreamHandoffs(recordWithUnsupportedDecisions).filter(
       (note) => note.status === 'draft_note_ready',
     ),
-    clarifyingQuestions: createProductSetupClarifyingQuestions(recordWithUnsupportedDecisions),
-  };
+    clarifyingQuestions: createProductSetupClarifyingQuestions(recordWithUnsupportedDecisions, reviewBatchId),
+  });
 
   return {
     ...reconciled,
@@ -1475,6 +1646,136 @@ export function reconcileProductSetupIntake(
     reviewFacts,
     derivedFacts,
     transaction,
+  };
+}
+
+function classifyProductSetupIntakeMode(userMessage: string): ProductSetupIntakeMode {
+  const normalized = userMessage.trim().toLowerCase();
+  if (/^(what|why|how|can you|could you|please explain)\b/.test(normalized)) return 'question';
+  if (/\b(what if|compare|would it|should we)\b/.test(normalized)) return 'question';
+  if (/^(yes|confirm|confirmed|correct|that is correct|looks right)\b/.test(normalized)) return 'confirmation';
+  if (/^(no|reject|exclude|remove|dismiss)\b/.test(normalized)) return 'rejection';
+  if (/\b(actually|instead|change (?:it|this|that)?\s*to|make (?:it|this|that)?\s*|not .+ but|this time not|should be)\b/.test(normalized)) {
+    return 'correction';
+  }
+  return 'commit_candidate';
+}
+
+function createProductSetupIntakeIdempotencyKey(sourceRef: string, userMessage: string): string {
+  let hash = 0;
+  const input = `${sourceRef}:${userMessage}`;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash * 31 + input.charCodeAt(index)) >>> 0;
+  }
+  return `product_setup_intake_${sourceRef}_${hash.toString(16)}`;
+}
+
+function createProductSetupIntakeTransaction(input: {
+  sourceRef: string;
+  sourceTurnId: string;
+  idempotencyKey: string;
+  intakeMode: ProductSetupIntakeMode;
+  previousRecordRevision: number;
+  nextRecordRevision: number;
+  rebasedFromRevision?: number;
+  reviewBatchId: string;
+  beforeRecord: ProductSetupRecord;
+  afterRecord: ProductSetupRecord;
+  appliedFacts: ProductSetupCommittedFact[];
+  reviewFacts: ProductSetupCommittedFact[];
+  rejectedFacts: ProductSetupRejectedFact[];
+  derivedFacts: ProductSetupCommittedFact[];
+  handoffCandidates: ProductSetupHandoffNote[];
+  clarifyingQuestions: ProductSetupClarifyingQuestion[];
+}): ProductSetupIntakeTransaction {
+  const recordDiff = createProductSetupRecordDiff(input.beforeRecord, input.afterRecord);
+  const recordPatch = Object.fromEntries(recordDiff.map((diff) => [diff.fieldKey, diff.after])) as Partial<
+    Record<ProductSetupFieldKey, ProductSetupFieldValue | undefined>
+  >;
+
+  return {
+    id: `product_setup_intake_${input.sourceRef}`,
+    idempotencyKey: input.idempotencyKey,
+    sourceRef: input.sourceRef,
+    sourceTurnId: input.sourceTurnId,
+    intakeMode: input.intakeMode,
+    previousRecordRevision: input.previousRecordRevision,
+    nextRecordRevision: input.nextRecordRevision,
+    rebasedFromRevision: input.rebasedFromRevision,
+    reviewBatchId: input.reviewBatchId,
+    appliedFacts: input.appliedFacts,
+    reviewFacts: input.reviewFacts,
+    rejectedFacts: input.rejectedFacts,
+    derivedFacts: input.derivedFacts,
+    handoffCandidates: input.handoffCandidates,
+    clarifyingQuestions: input.clarifyingQuestions,
+    recordPatch,
+    recordDiff,
+    botClaimSummary: createProductSetupBotClaimSummary(
+      input.afterRecord,
+      input.appliedFacts,
+      input.reviewFacts,
+      input.rejectedFacts,
+      input.derivedFacts,
+    ),
+  };
+}
+
+function createProductSetupRecordDiff(
+  beforeRecord: ProductSetupRecord,
+  afterRecord: ProductSetupRecord,
+): ProductSetupRecordFieldDiff[] {
+  const diffs: ProductSetupRecordFieldDiff[] = [];
+
+  allProductSetupFieldKeys.forEach((fieldKey) => {
+    const before = beforeRecord.fields[fieldKey];
+    const after = afterRecord.fields[fieldKey];
+    if (
+      productSetupValuesEqual(before.value, after.value) &&
+      before.status === after.status &&
+      before.sourceRef === after.sourceRef
+    ) {
+      return;
+    }
+    diffs.push({
+      fieldKey,
+      before: before.value,
+      after: after.value,
+      beforeStatus: before.status,
+      afterStatus: after.status,
+    });
+  });
+
+  return diffs;
+}
+
+function createProductSetupBotClaimSummary(
+  record: ProductSetupRecord,
+  appliedFacts: ProductSetupCommittedFact[],
+  reviewFacts: ProductSetupCommittedFact[],
+  rejectedFacts: ProductSetupRejectedFact[],
+  derivedFacts: ProductSetupCommittedFact[],
+): ProductSetupBotClaimSummary {
+  const factLabel = (fact: ProductSetupCommittedFact) => {
+    const label = record.fields[fact.fieldKey].label;
+    const value = formatProductSetupFieldValue(fact.fieldKey, fact.value);
+    return value ? `${label}: ${value}` : label;
+  };
+  return {
+    recorded: appliedFacts.filter((fact) => fact.previousValue === undefined).map(factLabel),
+    updated: appliedFacts.filter((fact) => fact.previousValue !== undefined).map((fact) => {
+      const label = record.fields[fact.fieldKey].label;
+      return `${label}: ${formatProductSetupFieldValue(fact.fieldKey, fact.value)} (was ${formatProductSetupFieldValue(
+        fact.fieldKey,
+        fact.previousValue,
+      )})`;
+    }),
+    needsReview: reviewFacts.map(factLabel),
+    notApplied: rejectedFacts.map((fact) =>
+      fact.fieldKey ? `${record.fields[fact.fieldKey].label}: ${fact.reason}` : fact.reason,
+    ),
+    derived: derivedFacts.map(factLabel),
+    stillNeeded: createProductSetupClarifyingQuestions(record).map((question) => question.prompt),
   };
 }
 
@@ -1498,7 +1799,10 @@ const productSetupClarifyingQuestionFields: ProductSetupFieldKey[] = [
   'protocol_base',
 ];
 
-function createProductSetupClarifyingQuestions(record: ProductSetupRecord): ProductSetupClarifyingQuestion[] {
+function createProductSetupClarifyingQuestions(
+  record: ProductSetupRecord,
+  reviewBatchId?: string,
+): ProductSetupClarifyingQuestion[] {
   return productSetupClarifyingQuestionFields
     .filter((fieldKey) => !fieldDisplayValue(record.fields[fieldKey]) && record.fields[fieldKey].status === 'missing')
     .slice(0, 3)
@@ -1507,6 +1811,7 @@ function createProductSetupClarifyingQuestions(record: ProductSetupRecord): Prod
       fieldKeys: [fieldKey],
       prompt: `Please provide ${record.fields[fieldKey].label.toLowerCase()}.`,
       priority: index === 0 ? 'high' : 'medium',
+      reviewBatchId,
     }));
 }
 
@@ -1550,18 +1855,150 @@ const directUserStatedProductSetupFields = new Set<ProductSetupFieldKey>([
   'maturity_closeout_rule',
 ]);
 
-function shouldApplyProductSetupUpdateDirectly(update: ProductSetupSuggestedUpdate): boolean {
-  if (update.sourceType !== 'user_message') return false;
+type ProductSetupSuggestedUpdateDisposition = {
+  disposition: 'apply' | 'review' | 'reject';
+  reason?: string;
+};
 
-  if (!directUserStatedProductSetupFields.has(update.fieldKey)) return false;
-  if (update.fieldKey === 'income_treatment') return update.confidence >= 0.72;
-  return update.confidence >= 0.78;
+function classifyProductSetupSuggestedUpdate(
+  record: ProductSetupRecord,
+  update: ProductSetupSuggestedUpdate,
+  context: { userMessage?: string; intakeMode?: ProductSetupIntakeMode } = {},
+): ProductSetupSuggestedUpdateDisposition {
+  const policy = productSetupFieldPolicy(update.fieldKey);
+  const currentField = record.fields[update.fieldKey];
+  const currentValue = currentField.value;
+  const hasCurrentValue = currentValue !== undefined && currentValue !== null && currentValue !== '';
+  const hasConfirmedValue = hasCurrentValue && currentField.status === 'user_confirmed';
+  const hasUserValue = hasCurrentValue && (currentField.status === 'user_stated' || currentField.status === 'user_confirmed');
+  const uncertaintyMarkers =
+    update.uncertaintyMarkers ?? findProductSetupUncertaintyMarkersForUpdate(update, context.userMessage ?? '');
+
+  if (policy.derived) {
+    return { disposition: 'reject', reason: `${record.fields[update.fieldKey].label} is derived by ZiLi-OS from canonical inputs.` };
+  }
+
+  if (policy.commitPolicy === 'handoff_only') {
+    return { disposition: 'review', reason: `${record.fields[update.fieldKey].label} is routed as a downstream handoff, not a Product Profile field.` };
+  }
+
+  if (policy.commitPolicy === 'reject_if_invalid' && !isValidProductSetupPolicyValue(update)) {
+    return { disposition: 'reject', reason: invalidProductSetupPolicyReason(update) };
+  }
+
+  if (update.fieldKey === 'maximum_investor_count') {
+    const investorCap = Number(update.proposedValue);
+    if (Number.isFinite(investorCap) && investorCap > 50) {
+      return { disposition: 'review', reason: 'Investor count exceeds the current 50-investor MVP cap.' };
+    }
+  }
+
+  if (update.sourceType !== 'user_message') {
+    return { disposition: 'review', reason: 'Assistant or system suggestions require user review before becoming Product Setup facts.' };
+  }
+
+  if (!directUserStatedProductSetupFields.has(update.fieldKey)) {
+    return { disposition: 'review', reason: `${record.fields[update.fieldKey].label} is not auto-committed from chat.` };
+  }
+
+  if (uncertaintyMarkers.length > 0) {
+    return { disposition: 'review', reason: `User wording includes uncertainty: ${uncertaintyMarkers.join(', ')}.` };
+  }
+
+  if (hasConfirmedValue && !productSetupValuesEqual(currentValue, update.proposedValue)) {
+    const correctionAllowed =
+      context.intakeMode === 'correction' &&
+      update.sourceType === 'user_message' &&
+      (!update.observedIntent || update.observedIntent === 'negate_prior' || update.observedIntent === 'assert');
+    if (!correctionAllowed) {
+      return {
+        disposition: 'review',
+        reason: `${record.fields[update.fieldKey].label} is already confirmed; a clear correction is required before replacing it.`,
+      };
+    }
+  }
+
+  if (
+    hasUserValue &&
+    !productSetupValuesEqual(currentValue, update.proposedValue) &&
+    policy.commitPolicy === 'review_if_changed' &&
+    context.intakeMode !== 'correction'
+  ) {
+    return {
+      disposition: 'review',
+      reason: `${record.fields[update.fieldKey].label} changes an existing Product Setup value and needs review.`,
+    };
+  }
+
+  if (policy.commitPolicy === 'always_review') {
+    return { disposition: 'review', reason: `${record.fields[update.fieldKey].label} requires explicit confirmation.` };
+  }
+
+  const minimumConfidence = update.fieldKey === 'income_treatment' ? 0.72 : 0.78;
+  if (update.confidence < minimumConfidence) {
+    return { disposition: 'review', reason: `${record.fields[update.fieldKey].label} confidence is below the auto-commit threshold.` };
+  }
+
+  return { disposition: 'apply' };
+}
+
+function isValidProductSetupPolicyValue(update: ProductSetupSuggestedUpdate): boolean {
+  if (update.fieldKey === 'prototype_network') return update.proposedValue === 'Sepolia testnet';
+  if (update.fieldKey === 'distribution_jurisdiction') return update.proposedValue === 'Singapore';
+  return update.proposedValue !== undefined && update.proposedValue !== '';
+}
+
+function invalidProductSetupPolicyReason(update: ProductSetupSuggestedUpdate): string {
+  if (update.fieldKey === 'prototype_network') return 'Only Sepolia testnet is supported for the current MVP.';
+  if (update.fieldKey === 'distribution_jurisdiction') return 'Distribution jurisdiction is locked to Singapore for the current MVP.';
+  return 'Value is not valid for this Product Setup field.';
+}
+
+function findProductSetupUncertaintyMarkers(value: string): string[] {
+  const normalized = value.toLowerCase();
+  const markers = ['about', 'around', 'approximately', 'approx', 'roughly', 'maybe', 'not sure', 'circa', '~'];
+  return markers.filter((marker) => normalized.includes(marker));
+}
+
+function findProductSetupUncertaintyMarkersForUpdate(
+  update: ProductSetupSuggestedUpdate,
+  userMessage: string,
+): string[] {
+  const valueText = String(update.proposedValue).toLowerCase();
+  const normalized = userMessage.toLowerCase();
+  if (update.fieldKey === 'income_treatment' || update.fieldKey === 'income_payout_cadence') {
+    const fieldSpecificWindow = relevantUncertaintyWindowForField(update.fieldKey, normalized);
+    if (fieldSpecificWindow) return findProductSetupUncertaintyMarkers(fieldSpecificWindow);
+  }
+  const valueIndex = valueText ? normalized.indexOf(valueText) : -1;
+  const candidateWindow =
+    valueIndex >= 0
+      ? normalized.slice(Math.max(0, valueIndex - 24), Math.min(normalized.length, valueIndex + valueText.length + 24))
+      : relevantUncertaintyWindowForField(update.fieldKey, normalized);
+  return findProductSetupUncertaintyMarkers(candidateWindow);
+}
+
+function relevantUncertaintyWindowForField(fieldKey: ProductSetupFieldKey, normalizedMessage: string): string {
+  const fieldPatterns: Partial<Record<ProductSetupFieldKey, RegExp>> = {
+    expected_investor_count: /[^.!?;]*(?:investors?|wallets?)[^.!?;]*/i,
+    maximum_investor_count: /[^.!?;]*(?:investors?|wallets?|max|cap)[^.!?;]*/i,
+    income_treatment: /[^.!?;]*(?:income|dividend|distribution)[^.!?;]*/i,
+    income_payout_cadence: /[^.!?;]*(?:income|dividend|distribution)[^.!?;]*/i,
+    minimum_subscription_amount: /[^.!?;]*(?:minimum|minimum sub|minimum subscription)[^.!?;]*/i,
+  };
+  const match = normalizedMessage.match(fieldPatterns[fieldKey] ?? /$a/);
+  return match?.[0] ?? '';
 }
 
 export function filterProductSetupSuggestedUpdates(
   record: ProductSetupRecord,
   updates: ProductSetupSuggestedUpdate[],
+  context: {
+    userMessage?: string;
+    intakeMode?: ProductSetupIntakeMode;
+  } = {},
 ): ProductSetupSuggestedUpdate[] {
+  void context;
   return updates.filter((update) => shouldKeepProductSetupSuggestedUpdate(record, update));
 }
 
@@ -1582,10 +2019,18 @@ function shouldKeepProductSetupSuggestedUpdate(
     return false;
   }
 
+  if (currentField.status === 'user_confirmed' && update.sourceType === 'user_message') {
+    return true;
+  }
+
   return update.sourceType !== 'assistant_inference';
 }
 
-function productSetupValuesEqual(left: ProductSetupFieldValue, right: ProductSetupFieldValue): boolean {
+function productSetupValuesEqual(
+  left: ProductSetupFieldValue | undefined,
+  right: ProductSetupFieldValue | undefined,
+): boolean {
+  if (left === undefined || right === undefined) return left === right;
   if (Array.isArray(left) || Array.isArray(right)) {
     if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
     return left.every((value, index) => value === right[index]);
@@ -1603,6 +2048,7 @@ export function confirmProductSetupUpdate(
 
   return deriveProductSetupFields({
     ...record,
+    revision: nextProductSetupRevision(record),
     fields: {
       ...record.fields,
       [update.fieldKey]: {
@@ -1628,6 +2074,7 @@ export function dismissProductSetupSuggestedUpdate(
 
   return {
     ...record,
+    revision: nextProductSetupRevision(record),
     pendingSuggestedUpdates: record.pendingSuggestedUpdates.filter((candidate) => candidate.id !== updateId),
     updatedAtIso: new Date().toISOString(),
   };
@@ -1647,6 +2094,7 @@ export function deferProductSetupField(
 ): ProductSetupRecord {
   return deriveProductSetupFields({
     ...record,
+    revision: nextProductSetupRevision(record),
     fields: {
       ...record.fields,
       [fieldKey]: {
@@ -1684,6 +2132,7 @@ export function updateProductSetupField(
 
   return deriveProductSetupFields({
     ...record,
+    revision: nextProductSetupRevision(record),
     fields: {
       ...record.fields,
       [input.fieldKey]: {
@@ -1772,6 +2221,7 @@ export function acknowledgeProductSetupDeploymentWarnings(
 
   return {
     ...record,
+    revision: nextProductSetupRevision(record),
     deploymentWarningAcknowledgements: [
       ...record.deploymentWarningAcknowledgements,
       {
@@ -1797,6 +2247,7 @@ export function setUnsupportedRequirementDecisions(
 
   return {
     ...record,
+    revision: nextProductSetupRevision(record),
     unsupportedRequirementDecisions: [...byId.values()],
     updatedAtIso: new Date().toISOString(),
   };
@@ -1811,6 +2262,7 @@ export function decideUnsupportedRequirement(
   const targetDecision = record.unsupportedRequirementDecisions.find((item) => item.id === decisionId);
   const recordWithDecision: ProductSetupRecord = {
     ...record,
+    revision: nextProductSetupRevision(record),
     unsupportedRequirementDecisions: record.unsupportedRequirementDecisions.map((item) =>
       item.id === decisionId ? { ...item, decision } : item,
     ),

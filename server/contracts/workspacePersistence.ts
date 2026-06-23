@@ -535,6 +535,8 @@ const ProductSetupSuggestedUpdatePersistenceSchema = z
     sourceType: ProductSetupFieldSourceTypePersistenceSchema,
     sourceRef: z.string().trim().min(1).max(180),
     confidence: z.number().finite().min(0).max(1),
+    uncertaintyMarkers: z.array(z.string().trim().min(1).max(80)).max(12).optional(),
+    observedIntent: z.enum(['assert', 'restate', 'negate_prior', 'withdraw']).optional(),
   })
   .strict();
 
@@ -603,6 +605,7 @@ const ProductSetupHandoffNotePersistenceSchema = z
 export const ProductSetupRecordPersistenceSchema = z
   .object({
     id: z.string().trim().min(1).max(160),
+    revision: z.number().int().nonnegative().default(0),
     status: z.enum(['draft', 'ready_for_engineering', 'locked']),
     fields: ProductSetupFieldsPersistenceSchema,
     pendingSuggestedUpdates: z.array(ProductSetupSuggestedUpdatePersistenceSchema).max(40),
