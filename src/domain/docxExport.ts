@@ -1,7 +1,7 @@
 export function createDocxContentFromMarkdown(markdown: string, title: string): Uint8Array {
   const documentXml = markdownToWordDocumentXml(markdown, title);
 
-  return createZipArchive({
+  return createDocxArchive({
     '[Content_Types].xml': [
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
       '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
@@ -75,10 +75,10 @@ function unescapeMarkdownTableCell(value: string): string {
 
 function wordParagraph(text: string, style?: 'Title' | 'Heading1' | 'Heading2'): string {
   const styleXml = style ? `<w:pPr><w:pStyle w:val="${style}"/></w:pPr>` : '';
-  return `<w:p>${styleXml}<w:r><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r></w:p>`;
+  return `<w:p>${styleXml}<w:r><w:t xml:space="preserve">${escapeDocxXml(text)}</w:t></w:r></w:p>`;
 }
 
-function escapeXml(value: string): string {
+export function escapeDocxXml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -87,7 +87,7 @@ function escapeXml(value: string): string {
     .replaceAll("'", '&apos;');
 }
 
-function createZipArchive(files: Record<string, string>): Uint8Array {
+export function createDocxArchive(files: Record<string, string>): Uint8Array {
   const encoder = new TextEncoder();
   const fileEntries = Object.entries(files).map(([name, content]) => ({
     name,

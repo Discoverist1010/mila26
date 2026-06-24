@@ -1,6 +1,6 @@
 import type { FundFacts } from './schemas';
 import { isValidNonZeroEvmAddress } from './recordNavOperationReadModel';
-import { createDocxContentFromMarkdown } from './docxExport';
+import { createDocxArchive, escapeDocxXml } from './docxExport';
 import {
   createProductSetupSuggestionsFromText,
   createUnsupportedRequirementDecisionsFromText,
@@ -2841,9 +2841,586 @@ export function createProductSetupPrdDocxContent(
   readModel = toProductSetupReadModel(record),
   options: ProductSetupPackGenerationOptions = {},
 ): Uint8Array {
-  const markdown = createProductSetupPrdMarkdown(record, readModel, options);
   const payload = createProductSetupPackPayload(record, readModel, options);
-  return createDocxContentFromMarkdown(markdown, `ZiLi-OS Product Requirements Document ${payload.versionLabel}`);
+  return createStyledProductSetupPrdDocx(record, readModel, payload);
+}
+
+type ProductSetupPrdPayload = ReturnType<typeof createProductSetupPackPayload>;
+
+type ProductSetupPrdTableRow = readonly string[];
+
+const PRODUCT_SETUP_PRD_THEME = {
+  primaryText: '2F3E46',
+  primaryAccent: '007E8A',
+  secondaryAccent: '8D99AE',
+  backgroundNeutral: 'F8F9FA',
+  white: 'FFFFFF',
+  border: 'D9E2E8',
+};
+
+const PRODUCT_SETUP_PRD_CONTENT_WIDTH_DXA = 10080;
+
+function createStyledProductSetupPrdDocx(
+  record: ProductSetupRecord,
+  readModel: ProductSetupReadModel,
+  payload: ProductSetupPrdPayload,
+): Uint8Array {
+  const productName = productSetupProseField(record, 'product_name', 'Tokenised Product');
+  const tokenSymbol = productSetupProseField(record, 'token_symbol', 'Symbol pending');
+  const generatedAt = formatPrdGeneratedAt(payload.generatedAtIso);
+  const title = 'ZiLi-OS Product Requirements Document';
+  const headerLabel = `${productName} (${tokenSymbol})`;
+
+  const documentBody = [
+    docxTitleBlock(record, readModel, payload, generatedAt, title),
+    docxHeading('1. Executive Summary', 1),
+    docxParagraph(
+      `${productName} is a ${productSetupProseField(record, 'product_structure', 'term type not yet specified').toLowerCase()} ${productSetupProseField(record, 'product_wrapper', 'product wrapper not yet specified').toLowerCase()} represented by token symbol ${tokenSymbol}. The product references ${productSetupAssetClassProse(record).toLowerCase()} and uses ${productSetupProseField(record, 'base_currency', 'base currency not yet specified')} as the base currency for valuation, subscription, redemption, and evidence assumptions.`,
+    ),
+    docxParagraph(
+      `The current Product Setup records launch on ${productSetupProseField(record, 'product_launch_date', 'launch date not yet specified')}, a term of ${productSetupProseField(record, 'duration_months', 'duration not yet specified')}, and maturity on ${productSetupProseField(record, 'derived_maturity_date', 'maturity date not yet derived')}. Investor participation is captured as ${productSetupProseField(record, 'eligible_investor_type', 'eligible investor type not yet specified')} under a ${productSetupOfferingTypeProse(record).toLowerCase()} model in ${productSetupProseField(record, 'distribution_jurisdiction', 'distribution jurisdiction not yet specified')}.`,
+    ),
+    docxCallout([
+      `Readiness: ${payload.readinessLabel}`,
+      `PRD state: ${humanizeProductSetupStatus(payload.readinessState)}`,
+      `Generated: ${generatedAt}`,
+    ]),
+    docxHeading('2. Product Profile', 1),
+    docxParagraph('These are the canonical product terms used by Product Setup and staged for downstream lifecycle tabs after confirmation.'),
+    docxTable(
+      ['Attribute', 'Value', 'Provenance'],
+      payload.profileRows.map((row) => [row.label, row.value, row.provenanceLabel]),
+      [2900, 5200, 1980],
+    ),
+    docxHeading('3. Investor Eligibility And Transfer Rules', 1),
+    docxParagraph(
+      `Investor eligibility is handled offchain before wallet whitelisting. ${productSetupTransferRuleProse(record)} Investor Wallets owns wallet registration and whitelist evidence; Contract Ops consumes the confirmed rule as a smart-contract transfer-control input.`,
+    ),
+    docxTable(
+      ['Requirement', 'User input', 'ZiLi-OS interpretation', 'Status'],
+      productSetupDocxRowsForLabels(payload.fields, [
+        'Offering type',
+        'Eligible investor type',
+        'Maximum number of investors',
+        'Distribution jurisdiction',
+        'Whitelisted wallets required',
+        'P2P transfer allowed',
+      ], record),
+      [2600, 2500, 3400, 1580],
+    ),
+    docxHeading('4. NAV, Subscription, Redemption And Income', 1),
+    docxParagraph(
+      `NAV servicing is configured as ${productSetupProseField(record, 'nav_cadence', 'NAV cadence not yet specified')}. The NAV price assumption is ${productSetupProseField(record, 'nav_price_assumption', 'NAV price assumption not yet specified')}, handled through ${productSetupProseField(record, 'nav_upload_method', 'NAV upload method not yet specified')} with timing recorded as ${productSetupProseField(record, 'nav_upload_timing', 'NAV upload timing not yet specified')}.`,
+    ),
+    docxParagraph(
+      `Subscriptions follow ${productSetupProseField(record, 'subscription_cadence', 'subscription cadence not yet specified')}; the subscription window is ${productSetupProseField(record, 'subscription_window', 'subscription window not yet specified')}. Redemptions follow ${productSetupProseField(record, 'redemption_cadence', 'redemption cadence not yet specified')}. Income is recorded as ${productSetupProseField(record, 'income_treatment', 'income treatment not yet specified')} with payout timing ${productSetupProseField(record, 'income_payout_timing', 'income payout timing not yet specified')}.`,
+    ),
+    docxTable(
+      ['Requirement', 'User input', 'ZiLi-OS interpretation', 'Status'],
+      productSetupDocxRowsForLabels(payload.fields, [
+        'NAV cadence',
+        'NAV price assumption',
+        'NAV upload method',
+        'NAV upload timing',
+        'NAV source',
+        'Subscription / mint cadence',
+        'Subscription window',
+        'Subscription payment method',
+        'Subscription stablecoin type',
+        'Minimum subscription amount',
+        'Redemption / burn cadence',
+        'Redemption payment method',
+        'Redemption stablecoin type',
+        'Minimum redemption amount',
+        'Income treatment',
+        'Income payout cadence',
+        'Income payout timing',
+      ], record),
+      [2600, 2500, 3400, 1580],
+    ),
+    docxHeading('5. Smart Contract And Contract Ops Inputs', 1),
+    docxParagraph(
+      `The recommended architecture target is ${payload.recommendedArchitectureTarget}. The selected protocol base is ${productSetupProseField(record, 'protocol_base', 'protocol base not yet selected')} on ${productSetupProseField(record, 'prototype_network', 'prototype network not yet specified')}. Contract Ops should consume this Product Setup snapshot rather than reconstructing parameters from chat.`,
+    ),
+    docxBullets([
+      `Current executable prototype: ${productSetupExecutablePrototypeText(payload.currentExecutablePrototype)}`,
+      `Compliance model: ${productSetupProseField(record, 'compliance_model', 'compliance model not yet specified')}`,
+      `Token handling decision: ${productSetupProseField(record, 'burn_lock_rule', 'burn or lock rule not yet specified')}`,
+    ]),
+    docxTable(
+      ['Requirement', 'User input', 'ZiLi-OS interpretation', 'Status'],
+      productSetupDocxRowsForLabels(payload.fields, ['Blockchain network', 'Protocol base', 'Compliance model', 'Burn / lock rule', 'Admin wallet', 'Redemption wallet'], record),
+      [2600, 2500, 3400, 1580],
+    ),
+    docxHeading('6. Downstream Handoff Summary', 1),
+    docxTable(
+      ['Detail', 'Destination tab', 'Status', 'Draft note'],
+      payload.downstreamHandoffs.length > 0
+        ? payload.downstreamHandoffs.map((handoff) => [
+            handoff.title,
+            productSetupHandoffTargetLabel(handoff.target),
+            humanizeProductSetupStatus(handoff.status),
+            handoff.detail,
+          ])
+        : [['No downstream handoffs recorded', '-', '-', '-']],
+      [2500, 1800, 1600, 4180],
+    ),
+    docxHeading('7. Open Decisions', 1),
+    docxHeading('Missing Essential Fields', 2),
+    docxBullets(
+      payload.missingEssentialFields.length > 0
+        ? payload.missingEssentialFields.map((label) => `${label}: not yet provided.`)
+        : ['No missing essential Product Setup fields.'],
+    ),
+    docxHeading('Critical Deferred Fields', 2),
+    docxBullets(
+      payload.criticalDeferredFields.length > 0
+        ? payload.criticalDeferredFields.map((label) => `${label}: explicitly deferred and requires review before clean PRD readiness.`)
+        : ['No critical deferred Product Setup fields.'],
+    ),
+    docxHeading('Operational Decisions', 2),
+    docxBullets(productSetupOpenDecisionItems(record, readModel)),
+    docxHeading('8. Evidence And Versioning', 1),
+    docxParagraph(
+      `Evidence model: ${productSetupProseField(record, 'evidence_model', 'evidence model not yet specified')}. PRD generation remains local-session evidence until stored in Evidence Vault. This document was generated from record revision ${payload.recordRevision} using ${payload.generatorVersion}.`,
+    ),
+    docxTable(
+      ['Requirement', 'User input', 'ZiLi-OS interpretation', 'Status'],
+      productSetupDocxRowsForLabels(payload.fields, ['Evidence model'], record),
+      [2600, 2500, 3400, 1580],
+    ),
+    docxHeading('Appendix A. Definitions Used In This Product Setup', 1),
+    docxBullets(payload.definitions),
+    docxHeading('Appendix B. Full Product Requirements And Provenance', 1),
+    docxTable(
+      ['Requirement', 'User input', 'ZiLi-OS interpretation', 'Source', 'Status'],
+      payload.fields.map((field) => [
+        field.requirement,
+        field.userInput,
+        productSetupDocxInterpretation(field.requirement, field.interpretation, record),
+        humanizeProductSetupStatus(field.source),
+        humanizeProductSetupStatus(field.status),
+      ]),
+      [2200, 2200, 3000, 1300, 1380],
+    ),
+    docxHeading('Appendix C. Unsupported Or Custom Requirements', 1),
+    docxBullets(
+      payload.unsupportedRequirementDecisions.length > 0
+        ? payload.unsupportedRequirementDecisions.map((decision) => `${decision.requirement}: ${humanizeProductSetupStatus(decision.decision)}. ${decision.nearestEquivalent ?? decision.mismatchReason}`)
+        : ['No unsupported or custom requirements recorded.'],
+    ),
+  ].join('');
+
+  const documentXml = [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+    `<w:background w:color="${PRODUCT_SETUP_PRD_THEME.backgroundNeutral}"/>`,
+    '<w:body>',
+    documentBody,
+    '<w:sectPr>',
+    '<w:headerReference w:type="default" r:id="rIdHeader1"/>',
+    '<w:footerReference w:type="default" r:id="rIdFooter1"/>',
+    '<w:pgSz w:w="12240" w:h="15840"/>',
+    '<w:pgMar w:top="1152" w:right="1080" w:bottom="1008" w:left="1080" w:header="540" w:footer="540" w:gutter="0"/>',
+    '</w:sectPr>',
+    '</w:body>',
+    '</w:document>',
+  ].join('');
+
+  return createDocxArchive({
+    '[Content_Types].xml': productSetupDocxContentTypes(),
+    '_rels/.rels': productSetupDocxRootRels(),
+    'docProps/core.xml': productSetupDocxCoreProperties(title, payload.generatedAtIso),
+    'docProps/app.xml': productSetupDocxAppProperties(),
+    'word/document.xml': documentXml,
+    'word/_rels/document.xml.rels': productSetupDocxDocumentRels(),
+    'word/styles.xml': productSetupDocxStyles(),
+    'word/settings.xml': productSetupDocxSettings(),
+    'word/fontTable.xml': productSetupDocxFontTable(),
+    'word/numbering.xml': productSetupDocxNumbering(),
+    'word/header1.xml': productSetupDocxHeader(headerLabel),
+    'word/footer1.xml': productSetupDocxFooter(generatedAt),
+  });
+}
+
+function docxTitleBlock(
+  record: ProductSetupRecord,
+  readModel: ProductSetupReadModel,
+  payload: ProductSetupPrdPayload,
+  generatedAt: string,
+  title: string,
+): string {
+  const productName = productSetupProseField(record, 'product_name', 'Tokenised Product');
+  const tokenSymbol = productSetupProseField(record, 'token_symbol', 'Symbol pending');
+  return [
+    docxParagraph(title, { style: 'Title', color: PRODUCT_SETUP_PRD_THEME.primaryText }),
+    docxParagraph(`${productName} (${tokenSymbol})`, { style: 'Subtitle', color: PRODUCT_SETUP_PRD_THEME.primaryAccent }),
+    docxTable(
+      ['Version', 'Generated', 'Readiness', 'Record revision'],
+      [[payload.versionLabel, generatedAt, readModel.readinessLabel, String(payload.recordRevision)]],
+      [1600, 3200, 3680, 1600],
+      { compact: true },
+    ),
+    docxTable(
+      ['Key data point', 'Current Product Setup value'],
+      [
+        ['Fund name', productName],
+        ['Token symbol', tokenSymbol],
+        ['Launch date', productSetupProseField(record, 'product_launch_date', 'Launch date pending')],
+        ['Maturity date', productSetupProseField(record, 'derived_maturity_date', 'Maturity date pending')],
+        ['Base currency', productSetupProseField(record, 'base_currency', 'Base currency pending')],
+        ['Maximum investors', productSetupProseField(record, 'maximum_investor_count', 'Investor count pending')],
+      ],
+      [2800, 7280],
+      { accentFirstColumn: true },
+    ),
+  ].join('');
+}
+
+function productSetupDocxRowsForLabels(
+  fields: ProductSetupPrdPayload['fields'],
+  labels: string[],
+  record?: ProductSetupRecord,
+): string[][] {
+  const wanted = new Set(labels);
+  const rows = fields
+    .filter((field) => wanted.has(field.requirement))
+    .map((field) => [
+      field.requirement,
+      productSetupDocxValue(field.userInput),
+      productSetupDocxInterpretation(field.requirement, field.interpretation, record),
+      humanizeProductSetupStatus(field.status),
+    ]);
+  return rows.length > 0 ? rows : [['None', '-', '-', '-']];
+}
+
+function productSetupDocxValue(value: string): string {
+  if (/^Not provided$/i.test(value)) return 'Pending';
+  return value;
+}
+
+function productSetupDocxInterpretation(requirement: string, value: string, record?: ProductSetupRecord): string {
+  const subscriptionIsOffchain = record ? /off\s*chain|offchain|fiat/i.test(formatProductSetupFieldValue('subscription_payment_method', record.fields.subscription_payment_method.value)) : false;
+  const redemptionIsOffchain = record ? /off\s*chain|offchain|fiat/i.test(formatProductSetupFieldValue('redemption_payment_method', record.fields.redemption_payment_method.value)) : false;
+  if (requirement === 'Subscription stablecoin type' && subscriptionIsOffchain) return 'Not applicable for fiat off-chain settlement';
+  if (requirement === 'Redemption stablecoin type' && redemptionIsOffchain) return 'Not applicable for fiat off-chain settlement';
+  if (/^Needed before relevant workflow activation$/i.test(value)) return 'Pending before relevant workflow activation';
+  return value;
+}
+
+function productSetupExecutablePrototypeText(value: string): string {
+  if (/restricted ERC-20-compatible/i.test(value)) return 'Sepolia restricted ERC-20-compatible prototype';
+  return value;
+}
+
+function humanizeProductSetupStatus(value: string): string {
+  const known: Record<string, string> = {
+    user_message: 'User stated',
+    user_confirmation: 'Confirmed by user',
+    user_confirmed: 'Confirmed',
+    user_stated: 'User stated',
+    system_default: 'Default',
+    locked: 'Locked default',
+    missing: 'Pending',
+    deferred: 'Deferred',
+    ready: 'Ready',
+    draft: 'Draft',
+    sent_as_draft_note: 'Sent as draft note',
+    accepted_equivalent: 'Accepted equivalent',
+    excluded_from_mvp: 'Excluded from MVP',
+  };
+  return known[value] ?? value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatPrdGeneratedAt(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat('en-GB', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(date);
+}
+
+function docxHeading(text: string, level: 1 | 2 | 3): string {
+  const style = level === 1 ? 'Heading1' : level === 2 ? 'Heading2' : 'Heading3';
+  return docxParagraph(text, { style, color: level === 1 ? PRODUCT_SETUP_PRD_THEME.primaryAccent : PRODUCT_SETUP_PRD_THEME.primaryText, bold: true });
+}
+
+function docxCallout(items: string[]): string {
+  return [
+    '<w:tbl>',
+    '<w:tblPr>',
+    `<w:tblW w:w="${PRODUCT_SETUP_PRD_CONTENT_WIDTH_DXA}" w:type="dxa"/>`,
+    '<w:tblLayout w:type="fixed"/>',
+    docxTableBorders(PRODUCT_SETUP_PRD_THEME.primaryAccent, '12'),
+    docxCellMargins(180, 180, 220, 220),
+    '</w:tblPr>',
+    `<w:tblGrid><w:gridCol w:w="${PRODUCT_SETUP_PRD_CONTENT_WIDTH_DXA}"/></w:tblGrid>`,
+    '<w:tr>',
+    `<w:tc><w:tcPr><w:tcW w:w="${PRODUCT_SETUP_PRD_CONTENT_WIDTH_DXA}" w:type="dxa"/><w:shd w:fill="${PRODUCT_SETUP_PRD_THEME.backgroundNeutral}"/></w:tcPr>`,
+    ...items.map((item) => docxParagraph(item, { bold: true, color: PRODUCT_SETUP_PRD_THEME.primaryText, insideCell: true })),
+    '</w:tc>',
+    '</w:tr>',
+    '</w:tbl>',
+  ].join('');
+}
+
+function docxBullets(items: string[]): string {
+  const safeItems = items.length > 0 ? items : ['No open Product Setup decisions recorded for this PRD draft.'];
+  return safeItems.map((item) => docxParagraph(item, { list: true })).join('');
+}
+
+type DocxParagraphOptions = {
+  style?: 'Title' | 'Subtitle' | 'Heading1' | 'Heading2' | 'Heading3';
+  color?: string;
+  bold?: boolean;
+  sizeHalfPoints?: number;
+  insideCell?: boolean;
+  list?: boolean;
+};
+
+function docxParagraph(text: string, options: DocxParagraphOptions = {}): string {
+  const styleXml = options.style ? `<w:pStyle w:val="${options.style}"/>` : '';
+  const spacingXml = options.insideCell ? '<w:spacing w:after="60"/>' : '<w:spacing w:after="140" w:line="276" w:lineRule="auto"/>';
+  const listXml = options.list ? '<w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr>' : '';
+  const indentXml = options.list ? '<w:ind w:left="720" w:hanging="360"/>' : '';
+  const pPr = `<w:pPr>${styleXml}${listXml}${indentXml}${spacingXml}</w:pPr>`;
+  return `<w:p>${pPr}${docxRun(text, options)}</w:p>`;
+}
+
+function docxRun(text: string, options: Pick<DocxParagraphOptions, 'bold' | 'color' | 'sizeHalfPoints'> = {}): string {
+  const rPr = [
+    '<w:rPr>',
+    '<w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>',
+    options.bold ? '<w:b/>' : '',
+    `<w:color w:val="${options.color ?? PRODUCT_SETUP_PRD_THEME.primaryText}"/>`,
+    `<w:sz w:val="${options.sizeHalfPoints ?? 22}"/>`,
+    '</w:rPr>',
+  ].join('');
+  return `<w:r>${rPr}<w:t xml:space="preserve">${escapeDocxXml(text)}</w:t></w:r>`;
+}
+
+function docxTable(
+  headers: ProductSetupPrdTableRow,
+  rows: ProductSetupPrdTableRow[],
+  widths: number[],
+  options: { compact?: boolean; accentFirstColumn?: boolean } = {},
+): string {
+  const tableWidth = widths.reduce((sum, width) => sum + width, 0);
+  return [
+    '<w:tbl>',
+    '<w:tblPr>',
+    `<w:tblW w:w="${tableWidth}" w:type="dxa"/>`,
+    '<w:tblLayout w:type="fixed"/>',
+    docxTableBorders(PRODUCT_SETUP_PRD_THEME.border, '6'),
+    docxCellMargins(options.compact ? 100 : 140, options.compact ? 100 : 140, 140, 140),
+    '</w:tblPr>',
+    `<w:tblGrid>${widths.map((width) => `<w:gridCol w:w="${width}"/>`).join('')}</w:tblGrid>`,
+    docxTableRow(headers, widths, { header: true }),
+    ...rows.map((row) => docxTableRow(row, widths, { accentFirstColumn: options.accentFirstColumn })),
+    '</w:tbl>',
+    docxParagraph(''),
+  ].join('');
+}
+
+function docxTableRow(
+  cells: ProductSetupPrdTableRow,
+  widths: number[],
+  options: { header?: boolean; accentFirstColumn?: boolean } = {},
+): string {
+  return [
+    '<w:tr>',
+    options.header ? '<w:trPr><w:tblHeader/></w:trPr>' : '',
+    ...widths.map((width, index) =>
+      docxTableCell(cells[index] ?? '', width, {
+        header: options.header,
+        accent: Boolean(options.accentFirstColumn && index === 0),
+      }),
+    ),
+    '</w:tr>',
+  ].join('');
+}
+
+function docxTableCell(text: string, width: number, options: { header?: boolean; accent?: boolean } = {}): string {
+  const fill = options.header ? PRODUCT_SETUP_PRD_THEME.secondaryAccent : options.accent ? PRODUCT_SETUP_PRD_THEME.backgroundNeutral : PRODUCT_SETUP_PRD_THEME.white;
+  const color = options.header ? PRODUCT_SETUP_PRD_THEME.white : options.accent ? PRODUCT_SETUP_PRD_THEME.primaryAccent : PRODUCT_SETUP_PRD_THEME.primaryText;
+  return [
+    '<w:tc>',
+    `<w:tcPr><w:tcW w:w="${width}" w:type="dxa"/><w:shd w:fill="${fill}"/><w:vAlign w:val="center"/></w:tcPr>`,
+    docxParagraph(text, { insideCell: true, bold: options.header || options.accent, color, sizeHalfPoints: options.header ? 20 : 19 }),
+    '</w:tc>',
+  ].join('');
+}
+
+function docxTableBorders(color: string, size: string): string {
+  return [
+    '<w:tblBorders>',
+    `<w:top w:val="single" w:sz="${size}" w:space="0" w:color="${color}"/>`,
+    `<w:left w:val="single" w:sz="${size}" w:space="0" w:color="${color}"/>`,
+    `<w:bottom w:val="single" w:sz="${size}" w:space="0" w:color="${color}"/>`,
+    `<w:right w:val="single" w:sz="${size}" w:space="0" w:color="${color}"/>`,
+    `<w:insideH w:val="single" w:sz="${size}" w:space="0" w:color="${color}"/>`,
+    `<w:insideV w:val="single" w:sz="${size}" w:space="0" w:color="${color}"/>`,
+    '</w:tblBorders>',
+  ].join('');
+}
+
+function docxCellMargins(top: number, bottom: number, left: number, right: number): string {
+  return [
+    '<w:tblCellMar>',
+    `<w:top w:w="${top}" w:type="dxa"/>`,
+    `<w:bottom w:w="${bottom}" w:type="dxa"/>`,
+    `<w:left w:w="${left}" w:type="dxa"/>`,
+    `<w:right w:w="${right}" w:type="dxa"/>`,
+    '</w:tblCellMar>',
+  ].join('');
+}
+
+function productSetupDocxContentTypes(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
+    '<Default Extension="xml" ContentType="application/xml"/>',
+    '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>',
+    '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>',
+    '<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>',
+    '<Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/>',
+    '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>',
+    '<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>',
+    '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>',
+    '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>',
+    '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>',
+    '</Types>',
+  ].join('');
+}
+
+function productSetupDocxRootRels(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>',
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>',
+    '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>',
+    '</Relationships>',
+  ].join('');
+}
+
+function productSetupDocxDocumentRels(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+    '<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>',
+    '<Relationship Id="rIdSettings" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>',
+    '<Relationship Id="rIdFontTable" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/>',
+    '<Relationship Id="rIdNumbering" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>',
+    '<Relationship Id="rIdHeader1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>',
+    '<Relationship Id="rIdFooter1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>',
+    '</Relationships>',
+  ].join('');
+}
+
+function productSetupDocxStyles(): string {
+  const theme = PRODUCT_SETUP_PRD_THEME;
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+    '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:color w:val="2F3E46"/><w:sz w:val="22"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="140" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>',
+    `<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:color w:val="${theme.primaryText}"/><w:sz w:val="22"/></w:rPr></w:style>`,
+    `<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="0" w:after="120"/></w:pPr><w:rPr><w:b/><w:color w:val="${theme.primaryText}"/><w:sz w:val="38"/></w:rPr></w:style>`,
+    `<w:style w:type="paragraph" w:styleId="Subtitle"><w:name w:val="Subtitle"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="240"/></w:pPr><w:rPr><w:b/><w:color w:val="${theme.primaryAccent}"/><w:sz w:val="26"/></w:rPr></w:style>`,
+    `<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="360" w:after="140"/></w:pPr><w:rPr><w:b/><w:color w:val="${theme.primaryAccent}"/><w:sz w:val="28"/></w:rPr></w:style>`,
+    `<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="220" w:after="100"/></w:pPr><w:rPr><w:b/><w:color w:val="${theme.primaryText}"/><w:sz w:val="24"/></w:rPr></w:style>`,
+    `<w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="160" w:after="80"/></w:pPr><w:rPr><w:b/><w:color w:val="${theme.primaryText}"/><w:sz w:val="22"/></w:rPr></w:style>`,
+    '</w:styles>',
+  ].join('');
+}
+
+function productSetupDocxSettings(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+    '<w:updateFields w:val="true"/>',
+    '</w:settings>',
+  ].join('');
+}
+
+function productSetupDocxFontTable(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<w:fonts xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+    '<w:font w:name="Arial"><w:family w:val="swiss"/></w:font>',
+    '</w:fonts>',
+  ].join('');
+}
+
+function productSetupDocxNumbering(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+    '<w:abstractNum w:abstractNumId="1">',
+    '<w:multiLevelType w:val="singleLevel"/>',
+    '<w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="•"/><w:lvlJc w:val="left"/><w:pPr><w:tabs><w:tab w:val="num" w:pos="720"/></w:tabs><w:ind w:left="720" w:hanging="360"/></w:pPr><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:hint="default"/></w:rPr></w:lvl>',
+    '</w:abstractNum>',
+    '<w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num>',
+    '</w:numbering>',
+  ].join('');
+}
+
+function productSetupDocxHeader(label: string): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+    '<w:p>',
+    `<w:pPr><w:pBdr><w:bottom w:val="single" w:sz="8" w:space="4" w:color="${PRODUCT_SETUP_PRD_THEME.secondaryAccent}"/></w:pBdr><w:spacing w:after="80"/></w:pPr>`,
+    docxRun(label, { bold: true, color: PRODUCT_SETUP_PRD_THEME.primaryText, sizeHalfPoints: 20 }),
+    '</w:p>',
+    '</w:hdr>',
+  ].join('');
+}
+
+function productSetupDocxFooter(generatedAt: string): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
+    '<w:p>',
+    `<w:pPr><w:jc w:val="right"/><w:pBdr><w:top w:val="single" w:sz="6" w:space="4" w:color="${PRODUCT_SETUP_PRD_THEME.secondaryAccent}"/></w:pBdr></w:pPr>`,
+    docxRun(`${generatedAt} · Page `, { color: PRODUCT_SETUP_PRD_THEME.secondaryAccent, sizeHalfPoints: 18 }),
+    '<w:r><w:rPr><w:color w:val="8D99AE"/><w:sz w:val="18"/></w:rPr><w:fldChar w:fldCharType="begin"/></w:r>',
+    '<w:r><w:rPr><w:color w:val="8D99AE"/><w:sz w:val="18"/></w:rPr><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>',
+    '<w:r><w:rPr><w:color w:val="8D99AE"/><w:sz w:val="18"/></w:rPr><w:fldChar w:fldCharType="separate"/></w:r>',
+    docxRun('1', { color: PRODUCT_SETUP_PRD_THEME.secondaryAccent, sizeHalfPoints: 18 }),
+    '<w:r><w:rPr><w:color w:val="8D99AE"/><w:sz w:val="18"/></w:rPr><w:fldChar w:fldCharType="end"/></w:r>',
+    '</w:p>',
+    '</w:ftr>',
+  ].join('');
+}
+
+function productSetupDocxCoreProperties(title: string, generatedAt: string): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    `<dc:title>${escapeDocxXml(title)}</dc:title>`,
+    '<dc:creator>ZiLi-OS</dc:creator>',
+    `<cp:lastModifiedBy>ZiLi-OS</cp:lastModifiedBy>`,
+    `<dcterms:created xsi:type="dcterms:W3CDTF">${escapeDocxXml(generatedAt)}</dcterms:created>`,
+    `<dcterms:modified xsi:type="dcterms:W3CDTF">${escapeDocxXml(generatedAt)}</dcterms:modified>`,
+    '</cp:coreProperties>',
+  ].join('');
+}
+
+function productSetupDocxAppProperties(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">',
+    '<Application>ZiLi-OS</Application>',
+    '</Properties>',
+  ].join('');
 }
 
 export function createProductSetupPackPrintableHtml(

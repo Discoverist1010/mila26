@@ -1581,4 +1581,27 @@ describe('Product Setup record', () => {
     expect(packageText).toContain('word/document.xml');
     expect(packageText).toContain('ZiLi-OS Product Requirements Document');
   });
+
+  it('generates a styled Product Setup PRD DOCX with header, footer, tables, and page numbering', () => {
+    const docx = createProductSetupPrdDocxContent(createCompleteProductSetupRecord(), undefined, {
+      generatedAtIso: '2027-04-01T09:30:00.000Z',
+    });
+    const packageText = new TextDecoder().decode(docx);
+
+    expect(packageText).toContain('word/header1.xml');
+    expect(packageText).toContain('word/footer1.xml');
+    expect(packageText).toContain('word/styles.xml');
+    expect(packageText).toContain('word/numbering.xml');
+    expect(packageText).toContain('MERIDIAN Growth Fund (MGF)');
+    expect(packageText).toContain('Product Requirements Document');
+    expect(packageText).toContain('w:instrText xml:space="preserve"> PAGE </w:instrText>');
+    expect(packageText).toContain('<w:tbl>');
+    expect(packageText).toContain('F8F9FA');
+    expect(packageText).toContain('8D99AE');
+    expect(packageText).toContain('007E8A');
+    expect(packageText).toContain('Not applicable for fiat off-chain settlement');
+    expect(packageText).not.toContain('| Attribute | Value | Provenance |');
+    expect(packageText).not.toContain('user_confirmation');
+    expect(packageText).not.toContain('user_confirmed');
+  });
 });
