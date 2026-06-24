@@ -2873,6 +2873,11 @@ function createStyledProductSetupPrdDocx(
 
   const documentBody = [
     docxTitleBlock(record, readModel, payload, generatedAt, title),
+    docxCallout([
+      'Document purpose: review and approve the Product Setup before downstream lifecycle configuration.',
+      'This PRD records product terms, operating assumptions, evidence expectations, and handoff notes for ZiLi-OS workflow use.',
+      'This is not a legal offering document, investment recommendation, production audit, or mainnet deployment approval.',
+    ]),
     docxHeading('1. Executive Summary', 1),
     docxParagraph(
       `${productName} is a ${productSetupProseField(record, 'product_structure', 'term type not yet specified').toLowerCase()} ${productSetupProseField(record, 'product_wrapper', 'product wrapper not yet specified').toLowerCase()} represented by token symbol ${tokenSymbol}. The product references ${productSetupAssetClassProse(record).toLowerCase()} and uses ${productSetupProseField(record, 'base_currency', 'base currency not yet specified')} as the base currency for valuation, subscription, redemption, and evidence assumptions.`,
@@ -2885,6 +2890,12 @@ function createStyledProductSetupPrdDocx(
       `PRD state: ${humanizeProductSetupStatus(payload.readinessState)}`,
       `Generated: ${generatedAt}`,
     ]),
+    docxHeading('What Is Ready / What Comes Later', 2),
+    docxTable(
+      ['Ready now', 'Needed later'],
+      [[productSetupReadyNowSummary(record, readModel), productSetupNeededLaterSummary(record, readModel)]],
+      [5040, 5040],
+    ),
     docxHeading('2. Product Profile', 1),
     docxParagraph('These are the canonical product terms used by Product Setup and staged for downstream lifecycle tabs after confirmation.'),
     docxTable(
@@ -2942,6 +2953,11 @@ function createStyledProductSetupPrdDocx(
     docxParagraph(
       `The recommended architecture target is ${payload.recommendedArchitectureTarget}. The selected protocol base is ${productSetupProseField(record, 'protocol_base', 'protocol base not yet selected')} on ${productSetupProseField(record, 'prototype_network', 'prototype network not yet specified')}. Contract Ops should consume this Product Setup snapshot rather than reconstructing parameters from chat.`,
     ),
+    docxCallout([
+      `Protocol rationale: ${payload.recommendedArchitectureTarget} is the architecture target when permissioned ownership and restricted transfers are central to the product.`,
+      `MVP execution boundary: ${productSetupExecutablePrototypeText(payload.currentExecutablePrototype)}.`,
+      'Contract Ops should keep the recommendation, selected protocol base, and any MVP trade-off visible before Sepolia deployment.',
+    ]),
     docxBullets([
       `Current executable prototype: ${productSetupExecutablePrototypeText(payload.currentExecutablePrototype)}`,
       `Compliance model: ${productSetupProseField(record, 'compliance_model', 'compliance model not yet specified')}`,
@@ -2996,7 +3012,7 @@ function createStyledProductSetupPrdDocx(
       ['Requirement', 'User input', 'ZiLi-OS interpretation', 'Source', 'Status'],
       payload.fields.map((field) => [
         field.requirement,
-        field.userInput,
+        productSetupDocxValue(field.requirement, field.userInput),
         productSetupDocxInterpretation(field.requirement, field.interpretation, record),
         humanizeProductSetupStatus(field.source),
         humanizeProductSetupStatus(field.status),
@@ -3087,25 +3103,64 @@ function productSetupDocxRowsForLabels(
     .filter((field) => wanted.has(field.requirement))
     .map((field) => [
       field.requirement,
-      productSetupDocxValue(field.userInput),
+      productSetupDocxValue(field.requirement, field.userInput),
       productSetupDocxInterpretation(field.requirement, field.interpretation, record),
       humanizeProductSetupStatus(field.status),
     ]);
   return rows.length > 0 ? rows : [['None', '-', '-', '-']];
 }
 
-function productSetupDocxValue(value: string): string {
-  if (/^Not provided$/i.test(value)) return 'Pending';
+function productSetupDocxValue(requirement: string, value: string): string {
+  if (requirement === 'Offering type' && /^private$/i.test(value)) return 'Private placement';
+  if (/^Not provided$/i.test(value)) return 'To be confirmed';
   return value;
 }
 
 function productSetupDocxInterpretation(requirement: string, value: string, record?: ProductSetupRecord): string {
   const subscriptionIsOffchain = record ? /off\s*chain|offchain|fiat/i.test(formatProductSetupFieldValue('subscription_payment_method', record.fields.subscription_payment_method.value)) : false;
   const redemptionIsOffchain = record ? /off\s*chain|offchain|fiat/i.test(formatProductSetupFieldValue('redemption_payment_method', record.fields.redemption_payment_method.value)) : false;
+  if (requirement === 'Offering type' && /^private$/i.test(value)) return 'Private placement';
   if (requirement === 'Subscription stablecoin type' && subscriptionIsOffchain) return 'Not applicable for fiat off-chain settlement';
   if (requirement === 'Redemption stablecoin type' && redemptionIsOffchain) return 'Not applicable for fiat off-chain settlement';
-  if (/^Needed before relevant workflow activation$/i.test(value)) return 'Pending before relevant workflow activation';
+  if (/^Needed before relevant workflow activation$/i.test(value)) return productSetupPendingWorkflowText(requirement);
   return value;
+}
+
+function productSetupPendingWorkflowText(requirement: string): string {
+  const known: Record<string, string> = {
+    'Admin wallet': 'Needed before wallet-signed Sepolia deployment.',
+    'Burn / lock rule': 'Needed before Contract Ops and Redemption encode token handling.',
+    'Redemption wallet': 'Needed before redemption operations require a settlement wallet.',
+    'NAV source': 'Needed before Asset Servicing records who uploads NAV.',
+    'Issuer / product owner': 'To be confirmed by the issuer before external review.',
+    'Subscription receiving wallet': 'Needed before subscription operations require a payment destination.',
+    'Redemption payout cadence': 'Needed before redemption settlement operations.',
+    'Redemption payout delay': 'Needed before redemption settlement operations.',
+    'Initial investor register': 'Needed before wallet registration or initial allocation.',
+    'Maturity closeout rule': 'Needed before maturity operations.',
+  };
+  return known[requirement] ?? 'To be confirmed before the relevant workflow starts.';
+}
+
+function productSetupReadyNowSummary(record: ProductSetupRecord, readModel: ProductSetupReadModel): string {
+  const readyItems = [
+    productSetupProseField(record, 'product_name', 'Product name pending'),
+    `${productSetupProseField(record, 'product_structure', 'term type pending')} ${productSetupProseField(record, 'product_wrapper', 'product wrapper pending')}`,
+    `${productSetupProseField(record, 'maximum_investor_count', 'investor cap pending')} maximum investors`,
+    `${productSetupProseField(record, 'nav_cadence', 'NAV cadence pending')} NAV`,
+    `${productSetupProseField(record, 'subscription_cadence', 'subscription cadence pending')} subscriptions`,
+    `${productSetupProseField(record, 'redemption_cadence', 'redemption cadence pending')} redemptions`,
+  ];
+  if (readModel.missingEssentials.length === 0) {
+    readyItems.push('Core Product Setup fields are ready for PRD review.');
+  }
+  return readyItems.join('; ');
+}
+
+function productSetupNeededLaterSummary(record: ProductSetupRecord, readModel: ProductSetupReadModel): string {
+  const decisions = productSetupOpenDecisionItems(record, readModel);
+  if (decisions.length === 0) return 'No later operational decisions are currently flagged.';
+  return decisions.join(' ');
 }
 
 function productSetupExecutablePrototypeText(value: string): string {
@@ -3119,10 +3174,10 @@ function humanizeProductSetupStatus(value: string): string {
     user_confirmation: 'Confirmed by user',
     user_confirmed: 'Confirmed',
     user_stated: 'User stated',
-    system_default: 'Default',
-    locked: 'Locked default',
-    missing: 'Pending',
-    deferred: 'Deferred',
+    system_default: 'System default',
+    locked: 'System default',
+    missing: 'To be confirmed',
+    deferred: 'Deferred by user',
     ready: 'Ready',
     draft: 'Draft',
     sent_as_draft_note: 'Sent as draft note',
@@ -3142,6 +3197,7 @@ function formatPrdGeneratedAt(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
+    timeZoneName: 'short',
     hour12: false,
   }).format(date);
 }

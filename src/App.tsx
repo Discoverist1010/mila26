@@ -330,13 +330,11 @@ type ProductSetupPrdArtifacts = {
   payload: ProductSetupPackArtifactPayload;
   markdown: string;
   docxContent: Uint8Array;
-  setupJson: string;
 };
 
 type ProductSetupPackArtifactPayload = ReturnType<typeof createProductSetupPackPayload> & {
   downloadableArtifacts?: {
     markdown: string;
-    setupJson: string;
     docxBase64: string;
   };
 };
@@ -903,15 +901,21 @@ export function App() {
   const productSetupPrdArtifactDescriptor =
     productSetupReadModel.packPreview.status === 'Ready for review' ? 'Product PRD' : 'Product PRD draft';
   const productSetupPendingReviewCount = productSetupRecord.pendingSuggestedUpdates.length;
-  const productSetupRowsNeedingReview = productSetupReadModel.profileRows.filter((row) =>
-    ['Inferred', 'Assumed', 'Needs review'].includes(row.provenanceLabel),
-  );
+  const productSetupDefaultFieldCount = productSetupReadModel.profileRows.filter((row) => row.provenanceLabel === 'Assumed').length;
+  const productSetupUserFieldTarget = Math.max(productSetupReadModel.profileRows.length - productSetupDefaultFieldCount, 0);
+  const productSetupUserFieldsReadyCount = productSetupReadModel.profileRows.filter((row) =>
+    ['Stated', 'Inferred'].includes(row.provenanceLabel),
+  ).length;
+  const productSetupResolvedFieldCount = productSetupUserFieldsReadyCount + productSetupDefaultFieldCount;
   const productSetupProgressPercent = Math.round(
-    (productSetupReadModel.completedEssentialCount / Math.max(productSetupReadModel.requiredEssentialCount, 1)) * 100,
+    (productSetupResolvedFieldCount / Math.max(productSetupReadModel.profileRows.length, 1)) * 100,
   );
+  const productSetupProgressColor =
+    productSetupProgressPercent >= 90 ? '#1C59C3' : productSetupProgressPercent >= 70 ? '#2A6FE2' : '#5D9CEC';
   const productSetupProgressLabel =
-    `${productSetupReadModel.completedEssentialCount} of ${productSetupReadModel.requiredEssentialCount} Product Setup fields drafted` +
-    (productSetupRowsNeedingReview.length > 0 ? ` · ${productSetupRowsNeedingReview.length} need review` : '');
+    `${productSetupUserFieldsReadyCount} of ${productSetupUserFieldTarget} user-filled fields ready` +
+    ` · ${productSetupDefaultFieldCount} default${productSetupDefaultFieldCount === 1 ? '' : 's'} applied` +
+    ` · ${productSetupReadModel.profileRows.length} total fields`;
   const allocationMint = lifecycleReadModel.allocationMint;
   const selectedAllocationMintRegistryEntry = useMemo(
     () =>
@@ -1915,16 +1919,21 @@ export function App() {
     }
   }
 
-  async function saveWorkspaceSnapshotForPersistence() {
+  async function saveWorkspaceSnapshotForPersistence(options: { showWorkspaceStatus?: boolean } = {}) {
+    const showWorkspaceStatus = options.showWorkspaceStatus ?? true;
     if (selectedProjectId === 'workspace') {
-      setWorkspacePersistenceStatus({
-        status: 'error',
-        message: 'Choose a project before saving a local draft.',
-      });
+      if (showWorkspaceStatus) {
+        setWorkspacePersistenceStatus({
+          status: 'error',
+          message: 'Choose a project before saving a local draft.',
+        });
+      }
       return undefined;
     }
 
-    setWorkspacePersistenceStatus({ status: 'saving', message: 'Saving draft...' });
+    if (showWorkspaceStatus) {
+      setWorkspacePersistenceStatus({ status: 'saving', message: 'Saving draft...' });
+    }
     const result = await saveWorkspaceSnapshot({
       projectId: selectedProjectId,
       projectName: activeProjectTitle,
@@ -1937,7 +1946,9 @@ export function App() {
       return result.data;
     }
 
-    setWorkspacePersistenceStatus({ status: 'error', message: result.message });
+    if (showWorkspaceStatus) {
+      setWorkspacePersistenceStatus({ status: 'error', message: result.message });
+    }
     return undefined;
   }
 
@@ -2256,7 +2267,7 @@ export function App() {
       .filter((payload) => payload.downloadableArtifacts)
       .sort((left, right) => String(right.generatedAtIso).localeCompare(String(left.generatedAtIso)));
     const payload = productSetupRecords[0];
-    if (!payload?.downloadableArtifacts?.markdown || !payload.downloadableArtifacts.setupJson || !payload.downloadableArtifacts.docxBase64) {
+    if (!payload?.downloadableArtifacts?.markdown || !payload.downloadableArtifacts.docxBase64) {
       return undefined;
     }
 
@@ -2268,7 +2279,6 @@ export function App() {
       generatedAtIso: payload.generatedAtIso,
       payload,
       markdown: payload.downloadableArtifacts.markdown,
-      setupJson: payload.downloadableArtifacts.setupJson,
       docxContent: base64ToUint8Array(payload.downloadableArtifacts.docxBase64),
     };
   }
@@ -3002,19 +3012,10 @@ export function App() {
       const basePayload = createProductSetupPackPayload(productSetupRecord, productSetupReadModel, generationOptions);
       const markdown = createProductSetupPrdMarkdown(productSetupRecord, productSetupReadModel, generationOptions);
       const docxContent = createProductSetupPrdDocxContent(productSetupRecord, productSetupReadModel, generationOptions);
-      const setupJson = JSON.stringify(
-        {
-          artifact: basePayload,
-          productSetupRecord,
-        },
-        null,
-        2,
-      );
       const payload: ProductSetupPackArtifactPayload = {
         ...basePayload,
         downloadableArtifacts: {
           markdown,
-          setupJson,
           docxBase64: uint8ArrayToBase64(docxContent),
         },
       };
@@ -3027,7 +3028,6 @@ export function App() {
         payload,
         markdown,
         docxContent,
-        setupJson,
       };
 
       setProductSetupPrdArtifacts(artifacts);
@@ -3039,7 +3039,7 @@ export function App() {
       }
     }
 
-    const workspaceRecord = await saveWorkspaceSnapshotForPersistence();
+    const workspaceRecord = await saveWorkspaceSnapshotForPersistence({ showWorkspaceStatus: false });
     if (!workspaceRecord) {
       setArtifactVaultStatus({
         status: 'error',
@@ -3403,7 +3403,15 @@ export function App() {
                     {productSetupPendingReviewCount > 0 && <strong>{productSetupPendingReviewCount} captured detail(s) pending</strong>}
                   </div>
                   <div className="product-setup-progress-track" aria-hidden="true">
-                    <span style={{ width: `${productSetupProgressPercent}%` }} />
+                    <span
+                      className={productSetupProgressPercent >= 90 ? 'is-complete' : undefined}
+                      style={
+                        {
+                          width: `${productSetupProgressPercent}%`,
+                          '--product-setup-progress-color': productSetupProgressColor,
+                        } as CSSProperties
+                      }
+                    />
                   </div>
                 </div>
               </section>

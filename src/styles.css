@@ -3107,16 +3107,24 @@ summary {
 }
 
 .product-setup-progress-track {
-  background: #e8eef6;
+  background: #e6edf5;
   border-radius: 999px;
   height: 8px;
   overflow: hidden;
 }
 
 .product-setup-progress-track span {
-  background: #0b65d8;
+  background: var(--product-setup-progress-color, #5d9cec);
   display: block;
   height: 100%;
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease,
+    width 160ms ease;
+}
+
+.product-setup-progress-track span.is-complete {
+  box-shadow: 0 0 10px rgb(28 89 195 / 28%);
 }
 
 .product-setup-artifact {

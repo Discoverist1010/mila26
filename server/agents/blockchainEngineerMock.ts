@@ -155,7 +155,7 @@ export function answerWithBlockchainEngineerMock(
     return BlockchainEngineerChatResponseSchema.parse({
       ...base,
       content:
-        'Engineering Bot view: the Product Setup PRD is ready for review. I will stop asking for more Product Setup fields unless you explicitly want to edit or replace a captured requirement. The next clean step is to review the Product Setup Pack, finalise the PRD, and then send the confirmed facts to the downstream lifecycle tabs.',
+        'Engineering Bot view: the Product Setup PRD is ready for review. I will stop asking for more Product Setup fields unless you explicitly want to edit or replace a captured requirement. The next clean step is to review the Product Setup PRD, finalise it, then download the DOCX or Markdown copy and send the confirmed facts to the downstream lifecycle tabs.',
       openQuestions: ['Do you want to finalise the Product Setup PRD, or edit a specific captured requirement first?'],
       riskNotes: ['Finalisation records the PRD for workflow use; it is not legal, compliance, investment, tax, or formal audit approval.'],
       nextRecommendedAction: 'Review and finalise the Product Setup PRD.',
@@ -193,7 +193,7 @@ export function answerWithBlockchainEngineerMock(
         'Captured so far:',
         `- ${capturedFields.join('\n- ')}`,
         '',
-        'Before I recommend protocol settings or deployment steps, I need an initial focused batch of Product Setup details. These answers will become reviewable requirement updates and can later feed the Product Setup Pack.',
+        'Before I recommend protocol settings or deployment steps, I need an initial focused batch of Product Setup details. These answers will become reviewable requirement updates and can later feed the Product Setup PRD.',
         '',
         'I will not treat this as a fixed three-question form. If your answers change the direction, I will revise the working interpretation. After a few Product Setup exchanges, I should replay the draft requirements, flag remaining crucial gaps, and ask whether to confirm, revise, or defer them.',
         '',

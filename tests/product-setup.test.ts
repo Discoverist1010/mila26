@@ -1594,6 +1594,10 @@ describe('Product Setup record', () => {
     expect(packageText).toContain('word/numbering.xml');
     expect(packageText).toContain('MERIDIAN Growth Fund (MGF)');
     expect(packageText).toContain('Product Requirements Document');
+    expect(packageText).toContain('Document purpose: review and approve the Product Setup before downstream lifecycle configuration.');
+    expect(packageText).toContain('What Is Ready / What Comes Later');
+    expect(packageText).toContain('Protocol rationale: ERC-3643 is the architecture target');
+    expect(packageText).toContain('Private placement');
     expect(packageText).toContain('w:instrText xml:space="preserve"> PAGE </w:instrText>');
     expect(packageText).toContain('<w:tbl>');
     expect(packageText).toContain('F8F9FA');
@@ -1603,5 +1607,6 @@ describe('Product Setup record', () => {
     expect(packageText).not.toContain('| Attribute | Value | Provenance |');
     expect(packageText).not.toContain('user_confirmation');
     expect(packageText).not.toContain('user_confirmed');
+    expect(packageText).not.toContain('Pending before relevant workflow activation');
   });
 });

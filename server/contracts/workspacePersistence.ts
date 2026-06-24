@@ -910,10 +910,9 @@ const ProductSetupPackArtifactRecordSchema = z
         downloadableArtifacts: z
           .object({
             markdown: z.string().min(1).max(250_000),
-            setupJson: z.string().min(1).max(250_000),
             docxBase64: z.string().min(1).max(750_000),
           })
-          .strict()
+          .strip()
           .optional(),
       })
       .strict(),

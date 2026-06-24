@@ -531,6 +531,7 @@ describe('App Blockchain Engineer Bot panel', () => {
         const body = JSON.parse(String(init?.body));
         expect(body.records.map((record: { artifactType: string }) => record.artifactType)).toEqual(['product_setup_pack']);
         expect(JSON.stringify(body)).toContain('Product Requirements Document');
+        expect(JSON.stringify(body)).not.toContain('setupJson');
 
         return Promise.resolve(
           createJsonResponse({
@@ -563,6 +564,12 @@ describe('App Blockchain Engineer Bot panel', () => {
     render(<App />);
 
     fireEvent.click(within(screen.getByLabelText('Tokenisation lifecycle tabs')).getByRole('button', { name: /Product Setup/ }));
+    const progress = screen.getByLabelText('Product Setup PRD progress');
+    expect(progress).toHaveTextContent(/user-filled fields ready/);
+    expect(progress).toHaveTextContent(/defaults applied/);
+    expect(progress).toHaveTextContent(/total fields/);
+    expect(progress).not.toHaveTextContent(/need review/i);
+
     const pack = screen.getByLabelText('Product Setup Pack');
 
     expect(within(pack).getByRole('button', { name: 'Generate draft PRD' })).toBeEnabled();
@@ -572,6 +579,8 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(within(pack).queryByRole('button', { name: 'Edit further' })).not.toBeInTheDocument();
 
     fireEvent.click(within(pack).getByRole('button', { name: 'Generate draft PRD' }));
+    expect(screen.getByRole('button', { name: 'Save draft' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Saving...' })).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(within(pack).getByRole('button', { name: 'Download PRD .docx' })).toBeEnabled();

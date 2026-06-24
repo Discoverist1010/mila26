@@ -266,7 +266,6 @@ describe('workspace evidence and artifact API', () => {
     const basePayload = createProductSetupPackPayload(record, undefined, options);
     const markdown = createProductSetupPrdMarkdown(record, undefined, options);
     const docxContent = createProductSetupPrdDocxContent(record, undefined, options);
-    const setupJson = JSON.stringify({ artifact: basePayload, productSetupRecord: record }, null, 2);
 
     const saveArtifactsResponse = await app.inject({
       method: 'POST',
@@ -280,7 +279,6 @@ describe('workspace evidence and artifact API', () => {
               ...basePayload,
               downloadableArtifacts: {
                 markdown,
-                setupJson,
                 docxBase64: Buffer.from(docxContent).toString('base64'),
               },
             },
@@ -305,7 +303,6 @@ describe('workspace evidence and artifact API', () => {
         versionLabel: 'v1.0',
         downloadableArtifacts: {
           markdown: expect.stringContaining('Product Requirements Document'),
-          setupJson: expect.stringContaining('product-setup-alpha-income-fund-i'),
           docxBase64: expect.any(String),
         },
       },

@@ -46,7 +46,7 @@ describe('blockchain engineer chat api', () => {
     expect(body.data.content).toMatch(/22/);
     expect(body.data.content).toMatch(/Before I recommend protocol settings or deployment steps/i);
     expect(body.data.content).toMatch(/not treat this as a fixed three-question form/i);
-    expect(body.data.content).toMatch(/Product Setup Pack/i);
+    expect(body.data.content).toMatch(/Product Setup PRD/i);
     expect(body.data.content).toMatch(/protocol recommendation/i);
     expect(body.data.openQuestions).toEqual([
       'What is the underlying product or asset pool?',
@@ -230,7 +230,9 @@ describe('blockchain engineer chat api', () => {
         });
         const systemInstruction = request.messages[0]?.content ?? '';
         expect(systemInstruction).toMatch(/conversation-first intake/i);
-        expect(systemInstruction).toMatch(/Product Setup Pack/i);
+        expect(systemInstruction).toMatch(/Product Setup PRD/i);
+        expect(systemInstruction).toMatch(/DOCX and Markdown only/i);
+        expect(systemInstruction).toMatch(/Do not offer, attach, preview, or link Product Setup JSON or PDF downloads/i);
         expect(systemInstruction).toMatch(/currentTurnExtractedFacts/i);
         expect(systemInstruction).toMatch(/workspaceDefaults/i);
         expect(systemInstruction).toMatch(/Do not invent or prefill product_name or token_symbol/i);

@@ -19,7 +19,8 @@ const productSetupIntake = [
   'If the user revises intent, acknowledge it and ask only what keeps the canonical record coherent.',
   'After about three setup Q&A turns, consolidate draft requirements, separate deployment blockers from later workflow gaps, and ask whether to confirm, revise, or defer.',
   'Do not jump to deployment, minting, onboarding, or full implementation plans from early setup notes unless explicitly asked.',
-  'Lead toward a downloadable Product Setup Pack built from canonical fields with provenance.',
+  'Lead toward a downloadable Product Setup PRD built from canonical fields with provenance.',
+  'Supported Product Setup PRD downloads are DOCX and Markdown only. Do not offer, attach, preview, or link Product Setup JSON or PDF downloads.',
 ];
 
 const productSetupDataRules = [
