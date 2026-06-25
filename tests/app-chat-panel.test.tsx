@@ -980,6 +980,9 @@ describe('App Blockchain Engineer Bot panel', () => {
     expect(profile).toHaveTextContent('36 months');
     expect(profile).toHaveTextContent('2029-11-19');
     expect(profile).not.toHaveTextContent('WRONG RESPONSE NAME');
+    const progress = screen.getByLabelText('Product Setup PRD progress');
+    expect(progress).toHaveTextContent('7 defaults applied');
+    expect(progress).toHaveTextContent('28 total fields');
     expect(screen.queryByText(/product_name: WRONG RESPONSE NAME/i)).not.toBeInTheDocument();
   });
 

@@ -184,6 +184,20 @@ import type {
 } from '../server/contracts/workspacePersistence';
 import type { FundFacts, RequirementBrief } from './domain/schemas';
 
+const lockedDefaultProductSetupProfileFieldKeys = new Set<ProductSetupFieldKey>([
+  'distribution_jurisdiction',
+  'nav_upload_method',
+  'derived_maturity_date',
+  'minimum_redemption_amount',
+  'prototype_network',
+  'compliance_model',
+  'evidence_model',
+]);
+
+function isLockedDefaultProductSetupProfileRow(row: { fieldKeys: ProductSetupFieldKey[] }) {
+  return row.fieldKeys.some((fieldKey) => lockedDefaultProductSetupProfileFieldKeys.has(fieldKey));
+}
+
 const starterFacts: FundFacts = {
   fundName: 'MILA Income Fund',
   tokenSymbol: 'MILA',
@@ -901,10 +915,10 @@ export function App() {
   const productSetupPrdArtifactDescriptor =
     productSetupReadModel.packPreview.status === 'Ready for review' ? 'Product PRD' : 'Product PRD draft';
   const productSetupPendingReviewCount = productSetupRecord.pendingSuggestedUpdates.length;
-  const productSetupDefaultFieldCount = productSetupReadModel.profileRows.filter((row) => row.provenanceLabel === 'Assumed').length;
+  const productSetupDefaultFieldCount = productSetupReadModel.profileRows.filter(isLockedDefaultProductSetupProfileRow).length;
   const productSetupUserFieldTarget = Math.max(productSetupReadModel.profileRows.length - productSetupDefaultFieldCount, 0);
   const productSetupUserFieldsReadyCount = productSetupReadModel.profileRows.filter((row) =>
-    ['Stated', 'Inferred'].includes(row.provenanceLabel),
+    !isLockedDefaultProductSetupProfileRow(row) && ['Stated', 'Inferred'].includes(row.provenanceLabel),
   ).length;
   const productSetupResolvedFieldCount = productSetupUserFieldsReadyCount + productSetupDefaultFieldCount;
   const productSetupProgressPercent = Math.round(
@@ -4630,16 +4644,20 @@ export function App() {
                       </div>
                     </div>
                     <div className="product-profile-list">
-                      {productSetupReadModel.profileRows.map((row) => (
-                        <article key={row.id}>
-                          <span>{row.label}</span>
-                          <strong>{row.value}</strong>
-                          <small className={`product-setup-chip ${row.provenanceLabel.toLowerCase().replaceAll(' ', '-')}`}>
-                            {productSetupProfileProvenanceLabel(row.provenanceLabel)}
-                          </small>
-                          {row.whyItMatters && <p>{row.whyItMatters}</p>}
-                        </article>
-                      ))}
+                      {productSetupReadModel.profileRows.map((row) => {
+                        const isLockedDefault = isLockedDefaultProductSetupProfileRow(row);
+                        const provenanceClassName = isLockedDefault ? 'locked-default' : row.provenanceLabel.toLowerCase().replaceAll(' ', '-');
+                        return (
+                          <article key={row.id}>
+                            <span>{row.label}</span>
+                            <strong>{row.value}</strong>
+                            <small className={`product-setup-chip ${provenanceClassName}`}>
+                              {isLockedDefault ? 'Locked default' : productSetupProfileProvenanceLabel(row.provenanceLabel)}
+                            </small>
+                            {row.whyItMatters && <p>{row.whyItMatters}</p>}
+                          </article>
+                        );
+                      })}
                     </div>
                   </section>
 

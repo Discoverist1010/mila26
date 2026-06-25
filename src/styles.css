@@ -3205,7 +3205,13 @@ summary {
   color: #067647;
 }
 
-.product-setup-chip.assumed,
+.product-setup-chip.locked-default,
+.product-setup-chip.assumed {
+  background: #eefcf6;
+  border-color: #8ee6bd;
+  color: #047857;
+}
+
 .product-setup-chip.inferred,
 .product-setup-chip.needs-review {
   background: #fff7ed;
